@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SuperPadel – Padelio PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background-color: #f8fafc; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: none;
+            overflow-x: hidden; 
+            width: 100vw;
+            margin: 0;
+            padding-bottom: 90px;
+        }
+        input, select, button { font-size: 16px !important; touch-action: manipulation; } 
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .nav-btn.active { color: #16a34a; }
+        .nav-btn.active svg { stroke: #16a34a; }
+        .nav-btn { color: #94a3b8; transition: all 0.2s; }
+        
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+    <meta name="application-name" content="SuperPadel – Padelio PRO">
+    <meta name="apple-mobile-web-app-title" content="SuperPadel">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="description" content="Padelio Americano/Mexicano generatorius, taškų/ laiko režimai, rezultatai ir lentelė.">
+    <meta property="og:title" content="SuperPadel – Padelio PRO">
+    <meta property="og:description" content="Padelio Americano/Mexicano generatorius, taškų/ laiko režimai, rezultatai ir lentelė.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="/icons/icon-512.png">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icons/favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+</head>
+<body>
+
+    <div id="error-box" style="display:none; position:fixed; top:0; left:0; width:100%; background:red; color:white; padding:20px; z-index:9999; font-size:12px;"></div>
+
+    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm h-16 flex justify-between items-center px-4 w-full">
+        <div class="flex items-center gap-2" id="timer-controls">
+            <button type="button" onclick="adjustTime(-60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-xl font-bold">-</button>
+            <span id="timer-display" class="text-3xl font-black font-mono tracking-wider tabular-nums select-none">12:00</span>
+            <button type="button" onclick="adjustTime(60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-xl font-bold">+</button>
+        </div>
+        <div id="score-mode-text" class="hidden text-sm font-bold text-slate-500 uppercase tracking-widest text-center w-full">
+            IKI TAŠKŲ
+        </div>
+        <div class="flex items-center gap-3">
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-12 h-12 rounded-full bg-green-600 text-white shadow-lg shadow-green-600/30 flex items-center justify-center active:scale-95 transition-transform">
+                <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button type="button" onclick="resetTimer()" class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto p-4 w-full">
+        
+        <div id="view-setup" class="view-section active w-full">
+            <div class="bg-white p-3 pr-4 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 mb-6 sticky top-20 z-10 w-full">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Naujas Žaidėjas</label>
+                    <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded-full font-bold">Viso: 0</span>
+                </div>
+                <form id="add-player-form" class="flex gap-2 w-full">
+                    <div class="flex bg-slate-100 rounded-xl overflow-hidden shrink-0 h-14 border border-slate-200">
+                        <button type="button" id="gender-m" onclick="setGender('M')" class="px-3 font-bold transition-colors text-lg bg-blue-600 text-white">V</button>
+                        <button type="button" id="gender-f" onclick="setGender('F')" class="px-3 font-bold transition-colors text-lg text-slate-400">M</button>
+                    </div>
+                    <input type="text" id="input-name" placeholder="Vardas..." class="flex-1 min-w-0 px-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-green-500 h-14 text-slate-900 font-bold text-lg" autocomplete="off" />
+                    <button type="submit" class="bg-slate-900 text-white w-14 h-14 shrink-0 rounded-xl font-bold text-3xl shadow-lg active:scale-95">+</button>
+                </form>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4 w-full">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Nustatymai</h3>
+                
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all">Pagal Laiką</button>
+                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all">Pagal Taškus</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div id="control-duration">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Laikas (min)</label>
+                        <div class="flex items-center gap-2 h-[42px]">
+                            <button type="button" onclick="changeSetting('matchDuration', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
+                            <span id="val-duration" class="flex-1 text-center font-black text-xl text-slate-800">12</span>
+                            <button type="button" onclick="changeSetting('matchDuration', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
+                        </div>
+                    </div>
+                     <div id="control-points" style="display:none;">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Iki taškų</label>
+                        <div class="flex items-center gap-2 h-[42px]">
+                            <button type="button" onclick="changeSetting('maxPoints', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
+                            <span id="val-points" class="flex-1 text-center font-black text-xl text-slate-800">21</span>
+                            <button type="button" onclick="changeSetting('maxPoints', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Aikštelės</label>
+                        <div class="flex items-center gap-2 h-[42px]">
+                            <button type="button" onclick="changeSetting('courts', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
+                            <span id="val-courts" class="flex-1 text-center font-black text-xl text-slate-800">2</span>
+                            <button type="button" onclick="changeSetting('courts', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                     <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Formatas</label>
+                     <select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm">
+                        <option value="americano">Americano (Burtų būdu)</option>
+                        <option value="mexicano">Mexicano (Pagal pajėgumą)</option>
+                        <option value="super_mexicano">Super Mexicano (Stipriausi vs Stipriausi)</option>
+                        <option value="mix_americano">Mix Americano (Vyras + Moteris)</option>
+                        <option value="mix_mexicano">Mix Mexicano (V+M pagal lygį)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="players-list" class="space-y-2 mb-10 w-full"></div>
+
+            <div class="space-y-3 pt-4 border-t border-slate-200 w-full pb-10">
+                <button type="button" onclick="resetScores()" class="w-full py-4 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-orange-200">Anuliuoti rezultatus</button>
+                <button type="button" onclick="resetAll()" class="w-full py-4 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-red-200">Ištrinti viską</button>
+            </div>
+        </div>
+
+        <div id="view-matches" class="view-section w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Mačai</h2>
+                <button type="button" onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95 transition-transform flex items-center gap-2">
+                    <span>+</span> Naujas
+                </button>
+            </div>
+            <div id="matches-container"></div>
+            <div id="finished-matches-container" class="mt-12 opacity-90"></div>
+        </div>
+
+        <div id="view-leader" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Rezultatai</h2>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 divide-y divide-slate-200 overflow-hidden w-full">
+                <!-- Header row for the leaderboard. Using flex instead of a table simplifies responsive behavior
+                     and avoids issues where table elements were not rendering correctly in the previous version. -->
+                <div class="flex text-[10px] uppercase text-slate-400 font-bold tracking-widest px-3 py-2 bg-slate-50">
+                    <div class="w-8 text-center">#</div>
+                    <div class="flex-1">Žaidėjas</div>
+                    <div class="w-8 text-center">M</div>
+                    <div class="w-10 text-center">+/-</div>
+                    <div class="w-10 text-right">Tšk</div>
+                </div>
+                <!-- Body container for leaderboard rows. Rows will be added here as flex items via updateLeaderboard(). -->
+                <div id="leaderboard-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+        <div class="flex justify-around items-center h-16 max-w-md mx-auto">
+            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-full py-1 active:scale-95">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="text-[10px] font-bold mt-1">Nustatymai</span>
+            </button>
+            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-full py-1 active:scale-95">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
+                <span class="text-[10px] font-bold mt-1">Žaidimas</span>
+            </button>
+            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-full py-1 active:scale-95">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                <span class="text-[10px] font-bold mt-1">Rezultatai</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        window.onerror = function(msg, url, line) {
+            const el = document.getElementById('error-box');
+            el.style.display = 'block';
+            el.innerHTML = "Klaida: " + msg + "<br>Eilutė: " + line + "<br>Prašau atnaujinti puslapį.";
+            return false;
+        };
+
+        // --- GLOBALŪS KINTAMIEJI ---
+        // SVARBU: Naudojame raktus '_v14', kad išvengtume konfliktų su senais duomenimis
+        let players = [];
+        let matches = [];
+        let settings = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano' };
+        
+        let tempGender = 'M';
+        let timeLeft = 0;
+        let timerInterval = null;
+        let isRunning = false;
+
+        // Stabilūs unikalūs ID (išsprendžia Date.now() dubliavimus)
+        function uid() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        }
+
+        // --- INIT ---
+        try {
+            players = JSON.parse(localStorage.getItem('padel_players_v14')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v14')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v14'));
+            if (savedSettings) settings = savedSettings;
+            timeLeft = settings.matchDuration * 60;
+        } catch (e) {
+            console.error("Duomenų klaida, valoma...", e);
+            localStorage.clear();
+        }
+
+        // --- FUNKCIJOS ---
+        function saveData() {
+            localStorage.setItem('padel_players_v14', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v14', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v14', JSON.stringify(settings));
+            render();
+        }
+
+        function switchView(viewName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('view-' + viewName).classList.add('active');
+            document.getElementById('nav-' + viewName).classList.add('active');
+            if (viewName === 'leader') updateLeaderboard();
+        }
+
+        function updateTimerDisplay() {
+            // Score mode: paslepiam timer controls
+            if (settings.winCondition === 'score') {
+                document.getElementById('timer-controls').style.display = 'none';
+                document.getElementById('score-mode-text').innerHTML = `IKI ${settings.maxPoints} TAŠKŲ`;
+                document.getElementById('score-mode-text').style.display = 'block';
+                return;
+            }
+            document.getElementById('score-mode-text').style.display = 'none';
+            document.getElementById('timer-controls').style.display = 'flex';
+            
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').textContent = `${m}:${s}`;
+            
+            const topBar = document.getElementById('top-bar');
+            if (timeLeft === 0) {
+                topBar.classList.add('bg-red-500', 'text-white');
+                topBar.classList.remove('bg-white');
+            } else {
+                topBar.classList.remove('bg-red-500', 'text-white');
+                topBar.classList.add('bg-white');
+            }
+        }
+
+        function toggleTimer() {
+            // Score mode neturi timerio
+            if (settings.winCondition === 'score') return;
+
+            const btn = document.getElementById('btn-play');
+
+            if (isRunning) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                isRunning = false;
+                btn.innerHTML = '<svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+                btn.classList.replace('bg-orange-100', 'bg-green-600');
+                btn.classList.replace('text-orange-600', 'text-white');
+            } else {
+                if (timeLeft <= 0) return;
+                isRunning = true;
+                btn.innerHTML = '<svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+                btn.classList.replace('bg-green-600', 'bg-orange-100');
+                btn.classList.replace('text-white', 'text-orange-600');
+                
+                timerInterval = setInterval(() => {
+                    if (timeLeft > 0) {
+                        timeLeft--;
+                        updateTimerDisplay();
+                    } else {
+                        toggleTimer();
+                        playWhistle();
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            // Score mode neturi timerio (bet UI vis tiek atnaujinam)
+            if (settings.winCondition === 'score') { 
+                if (isRunning) toggleTimer();
+                updateTimerDisplay();
+                return;
+            }
+            if (isRunning) toggleTimer();
+            timeLeft = settings.matchDuration * 60;
+            updateTimerDisplay();
+        }
+
+        function adjustTime(sec) {
+            if (settings.winCondition === 'score') return;
+            if (isRunning) return;
+            timeLeft = Math.max(0, timeLeft + sec);
+            updateTimerDisplay();
+        }
+
+        function playWhistle() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(1500, ctx.currentTime + 0.3);
+                osc.frequency.linearRampToValueAtTime(800, ctx.currentTime + 2.5);
+                gain.gain.setValueAtTime(0.5, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 2.5);
+                osc.start(); osc.stop(ctx.currentTime + 2.5);
+                if(navigator.vibrate) navigator.vibrate([500, 200, 500]);
+            } catch(e){}
+        }
+
+        // --- SETUP ---
+        document.getElementById('add-player-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('input-name');
+            const name = input.value.trim();
+            if (!name) return;
+
+            // unikalus ID
+            players.push({ id: uid(), name: name, gender: tempGender });
+
+            input.value = '';
+            saveData();
+        });
+
+        function setGender(g) {
+            tempGender = g;
+            const btnM = document.getElementById('gender-m');
+            const btnF = document.getElementById('gender-f');
+            if (g === 'M') {
+                btnM.className = 'px-3 font-bold transition-colors text-lg bg-blue-600 text-white';
+                btnF.className = 'px-3 font-bold transition-colors text-lg text-slate-400';
+            } else {
+                btnM.className = 'px-3 font-bold transition-colors text-lg text-slate-400';
+                btnF.className = 'px-3 font-bold transition-colors text-lg bg-pink-500 text-white';
+            }
+        }
+
+        function removePlayer(id) {
+            if (confirm('Ištrinti žaidėją?')) {
+                players = players.filter(p => p.id !== id);
+                saveData();
+            }
+        }
+
+        function setMode(mode) {
+            // perjungiant režimą – visada stabdom timerį
+            if (isRunning) toggleTimer();
+
+            settings.winCondition = mode;
+            saveData();
+            render(); 
+            resetTimer();
+        }
+
+        function changeSetting(key, val) {
+            settings[key] = Math.max(1, settings[key] + val);
+            saveData();
+            if (key === 'matchDuration') resetTimer();
+        }
+        
+        function changeFormat(val) {
+            settings.format = val;
+            saveData();
+        }
+
+        function resetScores() { 
+            if(confirm('Tikrai anuliuoti rezultatus?')) { 
+                matches = []; 
+                saveData(); 
+            } 
+        }
+        function resetAll() { 
+            if(confirm('Viskas bus ištrinta!')) { 
+                localStorage.clear(); 
+                location.reload(); 
+            } 
+        }
+
+        // --- MATCH GENERATOR ---
+        function getLeaderboardStats() {
+            const stats = players.map(p => ({ ...p, points: 0, matchesPlayed: 0, diff: 0 }));
+            matches.filter(m => m.finished).forEach(m => {
+                const update = (team, myS, enS) => {
+                    team.forEach(tp => {
+                        const s = stats.find(x => x.id === tp.id);
+                        if (s) { s.points += myS; s.diff += (myS - enS); s.matchesPlayed++; }
+                    });
+                };
+                update(m.team1, m.score1, m.score2);
+                update(m.team2, m.score2, m.score1);
+            });
+            return stats.sort((a,b) => b.points - a.points || b.diff - a.diff);
+        }
+
+        function generateRound() {
+            if (players.length < 4) return alert("Reikia bent 4 žaidėjų!");
+            
+            let pool = [...players];
+            let newMatches = [];
+            const round = matches.length > 0 ? (matches[matches.length-1].round || 0) + 1 : 1;
+            const stats = getLeaderboardStats();
+            const statsMap = new Map(stats.map(p => [p.id, p]));
+
+            if (settings.format.includes('mix')) {
+                const men = pool.filter(p => p.gender === 'M');
+                const women = pool.filter(p => p.gender === 'F');
+                if (men.length < 2 || women.length < 2) return alert("Mix formatui reikia bent 2 vyrų ir 2 moterų!");
+
+                if (settings.format === 'mix_mexicano') {
+                    const score = p => (statsMap.get(p.id) || {points:0}).points;
+                    men.sort((a,b) => score(b) - score(a));
+                    women.sort((a,b) => score(b) - score(a));
+                } else {
+                    men.sort(() => Math.random() - 0.5);
+                    women.sort(() => Math.random() - 0.5);
+                }
+
+                for (let i = 0; i < settings.courts; i++) {
+                    if (men.length < 2 || women.length < 2) break;
+                    newMatches.push({
+                        id: uid(),
+                        round, court: i+1, finished: false, score1: 0, score2: 0,
+                        team1: [men.shift(), women.shift()],
+                        team2: [men.shift(), women.shift()]
+                    });
+                }
+            } else {
+                if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
+                    pool.sort((a,b) => {
+                        const sa = statsMap.get(a.id) || {points:0, diff:0};
+                        const sb = statsMap.get(b.id) || {points:0, diff:0};
+                        return sb.points - sa.points || sb.diff - sa.diff;
+                    });
+                } else {
+                    pool.sort(() => Math.random() - 0.5);
+                }
+
+                for (let i = 0; i < settings.courts; i++) {
+                    if (pool.length < 4) break;
+                    const g = pool.splice(0, 4);
+                    let t1, t2;
+                    if (settings.format === 'super_mexicano') { t1=[g[0],g[1]]; t2=[g[2],g[3]]; }
+                    else if (settings.format === 'mexicano') { t1=[g[0],g[3]]; t2=[g[1],g[2]]; }
+                    else { t1=[g[0],g[1]]; t2=[g[2],g[3]]; }
+                    
+                    newMatches.push({ 
+                        id: uid(),
+                        round, court: i+1, finished: false, score1: 0, score2: 0, 
+                        team1: t1, team2: t2 
+                    });
+                }
+            }
+
+            if (newMatches.length > 0) {
+                matches = [...matches, ...newMatches];
+                saveData();
+                switchView('matches');
+            } else {
+                alert("Nepavyko sudaryti porų.");
+            }
+        }
+
+        function updateScore(id, team, val) {
+            const m = matches.find(x => x.id === id);
+            if (!m) return;
+            if (m.finished) return;
+
+            // score režime - cap iki maxPoints
+            const cap = settings.winCondition === 'score' ? settings.maxPoints : 999999;
+
+            if (team === 1) m.score1 = Math.min(cap, Math.max(0, m.score1 + val));
+            else m.score2 = Math.min(cap, Math.max(0, m.score2 + val));
+
+            saveData();
+        }
+
+        function finishMatch(id) {
+            const m = matches.find(x => x.id === id);
+            if (!m) return;
+
+            // score mode: neleisti užbaigti, kol nepasiektas limitas
+            if (settings.winCondition === 'score') {
+                const limit = settings.maxPoints;
+                if (m.score1 < limit && m.score2 < limit) {
+                    alert(`Mačas dar nebaigtas. Reikia pasiekti ${limit} taškų.`);
+                    return;
+                }
+            }
+
+            // time mode: jei laikas dar nesibaigė – paklausti
+            if (settings.winCondition === 'time' && timeLeft > 0) {
+                const ok = confirm('Laikas dar nesibaigė. Užbaigti vis tiek?');
+                if (!ok) return;
+            }
+
+            m.finished = true; 
+            saveData();
+        }
+
+        function undoMatch(id) {
+            const m = matches.find(x => x.id === id);
+            if (m) { m.finished = false; saveData(); }
+        }
+
+        // --- RENDER ---
+        function render() {
+            document.getElementById('player-count').textContent = `Viso: ${players.length}`;
+            document.getElementById('val-duration').textContent = settings.matchDuration;
+            document.getElementById('val-points').textContent = settings.maxPoints;
+            document.getElementById('val-courts').textContent = settings.courts;
+            document.getElementById('select-format').value = settings.format;
+
+            // Mode UI
+            const mode = settings.winCondition;
+            document.getElementById('mode-time').className = mode === 'time' 
+                ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' 
+                : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
+            document.getElementById('mode-score').className = mode === 'score' 
+                ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' 
+                : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
+            document.getElementById('control-duration').style.display = mode === 'time' ? 'block' : 'none';
+            document.getElementById('control-points').style.display = mode === 'score' ? 'block' : 'none';
+
+            // Players
+            document.getElementById('players-list').innerHTML = players.slice().reverse().map(p => `
+                <div class="flex justify-between items-center bg-white p-3 pl-4 rounded-xl border border-slate-100 shadow-sm w-full">
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender}</div>
+                        <span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>
+                    </div>
+                    <button type="button" onclick="removePlayer('${p.id}')" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 text-2xl shrink-0">×</button>
+                </div>
+            `).join('');
+
+            renderMatches();
+            updateTimerDisplay();
+
+            // Always refresh the leaderboard so that it reflects the latest
+            // player statistics and finished matches. Without this call, the
+            // "Rezultatai" page could remain empty until the user switches
+            // tabs again. Calling updateLeaderboard() here ensures the table
+            // contents stay in sync with the underlying data regardless of
+            // which view is currently active.
+            try {
+                updateLeaderboard();
+            } catch (e) {
+                // Ignore any errors during leaderboard update to avoid breaking render.
+            }
+        }
+
+        function renderMatches() {
+            const active = matches.filter(m => !m.finished);
+            const finished = matches.filter(m => m.finished).sort((a,b) => (''+b.id).localeCompare(''+a.id));
+            
+            document.getElementById('matches-container').innerHTML = active.map(m => {
+                const limit = settings.winCondition === 'score' ? settings.maxPoints : 999999;
+                const w1 = m.score1 >= limit;
+                const w2 = m.score2 >= limit;
+
+                const canFinish = settings.winCondition === 'score' ? (w1 || w2) : true;
+                
+                return `
+                <div class="bg-white rounded-2xl shadow-md shadow-slate-200 border border-slate-100 overflow-hidden mb-6 w-full">
+                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold tracking-widest flex justify-between items-center">
+                        <span>AIKŠTELĖ ${m.court}</span>
+                        <span class="bg-slate-700 px-2 py-0.5 rounded text-slate-200">Raundas ${m.round}</span>
+                    </div>
+                    <div class="p-4 sm:p-5">
+                        <div class="flex justify-between items-center mb-4 transition-opacity ${w2 ? 'opacity-40' : 'opacity-100'}">
+                            <div class="flex flex-col gap-1 overflow-hidden">${m.team1.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="updateScore('${m.id}', 1, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button>
+                                <span class="text-3xl font-black w-10 text-center ${w1 ? 'text-green-600' : 'text-slate-800'}">${m.score1}</span>
+                                <button type="button" onclick="updateScore('${m.id}', 1, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button>
+                            </div>
+                        </div>
+                        <div class="h-px bg-slate-100 mb-4 relative"><span class="absolute left-1/2 -top-2 -translate-x-1/2 bg-white px-2 text-xs text-slate-300 font-bold uppercase">vs</span></div>
+                        <div class="flex justify-between items-center mb-6 transition-opacity ${w1 ? 'opacity-40' : 'opacity-100'}">
+                            <div class="flex flex-col gap-1 overflow-hidden">${m.team2.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="updateScore('${m.id}', 2, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button>
+                                <span class="text-3xl font-black w-10 text-center ${w2 ? 'text-green-600' : 'text-slate-800'}">${m.score2}</span>
+                                <button type="button" onclick="updateScore('${m.id}', 2, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button>
+                            </div>
+                        </div>
+                        <button type="button"
+                            onclick="finishMatch('${m.id}')"
+                            ${canFinish ? '' : 'disabled'}
+                            class="w-full py-4 rounded-xl font-bold text-base tracking-wide shadow-xl transition-all
+                            ${canFinish ? (w1||w2 ? 'bg-green-600 text-white animate-pulse' : 'bg-slate-900 text-white')
+                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'}">
+                            ${(w1||w2) ? 'Užbaigti' : 'Užbaigti Mačą'}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const finContainer = document.getElementById('finished-matches-container');
+            if (finished.length > 0) {
+                finContainer.innerHTML = `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-2">Baigti mačai</h3>` + 
+                finished.map(m => `
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center w-full mb-3">
+                        <div class="flex flex-col text-xs font-bold text-slate-600 overflow-hidden pr-2">
+                            <span class="truncate">${m.team1.map(p=>p.name).join('/')}</span>
+                            <span class="text-slate-300 text-[10px] my-0.5">VS</span>
+                            <span class="truncate">${m.team2.map(p=>p.name).join('/')}</span>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 shrink-0">
+                            <div class="text-xl font-black bg-slate-100 px-3 py-1 rounded-lg text-slate-800">${m.score1} : ${m.score2}</div>
+                            <button type="button" onclick="undoMatch('${m.id}')" class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Taisyti</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                finContainer.innerHTML = '';
+            }
+        }
+
+        function updateLeaderboard() {
+            const stats = getLeaderboardStats();
+            const body = document.getElementById('leaderboard-body');
+            if (!body) return;
+            body.innerHTML = stats.map((p, i) => {
+                // Determine alternating background color for even rows
+                const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50';
+                const diffClass = p.diff > 0 ? 'text-green-600' : p.diff < 0 ? 'text-red-400' : 'text-slate-400';
+                return `
+                    <div class="flex items-center px-3 py-2 text-sm ${rowBg}">
+                        <div class="w-8 text-center font-bold text-slate-400">${i + 1}</div>
+                        <div class="flex-1 font-bold text-slate-800 truncate">${p.name}</div>
+                        <div class="w-8 text-center font-medium text-slate-500">${p.matchesPlayed}</div>
+                        <div class="w-10 text-center font-bold ${diffClass}">${p.diff > 0 ? '+' + p.diff : p.diff}</div>
+                        <div class="w-10 text-right font-black text-slate-900">${p.points}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Start
+        render();
+        updateTimerDisplay();
+        // Ensure the leaderboard is populated on initial load. Without this
+        // call, the "Rezultatai" view might appear empty until the user
+        // triggers a view change or another render.
+        try {
+            updateLeaderboard();
+        } catch (e) {
+            // Ignore any errors during leaderboard update.
+        }
+    </script>
+    <script>
+      // PWA: Service Worker registration (Vercel/GitHub Pages friendly)
+      (function () {
+        if (!('serviceWorker' in navigator)) return;
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function () {});
+        });
+      })();
+    </script>
+</body>
+</html>
