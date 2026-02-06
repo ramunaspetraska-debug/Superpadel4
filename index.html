@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V19 (Smart Pairs)</title>
+    <title>Padelio PRO V22 (Full Matrix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -208,10 +208,10 @@
 
         // --- INIT ---
         try {
-            // V19 RAKTAS
-            players = JSON.parse(localStorage.getItem('padel_players_v19')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v19')) || [];
-            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v19'));
+            // V22 RAKTAS (Full Matrix)
+            players = JSON.parse(localStorage.getItem('padel_players_v22')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v22')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v22'));
             if (savedSettings) settings = savedSettings;
             timeLeft = settings.matchDuration * 60;
         } catch (e) {
@@ -221,9 +221,9 @@
 
         // --- FUNKCIJOS ---
         function saveData() {
-            localStorage.setItem('padel_players_v19', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v19', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v19', JSON.stringify(settings));
+            localStorage.setItem('padel_players_v22', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v22', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v22', JSON.stringify(settings));
             render();
         }
 
@@ -474,7 +474,6 @@
             });
         }
 
-        // NAUJA: Istorijos tikrinimas
         function getPartnerHistory() {
             const history = new Map(); // "PlayerID" -> Set of PartnerIDs
             matches.filter(m => m.finished).forEach(m => {
@@ -490,111 +489,174 @@
             return history;
         }
 
+        // --- PAGRINDINĖ GENERAVIMO LOGIKA (ATNAUJINTA) ---
         function generateRound() {
             if (players.length < 4) return alert("Reikia bent 4 žaidėjų!");
-            let pool = [...players];
+            
             let newMatches = [];
             const round = matches.length > 0 ? (matches[matches.length-1].round || 0) + 1 : 1;
             const stats = getLeaderboardStats();
             const statsMap = new Map(stats.map(p => [p.id, p]));
             const history = getPartnerHistory();
-
-            // Pagalbinė f-ja patikrinti ar pora egzistuoja
             const hasPlayed = (p1, p2) => history.has(p1.id) && history.get(p1.id).has(p2.id);
 
+            // --- MIX LOGIKA (FIXED MATRIX) ---
             if (settings.format.includes('mix')) {
-                const men = pool.filter(p => p.gender === 'M');
-                const women = pool.filter(p => p.gender === 'F');
-                if (men.length < 2 || women.length < 2) return alert("Mix formatui reikia bent 2 vyrų ir 2 moterų!");
+                let men = players.filter(p => p.gender === 'M');
+                let women = players.filter(p => p.gender === 'F');
 
-                // Rikiavimas
-                if (settings.format === 'mix_mexicano') {
-                    const score = p => (statsMap.get(p.id) || {pts:0}).pts;
-                    men.sort((a,b) => score(b) - score(a));
-                    women.sort((a,b) => score(b) - score(a));
-                } else {
-                    men.sort(() => Math.random() - 0.5);
-                    women.sort(() => Math.random() - 0.5);
-                }
-
-                for (let i = 0; i < settings.courts; i++) {
-                    if (men.length < 2 || women.length < 2) break;
+                if (settings.format === 'mix_americano' && men.length === 4 && women.length === 4) {
+                    men.sort((a,b) => a.name.localeCompare(b.name));
+                    women.sort((a,b) => a.name.localeCompare(b.name));
+                    const cycle = (round - 1) % 4; 
+                    const wShifted = [];
+                    for (let i = 0; i < 4; i++) wShifted.push(women[(i + cycle) % 4]);
                     
-                    // Imame 2 vyrus ir 2 moteris
-                    const mGroup = men.splice(0, 2);
-                    const wGroup = women.splice(0, 2);
-                    
-                    // Galimi variantai
-                    // Option A: (M1 & W1) vs (M2 & W2)
-                    // Option B: (M1 & W2) vs (M2 & W1)
-                    
-                    const scoreA = (hasPlayed(mGroup[0], wGroup[0]) ? 1 : 0) + (hasPlayed(mGroup[1], wGroup[1]) ? 1 : 0);
-                    const scoreB = (hasPlayed(mGroup[0], wGroup[1]) ? 1 : 0) + (hasPlayed(mGroup[1], wGroup[0]) ? 1 : 0);
-
-                    let t1, t2;
-                    if (scoreA <= scoreB) {
-                        t1 = [mGroup[0], wGroup[0]];
-                        t2 = [mGroup[1], wGroup[1]];
+                    let t1, t2, t3, t4;
+                    if (cycle % 2 === 0) { 
+                        t1 = [men[0], wShifted[0]]; t2 = [men[1], wShifted[1]];
+                        t3 = [men[2], wShifted[2]]; t4 = [men[3], wShifted[3]];
                     } else {
-                        t1 = [mGroup[0], wGroup[1]];
-                        t2 = [mGroup[1], wGroup[0]];
+                        t1 = [men[0], wShifted[0]]; t2 = [men[3], wShifted[3]]; 
+                        t3 = [men[1], wShifted[1]]; t4 = [men[2], wShifted[2]];
                     }
+                    newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: t1, team2: t2 });
+                    newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: t3, team2: t4 });
 
-                    newMatches.push({
-                        id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0,
-                        team1: t1, team2: t2
-                    });
+                } else if (settings.format === 'mix_mexicano') {
+                     const score = p => (statsMap.get(p.id) || {pts:0}).pts;
+                     men.sort((a,b) => score(b) - score(a));
+                     women.sort((a,b) => score(b) - score(a));
+                     const count = Math.min(men.length, women.length);
+                     const pairs = [];
+                     for(let i=0; i<count; i++) pairs.push({m: men[i], w: women[i]});
+                     for (let i = 0; i < settings.courts; i++) {
+                        if (pairs.length < 2) break;
+                        const p1 = pairs.shift();
+                        const p2 = pairs.shift();
+                        newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: [p1.m, p1.w], team2: [p2.m, p2.w] });
+                     }
+                } else {
+                     men.sort(() => Math.random() - 0.5);
+                     women.sort(() => Math.random() - 0.5);
+                     const count = Math.min(men.length, women.length);
+                     const pairs = [];
+                     for(let i=0; i<count; i++) pairs.push({m: men[i], w: women[i]});
+                     for (let i = 0; i < settings.courts; i++) {
+                        if (pairs.length < 2) break;
+                        const p1 = pairs.shift();
+                        const p2 = pairs.shift();
+                        newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: [p1.m, p1.w], team2: [p2.m, p2.w] });
+                     }
                 }
+
             } else {
-                // AMERICANO / MEXICANO
-                if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
+                // --- AMERICANO / MEXICANO ---
+                let pool = [...players];
+
+                // 1. AMERICANO 8 ŽAIDĖJŲ TOBULA MATRICA
+                if (settings.format === 'americano' && pool.length === 8) {
+                    pool.sort((a,b) => a.name.localeCompare(b.name));
+                    // 7 raundų ciklas (Standard Americano 8 players)
+                    // Indeksai: 0..7
+                    const idx = (round - 1) % 7;
+                    const matrix = [
+                        [[0,1],[2,3],[4,5],[6,7]], // R1
+                        [[0,2],[4,6],[1,7],[3,5]], // R2
+                        [[0,3],[5,6],[1,2],[4,7]], // R3
+                        [[0,4],[1,5],[2,6],[3,7]], // R4
+                        [[0,5],[2,7],[1,4],[3,6]], // R5
+                        [[0,6],[1,7],[2,4],[3,5]], // R6 (Fixing to ensure rotation) -> Pakeičiau į geresnį rotavimą žemiau
+                        [[0,7],[3,4],[1,6],[2,5]]  // R7
+                    ];
+                    
+                    // Geriausia "Americano 8" formulė (Hardcoded kad nebūtų klaidų)
+                    const schedule = [
+                         [0,1,2,3, 4,5,6,7], // R1: 0&1 vs 2&3 ...
+                         [0,2,1,3, 4,6,5,7], // R2
+                         [0,3,1,2, 4,7,5,6], // R3
+                         [0,4,1,5, 2,6,3,7], // R4
+                         [0,5,1,4, 2,7,3,6], // R5
+                         [0,6,1,7, 2,4,3,5], // R6
+                         [0,7,1,6, 2,5,3,4]  // R7
+                    ];
+                    
+                    const s = schedule[idx];
+                    
+                    newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: [pool[s[0]], pool[s[1]]], team2: [pool[s[2]], pool[s[3]]] });
+                    newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: [pool[s[4]], pool[s[5]]], team2: [pool[s[6]], pool[s[7]]] });
+
+                } else if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
+                    // MEXICANO - PAGAL TAŠKUS
                     pool.sort((a,b) => {
                         const sa = statsMap.get(a.id) || {pts:0, diff:0};
                         const sb = statsMap.get(b.id) || {pts:0, diff:0};
                         return sb.pts - sa.pts || sb.diff - sa.diff;
                     });
-                } else {
-                    pool.sort(() => Math.random() - 0.5);
-                }
-
-                for (let i = 0; i < settings.courts; i++) {
-                    if (pool.length < 4) break;
-                    const group = pool.splice(0, 4); // Paimame 4 žaidėjus
                     
-                    // Super Mexicano nekeičia porų (Stipriausi vs Stipriausi) -> 1&2 vs 3&4
-                    if (settings.format === 'super_mexicano') {
-                         newMatches.push({ 
-                            id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, 
-                            team1: [group[0], group[1]], team2: [group[2], group[3]] 
-                        });
-                        continue;
+                    for (let i = 0; i < settings.courts; i++) {
+                        if (pool.length < 4) break;
+                        const group = pool.splice(0, 4);
+                        if (settings.format === 'super_mexicano') {
+                            newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: [group[0], group[1]], team2: [group[2], group[3]] });
+                        } else {
+                            // Mexicano viduje stengiamės nekeisti porų, jei tai pirmas raundas, bet vėliau random
+                            const best = { t1: [group[0], group[3]], t2: [group[1], group[2]] }; // 1vs4, 2vs3 (balanced)
+                            newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: best.t1, team2: best.t2 });
+                        }
                     }
 
-                    // Americano / Mexicano: Ieškome unikalios poros grupėje
-                    // Žaidėjai: p0, p1, p2, p3
-                    // Variantai:
-                    // 1: (0,1) vs (2,3)
-                    // 2: (0,2) vs (1,3)
-                    // 3: (0,3) vs (1,2)
-
-                    const p = group;
-                    const options = [
-                        { t1: [p[0], p[1]], t2: [p[2], p[3]], score: (hasPlayed(p[0],p[1])?1:0) + (hasPlayed(p[2],p[3])?1:0) },
-                        { t1: [p[0], p[2]], t2: [p[1], p[3]], score: (hasPlayed(p[0],p[2])?1:0) + (hasPlayed(p[1],p[3])?1:0) },
-                        { t1: [p[0], p[3]], t2: [p[1], p[2]], score: (hasPlayed(p[0],p[3])?1:0) + (hasPlayed(p[1],p[2])?1:0) }
-                    ];
-
-                    // Rūšiuojame variantus pagal pasikartojimus (mažiausias score geriausia)
-                    options.sort((a,b) => a.score - b.score);
+                } else {
+                    // AMERICANO (BET KOKS KITAS KIEKIS) - SMART SOLVER
+                    // Ieškome porų, kurios mažiausiai žaidė kartu
                     
-                    // Jei visi score vienodi (pvz visi jau žaidė), tai ims pirmą (random) arba reiktų dar gilesnės logikos,
-                    // bet paprastam turnyrui užtenka "mažiausiai kartų žaidę".
-                    const best = options[0];
+                    // 1. Sugeneruojame visas poras
+                    let allPairs = [];
+                    for(let i=0; i<pool.length; i++) {
+                        for(let j=i+1; j<pool.length; j++) {
+                            const p1 = pool[i];
+                            const p2 = pool[j];
+                            const played = hasPlayed(p1, p2) ? 1 : 0;
+                            // Prioritetas: dar nežaidę (0), tada žaidę (1)
+                            allPairs.push({ p1, p2, played, r: Math.random() });
+                        }
+                    }
+                    // Rikiuojame: 1. Nežaidę, 2. Random
+                    allPairs.sort((a,b) => a.played - b.played || a.r - b.r);
 
-                    newMatches.push({ 
-                        id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, 
-                        team1: best.t1, team2: best.t2 
-                    });
+                    const used = new Set();
+                    const courtMatches = [];
+
+                    for (const pair of allPairs) {
+                        if (courtMatches.length >= settings.courts) break;
+                        if (used.has(pair.p1.id) || used.has(pair.p2.id)) continue;
+
+                        // Radome pirmą porą, ieškome antros porros šiam mačui
+                        let opponents = null;
+                        for (const opPair of allPairs) {
+                            if (used.has(opPair.p1.id) || used.has(opPair.p2.id) || 
+                                opPair.p1.id === pair.p1.id || opPair.p1.id === pair.p2.id || 
+                                opPair.p2.id === pair.p1.id || opPair.p2.id === pair.p2.id) continue;
+                            
+                            opponents = opPair;
+                            break;
+                        }
+
+                        if (opponents) {
+                            used.add(pair.p1.id); used.add(pair.p2.id);
+                            used.add(opponents.p1.id); used.add(opponents.p2.id);
+                            courtMatches.push({ t1: [pair.p1, pair.p2], t2: [opponents.p1, opponents.p2] });
+                        }
+                    }
+
+                    if (courtMatches.length > 0) {
+                        courtMatches.forEach((m, idx) => {
+                            newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 });
+                        });
+                    } else {
+                         // Fallback jei nepavyko
+                         alert("Nepavyko sudaryti porų šiam kiekiui.");
+                    }
                 }
             }
 
