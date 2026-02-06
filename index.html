@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V25 (Minimalist Americano)</title>
+    <title>Padelio PRO V26 (With DIFF)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -155,10 +155,11 @@
                  <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
                     <div class="w-6">#</div>
                     <div class="flex-1 text-left pl-1">Žaidėjas</div>
-                    <div class="w-8">W</div>
-                    <div class="w-8">T</div>
-                    <div class="w-8">L</div>
-                    <div class="w-12 text-right">Taškai</div>
+                    <div class="w-7">W</div>
+                    <div class="w-7">T</div>
+                    <div class="w-7">L</div>
+                    <div class="w-10">+/-</div>
+                    <div class="w-10 text-right">TŠK</div>
                 </div>
                 <div id="leaderboard-body" class="divide-y divide-slate-100">
                     </div>
@@ -208,10 +209,10 @@
 
         // --- INIT ---
         try {
-            // V25 RAKTAS (Minimalist + Points Logic)
-            players = JSON.parse(localStorage.getItem('padel_players_v25')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v25')) || [];
-            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v25'));
+            // V26 RAKTAS (DIFF Update)
+            players = JSON.parse(localStorage.getItem('padel_players_v26')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v26')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v26'));
             if (savedSettings) settings = savedSettings;
             timeLeft = settings.matchDuration * 60;
         } catch (e) {
@@ -221,9 +222,9 @@
 
         // --- FUNKCIJOS ---
         function saveData() {
-            localStorage.setItem('padel_players_v25', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v25', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v25', JSON.stringify(settings));
+            localStorage.setItem('padel_players_v26', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v26', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v26', JSON.stringify(settings));
             render();
         }
 
@@ -455,7 +456,7 @@
                         const s = stats.find(x => x.id === p.id);
                         if (!s) return;
                         s.mp += 1;
-                        s.setWon += myScore; // Kaupiame visus laimėtus taškus
+                        s.setWon += myScore;
                         s.setLost += enScore;
                         s.diff = s.setWon - s.setLost;
                         if (myScore > enScore) { s.w += 1; } 
@@ -467,9 +468,8 @@
                 processTeam(m.team2, m.score2, m.score1);
             });
 
-            // Rikiuojame pagal surinktus taškus (setWon), o ne pergales
             return stats.sort((a,b) => {
-                if (b.setWon !== a.setWon) return b.setWon - a.setWon; // Pagrindinis rodiklis: Taškai
+                if (b.setWon !== a.setWon) return b.setWon - a.setWon;
                 if (b.diff !== a.diff) return b.diff - a.diff;
                 return b.w - a.w;
             });
@@ -589,7 +589,6 @@
                         if (settings.format === 'super_mexicano') {
                             newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: [group[0], group[1]], team2: [group[2], group[3]] });
                         } else {
-                            // Mexicano viduje stengiamės nekeisti porų, jei tai pirmas raundas, bet vėliau random
                             const best = { t1: [group[0], group[3]], t2: [group[1], group[2]] }; 
                             newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: best.t1, team2: best.t2 });
                         }
@@ -774,11 +773,15 @@
                         </div>
                     </div>
 
-                    <div class="w-8 font-bold text-green-600 text-xs">${p.w}</div>
-                    <div class="w-8 font-bold text-orange-400 text-xs">${p.d}</div>
-                    <div class="w-8 font-bold text-red-400 text-xs">${p.l}</div>
+                    <div class="w-7 font-bold text-green-600 text-xs">${p.w}</div>
+                    <div class="w-7 font-bold text-orange-400 text-xs">${p.d}</div>
+                    <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
                     
-                    <div class="w-12 text-right font-black text-slate-900 text-lg">${p.setWon}</div>
+                    <div class="w-10 font-bold text-xs ${p.diff > 0 ? 'text-green-600' : (p.diff < 0 ? 'text-red-500' : 'text-slate-400')}">
+                        ${p.diff > 0 ? '+' : ''}${p.diff}
+                    </div>
+
+                    <div class="w-10 text-right font-black text-slate-900 text-lg">${p.setWon}</div>
                 </div>
             `).join('');
         }
