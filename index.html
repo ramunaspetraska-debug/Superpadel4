@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V22 (Full Matrix)</title>
+    <title>Padelio PRO V25 (Minimalist Americano)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -150,18 +150,18 @@
 
         <div id="view-leader" class="view-section w-full">
             <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Rezultatai</h2>
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 divide-y divide-slate-200 overflow-hidden w-full">
-                <div class="flex text-[10px] uppercase text-slate-400 font-bold tracking-widest px-2 py-2 bg-slate-50 items-center">
-                    <div class="w-6 text-center">#</div>
-                    <div class="flex-1 pl-1">Žaidėjas</div>
-                    <div class="w-6 text-center">MP</div>
-                    <div class="w-6 text-center text-green-600">W</div>
-                    <div class="w-6 text-center text-orange-400">D</div>
-                    <div class="w-6 text-center text-red-400">L</div>
-                    <div class="w-12 text-center">SET</div>
-                    <div class="w-8 text-right pr-1">PTS</div>
+            
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
+                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+                    <div class="w-6">#</div>
+                    <div class="flex-1 text-left pl-1">Žaidėjas</div>
+                    <div class="w-8">W</div>
+                    <div class="w-8">T</div>
+                    <div class="w-8">L</div>
+                    <div class="w-12 text-right">Taškai</div>
                 </div>
-                <div id="leaderboard-body"></div>
+                <div id="leaderboard-body" class="divide-y divide-slate-100">
+                    </div>
             </div>
         </div>
     </div>
@@ -208,10 +208,10 @@
 
         // --- INIT ---
         try {
-            // V22 RAKTAS (Full Matrix)
-            players = JSON.parse(localStorage.getItem('padel_players_v22')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v22')) || [];
-            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v22'));
+            // V25 RAKTAS (Minimalist + Points Logic)
+            players = JSON.parse(localStorage.getItem('padel_players_v25')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v25')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v25'));
             if (savedSettings) settings = savedSettings;
             timeLeft = settings.matchDuration * 60;
         } catch (e) {
@@ -221,9 +221,9 @@
 
         // --- FUNKCIJOS ---
         function saveData() {
-            localStorage.setItem('padel_players_v22', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v22', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v22', JSON.stringify(settings));
+            localStorage.setItem('padel_players_v25', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v25', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v25', JSON.stringify(settings));
             render();
         }
 
@@ -455,22 +455,23 @@
                         const s = stats.find(x => x.id === p.id);
                         if (!s) return;
                         s.mp += 1;
-                        s.setWon += myScore;
+                        s.setWon += myScore; // Kaupiame visus laimėtus taškus
                         s.setLost += enScore;
                         s.diff = s.setWon - s.setLost;
-                        if (myScore > enScore) { s.w += 1; s.pts += 3; } 
-                        else if (myScore < enScore) { s.l += 1; s.pts += 0; } 
-                        else { s.d += 1; s.pts += 1; }
+                        if (myScore > enScore) { s.w += 1; } 
+                        else if (myScore < enScore) { s.l += 1; } 
+                        else { s.d += 1; }
                     });
                 };
                 processTeam(m.team1, m.score1, m.score2);
                 processTeam(m.team2, m.score2, m.score1);
             });
 
+            // Rikiuojame pagal surinktus taškus (setWon), o ne pergales
             return stats.sort((a,b) => {
-                if (b.pts !== a.pts) return b.pts - a.pts;
+                if (b.setWon !== a.setWon) return b.setWon - a.setWon; // Pagrindinis rodiklis: Taškai
                 if (b.diff !== a.diff) return b.diff - a.diff;
-                return b.setWon - a.setWon;
+                return b.w - a.w;
             });
         }
 
@@ -524,7 +525,7 @@
                     newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: t3, team2: t4 });
 
                 } else if (settings.format === 'mix_mexicano') {
-                     const score = p => (statsMap.get(p.id) || {pts:0}).pts;
+                     const score = p => (statsMap.get(p.id) || {setWon:0}).setWon;
                      men.sort((a,b) => score(b) - score(a));
                      women.sort((a,b) => score(b) - score(a));
                      const count = Math.min(men.length, women.length);
@@ -558,21 +559,9 @@
                 if (settings.format === 'americano' && pool.length === 8) {
                     pool.sort((a,b) => a.name.localeCompare(b.name));
                     // 7 raundų ciklas (Standard Americano 8 players)
-                    // Indeksai: 0..7
                     const idx = (round - 1) % 7;
-                    const matrix = [
-                        [[0,1],[2,3],[4,5],[6,7]], // R1
-                        [[0,2],[4,6],[1,7],[3,5]], // R2
-                        [[0,3],[5,6],[1,2],[4,7]], // R3
-                        [[0,4],[1,5],[2,6],[3,7]], // R4
-                        [[0,5],[2,7],[1,4],[3,6]], // R5
-                        [[0,6],[1,7],[2,4],[3,5]], // R6 (Fixing to ensure rotation) -> Pakeičiau į geresnį rotavimą žemiau
-                        [[0,7],[3,4],[1,6],[2,5]]  // R7
-                    ];
-                    
-                    // Geriausia "Americano 8" formulė (Hardcoded kad nebūtų klaidų)
                     const schedule = [
-                         [0,1,2,3, 4,5,6,7], // R1: 0&1 vs 2&3 ...
+                         [0,1,2,3, 4,5,6,7], // R1
                          [0,2,1,3, 4,6,5,7], // R2
                          [0,3,1,2, 4,7,5,6], // R3
                          [0,4,1,5, 2,6,3,7], // R4
@@ -589,9 +578,9 @@
                 } else if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
                     // MEXICANO - PAGAL TAŠKUS
                     pool.sort((a,b) => {
-                        const sa = statsMap.get(a.id) || {pts:0, diff:0};
-                        const sb = statsMap.get(b.id) || {pts:0, diff:0};
-                        return sb.pts - sa.pts || sb.diff - sa.diff;
+                        const sa = statsMap.get(a.id) || {setWon:0, diff:0};
+                        const sb = statsMap.get(b.id) || {setWon:0, diff:0};
+                        return sb.setWon - sa.setWon || sb.diff - sa.diff;
                     });
                     
                     for (let i = 0; i < settings.courts; i++) {
@@ -601,27 +590,22 @@
                             newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: [group[0], group[1]], team2: [group[2], group[3]] });
                         } else {
                             // Mexicano viduje stengiamės nekeisti porų, jei tai pirmas raundas, bet vėliau random
-                            const best = { t1: [group[0], group[3]], t2: [group[1], group[2]] }; // 1vs4, 2vs3 (balanced)
+                            const best = { t1: [group[0], group[3]], t2: [group[1], group[2]] }; 
                             newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: best.t1, team2: best.t2 });
                         }
                     }
 
                 } else {
                     // AMERICANO (BET KOKS KITAS KIEKIS) - SMART SOLVER
-                    // Ieškome porų, kurios mažiausiai žaidė kartu
-                    
-                    // 1. Sugeneruojame visas poras
                     let allPairs = [];
                     for(let i=0; i<pool.length; i++) {
                         for(let j=i+1; j<pool.length; j++) {
                             const p1 = pool[i];
                             const p2 = pool[j];
                             const played = hasPlayed(p1, p2) ? 1 : 0;
-                            // Prioritetas: dar nežaidę (0), tada žaidę (1)
                             allPairs.push({ p1, p2, played, r: Math.random() });
                         }
                     }
-                    // Rikiuojame: 1. Nežaidę, 2. Random
                     allPairs.sort((a,b) => a.played - b.played || a.r - b.r);
 
                     const used = new Set();
@@ -631,7 +615,6 @@
                         if (courtMatches.length >= settings.courts) break;
                         if (used.has(pair.p1.id) || used.has(pair.p2.id)) continue;
 
-                        // Radome pirmą porą, ieškome antros porros šiam mačui
                         let opponents = null;
                         for (const opPair of allPairs) {
                             if (used.has(opPair.p1.id) || used.has(opPair.p2.id) || 
@@ -654,7 +637,6 @@
                             newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 });
                         });
                     } else {
-                         // Fallback jei nepavyko
                          alert("Nepavyko sudaryti porų šiam kiekiui.");
                     }
                 }
@@ -705,7 +687,9 @@
             document.getElementById('players-list').innerHTML = players.slice().reverse().map(p => `
                 <div class="flex justify-between items-center bg-white p-3 pl-4 rounded-xl border border-slate-100 shadow-sm w-full">
                     <div class="flex items-center gap-3 overflow-hidden">
-                        <div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender}</div>
+                        <div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">
+                            ${p.gender === 'M' ? 'V' : 'M'}
+                        </div>
                         <span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>
                     </div>
                     <button type="button" onclick="removePlayer('${p.id}')" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 text-2xl shrink-0">×</button>
@@ -778,15 +762,23 @@
         function updateLeaderboard() {
             const stats = getLeaderboardStats();
             document.getElementById('leaderboard-body').innerHTML = stats.map((p, i) => `
-                <div class="flex items-center px-2 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50'} border-b border-slate-100 last:border-0">
-                    <div class="w-6 text-center font-bold text-slate-400 text-xs">${i + 1}</div>
-                    <div class="flex-1 pl-1 font-bold text-slate-800 truncate">${p.name}</div>
-                    <div class="w-6 text-center font-medium text-slate-500">${p.mp}</div>
-                    <div class="w-6 text-center font-bold text-green-600">${p.w}</div>
-                    <div class="w-6 text-center font-bold text-orange-400">${p.d}</div>
-                    <div class="w-6 text-center font-bold text-red-400">${p.l}</div>
-                    <div class="w-12 text-center font-mono text-xs font-bold text-slate-500 tracking-tight">${p.setWon}:${p.setLost}</div>
-                    <div class="w-8 text-right pr-1 font-black text-slate-900 text-lg">${p.pts}</div>
+                <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
+                    <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
+                    
+                    <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
+                         <div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">
+                            ${p.gender === 'M' ? 'V' : 'M'}
+                        </div>
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</span>
+                        </div>
+                    </div>
+
+                    <div class="w-8 font-bold text-green-600 text-xs">${p.w}</div>
+                    <div class="w-8 font-bold text-orange-400 text-xs">${p.d}</div>
+                    <div class="w-8 font-bold text-red-400 text-xs">${p.l}</div>
+                    
+                    <div class="w-12 text-right font-black text-slate-900 text-lg">${p.setWon}</div>
                 </div>
             `).join('');
         }
