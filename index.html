@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V26 (With DIFF)</title>
+    <title>Padelio PRO V27 (Fixed Pairs)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -121,11 +121,15 @@
                      <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Formatas</label>
                      <select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm">
                         <option value="americano">Americano</option>
+                        <option value="fixed">Fiksuotos Poros (2vs2)</option>
                         <option value="mexicano">Mexicano</option>
                         <option value="super_mexicano">Super Mexicano (Stipriausi vs Stipriausi)</option>
                         <option value="mix_americano">Mix Americano (Vyras + Moteris)</option>
                         <option value="mix_mexicano">Mix Mexicano (V+M pagal lygį)</option>
                     </select>
+                     <div id="fixed-info" class="hidden text-[10px] text-slate-400 mt-1 italic text-center">
+                        Poros sudaromos pagal sąrašą: 1+2, 3+4, 5+6 ir t.t.
+                    </div>
                 </div>
             </div>
 
@@ -209,10 +213,10 @@
 
         // --- INIT ---
         try {
-            // V26 RAKTAS (DIFF Update)
-            players = JSON.parse(localStorage.getItem('padel_players_v26')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v26')) || [];
-            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v26'));
+            // V27 RAKTAS (Fixed Pairs)
+            players = JSON.parse(localStorage.getItem('padel_players_v27')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v27')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v27'));
             if (savedSettings) settings = savedSettings;
             timeLeft = settings.matchDuration * 60;
         } catch (e) {
@@ -222,9 +226,9 @@
 
         // --- FUNKCIJOS ---
         function saveData() {
-            localStorage.setItem('padel_players_v26', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v26', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v26', JSON.stringify(settings));
+            localStorage.setItem('padel_players_v27', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v27', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v27', JSON.stringify(settings));
             render();
         }
 
@@ -428,6 +432,8 @@
         function changeFormat(val) {
             settings.format = val;
             saveData();
+            // Show/Hide Fixed info
+            document.getElementById('fixed-info').style.display = (val === 'fixed') ? 'block' : 'none';
         }
 
         function resetScores() { 
@@ -456,7 +462,7 @@
                         const s = stats.find(x => x.id === p.id);
                         if (!s) return;
                         s.mp += 1;
-                        s.setWon += myScore;
+                        s.setWon += myScore; // Kaupiame visus laimėtus taškus
                         s.setLost += enScore;
                         s.diff = s.setWon - s.setLost;
                         if (myScore > enScore) { s.w += 1; } 
@@ -468,6 +474,7 @@
                 processTeam(m.team2, m.score2, m.score1);
             });
 
+            // Rikiuojame pagal surinktus taškus (setWon)
             return stats.sort((a,b) => {
                 if (b.setWon !== a.setWon) return b.setWon - a.setWon;
                 if (b.diff !== a.diff) return b.diff - a.diff;
@@ -490,7 +497,7 @@
             return history;
         }
 
-        // --- PAGRINDINĖ GENERAVIMO LOGIKA (ATNAUJINTA) ---
+        // --- GENERAVIMO LOGIKA (V27 + FIXED) ---
         function generateRound() {
             if (players.length < 4) return alert("Reikia bent 4 žaidėjų!");
             
@@ -501,8 +508,75 @@
             const history = getPartnerHistory();
             const hasPlayed = (p1, p2) => history.has(p1.id) && history.get(p1.id).has(p2.id);
 
-            // --- MIX LOGIKA (FIXED MATRIX) ---
-            if (settings.format.includes('mix')) {
+            // --- FIXED PAIRS LOGIKA ---
+            if (settings.format === 'fixed') {
+                // 1. Sudarome komandas pagal sąrašą: (0,1), (2,3), (4,5)...
+                let teams = [];
+                for (let i = 0; i < players.length; i += 2) {
+                    if (i + 1 < players.length) {
+                        teams.push([players[i], players[i+1]]);
+                    }
+                }
+                
+                if (teams.length < 2) return alert("Reikia bent 2 porų (4 žaidėjų) Fiksuotam režimui.");
+
+                // 2. Ieškome priešininkų, su kuriais žaista mažiausiai
+                // Kiek kartų komanda A žaidė prieš komandą B?
+                // Reikia patikrinti istoriją. Kadangi istorija saugoma "kas su kuo partneriai", 
+                // mums reikia patikrinti "matches" masyvą tiesiogiai.
+                
+                // Helper: count matches between team A and team B
+                const getTeamVsTeamCount = (tA, tB) => {
+                    let count = 0;
+                    matches.forEach(m => {
+                        // Ar tA buvo team1 ir tB buvo team2? (arba atvirkščiai)
+                        // Tikriname pagal pirmą žaidėją (nes poros fiksuotos)
+                        const isMatch = 
+                            (m.team1[0].id === tA[0].id && m.team2[0].id === tB[0].id) ||
+                            (m.team1[0].id === tB[0].id && m.team2[0].id === tA[0].id);
+                        if (isMatch) count++;
+                    });
+                    return count;
+                };
+
+                // Generuojame visas galimas porų dvikovas
+                let possibleMatchups = [];
+                for (let i = 0; i < teams.length; i++) {
+                    for (let j = i + 1; j < teams.length; j++) {
+                        possibleMatchups.push({ 
+                            t1: teams[i], 
+                            t2: teams[j], 
+                            played: getTeamVsTeamCount(teams[i], teams[j]),
+                            r: Math.random() 
+                        });
+                    }
+                }
+
+                // Rikiuojame: 1. Mažiausiai žaidę, 2. Random
+                possibleMatchups.sort((a, b) => a.played - b.played || a.r - b.r);
+
+                // Pildome aikšteles
+                const usedTeams = new Set();
+                for (const pm of possibleMatchups) {
+                    if (newMatches.length >= settings.courts) break;
+                    
+                    // Tikriname ar komandos dar neužimtos šiame raunde
+                    const t1ID = pm.t1[0].id; // Identifikuojam pagal pirmą žaidėją
+                    const t2ID = pm.t2[0].id;
+
+                    if (!usedTeams.has(t1ID) && !usedTeams.has(t2ID)) {
+                        usedTeams.add(t1ID);
+                        usedTeams.add(t2ID);
+                        
+                        newMatches.push({
+                            id: uid(), round, court: newMatches.length + 1, finished: false, score1: 0, score2: 0,
+                            team1: pm.t1, team2: pm.t2
+                        });
+                    }
+                }
+
+            } else if (settings.format.includes('mix')) {
+                // ... (MIX CODE SAME AS BEFORE) ...
                 let men = players.filter(p => p.gender === 'M');
                 let women = players.filter(p => p.gender === 'F');
 
@@ -512,7 +586,6 @@
                     const cycle = (round - 1) % 4; 
                     const wShifted = [];
                     for (let i = 0; i < 4; i++) wShifted.push(women[(i + cycle) % 4]);
-                    
                     let t1, t2, t3, t4;
                     if (cycle % 2 === 0) { 
                         t1 = [men[0], wShifted[0]]; t2 = [men[1], wShifted[1]];
@@ -523,7 +596,6 @@
                     }
                     newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: t1, team2: t2 });
                     newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: t3, team2: t4 });
-
                 } else if (settings.format === 'mix_mexicano') {
                      const score = p => (statsMap.get(p.id) || {setWon:0}).setWon;
                      men.sort((a,b) => score(b) - score(a));
@@ -555,34 +627,23 @@
                 // --- AMERICANO / MEXICANO ---
                 let pool = [...players];
 
-                // 1. AMERICANO 8 ŽAIDĖJŲ TOBULA MATRICA
                 if (settings.format === 'americano' && pool.length === 8) {
                     pool.sort((a,b) => a.name.localeCompare(b.name));
-                    // 7 raundų ciklas (Standard Americano 8 players)
                     const idx = (round - 1) % 7;
                     const schedule = [
-                         [0,1,2,3, 4,5,6,7], // R1
-                         [0,2,1,3, 4,6,5,7], // R2
-                         [0,3,1,2, 4,7,5,6], // R3
-                         [0,4,1,5, 2,6,3,7], // R4
-                         [0,5,1,4, 2,7,3,6], // R5
-                         [0,6,1,7, 2,4,3,5], // R6
-                         [0,7,1,6, 2,5,3,4]  // R7
+                         [0,1,2,3, 4,5,6,7], [0,2,1,3, 4,6,5,7], [0,3,1,2, 4,7,5,6], 
+                         [0,4,1,5, 2,6,3,7], [0,5,1,4, 2,7,3,6], [0,6,1,7, 2,4,3,5], [0,7,1,6, 2,5,3,4]
                     ];
-                    
                     const s = schedule[idx];
-                    
                     newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: [pool[s[0]], pool[s[1]]], team2: [pool[s[2]], pool[s[3]]] });
                     newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: [pool[s[4]], pool[s[5]]], team2: [pool[s[6]], pool[s[7]]] });
 
                 } else if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
-                    // MEXICANO - PAGAL TAŠKUS
                     pool.sort((a,b) => {
                         const sa = statsMap.get(a.id) || {setWon:0, diff:0};
                         const sb = statsMap.get(b.id) || {setWon:0, diff:0};
                         return sb.setWon - sa.setWon || sb.diff - sa.diff;
                     });
-                    
                     for (let i = 0; i < settings.courts; i++) {
                         if (pool.length < 4) break;
                         const group = pool.splice(0, 4);
@@ -593,9 +654,7 @@
                             newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: best.t1, team2: best.t2 });
                         }
                     }
-
                 } else {
-                    // AMERICANO (BET KOKS KITAS KIEKIS) - SMART SOLVER
                     let allPairs = [];
                     for(let i=0; i<pool.length; i++) {
                         for(let j=i+1; j<pool.length; j++) {
@@ -606,38 +665,30 @@
                         }
                     }
                     allPairs.sort((a,b) => a.played - b.played || a.r - b.r);
-
                     const used = new Set();
                     const courtMatches = [];
-
                     for (const pair of allPairs) {
                         if (courtMatches.length >= settings.courts) break;
                         if (used.has(pair.p1.id) || used.has(pair.p2.id)) continue;
-
                         let opponents = null;
                         for (const opPair of allPairs) {
                             if (used.has(opPair.p1.id) || used.has(opPair.p2.id) || 
                                 opPair.p1.id === pair.p1.id || opPair.p1.id === pair.p2.id || 
                                 opPair.p2.id === pair.p1.id || opPair.p2.id === pair.p2.id) continue;
-                            
                             opponents = opPair;
                             break;
                         }
-
                         if (opponents) {
                             used.add(pair.p1.id); used.add(pair.p2.id);
                             used.add(opponents.p1.id); used.add(opponents.p2.id);
                             courtMatches.push({ t1: [pair.p1, pair.p2], t2: [opponents.p1, opponents.p2] });
                         }
                     }
-
                     if (courtMatches.length > 0) {
                         courtMatches.forEach((m, idx) => {
                             newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 });
                         });
-                    } else {
-                         alert("Nepavyko sudaryti porų šiam kiekiui.");
-                    }
+                    } else { alert("Nepavyko sudaryti porų šiam kiekiui."); }
                 }
             }
 
@@ -676,6 +727,7 @@
             document.getElementById('val-points').textContent = settings.maxPoints;
             document.getElementById('val-courts').textContent = settings.courts;
             document.getElementById('select-format').value = settings.format;
+            document.getElementById('fixed-info').style.display = (settings.format === 'fixed') ? 'block' : 'none';
 
             const mode = settings.winCondition;
             document.getElementById('mode-time').className = mode === 'time' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
