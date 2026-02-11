@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V27 (Fixed Pairs)</title>
+    <title>Padelio PRO V33 (Fixed Smart Rotation)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -131,6 +131,14 @@
                         Poros sudaromos pagal sąrašą: 1+2, 3+4, 5+6 ir t.t.
                     </div>
                 </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Reitingavimas</label>
+                    <select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm">
+                       <option value="points">Pagal TAŠKUS (Americano)</option>
+                       <option value="wins">Pagal PERGALES (W=2 / D=1)</option>
+                   </select>
+               </div>
             </div>
 
             <div id="players-list" class="space-y-2 mb-10 w-full"></div>
@@ -156,15 +164,8 @@
             <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Rezultatai</h2>
             
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-                    <div class="w-6">#</div>
-                    <div class="flex-1 text-left pl-1">Žaidėjas</div>
-                    <div class="w-7">W</div>
-                    <div class="w-7">T</div>
-                    <div class="w-7">L</div>
-                    <div class="w-10">+/-</div>
-                    <div class="w-10 text-right">TŠK</div>
-                </div>
+                 <div id="leaderboard-header" class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+                    </div>
                 <div id="leaderboard-body" class="divide-y divide-slate-100">
                     </div>
             </div>
@@ -199,7 +200,7 @@
         // --- GLOBALŪS KINTAMIEJI ---
         let players = [];
         let matches = [];
-        let settings = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano' };
+        let settings = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         
         let tempGender = 'M';
         let timeLeft = 0;
@@ -213,11 +214,11 @@
 
         // --- INIT ---
         try {
-            // V27 RAKTAS (Fixed Pairs)
-            players = JSON.parse(localStorage.getItem('padel_players_v27')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v27')) || [];
-            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v27'));
-            if (savedSettings) settings = savedSettings;
+            // V33 RAKTAS (Smart Fixed Recency)
+            players = JSON.parse(localStorage.getItem('padel_players_v33')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v33')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v33'));
+            if (savedSettings) settings = { ...settings, ...savedSettings };
             timeLeft = settings.matchDuration * 60;
         } catch (e) {
             console.error("Duomenų klaida, valoma...", e);
@@ -226,9 +227,9 @@
 
         // --- FUNKCIJOS ---
         function saveData() {
-            localStorage.setItem('padel_players_v27', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v27', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v27', JSON.stringify(settings));
+            localStorage.setItem('padel_players_v33', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v33', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v33', JSON.stringify(settings));
             render();
         }
 
@@ -432,8 +433,14 @@
         function changeFormat(val) {
             settings.format = val;
             saveData();
-            // Show/Hide Fixed info
             document.getElementById('fixed-info').style.display = (val === 'fixed') ? 'block' : 'none';
+            updateLeaderboard(); 
+        }
+
+        function changeRanking(val) {
+            settings.rankingMode = val;
+            saveData();
+            updateLeaderboard(); 
         }
 
         function resetScores() { 
@@ -449,11 +456,11 @@
             } 
         }
 
-        // --- STATS & HISTORY ---
+        // --- STATS & HISTORY (INDIVIDUAL) ---
         function getLeaderboardStats() {
             const stats = players.map(p => ({
                 ...p,
-                mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0
+                mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0
             }));
 
             matches.filter(m => m.finished).forEach(m => {
@@ -462,28 +469,76 @@
                         const s = stats.find(x => x.id === p.id);
                         if (!s) return;
                         s.mp += 1;
-                        s.setWon += myScore; // Kaupiame visus laimėtus taškus
+                        s.setWon += myScore;
                         s.setLost += enScore;
                         s.diff = s.setWon - s.setLost;
-                        if (myScore > enScore) { s.w += 1; } 
+                        if (myScore > enScore) { s.w += 1; s.leaguePts += 2; } 
                         else if (myScore < enScore) { s.l += 1; } 
-                        else { s.d += 1; }
+                        else { s.d += 1; s.leaguePts += 1; }
                     });
                 };
                 processTeam(m.team1, m.score1, m.score2);
                 processTeam(m.team2, m.score2, m.score1);
             });
 
-            // Rikiuojame pagal surinktus taškus (setWon)
-            return stats.sort((a,b) => {
-                if (b.setWon !== a.setWon) return b.setWon - a.setWon;
-                if (b.diff !== a.diff) return b.diff - a.diff;
-                return b.w - a.w;
+            return sortStats(stats);
+        }
+
+        // --- STATS (FIXED TEAMS) ---
+        function getFixedTeamStats() {
+            let teams = [];
+            for (let i = 0; i < players.length; i += 2) {
+                if (i + 1 < players.length) {
+                    teams.push({
+                        p1: players[i],
+                        p2: players[i+1],
+                        id: players[i].id + '_' + players[i+1].id,
+                        name: players[i].name + ' / ' + players[i+1].name,
+                        gender: 'TEAM',
+                        mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0
+                    });
+                }
+            }
+
+            matches.filter(m => m.finished).forEach(m => {
+                const getTeamByPlayerId = (pid) => teams.find(t => t.p1.id === pid || t.p2.id === pid);
+                const t1 = getTeamByPlayerId(m.team1[0].id);
+                const t2 = getTeamByPlayerId(m.team2[0].id);
+
+                const updateT = (t, myS, enS) => {
+                    if(!t) return;
+                    t.mp++;
+                    t.setWon += myS;
+                    t.setLost += enS;
+                    t.diff = t.setWon - t.setLost;
+                    if(myS > enS) { t.w++; t.leaguePts += 2; }
+                    else if(myS < enS) { t.l++; }
+                    else { t.d++; t.leaguePts += 1; }
+                };
+
+                updateT(t1, m.score1, m.score2);
+                updateT(t2, m.score2, m.score1);
+            });
+
+            return sortStats(teams);
+        }
+
+        function sortStats(data) {
+             return data.sort((a,b) => {
+                if (settings.rankingMode === 'wins') {
+                    if (b.leaguePts !== a.leaguePts) return b.leaguePts - a.leaguePts;
+                    if (b.diff !== a.diff) return b.diff - a.diff;
+                    return b.setWon - a.setWon;
+                } else {
+                    if (b.setWon !== a.setWon) return b.setWon - a.setWon;
+                    if (b.diff !== a.diff) return b.diff - a.diff;
+                    return b.w - a.w;
+                }
             });
         }
 
         function getPartnerHistory() {
-            const history = new Map(); // "PlayerID" -> Set of PartnerIDs
+            const history = new Map(); 
             matches.filter(m => m.finished).forEach(m => {
                 const addPair = (p1, p2) => {
                     if (!history.has(p1.id)) history.set(p1.id, new Set());
@@ -497,7 +552,7 @@
             return history;
         }
 
-        // --- GENERAVIMO LOGIKA (V27 + FIXED) ---
+        // --- GENERAVIMO LOGIKA (SMART RECENCY FIX) ---
         function generateRound() {
             if (players.length < 4) return alert("Reikia bent 4 žaidėjų!");
             
@@ -508,29 +563,30 @@
             const history = getPartnerHistory();
             const hasPlayed = (p1, p2) => history.has(p1.id) && history.get(p1.id).has(p2.id);
 
-            // --- FIXED PAIRS LOGIKA ---
+            // --- FIXED LOGIC (RECENCY FIX) ---
             if (settings.format === 'fixed') {
-                // 1. Sudarome komandas pagal sąrašą: (0,1), (2,3), (4,5)...
                 let teams = [];
                 for (let i = 0; i < players.length; i += 2) {
-                    if (i + 1 < players.length) {
-                        teams.push([players[i], players[i+1]]);
-                    }
+                    if (i + 1 < players.length) teams.push([players[i], players[i+1]]);
                 }
-                
-                if (teams.length < 2) return alert("Reikia bent 2 porų (4 žaidėjų) Fiksuotam režimui.");
+                if (teams.length < 2) return alert("Reikia bent 2 porų (4 žaidėjų).");
 
-                // 2. Ieškome priešininkų, su kuriais žaista mažiausiai
-                // Kiek kartų komanda A žaidė prieš komandą B?
-                // Reikia patikrinti istoriją. Kadangi istorija saugoma "kas su kuo partneriai", 
-                // mums reikia patikrinti "matches" masyvą tiesiogiai.
-                
-                // Helper: count matches between team A and team B
+                // Check when last played
+                const getLastRoundPlayed = (tA, tB) => {
+                    // Loop backward through matches
+                    for (let r = matches.length - 1; r >= 0; r--) {
+                        const m = matches[r];
+                        const isMatch = 
+                            (m.team1[0].id === tA[0].id && m.team2[0].id === tB[0].id) ||
+                            (m.team1[0].id === tB[0].id && m.team2[0].id === tA[0].id);
+                        if (isMatch) return m.round;
+                    }
+                    return 0; // Never played
+                };
+
                 const getTeamVsTeamCount = (tA, tB) => {
                     let count = 0;
                     matches.forEach(m => {
-                        // Ar tA buvo team1 ir tB buvo team2? (arba atvirkščiai)
-                        // Tikriname pagal pirmą žaidėją (nes poros fiksuotos)
                         const isMatch = 
                             (m.team1[0].id === tA[0].id && m.team2[0].id === tB[0].id) ||
                             (m.team1[0].id === tB[0].id && m.team2[0].id === tA[0].id);
@@ -539,63 +595,80 @@
                     return count;
                 };
 
-                // Generuojame visas galimas porų dvikovas
                 let possibleMatchups = [];
                 for (let i = 0; i < teams.length; i++) {
                     for (let j = i + 1; j < teams.length; j++) {
                         possibleMatchups.push({ 
-                            t1: teams[i], 
-                            t2: teams[j], 
+                            t1: teams[i], t2: teams[j], 
                             played: getTeamVsTeamCount(teams[i], teams[j]),
+                            lastRound: getLastRoundPlayed(teams[i], teams[j]),
                             r: Math.random() 
                         });
                     }
                 }
+                
+                // SORT: 
+                // 1. Play Count (Ascending) - Play those who played 0 times first
+                // 2. Last Round (Ascending) - Play those who played longest ago (round 1 vs round 4)
+                possibleMatchups.sort((a, b) => {
+                    if (a.played !== b.played) return a.played - b.played;
+                    if (a.lastRound !== b.lastRound) return a.lastRound - b.lastRound; 
+                    return a.r - b.r;
+                });
 
-                // Rikiuojame: 1. Mažiausiai žaidę, 2. Random
-                possibleMatchups.sort((a, b) => a.played - b.played || a.r - b.r);
-
-                // Pildome aikšteles
                 const usedTeams = new Set();
                 for (const pm of possibleMatchups) {
                     if (newMatches.length >= settings.courts) break;
-                    
-                    // Tikriname ar komandos dar neužimtos šiame raunde
-                    const t1ID = pm.t1[0].id; // Identifikuojam pagal pirmą žaidėją
+                    const t1ID = pm.t1[0].id;
                     const t2ID = pm.t2[0].id;
-
                     if (!usedTeams.has(t1ID) && !usedTeams.has(t2ID)) {
-                        usedTeams.add(t1ID);
-                        usedTeams.add(t2ID);
-                        
-                        newMatches.push({
-                            id: uid(), round, court: newMatches.length + 1, finished: false, score1: 0, score2: 0,
-                            team1: pm.t1, team2: pm.t2
-                        });
+                        usedTeams.add(t1ID); usedTeams.add(t2ID);
+                        newMatches.push({ id: uid(), round, court: newMatches.length + 1, finished: false, score1: 0, score2: 0, team1: pm.t1, team2: pm.t2 });
                     }
                 }
 
             } else if (settings.format.includes('mix')) {
-                // ... (MIX CODE SAME AS BEFORE) ...
+                // ... Mix logic remains same ...
                 let men = players.filter(p => p.gender === 'M');
                 let women = players.filter(p => p.gender === 'F');
 
                 if (settings.format === 'mix_americano' && men.length === 4 && women.length === 4) {
                     men.sort((a,b) => a.name.localeCompare(b.name));
                     women.sort((a,b) => a.name.localeCompare(b.name));
-                    const cycle = (round - 1) % 4; 
+                    
+                    const partnerShift = (round - 1) % 4;
                     const wShifted = [];
-                    for (let i = 0; i < 4; i++) wShifted.push(women[(i + cycle) % 4]);
-                    let t1, t2, t3, t4;
-                    if (cycle % 2 === 0) { 
-                        t1 = [men[0], wShifted[0]]; t2 = [men[1], wShifted[1]];
-                        t3 = [men[2], wShifted[2]]; t4 = [men[3], wShifted[3]];
-                    } else {
-                        t1 = [men[0], wShifted[0]]; t2 = [men[3], wShifted[3]]; 
-                        t3 = [men[1], wShifted[1]]; t4 = [men[2], wShifted[2]];
-                    }
-                    newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: t1, team2: t2 });
-                    newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: t3, team2: t4 });
+                    for (let i = 0; i < 4; i++) wShifted.push(women[(i + partnerShift) % 4]);
+                    
+                    const pairs = [
+                        { m: men[0], w: wShifted[0] }, 
+                        { m: men[1], w: wShifted[1] }, 
+                        { m: men[2], w: wShifted[2] }, 
+                        { m: men[3], w: wShifted[3] }  
+                    ];
+
+                    const opponentConfigs = [
+                        [[0, 1], [2, 3]], 
+                        [[0, 2], [1, 3]], 
+                        [[0, 3], [1, 2]]
+                    ];
+
+                    const block = Math.floor((round - 1) / 4); 
+                    const subRound = (round - 1) % 4;
+                    const configIdx = (subRound + block) % 3;
+                    const cfg = opponentConfigs[configIdx];
+
+                    newMatches.push({
+                        id: uid(), round, court: 1, finished: false, score1: 0, score2: 0,
+                        team1: [pairs[cfg[0][0]].m, pairs[cfg[0][0]].w],
+                        team2: [pairs[cfg[0][1]].m, pairs[cfg[0][1]].w]
+                    });
+                    newMatches.push({
+                        id: uid(), round, court: 2, finished: false, score1: 0, score2: 0,
+                        team1: [pairs[cfg[1][0]].m, pairs[cfg[1][0]].w],
+                        team2: [pairs[cfg[1][1]].m, pairs[cfg[1][1]].w]
+                    });
+
                 } else if (settings.format === 'mix_mexicano') {
                      const score = p => (statsMap.get(p.id) || {setWon:0}).setWon;
                      men.sort((a,b) => score(b) - score(a));
@@ -624,9 +697,7 @@
                 }
 
             } else {
-                // --- AMERICANO / MEXICANO ---
                 let pool = [...players];
-
                 if (settings.format === 'americano' && pool.length === 8) {
                     pool.sort((a,b) => a.name.localeCompare(b.name));
                     const idx = (round - 1) % 7;
@@ -637,7 +708,6 @@
                     const s = schedule[idx];
                     newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: [pool[s[0]], pool[s[1]]], team2: [pool[s[2]], pool[s[3]]] });
                     newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: [pool[s[4]], pool[s[5]]], team2: [pool[s[6]], pool[s[7]]] });
-
                 } else if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
                     pool.sort((a,b) => {
                         const sa = statsMap.get(a.id) || {setWon:0, diff:0};
@@ -728,6 +798,7 @@
             document.getElementById('val-courts').textContent = settings.courts;
             document.getElementById('select-format').value = settings.format;
             document.getElementById('fixed-info').style.display = (settings.format === 'fixed') ? 'block' : 'none';
+            document.getElementById('select-ranking').value = settings.rankingMode || 'points';
 
             const mode = settings.winCondition;
             document.getElementById('mode-time').className = mode === 'time' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
@@ -811,21 +882,36 @@
         }
 
         function updateLeaderboard() {
-            const stats = getLeaderboardStats();
+            const isFixed = settings.format === 'fixed';
+            const stats = isFixed ? getFixedTeamStats() : getLeaderboardStats();
+            const mode = settings.rankingMode || 'points';
+            
+            // Header
+            document.getElementById('leaderboard-header').innerHTML = `
+                <div class="w-6">#</div>
+                <div class="flex-1 text-left pl-1">${isFixed ? 'Komanda' : 'Žaidėjas'}</div>
+                <div class="w-7 ${mode === 'wins' ? 'text-green-700 font-black' : ''}">W</div>
+                <div class="w-7">T</div>
+                <div class="w-7">L</div>
+                <div class="w-10">+/-</div>
+                <div class="w-10 text-right ${mode === 'points' ? 'text-slate-900 font-black' : ''}">TŠK</div>
+            `;
+
             document.getElementById('leaderboard-body').innerHTML = stats.map((p, i) => `
                 <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
                     <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
                     
                     <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
+                         ${!isFixed ? `
                          <div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">
                             ${p.gender === 'M' ? 'V' : 'M'}
-                        </div>
+                        </div>` : ''}
                         <div class="flex flex-col overflow-hidden">
                             <span class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</span>
                         </div>
                     </div>
 
-                    <div class="w-7 font-bold text-green-600 text-xs">${p.w}</div>
+                    <div class="w-7 font-bold text-xs ${mode === 'wins' ? 'text-green-700 bg-green-100 rounded' : 'text-green-600'}">${p.w}</div>
                     <div class="w-7 font-bold text-orange-400 text-xs">${p.d}</div>
                     <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
                     
@@ -833,7 +919,9 @@
                         ${p.diff > 0 ? '+' : ''}${p.diff}
                     </div>
 
-                    <div class="w-10 text-right font-black text-slate-900 text-lg">${p.setWon}</div>
+                    <div class="w-10 text-right font-black text-lg ${mode === 'points' ? 'text-slate-900' : 'text-slate-500'}">
+                        ${mode === 'wins' ? p.leaguePts : p.setWon}
+                    </div>
                 </div>
             `).join('');
         }
