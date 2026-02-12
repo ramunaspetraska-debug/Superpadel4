@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V47 (Tournament History)</title>
+    <title>Padelio PRO V46 (Basketball Buzzer)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -144,8 +144,7 @@
             <div id="players-list" class="space-y-2 mb-10 w-full"></div>
 
             <div class="space-y-3 pt-4 border-t border-slate-200 w-full pb-10">
-                <button type="button" onclick="saveToHistory()" class="w-full py-4 text-blue-600 bg-white hover:bg-blue-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-blue-200 mb-2">Įrašyti į Istoriją</button>
-                <button type="button" onclick="resetScores()" class="w-full py-4 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-orange-200 mb-2">Anuliuoti rezultatus</button>
+                <button type="button" onclick="resetScores()" class="w-full py-4 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-orange-200">Anuliuoti rezultatus</button>
                 <button type="button" onclick="resetAll()" class="w-full py-4 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-red-200">Ištrinti viską</button>
             </div>
         </div>
@@ -163,15 +162,13 @@
 
         <div id="view-leader" class="view-section w-full">
             <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Rezultatai</h2>
+            
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                 <div id="leaderboard-header" class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center"></div>
-                <div id="leaderboard-body" class="divide-y divide-slate-100"></div>
+                 <div id="leaderboard-header" class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
+                    </div>
+                <div id="leaderboard-body" class="divide-y divide-slate-100">
+                    </div>
             </div>
-        </div>
-
-        <div id="view-history" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Istorija</h2>
-            <div id="history-list" class="space-y-4"></div>
         </div>
     </div>
 
@@ -189,10 +186,6 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                 <span class="text-[10px] font-bold mt-1">Rezultatai</span>
             </button>
-            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-full py-1 active:scale-95">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span class="text-[10px] font-bold mt-1">Istorija</span>
-            </button>
         </div>
     </div>
 
@@ -208,7 +201,6 @@
         let players = [];
         let matches = [];
         let settings = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
-        let savedTournaments = [];
         
         let tempGender = 'M';
         let timeLeft = 0;
@@ -218,18 +210,17 @@
         let endTime = 0;
         let wakeLock = null;
 
-        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+        function uid() {
+            return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        }
 
         // --- INIT ---
         try {
-            // V47 RAKTAS (HISTORY FEATURE)
-            players = JSON.parse(localStorage.getItem('padel_players_v47')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v47')) || [];
-            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v47'));
+            // V46 RAKTAS (Basketball Buzzer)
+            players = JSON.parse(localStorage.getItem('padel_players_v46')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v46')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v46'));
             if (savedSettings) settings = { ...settings, ...savedSettings };
-            
-            savedTournaments = JSON.parse(localStorage.getItem('padel_history_v47')) || [];
-            
             timeLeft = settings.matchDuration * 60;
         } catch (e) {
             console.error("Duomenų klaida, valoma...", e);
@@ -241,12 +232,20 @@
             try {
                 if ('wakeLock' in navigator) {
                     wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => {});
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock released');
+                    });
                 }
-            } catch (err) {}
+            } catch (err) {
+                console.log(`${err.name}, ${err.message}`);
+            }
         }
+
         function releaseWakeLock() {
-            if (wakeLock !== null) { wakeLock.release(); wakeLock = null; }
+            if (wakeLock !== null) {
+                wakeLock.release();
+                wakeLock = null;
+            }
         }
 
         // --- AUDIO (BASKETBALL BUZZER) ---
@@ -256,6 +255,7 @@
                 if (!AudioContext) return;
                 const ctx = new AudioContext();
                 const now = ctx.currentTime;
+
                 const createOsc = (freq, type) => {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
@@ -263,64 +263,29 @@
                     osc.frequency.setValueAtTime(freq, now);
                     osc.connect(gain);
                     gain.connect(ctx.destination);
+                    
                     gain.gain.setValueAtTime(0, now);
                     gain.gain.linearRampToValueAtTime(0.6, now + 0.05);
                     gain.gain.setValueAtTime(0.6, now + 1.8);
                     gain.gain.linearRampToValueAtTime(0, now + 2.0);
+
                     osc.start(now);
                     osc.stop(now + 2.0);
                 };
-                createOsc(130, 'sawtooth'); createOsc(135, 'square');   
+
+                createOsc(130, 'sawtooth'); 
+                createOsc(135, 'square');   
+                
                 if(navigator.vibrate) navigator.vibrate(2000);
             } catch(e) {}
         }
 
-        // --- STORAGE & HISTORY FUNCTIONS ---
+        // --- FUNKCIJOS ---
         function saveData() {
-            localStorage.setItem('padel_players_v47', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v47', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v47', JSON.stringify(settings));
-            localStorage.setItem('padel_history_v47', JSON.stringify(savedTournaments));
+            localStorage.setItem('padel_players_v46', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v46', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v46', JSON.stringify(settings));
             render();
-        }
-
-        function saveToHistory() {
-            if (players.length === 0) return alert("Nėra ką saugoti (nėra žaidėjų).");
-            const name = prompt("Įveskite turnyro pavadinimą:", new Date().toLocaleDateString() + " Turnyras");
-            if (!name) return;
-
-            const record = {
-                id: uid(),
-                name: name,
-                date: new Date().toISOString(),
-                players: players,
-                matches: matches,
-                settings: settings
-            };
-            
-            savedTournaments.unshift(record);
-            alert("Turnyras išsaugotas!");
-            saveData();
-        }
-
-        function loadTournament(id) {
-            if(!confirm("Dėmesio! Jei užkrausite seną turnyrą, dabartinis neišsaugotas progresas dings. Tęsti?")) return;
-            const t = savedTournaments.find(x => x.id === id);
-            if(t) {
-                players = t.players;
-                matches = t.matches;
-                settings = t.settings;
-                saveData();
-                switchView('matches');
-                alert("Turnyras užkrautas!");
-            }
-        }
-
-        function deleteTournament(id) {
-            if(!confirm("Ištrinti šį turnyrą iš istorijos?")) return;
-            savedTournaments = savedTournaments.filter(x => x.id !== id);
-            saveData();
-            renderHistoryList();
         }
 
         function switchView(viewName) {
@@ -329,39 +294,8 @@
             document.getElementById('view-' + viewName).classList.add('active');
             document.getElementById('nav-' + viewName).classList.add('active');
             if (viewName === 'leader') updateLeaderboard();
-            if (viewName === 'history') renderHistoryList();
         }
 
-        function renderHistoryList() {
-            const list = document.getElementById('history-list');
-            if (savedTournaments.length === 0) {
-                list.innerHTML = '<div class="text-center text-slate-400 py-10">Istorija tuščia</div>';
-                return;
-            }
-            list.innerHTML = savedTournaments.map(t => {
-                const date = new Date(t.date).toLocaleDateString() + ' ' + new Date(t.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                return `
-                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-lg">${t.name}</h3>
-                            <p class="text-xs text-slate-400">${date}</p>
-                        </div>
-                        <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold">${t.settings.format.toUpperCase()}</span>
-                    </div>
-                    <div class="text-sm text-slate-600">
-                        Žaidėjų: ${t.players.length} | Mačų: ${t.matches.length}
-                    </div>
-                    <div class="flex gap-2 mt-1">
-                        <button onclick="loadTournament('${t.id}')" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded-lg font-bold text-xs uppercase tracking-wider">Užkrauti</button>
-                        <button onclick="deleteTournament('${t.id}')" class="w-12 bg-red-50 text-red-500 py-2 rounded-lg font-bold text-lg flex items-center justify-center">×</button>
-                    </div>
-                </div>
-                `;
-            }).join('');
-        }
-
-        // --- TIMER & UI ---
         function updateTimerDisplay() {
             if (settings.winCondition === 'score') {
                 document.getElementById('timer-controls').style.display = 'none';
@@ -386,6 +320,7 @@
             }
         }
 
+        // --- TIMER LOGIC (DELTA TIME) ---
         function updatePlayButtonUI() {
             const btn = document.getElementById('btn-play');
             const iconPlay = document.getElementById('icon-play');
@@ -411,24 +346,39 @@
 
         function toggleTimer() {
             if (settings.winCondition === 'score') return;
-            if (alarmInterval) { stopAlarm(); resetTimer(); return; }
+
+            if (alarmInterval) {
+                stopAlarm();
+                resetTimer(); 
+                return;
+            }
+
             if (isRunning) {
+                // PAUSE
                 clearInterval(timerInterval);
                 timerInterval = null;
                 isRunning = false;
                 releaseWakeLock();
                 updatePlayButtonUI();
             } else {
+                // START
                 if (timeLeft <= 0) return;
                 isRunning = true;
                 requestWakeLock();
+                
+                // Set target time based on current timeLeft
                 endTime = Date.now() + (timeLeft * 1000);
+                
                 updatePlayButtonUI();
+                
                 timerInterval = setInterval(() => {
                     const now = Date.now();
                     const diff = Math.ceil((endTime - now) / 1000);
-                    if (diff > 0) { timeLeft = diff; updateTimerDisplay(); } 
-                    else {
+                    
+                    if (diff > 0) {
+                        timeLeft = diff;
+                        updateTimerDisplay();
+                    } else {
                         timeLeft = 0;
                         updateTimerDisplay();
                         clearInterval(timerInterval);
@@ -437,7 +387,7 @@
                         triggerAlarm();
                         releaseWakeLock();
                     }
-                }, 1000);
+                }, 1000); 
             }
         }
 
@@ -445,17 +395,28 @@
             if (alarmInterval) return;
             updateTimerDisplay();
             playBasketballBuzzer();
-            alarmInterval = setInterval(() => { playBasketballBuzzer(); }, 3000);
+            alarmInterval = setInterval(() => {
+                playBasketballBuzzer();
+            }, 3000);
             updatePlayButtonUI();
         }
 
         function stopAlarm() {
-            if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; updatePlayButtonUI(); }
+            if (alarmInterval) {
+                clearInterval(alarmInterval);
+                alarmInterval = null;
+                updatePlayButtonUI();
+            }
         }
 
         function resetTimer() {
             stopAlarm();
-            if (isRunning) { clearInterval(timerInterval); timerInterval = null; isRunning = false; releaseWakeLock(); }
+            if (isRunning) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                isRunning = false;
+                releaseWakeLock();
+            }
             timeLeft = settings.matchDuration * 60;
             updateTimerDisplay();
             updatePlayButtonUI();
@@ -468,218 +429,574 @@
             updateTimerDisplay();
         }
 
-        // --- CORE FUNCTIONS (Player/Match) ---
+        // --- SETUP ---
+        document.getElementById('add-player-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('input-name');
+            const name = input.value.trim();
+            if (!name) return;
+            players.push({ id: uid(), name: name, gender: tempGender });
+            input.value = '';
+            saveData();
+        });
+
         function setGender(g) {
             tempGender = g;
-            document.getElementById('gender-m').className = g === 'M' ? 'px-3 font-bold transition-colors text-lg bg-blue-600 text-white' : 'px-3 font-bold transition-colors text-lg text-slate-400';
-            document.getElementById('gender-f').className = g === 'F' ? 'px-3 font-bold transition-colors text-lg bg-pink-500 text-white' : 'px-3 font-bold transition-colors text-lg text-slate-400';
+            const btnM = document.getElementById('gender-m');
+            const btnF = document.getElementById('gender-f');
+            if (g === 'M') {
+                btnM.className = 'px-3 font-bold transition-colors text-lg bg-blue-600 text-white';
+                btnF.className = 'px-3 font-bold transition-colors text-lg text-slate-400';
+            } else {
+                btnM.className = 'px-3 font-bold transition-colors text-lg text-slate-400';
+                btnF.className = 'px-3 font-bold transition-colors text-lg bg-pink-500 text-white';
+            }
         }
 
-        function removePlayer(id) { if (confirm('Ištrinti žaidėją?')) { players = players.filter(p => p.id !== id); saveData(); } }
-        function setMode(mode) { resetTimer(); settings.winCondition = mode; saveData(); render(); }
-        function changeSetting(key, val) { settings[key] = Math.max(1, settings[key] + val); saveData(); if (key === 'matchDuration') resetTimer(); }
-        function changeFormat(val) { settings.format = val; saveData(); document.getElementById('fixed-info').style.display = (val === 'fixed') ? 'block' : 'none'; updateLeaderboard(); }
-        function changeRanking(val) { settings.rankingMode = val; saveData(); updateLeaderboard(); }
-        function resetScores() { if(confirm('Tikrai anuliuoti rezultatus?')) { matches = []; saveData(); } }
-        function resetAll() { if(confirm('Viskas bus ištrinta!')) { localStorage.clear(); location.reload(); } }
+        function removePlayer(id) {
+            if (confirm('Ištrinti žaidėją?')) {
+                players = players.filter(p => p.id !== id);
+                saveData();
+            }
+        }
 
-        // --- MATCH GENERATION (V46 LOGIC) ---
+        function setMode(mode) {
+            resetTimer(); 
+            settings.winCondition = mode;
+            saveData();
+            render(); 
+        }
+
+        function changeSetting(key, val) {
+            settings[key] = Math.max(1, settings[key] + val);
+            saveData();
+            if (key === 'matchDuration') resetTimer();
+        }
+        
+        function changeFormat(val) {
+            settings.format = val;
+            saveData();
+            document.getElementById('fixed-info').style.display = (val === 'fixed') ? 'block' : 'none';
+            updateLeaderboard(); 
+        }
+
+        function changeRanking(val) {
+            settings.rankingMode = val;
+            saveData();
+            updateLeaderboard(); 
+        }
+
+        function resetScores() { 
+            if(confirm('Tikrai anuliuoti rezultatus?')) { 
+                matches = []; 
+                saveData(); 
+            } 
+        }
+        function resetAll() { 
+            if(confirm('Viskas bus ištrinta!')) { 
+                localStorage.clear(); 
+                location.reload(); 
+            } 
+        }
+
+        // --- STATS & HISTORY (INDIVIDUAL) ---
         function getLeaderboardStats() {
-            const stats = players.map(p => ({ ...p, mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0 }));
+            const stats = players.map(p => ({
+                ...p,
+                mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0
+            }));
+
             matches.filter(m => m.finished).forEach(m => {
-                const process = (t, myS, enS) => {
-                    t.forEach(p => {
+                const processTeam = (teamArr, myScore, enScore) => {
+                    teamArr.forEach(p => {
                         const s = stats.find(x => x.id === p.id);
-                        if(s) {
-                            s.mp++; s.setWon += myS; s.setLost += enS; s.diff = s.setWon - s.setLost;
-                            if(myS > enS) { s.w++; s.leaguePts += 2; } else if(myS < enS) s.l++; else { s.d++; s.leaguePts += 1; }
-                        }
+                        if (!s) return;
+                        s.mp += 1;
+                        s.setWon += myScore;
+                        s.setLost += enScore;
+                        s.diff = s.setWon - s.setLost;
+                        if (myScore > enScore) { s.w += 1; s.leaguePts += 2; } 
+                        else if (myScore < enScore) { s.l += 1; } 
+                        else { s.d += 1; s.leaguePts += 1; }
                     });
                 };
-                process(m.team1, m.score1, m.score2); process(m.team2, m.score2, m.score1);
+                processTeam(m.team1, m.score1, m.score2);
+                processTeam(m.team2, m.score2, m.score1);
             });
-            return stats.sort((a,b) => {
+
+            return sortStats(stats);
+        }
+
+        // --- STATS (FIXED TEAMS) ---
+        function getFixedTeamStats() {
+            let teams = [];
+            for (let i = 0; i < players.length; i += 2) {
+                if (i + 1 < players.length) {
+                    teams.push({
+                        p1: players[i],
+                        p2: players[i+1],
+                        id: players[i].id + '_' + players[i+1].id,
+                        name: players[i].name + ' / ' + players[i+1].name,
+                        gender: 'TEAM',
+                        mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0
+                    });
+                }
+            }
+
+            matches.filter(m => m.finished).forEach(m => {
+                const getTeamByPlayerId = (pid) => teams.find(t => t.p1.id === pid || t.p2.id === pid);
+                const t1 = getTeamByPlayerId(m.team1[0].id);
+                const t2 = getTeamByPlayerId(m.team2[0].id);
+
+                const updateT = (t, myS, enS) => {
+                    if(!t) return;
+                    t.mp++;
+                    t.setWon += myS;
+                    t.setLost += enS;
+                    t.diff = t.setWon - t.setLost;
+                    if(myS > enS) { t.w++; t.leaguePts += 2; }
+                    else if(myS < enS) { t.l++; }
+                    else { t.d++; t.leaguePts += 1; }
+                };
+
+                updateT(t1, m.score1, m.score2);
+                updateT(t2, m.score2, m.score1);
+            });
+
+            return sortStats(teams);
+        }
+
+        function sortStats(data) {
+             return data.sort((a,b) => {
                 if (settings.rankingMode === 'wins') {
                     if (b.leaguePts !== a.leaguePts) return b.leaguePts - a.leaguePts;
                     if (b.diff !== a.diff) return b.diff - a.diff;
                     return b.setWon - a.setWon;
+                } else {
+                    if (b.setWon !== a.setWon) return b.setWon - a.setWon;
+                    if (b.diff !== a.diff) return b.diff - a.diff;
+                    return b.w - a.w;
                 }
-                if (b.setWon !== a.setWon) return b.setWon - a.setWon;
-                if (b.diff !== a.diff) return b.diff - a.diff;
-                return b.w - a.w;
             });
         }
 
-        function getFixedTeamStats() {
-            let teams = [];
-            for (let i = 0; i < players.length; i += 2) if (i + 1 < players.length) teams.push({ p1: players[i], p2: players[i+1], id: players[i].id + '_' + players[i+1].id, name: players[i].name + ' / ' + players[i+1].name, gender: 'TEAM', mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0 });
-            matches.filter(m => m.finished).forEach(m => {
-                const getT = (pid) => teams.find(t => t.p1.id === pid || t.p2.id === pid);
-                const t1 = getT(m.team1[0].id), t2 = getT(m.team2[0].id);
-                const upd = (t, my, en) => { if(t) { t.mp++; t.setWon+=my; t.setLost+=en; t.diff=t.setWon-t.setLost; if(my>en){t.w++; t.leaguePts+=2;} else if(my<en)t.l++; else{t.d++; t.leaguePts+=1;} } };
-                upd(t1, m.score1, m.score2); upd(t2, m.score2, m.score1);
-            });
-            return teams.sort((a,b) => {
-                if (settings.rankingMode === 'wins') {
-                    if (b.leaguePts !== a.leaguePts) return b.leaguePts - a.leaguePts;
-                    return b.setWon - a.setWon;
-                }
-                if (b.setWon !== a.setWon) return b.setWon - a.setWon;
-                return b.w - a.w;
-            });
-        }
-
+        // --- HISTORY & BALANCE UTILS ---
         function getPartnerHistory() {
-            const h = new Map();
-            matches.forEach(m => {
-                const add = (p1, p2) => {
-                    if (!h.has(p1.id)) h.set(p1.id, new Set());
-                    if (!h.has(p2.id)) h.set(p2.id, new Set());
-                    h.get(p1.id).add(p2.id); h.get(p2.id).add(p1.id);
+            const history = new Map(); 
+            matches.forEach(m => { 
+                const addPair = (p1, p2) => {
+                    if (!history.has(p1.id)) history.set(p1.id, new Set());
+                    if (!history.has(p2.id)) history.set(p2.id, new Set());
+                    history.get(p1.id).add(p2.id);
+                    history.get(p2.id).add(p1.id);
                 };
-                add(m.team1[0], m.team1[1]); add(m.team2[0], m.team2[1]);
+                addPair(m.team1[0], m.team1[1]);
+                addPair(m.team2[0], m.team2[1]);
             });
-            return h;
+            return history;
         }
 
         function getTeamVsTeamCount(tA, tB) {
-            let c = 0;
+            let count = 0;
             matches.forEach(m => {
-                const t1 = m.team1.map(p=>p.id), t2 = m.team2.map(p=>p.id);
-                const a1 = tA[0].id, a2 = tA[1].id, b1 = tB[0].id, b2 = tB[1].id;
-                if ((t1.includes(a1)||t1.includes(a2)) && (t2.includes(b1)||t2.includes(b2))) c++;
-                else if ((t1.includes(b1)||t1.includes(b2)) && (t2.includes(a1)||t2.includes(a2))) c++;
+                const team1Ids = m.team1.map(p => p.id);
+                const team2Ids = m.team2.map(p => p.id);
+                const pA1 = tA[0].id, pA2 = tA[1].id;
+                const pB1 = tB[0].id, pB2 = tB[1].id;
+
+                if ((team1Ids.includes(pA1) || team1Ids.includes(pA2)) && (team2Ids.includes(pB1) || team2Ids.includes(pB2))) {
+                    count++;
+                }
+                else if ((team1Ids.includes(pB1) || team1Ids.includes(pB2)) && (team2Ids.includes(pA1) || team2Ids.includes(pA2))) {
+                    count++;
+                }
             });
-            return c;
+            return count;
+        };
+
+        function calculateGlobalBalanceCost(proposedMatches) {
+            const stats = new Map();
+            players.forEach(p => stats.set(p.id, new Map()));
+
+            const increment = (p1Id, p2Id) => {
+                if (p1Id === p2Id) return;
+                const p1Map = stats.get(p1Id);
+                p1Map.set(p2Id, (p1Map.get(p2Id) || 0) + 1);
+                const p2Map = stats.get(p2Id);
+                p2Map.set(p1Id, (p1Map.get(p2Id) || 0) + 1);
+            };
+
+            [...matches, ...proposedMatches].forEach(m => {
+                m.team1.forEach(p1 => {
+                    m.team2.forEach(p2 => {
+                        increment(p1.id, p2.id);
+                        increment(p2.id, p1.id);
+                    });
+                });
+            });
+
+            let totalCost = 0;
+            for (const [pid, oppMap] of stats) {
+                for (const [oid, count] of oppMap) {
+                    totalCost += (count * count); 
+                }
+            }
+            return totalCost;
         }
 
-        function calcGlobalBalance(prop) {
-            const s = new Map(); players.forEach(p => s.set(p.id, new Map()));
-            const inc = (p1, p2) => { if(p1!==p2) { const m=s.get(p1); m.set(p2, (m.get(p2)||0)+1); const m2=s.get(p2); m2.set(p1, (m.get(p2)||0)+1); } };
-            [...matches, ...prop].forEach(m => { m.team1.forEach(p1=>m.team2.forEach(p2=>inc(p1.id, p2.id))); });
-            let cost = 0;
-            for(const [_, m] of s) for(const [_, c] of m) cost += c*c;
-            return cost;
+        // --- HELPER: Optimize Matchups (4 pairs) ---
+        function optimizeMatchups(pairs, round) {
+            if (pairs.length !== 4) return []; 
+
+            const options = [
+                { matches: [[pairs[0], pairs[1]], [pairs[2], pairs[3]]], id: 0 }, 
+                { matches: [[pairs[0], pairs[2]], [pairs[1], pairs[3]]], id: 1 }, 
+                { matches: [[pairs[0], pairs[3]], [pairs[1], pairs[2]]], id: 2 } 
+            ];
+
+            options.forEach(opt => {
+                const simMatches = [
+                    { team1: opt.matches[0][0], team2: opt.matches[0][1] },
+                    { team1: opt.matches[1][0], team2: opt.matches[1][1] }
+                ];
+                opt.cost = calculateGlobalBalanceCost(simMatches);
+                opt.random = Math.random(); 
+            });
+
+            options.sort((a,b) => a.cost - b.cost || a.random - b.random);
+
+            const best = options[0];
+            const newM = [];
+            const sortPair = (p) => p.sort((a,b) => a.name.localeCompare(b.name));
+            
+            newM.push({ 
+                id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, 
+                team1: sortPair(best.matches[0][0]), team2: sortPair(best.matches[0][1]) 
+            });
+            newM.push({ 
+                id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, 
+                team1: sortPair(best.matches[1][0]), team2: sortPair(best.matches[1][1]) 
+            });
+
+            return newM;
         }
 
+
+        // --- GENERAVIMO LOGIKA (V46 - FINAL UNIVERSAL) ---
         function generateRound() {
             if (players.length < 4) return alert("Reikia bent 4 žaidėjų!");
-            let newM = [], round = (matches[matches.length-1]?.round || 0) + 1;
-            const statsMap = new Map(getLeaderboardStats().map(p => [p.id, p]));
-            const hist = getPartnerHistory();
-            const hasPlayed = (p1, p2) => hist.has(p1.id) && hist.get(p1.id).has(p2.id);
+            
+            let newMatches = [];
+            const round = matches.length > 0 ? (matches[matches.length-1].round || 0) + 1 : 1;
+            const stats = getLeaderboardStats();
+            const statsMap = new Map(stats.map(p => [p.id, p]));
+            const history = getPartnerHistory();
+            const hasPlayed = (p1, p2) => history.has(p1.id) && history.get(p1.id).has(p2.id);
 
+            // --- FIXED PAIRS LOGIC ---
             if (settings.format === 'fixed') {
-                let teams = []; for(let i=0; i<players.length; i+=2) if(i+1<players.length) teams.push([players[i], players[i+1]]);
-                if(teams.length<2) return alert("Reikia bent 2 porų.");
+               let teams = [];
+                for (let i = 0; i < players.length; i += 2) {
+                    if (i + 1 < players.length) teams.push([players[i], players[i+1]]);
+                }
                 
-                // Sort teams by MP to rotate rests
+                // Sort by Matches Played (MP)
+                const teamStats = new Map();
+                teams.forEach(t => {
+                    const id = t[0].id + '_' + t[1].id;
+                    let played = 0;
+                    matches.forEach(m => {
+                        const mIds = [...m.team1.map(p=>p.id), ...m.team2.map(p=>p.id)];
+                        if (mIds.includes(t[0].id) && mIds.includes(t[1].id)) played++;
+                    });
+                    teamStats.set(id, played);
+                });
+                
                 teams.sort((a,b) => {
-                    let mpA=0, mpB=0;
-                    matches.forEach(m=>{ const ids=[...m.team1,...m.team2].map(p=>p.id); if(ids.includes(a[0].id)) mpA++; if(ids.includes(b[0].id)) mpB++; });
+                    const mpA = teamStats.get(a[0].id + '_' + a[1].id) || 0;
+                    const mpB = teamStats.get(b[0].id + '_' + b[1].id) || 0;
                     return mpA - mpB || Math.random() - 0.5;
                 });
 
-                let opts = [];
-                for(let i=0; i<teams.length; i++) for(let j=i+1; j<teams.length; j++) opts.push({ t1:teams[i], t2:teams[j], p: getTeamVsTeamCount(teams[i], teams[j]), r: Math.random() });
-                
-                opts.sort((a,b) => a.p - b.p || a.r - b.r);
-                const used = new Set();
-                for(const o of opts) {
-                    if(newM.length >= settings.courts) break;
-                    if(!used.has(o.t1[0].id) && !used.has(o.t2[0].id)) {
-                        used.add(o.t1[0].id); used.add(o.t2[0].id);
-                        newM.push({ id:uid(), round, court:newM.length+1, finished:false, score1:0, score2:0, team1:o.t1, team2:o.t2 });
+                let possibleMatchups = [];
+                for (let i = 0; i < teams.length; i++) {
+                    for (let j = i + 1; j < teams.length; j++) {
+                        possibleMatchups.push({ 
+                            t1: teams[i], t2: teams[j], 
+                            played: getTeamVsTeamCount(teams[i], teams[j]),
+                            r: Math.random() 
+                        });
                     }
                 }
-            } else if (settings.format === 'americano' || settings.format.includes('mix')) {
-                let pool = [...players];
-                // MP Sort
-                pool.sort((a,b) => (statsMap.get(a.id)?.mp||0) - (statsMap.get(b.id)?.mp||0));
                 
-                let best = null, minC = Infinity;
-                const limit = 4000;
-                
-                for(let i=0; i<limit; i++) {
-                    let req = settings.courts * 4;
-                    let active = pool.slice(0, Math.min(pool.length, req + 2)).sort(()=>Math.random()-0.5).slice(0, req);
+                possibleMatchups.sort((a, b) => {
+                    const mpA1 = teamStats.get(a.t1[0].id + '_' + a.t1[1].id);
+                    const mpA2 = teamStats.get(a.t2[0].id + '_' + a.t2[1].id);
+                    const mpB1 = teamStats.get(b.t1[0].id + '_' + b.t1[1].id);
+                    const mpB2 = teamStats.get(b.t2[0].id + '_' + b.t2[1].id);
                     
-                    // Simple Pairing logic
-                    let pairs = [], valid = true;
-                    // Mix filter
-                    if(settings.format.includes('mix')) {
-                        let men = active.filter(p=>p.gender==='M'), women = active.filter(p=>p.gender==='F');
-                        if(men.length < req/2 || women.length < req/2) { valid=false; } // Not enough M/F
-                        else {
-                            for(let k=0; k<men.length; k++) pairs.push([men[k], women[k]]);
-                        }
+                    if ((mpA1+mpA2) !== (mpB1+mpB2)) return (mpA1+mpA2) - (mpB1+mpB2);
+                    if (a.played !== b.played) return a.played - b.played;
+                    return a.r - b.r;
+                });
+
+                const usedTeams = new Set();
+                for (const pm of possibleMatchups) {
+                    if (newMatches.length >= settings.courts) break;
+                    const t1ID = pm.t1[0].id;
+                    const t2ID = pm.t2[0].id;
+                    if (!usedTeams.has(t1ID) && !usedTeams.has(t2ID)) {
+                        usedTeams.add(t1ID); usedTeams.add(t2ID);
+                        newMatches.push({ id: uid(), round, court: newMatches.length + 1, finished: false, score1: 0, score2: 0, team1: pm.t1, team2: pm.t2 });
+                    }
+                }
+
+            } else if (settings.format.includes('mix')) {
+                // --- MIX SOLVER V46 ---
+                let men = players.filter(p => p.gender === 'M');
+                let women = players.filter(p => p.gender === 'F');
+
+                men.sort((a,b) => (statsMap.get(a.id)?.mp || 0) - (statsMap.get(b.id)?.mp || 0));
+                women.sort((a,b) => (statsMap.get(a.id)?.mp || 0) - (statsMap.get(b.id)?.mp || 0));
+
+                if (settings.format === 'mix_americano') {
+                    if (men.length === 4 && women.length === 4) {
+                        men.sort((a,b) => a.name.localeCompare(b.name));
+                        women.sort((a,b) => a.name.localeCompare(b.name));
+                        const partnerShift = (round - 1) % 4;
+                        const wShifted = [];
+                        for (let i = 0; i < 4; i++) wShifted.push(women[(i + partnerShift) % 4]);
+                        const pairs = [ [ men[0], wShifted[0] ], [ men[1], wShifted[1] ], [ men[2], wShifted[2] ], [ men[3], wShifted[3] ] ];
+                        newMatches = optimizeMatchups(pairs, round);
                     } else {
-                        for(let k=0; k<active.length-1; k+=2) pairs.push([active[k], active[k+1]]);
+                        // Monte Carlo for others (e.g. 12 players)
+                        let bestSetup = null;
+                        let minCost = Infinity;
+                        const iterations = 5000;
+
+                        for(let i=0; i<iterations; i++) {
+                            const neededPairs = settings.courts * 2;
+                            // Weighted shuffle 
+                            let activeMen = men.slice(0, Math.min(men.length, neededPairs + 2)).sort(() => Math.random() - 0.5).slice(0, neededPairs);
+                            let activeWomen = women.slice(0, Math.min(women.length, neededPairs + 2)).sort(() => Math.random() - 0.5).slice(0, neededPairs);
+                            
+                            let pairs = [];
+                            let roundCost = 0;
+                            
+                            for(let k=0; k<activeMen.length; k++) {
+                                const m = activeMen[k];
+                                const w = activeWomen[k];
+                                if (!m || !w) break;
+                                if (hasPlayed(m, w)) roundCost += 1000;
+                                pairs.push([m, w]);
+                            }
+                            
+                            if (pairs.length >= 2) {
+                                let currentMatches = [];
+                                for(let m=0; m < pairs.length - 1; m+=2) {
+                                    if (currentMatches.length >= settings.courts) break;
+                                    currentMatches.push({ team1: pairs[m], team2: pairs[m+1] });
+                                }
+                                roundCost += calculateGlobalBalanceCost(currentMatches);
+                                if (roundCost < minCost) {
+                                    minCost = roundCost;
+                                    bestSetup = currentMatches;
+                                }
+                            }
+                            if (minCost === 0) break;
+                        }
+                        
+                        if(bestSetup) {
+                            bestSetup.forEach((m, idx) => {
+                                 newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
+                            });
+                        } else {
+                             const count = Math.min(men.length, women.length);
+                             const pairs = [];
+                             for(let i=0; i<count; i++) pairs.push([men[i], women[i]]);
+                             for (let i = 0; i < settings.courts; i++) {
+                                if (pairs.length < 2) break;
+                                newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: pairs.shift(), team2: pairs.shift() });
+                             }
+                        }
                     }
 
-                    if(!valid || pairs.length < 2) continue;
-
-                    let curM = [], cost = 0;
-                    // Check partner history cost
-                    pairs.forEach(p => { if(hasPlayed(p[0], p[1])) cost += 1000; });
-                    
-                    // Match pairs
-                    for(let k=0; k<pairs.length-1; k+=2) curM.push({ team1: pairs[k], team2: pairs[k+1] });
-                    
-                    cost += calcGlobalBalance(curM);
-                    
-                    if(cost < minC) { minC = cost; best = curM; if(minC===0) break; }
+                } else {
+                     const count = Math.min(men.length, women.length);
+                     const pairs = [];
+                     for(let i=0; i<count; i++) pairs.push([men[i], women[i]]);
+                     if (settings.format === 'mix_mexicano') {
+                         pairs.sort((a,b) => (statsMap.get(b[0].id).setWon - statsMap.get(a[0].id).setWon));
+                     } else {
+                         pairs.sort(() => Math.random() - 0.5);
+                     }
+                     for (let i = 0; i < settings.courts; i++) {
+                        if (pairs.length < 2) break;
+                        newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: pairs.shift(), team2: pairs.shift() });
+                     }
                 }
 
-                if(best) {
-                    best.forEach((m, i) => {
-                        const s = (p) => p.sort((a,b)=>a.name.localeCompare(b.name));
-                        newM.push({ id:uid(), round, court:i+1, finished:false, score1:0, score2:0, team1:s(m.team1), team2:s(m.team2) });
+            } else {
+                // --- AMERICANO (UNIVERSAL BALANCER - V46) ---
+                let pool = [...players];
+                
+                // Sort by MP to prioritize resters
+                pool.sort((a,b) => {
+                    const mpA = statsMap.get(a.id)?.mp || 0;
+                    const mpB = statsMap.get(b.id)?.mp || 0;
+                    return mpA - mpB;
+                });
+
+                if (settings.format === 'americano') {
+                    // NEW: Perfect 4 Matrix
+                    if (pool.length === 4) {
+                        const matrix4 = [
+                            [[0,1], [2,3]], // R1
+                            [[0,2], [1,3]], // R2
+                            [[0,3], [1,2]]  // R3
+                        ];
+                        const stablePool = [...pool].sort((a,b) => a.name.localeCompare(b.name));
+                        const cycle = (round - 1) % 3;
+                        const idxs = matrix4[cycle];
+                        const t1 = [stablePool[idxs[0][0]], stablePool[idxs[0][1]]];
+                        const t2 = [stablePool[idxs[1][0]], stablePool[idxs[1][1]]];
+                        
+                        newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: t1, team2: t2 });
+
+                    } else if (pool.length === 8) {
+                        // Perfect 8 Matrix (Grand 21)
+                        const stablePool = [...pool].sort((a,b) => a.name.localeCompare(b.name));
+                        const matrix8 = [
+                            [[0,1], [2,3], [4,5], [6,7]], [[0,2], [1,3], [4,6], [5,7]], [[0,3], [1,2], [4,7], [5,6]],
+                            [[0,4], [1,5], [2,6], [3,7]], [[0,5], [1,4], [2,7], [3,6]], [[0,6], [1,7], [2,4], [3,5]],
+                            [[0,7], [1,6], [2,5], [3,4]]
+                        ];
+                        const cycleIdx = (round - 1) % 7;
+                        const blockIdx = Math.floor((round - 1) / 7); 
+                        const pairsIdx = matrix8[cycleIdx];
+                        const currentPairs = [
+                            [stablePool[pairsIdx[0][0]], stablePool[pairsIdx[0][1]]],
+                            [stablePool[pairsIdx[1][0]], stablePool[pairsIdx[1][1]]],
+                            [stablePool[pairsIdx[2][0]], stablePool[pairsIdx[2][1]]],
+                            [stablePool[pairsIdx[3][0]], stablePool[pairsIdx[3][1]]]
+                        ];
+                        let bestConfigMatches;
+                        if (blockIdx === 0) bestConfigMatches = [[currentPairs[0], currentPairs[1]], [currentPairs[2], currentPairs[3]]];
+                        else if (blockIdx === 1) bestConfigMatches = [[currentPairs[0], currentPairs[2]], [currentPairs[1], currentPairs[3]]];
+                        else bestConfigMatches = [[currentPairs[0], currentPairs[3]], [currentPairs[1], currentPairs[2]]]; 
+
+                        newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: bestConfigMatches[0][0], team2: bestConfigMatches[0][1] });
+                        newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: bestConfigMatches[1][0], team2: bestConfigMatches[1][1] });
+
+                    } else {
+                        // Monte Carlo Solver (Generic)
+                        let bestSetup = null;
+                        let minCost = Infinity;
+                        const iterations = 5000; 
+
+                        for (let i = 0; i < iterations; i++) {
+                            let needed = settings.courts * 4;
+                            let activePool = pool.slice(0, Math.min(pool.length, needed + 2)); 
+                            activePool.sort(() => Math.random() - 0.5);
+                            activePool = activePool.slice(0, needed); 
+
+                            let pairs = [];
+                            let validPartners = true;
+
+                            for (let j = 0; j < activePool.length - 1; j += 2) {
+                                const p1 = activePool[j];
+                                const p2 = activePool[j+1];
+                                if (hasPlayed(p1, p2)) {
+                                    // Soft penalty
+                                }
+                                pairs.push([p1, p2]);
+                            }
+                            
+                            if (pairs.length >= 2) { 
+                                let currentMatches = [];
+                                let roundCost = 0;
+                                
+                                for (let m = 0; m < pairs.length - 1; m += 2) {
+                                    const t1 = pairs[m];
+                                    const t2 = pairs[m+1];
+                                    
+                                    if (hasPlayed(t1[0], t1[1])) roundCost += 1000;
+                                    if (hasPlayed(t2[0], t2[1])) roundCost += 1000;
+
+                                    currentMatches.push({ team1: t1, team2: t2 });
+                                }
+
+                                roundCost += calculateGlobalBalanceCost(currentMatches);
+
+                                if (roundCost < minCost) {
+                                    minCost = roundCost;
+                                    bestSetup = currentMatches;
+                                }
+                            }
+                        }
+
+                        if (bestSetup) {
+                            bestSetup.forEach((m, idx) => {
+                                const sortPair = (p) => p.sort((a,b) => a.name.localeCompare(b.name));
+                                newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: sortPair(m.team1), team2: sortPair(m.team2) });
+                            });
+                        } else {
+                            alert("Nepavyko optimizuoti.");
+                        }
+                    }
+
+                } else if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
+                    pool.sort((a,b) => {
+                        const sa = statsMap.get(a.id) || {setWon:0, diff:0, mp:0};
+                        const sb = statsMap.get(b.id) || {setWon:0, diff:0, mp:0};
+                        if (sa.mp !== sb.mp) return sa.mp - sb.mp;
+                        return sb.setWon - sa.setWon || sb.diff - sa.diff;
                     });
-                } else alert("Nepavyko sugeneruoti.");
+
+                    for (let i = 0; i < settings.courts; i++) {
+                        if (pool.length < 4) break;
+                        const group = pool.splice(0, 4);
+                        group.sort((a,b) => (statsMap.get(b.id).setWon - statsMap.get(a.id).setWon));
+                        
+                        if (settings.format === 'super_mexicano') {
+                            newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: [group[0], group[1]], team2: [group[2], group[3]] });
+                        } else {
+                            const best = { t1: [group[0], group[3]], t2: [group[1], group[2]] }; 
+                            newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: best.t1, team2: best.t2 });
+                        }
+                    }
+                } 
             }
 
-            if(newM.length > 0) { matches = [...matches, ...newM]; saveData(); switchView('matches'); }
+            if (newMatches.length > 0) {
+                matches = [...matches, ...newMatches];
+                saveData();
+                switchView('matches');
+            } else { alert("Nepavyko sudaryti porų."); }
         }
 
-        // --- UPDATE & RENDER ---
-        document.getElementById('add-player-form').addEventListener('submit', function(e) {
-            e.preventDefault(); const n = document.getElementById('input-name').value.trim();
-            if(n) { players.push({ id:uid(), name:n, gender:tempGender }); document.getElementById('input-name').value=''; saveData(); }
-        });
-
-        function updateScore(id, t, v) { 
-            const m = matches.find(x=>x.id===id); 
-            if(m && !m.finished) { 
-                const cap = settings.winCondition==='score'?settings.maxPoints:999; 
-                if(t===1) m.score1 = Math.min(cap, Math.max(0, m.score1+v)); 
-                else m.score2 = Math.min(cap, Math.max(0, m.score2+v)); 
-                saveData(); 
-            } 
-        }
-        function finishMatch(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; saveData(); } }
-        function undoMatch(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; saveData(); } }
-
-        function updateLeaderboard() {
-            const isFixed = settings.format === 'fixed';
-            const stats = isFixed ? getFixedTeamStats() : getLeaderboardStats();
-            const mode = settings.rankingMode || 'points';
-            document.getElementById('leaderboard-header').innerHTML = `<div class="w-6">#</div><div class="flex-1 text-left pl-1">${isFixed?'Komanda':'Žaidėjas'}</div><div class="w-7 ${mode==='wins'?'text-green-700 font-bold':''}">W</div><div class="w-7">T</div><div class="w-7">L</div><div class="w-10">+/-</div><div class="w-10 text-right ${mode==='points'?'text-slate-900 font-bold':''}">TŠK</div>`;
-            document.getElementById('leaderboard-body').innerHTML = stats.map((p, i) => `
-                <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
-                    <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
-                    <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
-                         ${!isFixed ? `<div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div>` : ''}
-                        <div class="flex flex-col overflow-hidden"><span class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</span></div>
-                    </div>
-                    <div class="w-7 font-bold text-xs ${mode === 'wins' ? 'text-green-700 bg-green-100 rounded' : 'text-green-600'}">${p.w}</div>
-                    <div class="w-7 font-bold text-orange-400 text-xs">${p.d}</div>
-                    <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
-                    <div class="w-10 font-bold text-xs ${p.diff > 0 ? 'text-green-600' : (p.diff < 0 ? 'text-red-500' : 'text-slate-400')}">${p.diff > 0 ? '+' : ''}${p.diff}</div>
-                    <div class="w-10 text-right font-black text-lg ${mode === 'points' ? 'text-slate-900' : 'text-slate-500'}">${mode === 'wins' ? p.leaguePts : p.setWon}</div>
-                </div>`).join('');
+        function updateScore(id, team, val) {
+            const m = matches.find(x => x.id === id);
+            if (!m || m.finished) return;
+            const cap = settings.winCondition === 'score' ? settings.maxPoints : 999999;
+            if (team === 1) m.score1 = Math.min(cap, Math.max(0, m.score1 + val));
+            else m.score2 = Math.min(cap, Math.max(0, m.score2 + val));
+            saveData();
         }
 
+        function finishMatch(id) {
+            const m = matches.find(x => x.id === id);
+            if (!m) return;
+            m.finished = true; 
+            saveData();
+        }
+
+        function undoMatch(id) {
+            const m = matches.find(x => x.id === id);
+            if (m) { m.finished = false; saveData(); }
+        }
+
+        // --- RENDER ---
         function render() {
             document.getElementById('player-count').textContent = `Viso: ${players.length}`;
             document.getElementById('val-duration').textContent = settings.matchDuration;
@@ -688,20 +1005,29 @@
             document.getElementById('select-format').value = settings.format;
             document.getElementById('fixed-info').style.display = (settings.format === 'fixed') ? 'block' : 'none';
             document.getElementById('select-ranking').value = settings.rankingMode || 'points';
+
             const mode = settings.winCondition;
             document.getElementById('mode-time').className = mode === 'time' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
             document.getElementById('mode-score').className = mode === 'score' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
             document.getElementById('control-duration').style.display = mode === 'time' ? 'block' : 'none';
             document.getElementById('control-points').style.display = mode === 'score' ? 'block' : 'none';
+
             document.getElementById('players-list').innerHTML = players.slice().reverse().map(p => `
                 <div class="flex justify-between items-center bg-white p-3 pl-4 rounded-xl border border-slate-100 shadow-sm w-full">
                     <div class="flex items-center gap-3 overflow-hidden">
-                        <div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div>
+                        <div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">
+                            ${p.gender === 'M' ? 'V' : 'M'}
+                        </div>
                         <span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>
                     </div>
                     <button type="button" onclick="removePlayer('${p.id}')" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 text-2xl shrink-0">×</button>
-                </div>`).join('');
-            renderMatches(); updateTimerDisplay(); updatePlayButtonUI(); try{updateLeaderboard();}catch(e){}
+                </div>
+            `).join('');
+
+            renderMatches();
+            updateTimerDisplay();
+            updatePlayButtonUI();
+            try { updateLeaderboard(); } catch (e) {}
         }
 
         function renderMatches() {
@@ -709,32 +1035,101 @@
             const finished = matches.filter(m => m.finished).sort((a,b) => (''+b.id).localeCompare(''+a.id));
             document.getElementById('matches-container').innerHTML = active.map(m => {
                 const limit = settings.winCondition === 'score' ? settings.maxPoints : 999999;
-                const w1 = m.score1 >= limit, w2 = m.score2 >= limit;
+                const w1 = m.score1 >= limit;
+                const w2 = m.score2 >= limit;
+                
                 return `
                 <div class="bg-white rounded-2xl shadow-md shadow-slate-200 border border-slate-100 overflow-hidden mb-6 w-full">
-                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold tracking-widest flex justify-between items-center"><span>AIKŠTELĖ ${m.court}</span><span class="bg-slate-700 px-2 py-0.5 rounded text-slate-200">Raundas ${m.round}</span></div>
+                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold tracking-widest flex justify-between items-center">
+                        <span>AIKŠTELĖ ${m.court}</span>
+                        <span class="bg-slate-700 px-2 py-0.5 rounded text-slate-200">Raundas ${m.round}</span>
+                    </div>
                     <div class="p-4 sm:p-5">
                         <div class="flex justify-between items-center mb-4 transition-opacity ${w2 ? 'opacity-40' : 'opacity-100'}">
                             <div class="flex flex-col gap-1 overflow-hidden">${m.team1.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
-                            <div class="flex items-center gap-2 shrink-0"><button onclick="updateScore('${m.id}', 1, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button><span class="text-3xl font-black w-10 text-center ${w1 ? 'text-green-600' : 'text-slate-800'}">${m.score1}</span><button onclick="updateScore('${m.id}', 1, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button></div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="updateScore('${m.id}', 1, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button>
+                                <span class="text-3xl font-black w-10 text-center ${w1 ? 'text-green-600' : 'text-slate-800'}">${m.score1}</span>
+                                <button type="button" onclick="updateScore('${m.id}', 1, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button>
+                            </div>
                         </div>
                         <div class="h-px bg-slate-100 mb-4 relative"><span class="absolute left-1/2 -top-2 -translate-x-1/2 bg-white px-2 text-xs text-slate-300 font-bold uppercase">vs</span></div>
                         <div class="flex justify-between items-center mb-6 transition-opacity ${w1 ? 'opacity-40' : 'opacity-100'}">
                             <div class="flex flex-col gap-1 overflow-hidden">${m.team2.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
-                            <div class="flex items-center gap-2 shrink-0"><button onclick="updateScore('${m.id}', 2, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button><span class="text-3xl font-black w-10 text-center ${w2 ? 'text-green-600' : 'text-slate-800'}">${m.score2}</span><button onclick="updateScore('${m.id}', 2, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button></div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                <button type="button" onclick="updateScore('${m.id}', 2, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button>
+                                <span class="text-3xl font-black w-10 text-center ${w2 ? 'text-green-600' : 'text-slate-800'}">${m.score2}</span>
+                                <button type="button" onclick="updateScore('${m.id}', 2, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button>
+                            </div>
                         </div>
-                        <button onclick="finishMatch('${m.id}')" class="w-full py-4 rounded-xl font-bold text-base tracking-wide shadow-xl transition-all bg-slate-900 text-white active:scale-95">Užbaigti Mačą</button>
+                        <button type="button" onclick="finishMatch('${m.id}')" class="w-full py-4 rounded-xl font-bold text-base tracking-wide shadow-xl transition-all bg-slate-900 text-white active:scale-95">
+                            Užbaigti Mačą
+                        </button>
                     </div>
                 </div>`;
             }).join('');
+
             const finContainer = document.getElementById('finished-matches-container');
             if (finished.length > 0) {
                 finContainer.innerHTML = `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-2">Baigti mačai</h3>` + finished.map(m => `
                     <div class="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center w-full mb-3">
-                        <div class="flex flex-col text-xs font-bold text-slate-600 overflow-hidden pr-2"><span class="truncate">${m.team1.map(p=>p.name).join('/')}</span><span class="text-slate-300 text-[10px] my-0.5">VS</span><span class="truncate">${m.team2.map(p=>p.name).join('/')}</span></div>
-                        <div class="flex flex-col items-end gap-2 shrink-0"><div class="text-xl font-black bg-slate-100 px-3 py-1 rounded-lg text-slate-800">${m.score1} : ${m.score2}</div><button onclick="undoMatch('${m.id}')" class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Taisyti</button></div>
-                    </div>`).join('');
-            } else finContainer.innerHTML = '';
+                        <div class="flex flex-col text-xs font-bold text-slate-600 overflow-hidden pr-2">
+                            <span class="truncate">${m.team1.map(p=>p.name).join('/')}</span>
+                            <span class="text-slate-300 text-[10px] my-0.5">VS</span>
+                            <span class="truncate">${m.team2.map(p=>p.name).join('/')}</span>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 shrink-0">
+                            <div class="text-xl font-black bg-slate-100 px-3 py-1 rounded-lg text-slate-800">${m.score1} : ${m.score2}</div>
+                            <button type="button" onclick="undoMatch('${m.id}')" class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Taisyti</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else { finContainer.innerHTML = ''; }
+        }
+
+        function updateLeaderboard() {
+            const isFixed = settings.format === 'fixed';
+            const stats = isFixed ? getFixedTeamStats() : getLeaderboardStats();
+            const mode = settings.rankingMode || 'points';
+            
+            // Header
+            document.getElementById('leaderboard-header').innerHTML = `
+                <div class="w-6">#</div>
+                <div class="flex-1 text-left pl-1">${isFixed ? 'Komanda' : 'Žaidėjas'}</div>
+                <div class="w-7 ${mode === 'wins' ? 'text-green-700 font-black' : ''}">W</div>
+                <div class="w-7">T</div>
+                <div class="w-7">L</div>
+                <div class="w-10">+/-</div>
+                <div class="w-10 text-right ${mode === 'points' ? 'text-slate-900 font-black' : ''}">TŠK</div>
+            `;
+
+            document.getElementById('leaderboard-body').innerHTML = stats.map((p, i) => `
+                <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
+                    <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
+                    
+                    <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
+                         ${!isFixed ? `
+                         <div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">
+                            ${p.gender === 'M' ? 'V' : 'M'}
+                        </div>` : ''}
+                        <div class="flex flex-col overflow-hidden">
+                            <span class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</span>
+                        </div>
+                    </div>
+
+                    <div class="w-7 font-bold text-xs ${mode === 'wins' ? 'text-green-700 bg-green-100 rounded' : 'text-green-600'}">${p.w}</div>
+                    <div class="w-7 font-bold text-orange-400 text-xs">${p.d}</div>
+                    <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
+                    
+                    <div class="w-10 font-bold text-xs ${p.diff > 0 ? 'text-green-600' : (p.diff < 0 ? 'text-red-500' : 'text-slate-400')}">
+                        ${p.diff > 0 ? '+' : ''}${p.diff}
+                    </div>
+
+                    <div class="w-10 text-right font-black text-lg ${mode === 'points' ? 'text-slate-900' : 'text-slate-500'}">
+                        ${mode === 'wins' ? p.leaguePts : p.setWon}
+                    </div>
+                </div>
+            `).join('');
         }
 
         render();
