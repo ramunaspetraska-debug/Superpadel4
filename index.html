@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V51 (Rooms & Global Stats)</title>
+    <title>Padelio PRO V54 (Ultimate Stability)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -42,13 +42,13 @@
     <div id="error-box" style="display:none; position:fixed; top:0; left:0; width:100%; background:red; color:white; padding:20px; z-index:9999; font-size:12px;"></div>
     <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
 
-    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm h-16 flex justify-between items-center px-4 w-full">
+    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm h-16 flex justify-between items-center px-4 w-full transition-colors">
         <div class="flex items-center gap-2" id="timer-controls">
             <button type="button" onclick="adjustTime(-60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-xl font-bold">-</button>
             <span id="timer-display" class="text-3xl font-black font-mono tracking-wider tabular-nums select-none">12:00</span>
             <button type="button" onclick="adjustTime(60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-xl font-bold">+</button>
         </div>
-        <div id="score-mode-text" class="hidden text-sm font-bold text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
+        <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
         <div class="flex items-center gap-3">
             <button type="button" id="btn-play" onclick="toggleTimer()" class="w-12 h-12 rounded-full bg-green-600 text-white shadow-lg shadow-green-600/30 flex items-center justify-center active:scale-95 transition-transform relative">
                 <svg id="icon-play" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -69,30 +69,54 @@
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Naujas Žaidėjas</label>
                     <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded-full font-bold">Viso: 0</span>
                 </div>
-                <form id="add-player-form" class="flex gap-2 w-full">
+                <form id="add-player-form" onsubmit="addPlayer(event)" class="flex gap-2 w-full">
                     <div class="flex bg-slate-100 rounded-xl overflow-hidden shrink-0 h-14 border border-slate-200">
                         <button type="button" id="gender-m" onclick="setGender('M')" class="px-3 font-bold transition-colors text-lg bg-blue-600 text-white">V</button>
                         <button type="button" id="gender-f" onclick="setGender('F')" class="px-3 font-bold transition-colors text-lg text-slate-400">M</button>
                     </div>
-                    <input type="text" id="input-name" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-green-500 h-14 text-slate-900 font-bold text-lg" />
+                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="new-password" spellcheck="false" class="flex-1 min-w-0 px-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-green-500 h-14 text-slate-900 font-bold text-lg" />
                     <button type="submit" class="bg-slate-900 text-white w-14 h-14 shrink-0 rounded-xl font-bold text-3xl shadow-lg active:scale-95">+</button>
                 </form>
             </div>
 
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4 w-full">
                 <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Nustatymai</h3>
+                
                 <div class="flex bg-slate-100 p-1 rounded-lg">
                     <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all">Pagal Laiką</button>
                     <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all">Pagal Taškus</button>
                 </div>
+                
                 <div class="grid grid-cols-2 gap-4">
-                    <div id="control-duration"><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Laikas (min)</label><div class="flex items-center gap-2 h-[42px]"><button onclick="changeSetting('matchDuration', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button><span id="val-duration" class="flex-1 text-center font-black text-xl text-slate-800">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button></div></div>
-                    <div id="control-points" style="display:none;"><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-2 h-[42px]"><button onclick="changeSetting('maxPoints', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button><span id="val-points" class="flex-1 text-center font-black text-xl text-slate-800">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button></div></div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-2 h-[42px]"><button onclick="changeSetting('courts', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button><span id="val-courts" class="flex-1 text-center font-black text-xl text-slate-800">2</span><button onclick="changeSetting('courts', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button></div></div>
+                    <div id="control-duration">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Laikas (min)</label>
+                        <div class="flex items-center gap-2 h-[42px]">
+                            <button type="button" onclick="changeSetting('matchDuration', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
+                            <span id="val-duration" class="flex-1 text-center font-black text-xl text-slate-800">12</span>
+                            <button type="button" onclick="changeSetting('matchDuration', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
+                        </div>
+                    </div>
+                     <div id="control-points" style="display:none;">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Iki taškų</label>
+                        <div class="flex items-center gap-2 h-[42px]">
+                            <button type="button" onclick="changeSetting('maxPoints', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
+                            <span id="val-points" class="flex-1 text-center font-black text-xl text-slate-800">21</span>
+                            <button type="button" onclick="changeSetting('maxPoints', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Aikštelės</label>
+                        <div class="flex items-center gap-2 h-[42px]">
+                            <button type="button" onclick="changeSetting('courts', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
+                            <span id="val-courts" class="flex-1 text-center font-black text-xl text-slate-800">2</span>
+                            <button type="button" onclick="changeSetting('courts', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
+                        </div>
+                    </div>
                 </div>
+                
                 <div>
                      <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Formatas</label>
-                     <select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm">
+                     <select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm focus:outline-none">
                         <option value="americano">Americano</option>
                         <option value="fixed">Fiksuotos Poros (2vs2)</option>
                         <option value="mexicano">Mexicano</option>
@@ -102,9 +126,10 @@
                     </select>
                      <div id="fixed-info" class="hidden text-[10px] text-slate-400 mt-1 italic text-center">Poros sudaromos pagal sąrašą: 1+2, 3+4, 5+6 ir t.t.</div>
                 </div>
+                
                 <div>
                     <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Reitingavimas</label>
-                    <select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm">
+                    <select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm focus:outline-none">
                        <option value="points">Pagal TAŠKUS (Americano)</option>
                        <option value="wins">Pagal PERGALES (W=2 / D=1)</option>
                    </select>
@@ -138,21 +163,41 @@
         </div>
 
         <div id="view-stats" class="view-section w-full">
-            <div class="flex justify-between items-end mb-6">
+            <div class="flex justify-between items-end mb-4">
                 <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Bendra<br>Statistika</h2>
-                <span class="text-[10px] text-slate-400 font-bold uppercase pb-1">Visi laikai</span>
             </div>
+            
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 space-y-3">
+                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Analizės Filtrai</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Nuo (Data)</label>
+                        <input type="date" id="stat-date-from" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-green-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Iki (Data)</label>
+                        <input type="date" id="stat-date-to" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-green-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Lytis</label>
+                        <select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-green-500 focus:outline-none">
+                            <option value="ALL">Visi</option><option value="M">Vyrai</option><option value="F">Moterys</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Žaidėjas</label>
+                        <select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 truncate focus:border-green-500 focus:outline-none">
+                            <option value="ALL">Visi</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-                    <div class="w-6">#</div>
-                    <div class="flex-1 text-left pl-1">Žaidėjas</div>
-                    <div class="w-7">MP</div>
-                    <div class="w-7 text-green-600">W</div>
-                    <div class="w-7 text-red-400">L</div>
-                    <div class="w-12 text-right">Win %</div>
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Žaidėjas</div><div class="w-7">MP</div><div class="w-7 text-green-600">W</div><div class="w-7 text-red-400">L</div><div class="w-12 text-right">Win %</div>
                 </div>
-                <div id="global-stats-body" class="divide-y divide-slate-100">
-                    </div>
+                <div id="global-stats-body" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
@@ -173,7 +218,7 @@
                 </div>
                 
                 <p class="text-sm text-slate-300 mb-6 leading-relaxed">
-                    Norėdami matyti rezultatus iš kitų telefonų ar kompiuterių realiu laiku, įveskite bendrą kambario pavadinimą ir prisijunkite.
+                    Įveskite bendrą kambario pavadinimą, kad sujungtumėte įrenginius.
                 </p>
                 
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
@@ -182,18 +227,9 @@
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
                 
                 <div class="space-y-4">
-                    <input type="text" id="fb-room" placeholder="Kambario Pavadinimas (Pvz. ManoPadelis)" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black tracking-wide text-yellow-400 focus:outline-none focus:border-green-500 text-center">
-                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 hover:bg-green-500 py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-green-900/50 active:scale-95 transition-all">Prisijungti prie kambario</button>
+                    <input type="text" id="fb-room" placeholder="Kambario Pavadinimas" autocomplete="new-password" spellcheck="false" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black tracking-wide text-yellow-400 focus:outline-none focus:border-green-500 text-center">
+                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 hover:bg-green-500 py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-green-900/50 active:scale-95 transition-all">Prisijungti prie kambario</button>
                 </div>
-            </div>
-            
-            <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl">
-                <h4 class="font-bold text-blue-800 text-xs uppercase mb-2">Kaip tai veikia?</h4>
-                <ul class="text-xs text-blue-600 space-y-1 list-disc pl-4">
-                    <li>Sugalvokite unikalų žodį (pvz., jūsų vardas).</li>
-                    <li>Kitame įrenginyje įveskite TĄ PATĮ žodį.</li>
-                    <li>Duomenys atsinaujins automatiškai kiekvieną kartą pakeitus rezultatą.</li>
-                </ul>
             </div>
         </div>
 
@@ -201,55 +237,33 @@
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <div class="flex justify-between items-center h-16 max-w-md mx-auto px-2">
-            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%] py-1 active:scale-95">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                <span class="text-[9px] font-bold mt-1">Nustat.</span>
-            </button>
-            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
-                <span class="text-[9px] font-bold mt-1">Mačai</span>
-            </button>
-            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-                <span class="text-[9px] font-bold mt-1">Lentelė</span>
-            </button>
-            <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-                <span class="text-[9px] font-bold mt-1">Statist.</span>
-            </button>
-            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span class="text-[9px] font-bold mt-1">Istorija</span>
-            </button>
-            <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg>
-                <span class="text-[9px] font-bold mt-1">Kambarys</span>
-            </button>
+            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[9px] font-bold mt-1">Nustat.</span></button>
+            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[9px] font-bold mt-1">Mačai</span></button>
+            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[9px] font-bold mt-1">Lentelė</span></button>
+            <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[9px] font-bold mt-1">Statist.</span></button>
+            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[9px] font-bold mt-1">Istorija</span></button>
+            <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[9px] font-bold mt-1">Kambarys</span></button>
         </div>
     </div>
 
     <script>
-        // --- GLOBAL ---
+        // --- GLOBAL VARIABLES ---
+        const defaultSettings = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [];
-        let settings = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
-        let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning=false, endTime=0, wakeLock=null;
+        let settings = { ...defaultSettings };
+        let tempGender = 'M', timeLeft = 0, timerInterval = null, alarmInterval = null, isRunning = false, endTime = 0, wakeLock = null;
         
-        // FIREBASE STATE
-        let db = null;
-        let firebaseConfig = null;
-        let currentRoom = null;
-        let dbRef = null;
-        let isCloudConnected = false;
+        let db = null, firebaseConfig = null, currentRoom = null, dbRef = null, isCloudConnected = false;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
 
         // --- INIT ---
         try {
-            players = JSON.parse(localStorage.getItem('padel_players_v51')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v51')) || [];
-            const savedS = JSON.parse(localStorage.getItem('padel_settings_v51'));
-            if(savedS) settings = {...settings, ...savedS};
-            savedTournaments = JSON.parse(localStorage.getItem('padel_history_v51')) || [];
+            players = JSON.parse(localStorage.getItem('padel_players_v54')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v54')) || [];
+            const savedS = JSON.parse(localStorage.getItem('padel_settings_v54'));
+            settings = { ...defaultSettings, ...(savedS || {}) };
+            savedTournaments = JSON.parse(localStorage.getItem('padel_history_v54')) || [];
             timeLeft = settings.matchDuration * 60;
             
             const savedRoom = localStorage.getItem('padel_room_name');
@@ -257,9 +271,9 @@
                 document.getElementById('fb-room').value = savedRoom;
                 initFirebaseConnection(true); 
             }
-        } catch (e) { localStorage.clear(); }
+        } catch (e) { console.error("Init err:", e); localStorage.clear(); }
 
-        // --- CLOUD LOGIC ---
+        // --- CLOUD SYNC ---
         function initFirebaseConnection(silent = false) {
             const apiKey = document.getElementById('fb-apiKey').value;
             const authDomain = document.getElementById('fb-authDomain').value;
@@ -267,19 +281,14 @@
             const projectId = document.getElementById('fb-projectId').value;
             const room = document.getElementById('fb-room').value.trim();
 
-            if(!room) {
-                if(!silent) alert("Įveskite kambario pavadinimą!");
-                return;
-            }
+            if(!room) { if(!silent) alert("Įveskite kambario pavadinimą!"); return; }
 
             firebaseConfig = { apiKey, authDomain, databaseURL, projectId };
             currentRoom = room;
             localStorage.setItem('padel_room_name', room);
 
             try {
-                if(!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
+                if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
                 dbRef = db.ref('padel_tournaments/' + currentRoom);
                 
@@ -290,37 +299,33 @@
                 dbRef.on('value', (snapshot) => {
                     const data = snapshot.val();
                     if(data) {
-                        if (JSON.stringify(data.players) !== JSON.stringify(players) || JSON.stringify(data.matches) !== JSON.stringify(matches)) {
+                        if (JSON.stringify(data.players) !== JSON.stringify(players) || 
+                            JSON.stringify(data.matches) !== JSON.stringify(matches) ||
+                            JSON.stringify(data.settings) !== JSON.stringify(settings)) {
                              players = data.players || [];
                              matches = data.matches || [];
-                             settings = data.settings || settings;
+                             settings = { ...defaultSettings, ...(data.settings || {}) };
+                             
+                             resetTimer(); // Update UI in case mode changed
                              render(true); 
                              
-                             // Visual flash on sync
                              document.getElementById('sync-bar').style.width = '100%';
                              setTimeout(() => document.getElementById('sync-bar').style.width = '0', 500);
                         }
-                    } else {
-                        if(players.length > 0) saveData();
+                    } else if(players.length > 0) {
+                        saveData();
                     }
                 });
                 
-                if(!silent) {
-                    alert("Prisijungta sėkmingai! Dabar įrenginiai sujungti.");
-                    switchView('matches');
-                }
-
-            } catch(e) {
-                console.error(e);
-                if(!silent) alert("Klaida: " + e.message);
-            }
+                if(!silent) { alert("Sėkmingai prisijungta!"); switchView('matches'); }
+            } catch(e) { console.error(e); if(!silent) alert("Klaida: " + e.message); }
         }
 
         function saveData(skipCloud = false) {
-            localStorage.setItem('padel_players_v51', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v51', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v51', JSON.stringify(settings));
-            localStorage.setItem('padel_history_v51', JSON.stringify(savedTournaments));
+            localStorage.setItem('padel_players_v54', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v54', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v54', JSON.stringify(settings));
+            localStorage.setItem('padel_history_v54', JSON.stringify(savedTournaments));
             
             if(isCloudConnected && !skipCloud && dbRef) {
                 dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
@@ -328,81 +333,69 @@
             if(!skipCloud) render();
         }
 
-        // --- GLOBAL STATS LOGIC ---
-        function getGlobalStats() {
-            const gStats = new Map();
-
-            const getP = (name) => {
-                if (!gStats.has(name)) gStats.set(name, { name: name, mp: 0, w: 0, d: 0, l: 0, pts: 0, diff: 0, winRate: 0 });
-                return gStats.get(name);
-            };
-
-            const processArr = (matchArr) => {
-                matchArr.filter(m => m.finished).forEach(m => {
-                    const pTeam = (t, myS, enS) => {
-                        t.forEach(player => {
-                            const s = getP(player.name);
-                            s.mp++;
-                            s.pts += myS;
-                            s.diff += (myS - enS);
-                            if (myS > enS) s.w++;
-                            else if (myS < enS) s.l++;
-                            else s.d++;
-                        });
-                    };
-                    pTeam(m.team1, m.score1, m.score2);
-                    pTeam(m.team2, m.score2, m.score1);
-                });
-            };
-
-            // Calculate past tournaments + current active
-            savedTournaments.forEach(t => processArr(t.matches));
-            processArr(matches);
-
-            const res = Array.from(gStats.values());
-            res.forEach(s => {
-                s.winRate = s.mp > 0 ? Math.round((s.w / s.mp) * 100) : 0;
-            });
-
-            // Sort: Wins -> WinRate -> Point Diff
-            return res.sort((a,b) => b.w - a.w || b.winRate - a.winRate || b.diff - a.diff);
+        // --- PLAYERS & SETTINGS ---
+        function addPlayer(e) {
+            e.preventDefault();
+            const input = document.getElementById('player-input-field');
+            const name = input.value.trim();
+            if (!name) return;
+            players.push({ id: uid(), name: name, gender: tempGender });
+            input.value = '';
+            saveData();
         }
 
-        function renderGlobalStats() {
-            const stats = getGlobalStats();
-            const container = document.getElementById('global-stats-body');
-            
-            if (stats.length === 0) {
-                container.innerHTML = '<div class="text-center text-slate-400 py-10 text-sm">Nėra sužaistų mačų</div>';
-                return;
+        function setGender(g) { 
+            tempGender = g; 
+            document.getElementById('gender-m').className = g==='M'?'px-3 font-bold transition-colors text-lg bg-blue-600 text-white':'px-3 font-bold transition-colors text-lg text-slate-400'; 
+            document.getElementById('gender-f').className = g==='F'?'px-3 font-bold transition-colors text-lg bg-pink-500 text-white':'px-3 font-bold transition-colors text-lg text-slate-400'; 
+        }
+        function removePlayer(id) { if(confirm('Trinti žaidėją?')) { players=players.filter(p=>p.id!==id); saveData(); } }
+        
+        function setMode(m) { 
+            settings.winCondition = m; 
+            resetTimer(); 
+            saveData(); 
+        }
+        function changeSetting(k,v) { 
+            settings[k] = Math.max(1, (settings[k]||0) + v); 
+            if(k==='matchDuration') resetTimer(); 
+            saveData(); 
+        }
+        function changeFormat(v) { settings.format=v; saveData(); document.getElementById('fixed-info').style.display=v==='fixed'?'block':'none'; updateLeaderboard(); }
+        function changeRanking(v) { settings.rankingMode=v; saveData(); updateLeaderboard(); }
+        function resetScores() { if(confirm('Anuliuoti rezultatus?')) { matches=[]; saveData(); } }
+        function resetAll() { if(confirm('Trinti viską?')) { localStorage.clear(); location.reload(); } }
+
+        // --- HISTORY ---
+        function saveToHistory() {
+            if(players.length === 0) return alert("Nėra žaidėjų išsaugojimui.");
+            const name = prompt("Turnyro pavadinimas (pvz. 'Trečiadienio Lyga'):", new Date().toLocaleDateString());
+            if(name) { 
+                savedTournaments.unshift({ 
+                    id: uid(), name, date: new Date().toISOString(), 
+                    players: JSON.parse(JSON.stringify(players)), 
+                    matches: JSON.parse(JSON.stringify(matches)), 
+                    settings: JSON.parse(JSON.stringify(settings)) 
+                }); 
+                alert("Išsaugota!"); saveData(); 
             }
-
-            container.innerHTML = stats.map((p, i) => `
-                <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
-                    <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
-                    <div class="flex-1 text-left pl-1 font-bold text-slate-800 text-sm truncate">${p.name}</div>
-                    <div class="w-7 font-bold text-slate-500 text-xs">${p.mp}</div>
-                    <div class="w-7 font-bold text-green-600 text-xs">${p.w}</div>
-                    <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
-                    <div class="w-12 text-right font-black text-slate-900">${p.winRate}%</div>
-                </div>
-            `).join('');
         }
-
-        // --- VIEW SWITCHER ---
-        function switchView(n) { 
-            document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); 
-            document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active')); 
-            document.getElementById('view-'+n).classList.add('active'); 
-            document.getElementById('nav-'+n).classList.add('active'); 
-            
-            if(n==='leader') updateLeaderboard(); 
-            if(n==='history') renderHistoryList(); 
-            if(n==='stats') renderGlobalStats();
+        function loadTournament(id) { 
+            if(confirm("Dabartiniai (neišsaugoti) duomenys dings. Tęsti?")) { 
+                const t=savedTournaments.find(x=>x.id===id); 
+                if(t){ 
+                    players = JSON.parse(JSON.stringify(t.players)); 
+                    matches = JSON.parse(JSON.stringify(t.matches)); 
+                    settings = { ...defaultSettings, ...(JSON.parse(JSON.stringify(t.settings)) || {}) }; 
+                    resetTimer(); 
+                    saveData(); switchView('matches'); 
+                }
+            } 
         }
+        function deleteTournament(id) { if(confirm("Trinti šią istoriją?")) { savedTournaments=savedTournaments.filter(x=>x.id!==id); saveData(); renderHistoryList(); }}
 
-        // --- STANDARD APP FUNCTIONS ---
-        async function requestWakeLock() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {} }
+        // --- TIMER & AUDIO ---
+        async function requestWakeLock() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.warn(err); } }
         function releaseWakeLock() { if (wakeLock) { wakeLock.release(); wakeLock = null; } }
         
         function playBasketballBuzzer() {
@@ -411,37 +404,52 @@
             createOsc(130,'sawtooth'); createOsc(135,'square'); if(navigator.vibrate)navigator.vibrate(2000); } catch(e){}
         }
 
-        function setGender(g) { tempGender = g; document.getElementById('gender-m').className = g==='M'?'px-3 font-bold transition-colors text-lg bg-blue-600 text-white':'px-3 font-bold transition-colors text-lg text-slate-400'; document.getElementById('gender-f').className = g==='F'?'px-3 font-bold transition-colors text-lg bg-pink-500 text-white':'px-3 font-bold transition-colors text-lg text-slate-400'; }
-        function removePlayer(id) { if(confirm('Trinti?')) { players=players.filter(p=>p.id!==id); saveData(); } }
-        function setMode(m) { resetTimer(); settings.winCondition=m; saveData(); render(); }
-        function changeSetting(k,v) { settings[k]=Math.max(1, settings[k]+v); saveData(); if(k==='matchDuration') resetTimer(); }
-        function changeFormat(v) { settings.format=v; saveData(); document.getElementById('fixed-info').style.display=v==='fixed'?'block':'none'; updateLeaderboard(); }
-        function changeRanking(v) { settings.rankingMode=v; saveData(); updateLeaderboard(); }
-        function resetScores() { if(confirm('Anuliuoti?')) { matches=[]; saveData(); } }
-        function resetAll() { if(confirm('Trinti viską?')) { localStorage.clear(); location.reload(); } }
-
-        function saveToHistory() {
-            if(players.length===0) return;
-            const name = prompt("Turnyro pavadinimas (pvz. 'Trečiadienio Lyga'):", new Date().toLocaleDateString());
-            if(name) { savedTournaments.unshift({ id:uid(), name, date:new Date().toISOString(), players, matches, settings }); alert("Išsaugota!"); saveData(); }
-        }
-        function loadTournament(id) { if(confirm("Dabartiniai duomenys dings. Tęsti?")) { const t=savedTournaments.find(x=>x.id===id); if(t){ players=t.players; matches=t.matches; settings=t.settings; saveData(); switchView('matches'); }} }
-        function deleteTournament(id) { if(confirm("Trinti?")) { savedTournaments=savedTournaments.filter(x=>x.id!==id); saveData(); renderHistoryList(); }}
-
         function updateTimerDisplay() {
-            if (settings.winCondition === 'score') { document.getElementById('timer-controls').style.display = 'none'; document.getElementById('score-mode-text').style.display = 'block'; return; }
-            document.getElementById('score-mode-text').style.display = 'none'; document.getElementById('timer-controls').style.display = 'flex';
-            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0'), s = (timeLeft % 60).toString().padStart(2, '0');
+            const controls = document.getElementById('timer-controls');
+            const scoreText = document.getElementById('score-mode-text');
+            const topBar = document.getElementById('top-bar');
+
+            if (settings.winCondition === 'score') { 
+                controls.style.display = 'none'; 
+                scoreText.style.display = 'block'; 
+                scoreText.innerText = `IKI ${settings.maxPoints || 21} TAŠKŲ`;
+                topBar.classList.remove('bg-red-500', 'text-white');
+                topBar.classList.add('bg-white');
+                return; 
+            }
+            
+            scoreText.style.display = 'none'; 
+            controls.style.display = 'flex';
+            
+            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+            const s = (timeLeft % 60).toString().padStart(2, '0');
             document.getElementById('timer-display').textContent = `${m}:${s}`;
-            document.getElementById('top-bar').className = (timeLeft===0 && !isRunning && alarmInterval) ? "sticky top-0 z-50 border-b border-slate-200 shadow-sm h-16 flex justify-between items-center px-4 w-full bg-red-500 text-white" : "sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm h-16 flex justify-between items-center px-4 w-full";
+            
+            if (timeLeft === 0 && !isRunning && alarmInterval) {
+                topBar.classList.add('bg-red-500', 'text-white');
+                topBar.classList.remove('bg-white');
+            } else {
+                topBar.classList.remove('bg-red-500', 'text-white');
+                topBar.classList.add('bg-white');
+            }
         }
+
         function toggleTimer() {
-            if(settings.winCondition==='score')return;
+            if(settings.winCondition==='score') return;
             if(alarmInterval){stopAlarm();resetTimer();return;}
             if(isRunning){ clearInterval(timerInterval); isRunning=false; releaseWakeLock(); }
-            else { if(timeLeft<=0)return; isRunning=true; requestWakeLock(); endTime=Date.now()+(timeLeft*1000); timerInterval=setInterval(()=>{ const d=Math.ceil((endTime-Date.now())/1000); if(d>0){timeLeft=d;updateTimerDisplay();}else{timeLeft=0;updateTimerDisplay();clearInterval(timerInterval);isRunning=false;triggerAlarm();releaseWakeLock();} },1000); }
+            else { 
+                if(timeLeft<=0)return; 
+                isRunning=true; requestWakeLock(); endTime=Date.now()+(timeLeft*1000); 
+                timerInterval=setInterval(()=>{ 
+                    const d=Math.ceil((endTime-Date.now())/1000); 
+                    if(d>0){timeLeft=d; updateTimerDisplay();}
+                    else{timeLeft=0; updateTimerDisplay(); clearInterval(timerInterval); isRunning=false; triggerAlarm(); releaseWakeLock();} 
+                }, 1000); 
+            }
             updatePlayButtonUI();
         }
+
         function updatePlayButtonUI() {
             const b=document.getElementById('btn-play'), i1=document.getElementById('icon-play'), i2=document.getElementById('icon-pause'), i3=document.getElementById('icon-stop');
             i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden');
@@ -450,11 +458,19 @@
             else if(isRunning) { b.classList.add('bg-orange-100','text-orange-600'); i2.classList.remove('hidden'); }
             else { b.classList.add('bg-green-600','text-white'); i1.classList.remove('hidden'); }
         }
+
         function triggerAlarm() { if(alarmInterval)return; updateTimerDisplay(); playBasketballBuzzer(); alarmInterval=setInterval(playBasketballBuzzer,3000); updatePlayButtonUI(); }
         function stopAlarm() { clearInterval(alarmInterval); alarmInterval=null; updatePlayButtonUI(); }
+        function resetTimer() {
+            stopAlarm();
+            if (isRunning) { clearInterval(timerInterval); timerInterval=null; isRunning=false; releaseWakeLock(); }
+            timeLeft = (settings.matchDuration || 12) * 60;
+            updateTimerDisplay();
+            updatePlayButtonUI();
+        }
         function adjustTime(s) { if(!isRunning && !alarmInterval && settings.winCondition!=='score') { timeLeft=Math.max(0,timeLeft+s); updateTimerDisplay(); } }
 
-        // --- CORE MATCH LOGIC ---
+        // --- MATCH GENERATION LOGIC ---
         function getLeaderboardStats() {
             const stats = players.map(p => ({ ...p, mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0 }));
             matches.filter(m => m.finished).forEach(m => {
@@ -473,7 +489,7 @@
         function calcBalance(prop) { const s=new Map(); players.forEach(p=>s.set(p.id,new Map())); const inc = (p1, p2) => { if(p1!==p2) { const m=s.get(p1); m.set(p2, (m.get(p2)||0)+1); const m2=s.get(p2); m2.set(p1, (m.get(p2)||0)+1); } }; [...matches, ...prop].forEach(m => { m.team1.forEach(p1=>m.team2.forEach(p2=>inc(p1.id, p2.id))); }); let cost = 0; for(const [_, m] of s) for(const [_, c] of m) cost += c*c; return cost; }
 
         function generateRound() {
-            if(players.length<4) return alert("Min 4 žaidėjai.");
+            if(players.length < 4) return alert("Reikia bent 4 žaidėjų!");
             const statsMap = new Map(getLeaderboardStats().map(p=>[p.id,p]));
             let pool = [...players].sort((a,b)=>(statsMap.get(a.id)?.mp||0)-(statsMap.get(b.id)?.mp||0));
             let newM = [], round = (matches[matches.length-1]?.round||0)+1;
@@ -501,6 +517,8 @@
                     }
                 }
                 
+                let fallbackPairs = []; // Išsaugome pirmą tinkamą variantą blogiausiam atvejui
+                
                 for(let i=0;i<iter;i++) {
                     let req=settings.courts*4; let act=pool.slice(0,Math.min(pool.length,req+2)).sort(()=>Math.random()-0.5).slice(0,req);
                     let pairs=[], valid=true;
@@ -509,6 +527,9 @@
                         if(m.length<req/2 || w.length<req/2) valid=false; else for(let k=0;k<m.length;k++) pairs.push([m[k],w[k]]);
                     } else { for(let k=0;k<act.length-1;k+=2) pairs.push([act[k],act[k+1]]); }
                     if(!valid || pairs.length<2) continue;
+                    
+                    if(fallbackPairs.length === 0) fallbackPairs = [...pairs]; // Saugiklis
+
                     let cur=[], cost=0;
                     const hist = getPartnerHistory();
                     pairs.forEach(p=>{ if(hist.has(p[0].id)&&hist.get(p[0].id).has(p[1].id)) cost+=1000; });
@@ -516,29 +537,123 @@
                     cost += calcBalance(cur);
                     if(cost<minC) { minC=cost; best=cur; if(minC===0)break; }
                 }
-                if(best) best.forEach((m,i)=>{ const s=(p)=>p.sort((a,b)=>a.name.localeCompare(b.name)); newM.push({id:uid(),round,court:i+1,finished:false,score1:0,score2:0,team1:s(m.team1),team2:s(m.team2)}) });
+
+                // Jei po 4000 iteracijų nerado nieko (pvz., per daug ribojimų), imam fallback
+                if(!best && fallbackPairs.length >= 2) {
+                    best = [];
+                    for(let k=0; k<fallbackPairs.length-1; k+=2) {
+                        if(best.length >= settings.courts) break;
+                        best.push({team1: fallbackPairs[k], team2: fallbackPairs[k+1]});
+                    }
+                }
+
+                if(best) {
+                    best.forEach((m,i)=>{ const s=(p)=>p.sort((a,b)=>a.name.localeCompare(b.name)); newM.push({id:uid(),round,court:i+1,finished:false,score1:0,score2:0,team1:s(m.team1),team2:s(m.team2)}) });
+                }
             }
-            if(newM.length>0) { matches=[...matches,...newM]; saveData(); switchView('matches'); } else alert("Nepavyko sugeneruoti.");
+            if(newM.length>0) { matches=[...matches,...newM]; saveData(); switchView('matches'); } else alert("Nepakanka žaidėjų sudaryti mačui.");
         }
 
-        function updateScore(id, t, v) { const m=matches.find(x=>x.id===id); if(m&&!m.finished){ const lim=settings.winCondition==='score'?settings.maxPoints:999; if(t===1)m.score1=Math.min(lim,Math.max(0,m.score1+v)); else m.score2=Math.min(lim,Math.max(0,m.score2+v)); saveData(); } }
+        function updateScore(id, t, v) { 
+            const m=matches.find(x=>x.id===id); 
+            if(m && !m.finished) { 
+                const lim = settings.winCondition==='score' ? (settings.maxPoints || 21) : 999; 
+                if(t===1) m.score1=Math.min(lim, Math.max(0, m.score1+v)); 
+                else m.score2=Math.min(lim, Math.max(0, m.score2+v)); 
+                saveData(); 
+            } 
+        }
         function finishMatch(id) { const m=matches.find(x=>x.id===id); if(m){ m.finished=true; saveData(); } }
         function undoMatch(id) { const m=matches.find(x=>x.id===id); if(m){ m.finished=false; saveData(); } }
 
-        function renderHistoryList() {
-            const l=document.getElementById('history-list'); l.innerHTML = savedTournaments.length===0 ? '<div class="text-center text-slate-400 py-10">Tuščia</div>' : savedTournaments.map(t=>`<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between"><div><h3 class="font-bold text-slate-800">${t.name}</h3><p class="text-xs text-slate-400">${new Date(t.date).toLocaleString()}</p></div><span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold h-fit">${t.settings.format}</span></div><div class="flex gap-2 mt-2"><button onclick="loadTournament('${t.id}')" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded text-xs font-bold uppercase">Užkrauti</button><button onclick="deleteTournament('${t.id}')" class="px-4 bg-red-50 text-red-500 rounded font-bold">×</button></div></div>`).join('');
+        // --- GLOBAL STATS LOGIC ---
+        function renderGlobalStats() {
+            const dateFrom = document.getElementById('stat-date-from').value;
+            const dateTo = document.getElementById('stat-date-to').value;
+            const genderFilter = document.getElementById('stat-gender').value;
+            const playerFilter = document.getElementById('stat-player').value;
+
+            const allUniqueNames = new Set();
+            const gStats = new Map();
+
+            const getP = (name, gender) => {
+                allUniqueNames.add(name);
+                if (!gStats.has(name)) gStats.set(name, { name: name, gender: gender, mp: 0, w: 0, d: 0, l: 0, pts: 0, diff: 0, winRate: 0 });
+                return gStats.get(name);
+            };
+
+            const processArr = (matchArr, matchDateStr) => {
+                if (!matchDateStr) return; 
+                const mDate = new Date(matchDateStr);
+                if (dateFrom && mDate < new Date(dateFrom)) return;
+                if (dateTo && mDate > new Date(dateTo + 'T23:59:59')) return;
+
+                matchArr.filter(m => m.finished).forEach(m => {
+                    const pTeam = (t, myS, enS) => {
+                        t.forEach(player => {
+                            const s = getP(player.name, player.gender);
+                            s.mp++; s.pts += myS; s.diff += (myS - enS);
+                            if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.d++;
+                        });
+                    };
+                    pTeam(m.team1, m.score1, m.score2); pTeam(m.team2, m.score2, m.score1);
+                });
+            };
+
+            savedTournaments.forEach(t => processArr(t.matches, t.date));
+            if (matches.length > 0) processArr(matches, new Date().toISOString());
+
+            const playerSelect = document.getElementById('stat-player');
+            const currentSelectedPlayer = playerSelect.value;
+            playerSelect.innerHTML = '<option value="ALL">Visi</option>' + Array.from(allUniqueNames).sort().map(n => `<option value="${n}" ${n === currentSelectedPlayer ? 'selected' : ''}>${n}</option>`).join('');
+
+            let res = Array.from(gStats.values());
+            res.forEach(s => { s.winRate = s.mp > 0 ? Math.round((s.w / s.mp) * 100) : 0; });
+            if (genderFilter !== 'ALL') res = res.filter(p => p.gender === genderFilter);
+            if (playerFilter !== 'ALL') res = res.filter(p => p.name === playerFilter);
+            res.sort((a,b) => b.w - a.w || b.winRate - a.winRate || b.diff - a.diff);
+
+            const container = document.getElementById('global-stats-body');
+            if (res.length === 0) { container.innerHTML = '<div class="text-center text-slate-400 py-10 text-sm">Nėra duomenų pagal šiuos filtrus</div>'; return; }
+            container.innerHTML = res.map((p, i) => `
+                <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
+                    <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
+                    <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
+                        <div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div>
+                        <div class="font-bold text-slate-800 text-sm truncate">${p.name}</div>
+                    </div>
+                    <div class="w-7 font-bold text-slate-500 text-xs">${p.mp}</div>
+                    <div class="w-7 font-bold text-green-600 text-xs">${p.w}</div>
+                    <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
+                    <div class="w-12 text-right font-black text-slate-900">${p.winRate}%</div>
+                </div>`).join('');
         }
 
-        function render() {
+        // --- UI RENDER & SWITCH ---
+        function switchView(n) { 
+            document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); 
+            document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active')); 
+            document.getElementById('view-'+n).classList.add('active'); 
+            document.getElementById('nav-'+n).classList.add('active'); 
+            if(n==='leader') updateLeaderboard(); 
+            if(n==='history') renderHistoryList(); 
+            if(n==='stats') renderGlobalStats();
+        }
+
+        function renderHistoryList() {
+            const l=document.getElementById('history-list'); l.innerHTML = savedTournaments.length===0 ? '<div class="text-center text-slate-400 py-10">Tuščia</div>' : savedTournaments.map(t=>`<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between"><div><h3 class="font-bold text-slate-800">${t.name}</h3><p class="text-xs text-slate-400">${new Date(t.date).toLocaleString()}</p></div><span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold h-fit">${t.settings?.format || 'americano'}</span></div><div class="flex gap-2 mt-2"><button onclick="loadTournament('${t.id}')" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded text-xs font-bold uppercase">Užkrauti</button><button onclick="deleteTournament('${t.id}')" class="px-4 bg-red-50 text-red-500 rounded font-bold">×</button></div></div>`).join('');
+        }
+
+        function render(isFromCloud = false) {
             document.getElementById('player-count').textContent = `Viso: ${players.length}`;
-            document.getElementById('val-duration').textContent = settings.matchDuration;
-            document.getElementById('val-points').textContent = settings.maxPoints;
-            document.getElementById('val-courts').textContent = settings.courts;
-            document.getElementById('select-format').value = settings.format;
+            document.getElementById('val-duration').textContent = settings.matchDuration || 12;
+            document.getElementById('val-points').textContent = settings.maxPoints || 21;
+            document.getElementById('val-courts').textContent = settings.courts || 2;
+            document.getElementById('select-format').value = settings.format || 'americano';
             document.getElementById('fixed-info').style.display = (settings.format === 'fixed') ? 'block' : 'none';
             document.getElementById('select-ranking').value = settings.rankingMode || 'points';
 
-            const mode = settings.winCondition;
+            const mode = settings.winCondition || 'time';
             document.getElementById('mode-time').className = mode === 'time' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
             document.getElementById('mode-score').className = mode === 'score' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
             document.getElementById('control-duration').style.display = mode === 'time' ? 'block' : 'none';
@@ -546,22 +661,17 @@
 
             document.getElementById('players-list').innerHTML = players.slice().reverse().map(p => `
                 <div class="flex justify-between items-center bg-white p-3 pl-4 rounded-xl border border-slate-100 shadow-sm w-full">
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        <div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">
-                            ${p.gender === 'M' ? 'V' : 'M'}
-                        </div>
-                        <span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>
-                    </div>
+                    <div class="flex items-center gap-3 overflow-hidden"><div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div><span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span></div>
                     <button type="button" onclick="removePlayer('${p.id}')" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 text-2xl shrink-0">×</button>
-                </div>
-            `).join('');
+                </div>`).join('');
 
             renderMatches();
             updateTimerDisplay();
             updatePlayButtonUI();
+            
             try { 
                 updateLeaderboard(); 
-                renderGlobalStats(); 
+                if (document.getElementById('view-stats').classList.contains('active') || !isFromCloud) renderGlobalStats(); 
             } catch (e) {}
         }
 
@@ -569,37 +679,22 @@
             const active = matches.filter(m => !m.finished);
             const finished = matches.filter(m => m.finished).sort((a,b) => (''+b.id).localeCompare(''+a.id));
             document.getElementById('matches-container').innerHTML = active.map(m => {
-                const limit = settings.winCondition === 'score' ? settings.maxPoints : 999999;
-                const w1 = m.score1 >= limit;
-                const w2 = m.score2 >= limit;
-                
+                const limit = settings.winCondition === 'score' ? (settings.maxPoints || 21) : 999999;
+                const w1 = m.score1 >= limit, w2 = m.score2 >= limit;
                 return `
                 <div class="bg-white rounded-2xl shadow-md shadow-slate-200 border border-slate-100 overflow-hidden mb-6 w-full">
-                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold tracking-widest flex justify-between items-center">
-                        <span>AIKŠTELĖ ${m.court}</span>
-                        <span class="bg-slate-700 px-2 py-0.5 rounded text-slate-200">Raundas ${m.round}</span>
-                    </div>
+                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold tracking-widest flex justify-between items-center"><span>AIKŠTELĖ ${m.court}</span><span class="bg-slate-700 px-2 py-0.5 rounded text-slate-200">Raundas ${m.round}</span></div>
                     <div class="p-4 sm:p-5">
                         <div class="flex justify-between items-center mb-4 transition-opacity ${w2 ? 'opacity-40' : 'opacity-100'}">
                             <div class="flex flex-col gap-1 overflow-hidden">${m.team1.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <button type="button" onclick="updateScore('${m.id}', 1, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button>
-                                <span class="text-3xl font-black w-10 text-center ${w1 ? 'text-green-600' : 'text-slate-800'}">${m.score1}</span>
-                                <button type="button" onclick="updateScore('${m.id}', 1, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button>
-                            </div>
+                            <div class="flex items-center gap-2 shrink-0"><button type="button" onclick="updateScore('${m.id}', 1, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button><span class="text-3xl font-black w-10 text-center ${w1 ? 'text-green-600' : 'text-slate-800'}">${m.score1}</span><button type="button" onclick="updateScore('${m.id}', 1, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button></div>
                         </div>
                         <div class="h-px bg-slate-100 mb-4 relative"><span class="absolute left-1/2 -top-2 -translate-x-1/2 bg-white px-2 text-xs text-slate-300 font-bold uppercase">vs</span></div>
                         <div class="flex justify-between items-center mb-6 transition-opacity ${w1 ? 'opacity-40' : 'opacity-100'}">
                             <div class="flex flex-col gap-1 overflow-hidden">${m.team2.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <button type="button" onclick="updateScore('${m.id}', 2, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button>
-                                <span class="text-3xl font-black w-10 text-center ${w2 ? 'text-green-600' : 'text-slate-800'}">${m.score2}</span>
-                                <button type="button" onclick="updateScore('${m.id}', 2, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button>
-                            </div>
+                            <div class="flex items-center gap-2 shrink-0"><button type="button" onclick="updateScore('${m.id}', 2, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button><span class="text-3xl font-black w-10 text-center ${w2 ? 'text-green-600' : 'text-slate-800'}">${m.score2}</span><button type="button" onclick="updateScore('${m.id}', 2, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button></div>
                         </div>
-                        <button type="button" onclick="finishMatch('${m.id}')" class="w-full py-4 rounded-xl font-bold text-base tracking-wide shadow-xl transition-all bg-slate-900 text-white active:scale-95">
-                            Užbaigti Mačą
-                        </button>
+                        <button type="button" onclick="finishMatch('${m.id}')" class="w-full py-4 rounded-xl font-bold text-base tracking-wide shadow-xl transition-all bg-slate-900 text-white active:scale-95">Užbaigti Mačą</button>
                     </div>
                 </div>`;
             }).join('');
@@ -608,17 +703,9 @@
             if (finished.length > 0) {
                 finContainer.innerHTML = `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-2">Baigti mačai</h3>` + finished.map(m => `
                     <div class="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center w-full mb-3">
-                        <div class="flex flex-col text-xs font-bold text-slate-600 overflow-hidden pr-2">
-                            <span class="truncate">${m.team1.map(p=>p.name).join('/')}</span>
-                            <span class="text-slate-300 text-[10px] my-0.5">VS</span>
-                            <span class="truncate">${m.team2.map(p=>p.name).join('/')}</span>
-                        </div>
-                        <div class="flex flex-col items-end gap-2 shrink-0">
-                            <div class="text-xl font-black bg-slate-100 px-3 py-1 rounded-lg text-slate-800">${m.score1} : ${m.score2}</div>
-                            <button type="button" onclick="undoMatch('${m.id}')" class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Taisyti</button>
-                        </div>
-                    </div>
-                `).join('');
+                        <div class="flex flex-col text-xs font-bold text-slate-600 overflow-hidden pr-2"><span class="truncate">${m.team1.map(p=>p.name).join('/')}</span><span class="text-slate-300 text-[10px] my-0.5">VS</span><span class="truncate">${m.team2.map(p=>p.name).join('/')}</span></div>
+                        <div class="flex flex-col items-end gap-2 shrink-0"><div class="text-xl font-black bg-slate-100 px-3 py-1 rounded-lg text-slate-800">${m.score1} : ${m.score2}</div><button type="button" onclick="undoMatch('${m.id}')" class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Taisyti</button></div>
+                    </div>`).join('');
             } else { finContainer.innerHTML = ''; }
         }
 
@@ -626,44 +713,20 @@
             const isFixed = settings.format === 'fixed';
             const stats = isFixed ? getFixedTeamStats() : getLeaderboardStats();
             const mode = settings.rankingMode || 'points';
-            
-            document.getElementById('leaderboard-header').innerHTML = `
-                <div class="w-6">#</div>
-                <div class="flex-1 text-left pl-1">${isFixed ? 'Komanda' : 'Žaidėjas'}</div>
-                <div class="w-7 ${mode === 'wins' ? 'text-green-700 font-black' : ''}">W</div>
-                <div class="w-7">T</div>
-                <div class="w-7">L</div>
-                <div class="w-10">+/-</div>
-                <div class="w-10 text-right ${mode === 'points' ? 'text-slate-900 font-black' : ''}">TŠK</div>
-            `;
-
+            document.getElementById('leaderboard-header').innerHTML = `<div class="w-6">#</div><div class="flex-1 text-left pl-1">${isFixed ? 'Komanda' : 'Žaidėjas'}</div><div class="w-7 ${mode === 'wins' ? 'text-green-700 font-black' : ''}">W</div><div class="w-7">T</div><div class="w-7">L</div><div class="w-10">+/-</div><div class="w-10 text-right ${mode === 'points' ? 'text-slate-900 font-black' : ''}">TŠK</div>`;
             document.getElementById('leaderboard-body').innerHTML = stats.map((p, i) => `
                 <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
                     <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
-                    
                     <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
-                         ${!isFixed ? `
-                         <div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">
-                            ${p.gender === 'M' ? 'V' : 'M'}
-                        </div>` : ''}
-                        <div class="flex flex-col overflow-hidden">
-                            <span class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</span>
-                        </div>
+                         ${!isFixed ? `<div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div>` : ''}
+                        <div class="flex flex-col overflow-hidden"><span class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</span></div>
                     </div>
-
                     <div class="w-7 font-bold text-xs ${mode === 'wins' ? 'text-green-700 bg-green-100 rounded' : 'text-green-600'}">${p.w}</div>
                     <div class="w-7 font-bold text-orange-400 text-xs">${p.d}</div>
                     <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
-                    
-                    <div class="w-10 font-bold text-xs ${p.diff > 0 ? 'text-green-600' : (p.diff < 0 ? 'text-red-500' : 'text-slate-400')}">
-                        ${p.diff > 0 ? '+' : ''}${p.diff}
-                    </div>
-
-                    <div class="w-10 text-right font-black text-lg ${mode === 'points' ? 'text-slate-900' : 'text-slate-500'}">
-                        ${mode === 'wins' ? p.leaguePts : p.setWon}
-                    </div>
-                </div>
-            `).join('');
+                    <div class="w-10 font-bold text-xs ${p.diff > 0 ? 'text-green-600' : (p.diff < 0 ? 'text-red-500' : 'text-slate-400')}">${p.diff > 0 ? '+' : ''}${p.diff}</div>
+                    <div class="w-10 text-right font-black text-lg ${mode === 'points' ? 'text-slate-900' : 'text-slate-500'}">${mode === 'wins' ? p.leaguePts : p.setWon}</div>
+                </div>`).join('');
         }
 
         render();
