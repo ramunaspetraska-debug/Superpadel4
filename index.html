@@ -3,60 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V54 (Ultimate Stability)</title>
+    <title>Padelio PRO V65 (Fixed Generator)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { 
-            background-color: #f8fafc; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            -webkit-tap-highlight-color: transparent; 
-            overscroll-behavior-y: none;
-            overflow-x: hidden; 
-            width: 100vw;
-            margin: 0;
-            padding-bottom: 90px;
-        }
-        input, select, button { font-size: 16px !important; touch-action: manipulation; } 
+        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 90px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
         .nav-btn.active { color: #16a34a; }
         .nav-btn.active svg { stroke: #16a34a; }
         .nav-btn { color: #94a3b8; transition: all 0.2s; }
-        
         .view-section { display: none; }
         .view-section.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        @keyframes pulse-red {
-            0%, 100% { background-color: #ef4444; transform: scale(1); }
-            50% { background-color: #dc2626; transform: scale(1.1); }
-        }
-        .alarm-active { animation: pulse-red 1s infinite; }
+        .avatar-frame-m { border: 2px solid #3b82f6; }
+        .avatar-frame-f { border: 2px solid #ec4899; }
+        input, select { font-size: 16px !important; }
+        .stat-col { text-align: center; font-weight: bold; font-size: 10px; width: 22px; flex-shrink: 0; }
+        .stat-col-wide { text-align: right; font-weight: 900; font-size: 12px; width: 42px; flex-shrink: 0; }
     </style>
 </head>
 <body>
 
-    <div id="error-box" style="display:none; position:fixed; top:0; left:0; width:100%; background:red; color:white; padding:20px; z-index:9999; font-size:12px;"></div>
     <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
 
-    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm h-16 flex justify-between items-center px-4 w-full transition-colors">
+    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full">
         <div class="flex items-center gap-2" id="timer-controls">
             <button type="button" onclick="adjustTime(-60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-xl font-bold">-</button>
-            <span id="timer-display" class="text-3xl font-black font-mono tracking-wider tabular-nums select-none">12:00</span>
+            <span id="timer-display" class="text-3xl font-black font-mono tracking-tighter tabular-nums">12:00</span>
             <button type="button" onclick="adjustTime(60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-xl font-bold">+</button>
         </div>
         <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
-        <div class="flex items-center gap-3">
-            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-12 h-12 rounded-full bg-green-600 text-white shadow-lg shadow-green-600/30 flex items-center justify-center active:scale-95 transition-transform relative">
-                <svg id="icon-play" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="icon-pause" class="hidden" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                <svg id="icon-stop" class="hidden" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
+        <div class="flex items-center gap-2">
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-10 h-10 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95">
+                <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                <svg id="icon-stop" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
             </button>
-            <button type="button" onclick="resetTimer()" class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
-                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <button type="button" onclick="resetTimer()" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
         </div>
     </div>
@@ -64,670 +49,410 @@
     <div class="max-w-md mx-auto p-4 w-full">
         
         <div id="view-setup" class="view-section active w-full">
-            <div class="bg-white p-3 pr-4 rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-200 mb-6 w-full">
-                <div class="flex justify-between items-center mb-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wide">Naujas Žaidėjas</label>
-                    <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded-full font-bold">Viso: 0</span>
-                </div>
-                <form id="add-player-form" onsubmit="addPlayer(event)" class="flex gap-2 w-full">
-                    <div class="flex bg-slate-100 rounded-xl overflow-hidden shrink-0 h-14 border border-slate-200">
-                        <button type="button" id="gender-m" onclick="setGender('M')" class="px-3 font-bold transition-colors text-lg bg-blue-600 text-white">V</button>
-                        <button type="button" id="gender-f" onclick="setGender('F')" class="px-3 font-bold transition-colors text-lg text-slate-400">M</button>
+            <div class="bg-white p-2 rounded-2xl shadow-lg border border-slate-200 mb-6">
+                <form onsubmit="addPlayer(event)" class="flex gap-2 w-full items-center">
+                    <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-9 border border-slate-200">
+                        <button type="button" id="gender-m" onclick="setGender('M')" class="w-7 font-bold transition-colors bg-blue-600 text-white text-[10px]">V</button>
+                        <button type="button" id="gender-f" onclick="setGender('F')" class="w-7 font-bold transition-colors text-slate-400 text-[10px]">M</button>
                     </div>
-                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="new-password" spellcheck="false" class="flex-1 min-w-0 px-3 rounded-xl border-2 border-slate-200 focus:outline-none focus:border-green-500 h-14 text-slate-900 font-bold text-lg" />
-                    <button type="submit" class="bg-slate-900 text-white w-14 h-14 shrink-0 rounded-xl font-bold text-3xl shadow-lg active:scale-95">+</button>
+                    <div class="relative shrink-0">
+                        <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-9 h-9 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden">
+                            <span id="photo-placeholder" class="text-base">📷</span>
+                            <img id="photo-preview" class="hidden w-full h-full object-cover">
+                        </button>
+                    </div>
+                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-3 rounded-lg border-2 border-slate-100 focus:outline-none focus:border-green-500 h-9 text-slate-900 font-bold text-sm" />
+                    <button type="submit" class="bg-slate-900 text-white w-9 h-9 shrink-0 rounded-lg font-bold text-xl active:scale-95">+</button>
                 </form>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4 w-full">
-                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Nustatymai</h3>
-                
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4">
                 <div class="flex bg-slate-100 p-1 rounded-lg">
-                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all">Pagal Laiką</button>
-                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all">Pagal Taškus</button>
+                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase">Pagal Laiką</button>
+                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase">Pagal Taškus</button>
                 </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div id="control-duration">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Laikas (min)</label>
-                        <div class="flex items-center gap-2 h-[42px]">
-                            <button type="button" onclick="changeSetting('matchDuration', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
-                            <span id="val-duration" class="flex-1 text-center font-black text-xl text-slate-800">12</span>
-                            <button type="button" onclick="changeSetting('matchDuration', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
-                        </div>
-                    </div>
-                     <div id="control-points" style="display:none;">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Iki taškų</label>
-                        <div class="flex items-center gap-2 h-[42px]">
-                            <button type="button" onclick="changeSetting('maxPoints', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
-                            <span id="val-points" class="flex-1 text-center font-black text-xl text-slate-800">21</span>
-                            <button type="button" onclick="changeSetting('maxPoints', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Aikštelės</label>
-                        <div class="flex items-center gap-2 h-[42px]">
-                            <button type="button" onclick="changeSetting('courts', -1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">-</button>
-                            <span id="val-courts" class="flex-1 text-center font-black text-xl text-slate-800">2</span>
-                            <button type="button" onclick="changeSetting('courts', 1)" class="w-10 h-full bg-slate-100 rounded font-bold text-slate-600 active:bg-slate-200 text-xl">+</button>
-                        </div>
-                    </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
-                
-                <div>
-                     <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Formatas</label>
-                     <select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm focus:outline-none">
-                        <option value="americano">Americano</option>
-                        <option value="fixed">Fiksuotos Poros (2vs2)</option>
-                        <option value="mexicano">Mexicano</option>
-                        <option value="super_mexicano">Super Mexicano (Stipriausi vs Stipriausi)</option>
-                        <option value="mix_americano">Mix Americano (Vyras + Moteris)</option>
-                        <option value="mix_mexicano">Mix Mexicano (V+M pagal lygį)</option>
-                    </select>
-                     <div id="fixed-info" class="hidden text-[10px] text-slate-400 mt-1 italic text-center">Poros sudaromos pagal sąrašą: 1+2, 3+4, 5+6 ir t.t.</div>
-                </div>
-                
-                <div>
-                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Reitingavimas</label>
-                    <select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-slate-900 text-sm focus:outline-none">
-                       <option value="points">Pagal TAŠKUS (Americano)</option>
-                       <option value="wins">Pagal PERGALES (W=2 / D=1)</option>
-                   </select>
-               </div>
+                <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="super_mexicano">Super Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
             </div>
 
-            <div id="players-list" class="space-y-2 mb-10 w-full"></div>
-
-            <div class="space-y-3 pt-4 border-t border-slate-200 w-full pb-10">
-                <button type="button" onclick="saveToHistory()" class="w-full py-4 text-blue-600 bg-white hover:bg-blue-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-blue-200 mb-2">Išsaugoti lokaliai</button>
-                <button type="button" onclick="resetScores()" class="w-full py-4 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-orange-200 mb-2">Anuliuoti rezultatus</button>
-                <button type="button" onclick="resetAll()" class="w-full py-4 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-xs uppercase tracking-wider border border-red-200">Ištrinti viską</button>
+            <div id="players-list" class="space-y-2 mb-10"></div>
+            <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
+                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 rounded-xl font-bold text-xs uppercase border border-blue-200">✏️ Kraunama...</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-orange-200">NAUJAS TURNYRAS</button>
+                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-red-200">VALYTI VISKĄ</button>
+                </div>
             </div>
         </div>
 
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Mačai</h2>
-                <button type="button" onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95 transition-transform flex items-center gap-2"><span>+</span> Naujas</button>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
+                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95">NAUJAS</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
         </div>
 
         <div id="view-leader" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Rezultatai (Turnyro)</h2>
+            <h2 class="text-2xl font-black mb-6">Lentelė</h2>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                 <div id="leaderboard-header" class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center"></div>
+                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
+                 </div>
                 <div id="leaderboard-body" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
         <div id="view-stats" class="view-section w-full">
-            <div class="flex justify-between items-end mb-4">
-                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Bendra<br>Statistika</h2>
-            </div>
-            
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 space-y-3">
-                <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-2">Analizės Filtrai</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Nuo (Data)</label>
-                        <input type="date" id="stat-date-from" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-green-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Iki (Data)</label>
-                        <input type="date" id="stat-date-to" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-green-500 focus:outline-none">
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Lytis</label>
-                        <select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-green-500 focus:outline-none">
-                            <option value="ALL">Visi</option><option value="M">Vyrai</option><option value="F">Moterys</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Žaidėjas</label>
-                        <select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 truncate focus:border-green-500 focus:outline-none">
-                            <option value="ALL">Visi</option>
-                        </select>
-                    </div>
+            <h2 class="text-2xl font-black mb-4">Statistika</h2>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold"></select></div>
+                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold"><option value="ALL">Visi</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
+                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold"><option value="ALL">Visi žaidėjai</option></select></div>
                 </div>
             </div>
-
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">
-                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Žaidėjas</div><div class="w-7">MP</div><div class="w-7 text-green-600">W</div><div class="w-7 text-red-400">L</div><div class="w-12 text-right">Win %</div>
+                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
                 </div>
                 <div id="global-stats-body" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
         <div id="view-history" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Istorija</h2>
+            <h2 class="text-2xl font-black mb-6">Istorija</h2>
             <div id="history-list" class="space-y-4"></div>
         </div>
 
         <div id="view-cloud" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6 text-slate-800 tracking-tight">Kambarys</h2>
-            <div class="bg-slate-900 p-5 rounded-3xl shadow-2xl mb-6 w-full text-white">
+            <h2 class="text-2xl font-black mb-6">Debesis</h2>
+            <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-sm uppercase tracking-wider flex items-center gap-2">
-                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg>
-                        Debesų Sinchronizacija
-                    </h3>
+                    <h3 class="font-bold text-sm uppercase">☁️ Sinchronizacija</h3>
                     <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
                 </div>
-                
-                <p class="text-sm text-slate-300 mb-6 leading-relaxed">
-                    Įveskite bendrą kambario pavadinimą, kad sujungtumėte įrenginius.
-                </p>
-                
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
                 <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
                 <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
-                
-                <div class="space-y-4">
-                    <input type="text" id="fb-room" placeholder="Kambario Pavadinimas" autocomplete="new-password" spellcheck="false" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black tracking-wide text-yellow-400 focus:outline-none focus:border-green-500 text-center">
-                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 hover:bg-green-500 py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-green-900/50 active:scale-95 transition-all">Prisijungti prie kambario</button>
+                <div id="cloud-connect-ui" class="space-y-4">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase">
+                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase">Prisijungti</button>
+                </div>
+                <div id="cloud-active-ui" class="hidden space-y-4 text-center">
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400">---</p>
+                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
                 </div>
             </div>
         </div>
-
     </div>
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-        <div class="flex justify-between items-center h-16 max-w-md mx-auto px-2">
-            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[9px] font-bold mt-1">Nustat.</span></button>
-            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[9px] font-bold mt-1">Mačai</span></button>
-            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[9px] font-bold mt-1">Lentelė</span></button>
-            <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[9px] font-bold mt-1">Statist.</span></button>
-            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[9px] font-bold mt-1">Istorija</span></button>
-            <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%] py-1 active:scale-95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[9px] font-bold mt-1">Kambarys</span></button>
+        <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
+            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
+            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
+            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
+            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
+            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
+            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
         </div>
     </div>
 
     <script>
-        // --- GLOBAL VARIABLES ---
-        const defaultSettings = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
-        let players = [], matches = [], savedTournaments = [];
-        let settings = { ...defaultSettings };
-        let tempGender = 'M', timeLeft = 0, timerInterval = null, alarmInterval = null, isRunning = false, endTime = 0, wakeLock = null;
-        
-        let db = null, firebaseConfig = null, currentRoom = null, dbRef = null, isCloudConnected = false;
+        // --- DATA & STATE ---
+        const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
+        let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
+        let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
 
-        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
         // --- INIT ---
         try {
-            players = JSON.parse(localStorage.getItem('padel_players_v54')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v54')) || [];
-            const savedS = JSON.parse(localStorage.getItem('padel_settings_v54'));
-            settings = { ...defaultSettings, ...(savedS || {}) };
-            savedTournaments = JSON.parse(localStorage.getItem('padel_history_v54')) || [];
+            players = JSON.parse(localStorage.getItem('p_v65')) || [];
+            matches = JSON.parse(localStorage.getItem('m_v65')) || [];
+            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v65')) || {})};
+            savedTournaments = JSON.parse(localStorage.getItem('h_v65')) || [];
+            currentTid = localStorage.getItem('tid_v65');
             timeLeft = settings.matchDuration * 60;
-            
-            const savedRoom = localStorage.getItem('padel_room_name');
-            if(savedRoom) {
-                document.getElementById('fb-room').value = savedRoom;
-                initFirebaseConnection(true); 
-            }
-        } catch (e) { console.error("Init err:", e); localStorage.clear(); }
+            const r = localStorage.getItem('r_v65');
+            if(r) { document.getElementById('fb-room').value = r; initFirebaseConnection(true); }
+        } catch(e) { localStorage.clear(); }
 
-        // --- CLOUD SYNC ---
-        function initFirebaseConnection(silent = false) {
-            const apiKey = document.getElementById('fb-apiKey').value;
-            const authDomain = document.getElementById('fb-authDomain').value;
-            const databaseURL = document.getElementById('fb-databaseURL').value;
-            const projectId = document.getElementById('fb-projectId').value;
-            const room = document.getElementById('fb-room').value.trim();
+        // --- THE BRAINS (BALANCED GENERATOR) ---
+        function getPartnerHistory() {
+            const h = new Map();
+            const all = [...savedTournaments.map(t=>t.matches).flat(), ...matches];
+            all.forEach(m => {
+                const add = (p1, p2) => {
+                    if(!h.has(p1.id)) h.set(p1.id, new Map());
+                    const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                };
+                if(m.team1.length > 1) { add(m.team1[0], m.team1[1]); add(m.team1[1], m.team1[0]); }
+                if(m.team2.length > 1) { add(m.team2[0], m.team2[1]); add(m.team2[1], m.team2[0]); }
+            });
+            return h;
+        }
 
-            if(!room) { if(!silent) alert("Įveskite kambario pavadinimą!"); return; }
+        function calculateBalanceCost(prop) {
+            const stats = new Map();
+            players.forEach(p => stats.set(p.id, new Map()));
+            prop.forEach(m => {
+                m.team1.forEach(p1 => m.team2.forEach(p2 => {
+                    const m1 = stats.get(p1.id); if(m1) m1.set(p2.id, (m1.get(p2.id)||0)+1);
+                    const m2 = stats.get(p2.id); if(m2) m2.set(p1.id, (m2.get(p1.id)||0)+1);
+                }));
+            });
+            let cost = 0;
+            for(const [_, m] of stats) for(const [_, c] of m) cost += (c * c);
+            return cost;
+        }
 
-            firebaseConfig = { apiKey, authDomain, databaseURL, projectId };
-            currentRoom = room;
-            localStorage.setItem('padel_room_name', room);
+        function generateRound() {
+            if(players.length < 4) return alert("Min 4 žaidėjai!");
+            let newM = [], roundNum = (matches[matches.length-1]?.round || 0) + 1;
+            const hist = getPartnerHistory();
+            let bestSet = null, minScore = Infinity;
 
-            try {
-                if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                dbRef = db.ref('padel_tournaments/' + currentRoom);
+            for(let i=0; i<5000; i++) {
+                let pool = [...players].sort(() => Math.random() - 0.5);
+                let currentSet = [], currentScore = 0;
                 
-                document.getElementById('cloud-status').textContent = "Prijungta: " + room;
-                document.getElementById('cloud-status').className = "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg";
-                isCloudConnected = true;
-                
-                dbRef.on('value', (snapshot) => {
-                    const data = snapshot.val();
-                    if(data) {
-                        if (JSON.stringify(data.players) !== JSON.stringify(players) || 
-                            JSON.stringify(data.matches) !== JSON.stringify(matches) ||
-                            JSON.stringify(data.settings) !== JSON.stringify(settings)) {
-                             players = data.players || [];
-                             matches = data.matches || [];
-                             settings = { ...defaultSettings, ...(data.settings || {}) };
-                             
-                             resetTimer(); // Update UI in case mode changed
-                             render(true); 
-                             
-                             document.getElementById('sync-bar').style.width = '100%';
-                             setTimeout(() => document.getElementById('sync-bar').style.width = '0', 500);
-                        }
-                    } else if(players.length > 0) {
-                        saveData();
+                if(settings.format.includes('mix')) {
+                    let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
+                    let courtsNeeded = Math.min(settings.courts, Math.floor(m.length/2), Math.floor(f.length/2));
+                    if(courtsNeeded === 0) break;
+                    for(let c=0; c<courtsNeeded; c++) {
+                        const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
+                        currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 50;
+                        currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 50;
+                        currentSet.push({ team1: t1, team2: t2 });
                     }
-                });
-                
-                if(!silent) { alert("Sėkmingai prisijungta!"); switchView('matches'); }
-            } catch(e) { console.error(e); if(!silent) alert("Klaida: " + e.message); }
-        }
-
-        function saveData(skipCloud = false) {
-            localStorage.setItem('padel_players_v54', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v54', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v54', JSON.stringify(settings));
-            localStorage.setItem('padel_history_v54', JSON.stringify(savedTournaments));
-            
-            if(isCloudConnected && !skipCloud && dbRef) {
-                dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
-            }
-            if(!skipCloud) render();
-        }
-
-        // --- PLAYERS & SETTINGS ---
-        function addPlayer(e) {
-            e.preventDefault();
-            const input = document.getElementById('player-input-field');
-            const name = input.value.trim();
-            if (!name) return;
-            players.push({ id: uid(), name: name, gender: tempGender });
-            input.value = '';
-            saveData();
-        }
-
-        function setGender(g) { 
-            tempGender = g; 
-            document.getElementById('gender-m').className = g==='M'?'px-3 font-bold transition-colors text-lg bg-blue-600 text-white':'px-3 font-bold transition-colors text-lg text-slate-400'; 
-            document.getElementById('gender-f').className = g==='F'?'px-3 font-bold transition-colors text-lg bg-pink-500 text-white':'px-3 font-bold transition-colors text-lg text-slate-400'; 
-        }
-        function removePlayer(id) { if(confirm('Trinti žaidėją?')) { players=players.filter(p=>p.id!==id); saveData(); } }
-        
-        function setMode(m) { 
-            settings.winCondition = m; 
-            resetTimer(); 
-            saveData(); 
-        }
-        function changeSetting(k,v) { 
-            settings[k] = Math.max(1, (settings[k]||0) + v); 
-            if(k==='matchDuration') resetTimer(); 
-            saveData(); 
-        }
-        function changeFormat(v) { settings.format=v; saveData(); document.getElementById('fixed-info').style.display=v==='fixed'?'block':'none'; updateLeaderboard(); }
-        function changeRanking(v) { settings.rankingMode=v; saveData(); updateLeaderboard(); }
-        function resetScores() { if(confirm('Anuliuoti rezultatus?')) { matches=[]; saveData(); } }
-        function resetAll() { if(confirm('Trinti viską?')) { localStorage.clear(); location.reload(); } }
-
-        // --- HISTORY ---
-        function saveToHistory() {
-            if(players.length === 0) return alert("Nėra žaidėjų išsaugojimui.");
-            const name = prompt("Turnyro pavadinimas (pvz. 'Trečiadienio Lyga'):", new Date().toLocaleDateString());
-            if(name) { 
-                savedTournaments.unshift({ 
-                    id: uid(), name, date: new Date().toISOString(), 
-                    players: JSON.parse(JSON.stringify(players)), 
-                    matches: JSON.parse(JSON.stringify(matches)), 
-                    settings: JSON.parse(JSON.stringify(settings)) 
-                }); 
-                alert("Išsaugota!"); saveData(); 
-            }
-        }
-        function loadTournament(id) { 
-            if(confirm("Dabartiniai (neišsaugoti) duomenys dings. Tęsti?")) { 
-                const t=savedTournaments.find(x=>x.id===id); 
-                if(t){ 
-                    players = JSON.parse(JSON.stringify(t.players)); 
-                    matches = JSON.parse(JSON.stringify(t.matches)); 
-                    settings = { ...defaultSettings, ...(JSON.parse(JSON.stringify(t.settings)) || {}) }; 
-                    resetTimer(); 
-                    saveData(); switchView('matches'); 
+                } else if(settings.format === 'fixed') {
+                    let teams = []; for(let k=0; k<players.length; k+=2) if(k+1 < players.length) teams.push([players[k], players[k+1]]);
+                    teams.sort(() => Math.random() - 0.5);
+                    for(let c=0; c < Math.min(settings.courts, Math.floor(teams.length/2)); c++) {
+                        currentSet.push({ team1: teams.pop(), team2: teams.pop() });
+                    }
+                } else {
+                    for(let c=0; c < Math.min(settings.courts, Math.floor(pool.length/4)); c++) {
+                        const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
+                        currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 50;
+                        currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 50;
+                        currentSet.push({ team1: t1, team2: t2 });
+                    }
                 }
-            } 
-        }
-        function deleteTournament(id) { if(confirm("Trinti šią istoriją?")) { savedTournaments=savedTournaments.filter(x=>x.id!==id); saveData(); renderHistoryList(); }}
-
-        // --- TIMER & AUDIO ---
-        async function requestWakeLock() { try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) { console.warn(err); } }
-        function releaseWakeLock() { if (wakeLock) { wakeLock.release(); wakeLock = null; } }
-        
-        function playBasketballBuzzer() {
-            try { const ac=window.AudioContext||window.webkitAudioContext; if(!ac)return; const ctx=new ac(); const now=ctx.currentTime;
-            const createOsc = (f,t) => { const o=ctx.createOscillator(); const g=ctx.createGain(); o.type=t; o.frequency.value=f; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0,now); g.gain.linearRampToValueAtTime(0.6,now+0.05); g.gain.setValueAtTime(0.6,now+1.8); g.gain.linearRampToValueAtTime(0,now+2); o.start(now); o.stop(now+2); };
-            createOsc(130,'sawtooth'); createOsc(135,'square'); if(navigator.vibrate)navigator.vibrate(2000); } catch(e){}
-        }
-
-        function updateTimerDisplay() {
-            const controls = document.getElementById('timer-controls');
-            const scoreText = document.getElementById('score-mode-text');
-            const topBar = document.getElementById('top-bar');
-
-            if (settings.winCondition === 'score') { 
-                controls.style.display = 'none'; 
-                scoreText.style.display = 'block'; 
-                scoreText.innerText = `IKI ${settings.maxPoints || 21} TAŠKŲ`;
-                topBar.classList.remove('bg-red-500', 'text-white');
-                topBar.classList.add('bg-white');
-                return; 
+                if(currentSet.length === 0) continue;
+                currentScore += calculateBalanceCost(currentSet);
+                if(currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore === 0) break; }
             }
-            
-            scoreText.style.display = 'none'; 
-            controls.style.display = 'flex';
-            
-            const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-            const s = (timeLeft % 60).toString().padStart(2, '0');
-            document.getElementById('timer-display').textContent = `${m}:${s}`;
-            
-            if (timeLeft === 0 && !isRunning && alarmInterval) {
-                topBar.classList.add('bg-red-500', 'text-white');
-                topBar.classList.remove('bg-white');
-            } else {
-                topBar.classList.remove('bg-red-500', 'text-white');
-                topBar.classList.add('bg-white');
+
+            // Failsafe if Monte Carlo failed
+            if(!bestSet && players.length >= 4) {
+                let pool = [...players].sort(() => Math.random() - 0.5);
+                bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
             }
+
+            if(bestSet) {
+                bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
+                matches = [...matches, ...newM]; autoSave(); switchView('matches');
+            } else alert("Nepavyko suformuoti mačo.");
         }
+
+        // --- DATA SYNC ---
+        function autoSave() {
+            if(players.length === 0 && matches.length === 0) return;
+            if(!currentTid) {
+                currentTid = uid(); localStorage.setItem('tid_v65', currentTid);
+                savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [], matches: [], settings: {} });
+            }
+            const idx = savedTournaments.findIndex(x => x.id === currentTid);
+            if(idx > -1) {
+                savedTournaments[idx].players = JSON.parse(JSON.stringify(players));
+                savedTournaments[idx].matches = JSON.parse(JSON.stringify(matches));
+                savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
+                savedTournaments[idx].lastUpdate = Date.now();
+            }
+            localStorage.setItem('p_v65', JSON.stringify(players));
+            localStorage.setItem('m_v65', JSON.stringify(matches));
+            localStorage.setItem('s_v65', JSON.stringify(settings));
+            localStorage.setItem('h_v65', JSON.stringify(savedTournaments));
+            if(isCloud && dbRef) dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
+            render();
+        }
+
+        function calculateStats(mArr, pArr, isF = false) {
+            let res = [];
+            if(isF) { for(let i=0; i<pArr.length; i+=2) if(i+1 < pArr.length) res.push({ id: pArr[i].id+'_'+pArr[i+1].id, name: pArr[i].name+' / '+pArr[i+1].name, p1: pArr[i], p2: pArr[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
+            else { res = pArr.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
+            mArr.filter(m => m.finished).forEach(m => {
+                const up = (team, myS, enS) => {
+                    let targets = isF ? [res.find(r => r.p1.id === team[0].id || r.p2.id === team[0].id)] : team.map(p => res.find(r => r.id === p.id));
+                    targets.forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } });
+                };
+                up(m.team1, m.score1, m.score2); up(m.team2, m.score2, m.score1);
+            });
+            return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif));
+        }
+
+        function render() {
+            const isF = settings.format === 'fixed';
+            const table = calculateStats(matches, players, isF);
+            document.getElementById('leaderboard-body').innerHTML = table.map((s, i) => `
+                <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
+                    <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
+                    <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
+                        ${!isF && s.photo ? `<div class="relative w-7 h-7 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                        ${s.name}
+                    </div>
+                    <div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
+                    <div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div>
+                    <div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div>
+                </div>`).join('');
+
+            const curT = savedTournaments.find(x => x.id === currentTid);
+            document.getElementById('btn-rename-tournament').innerText = curT ? `✏️ ${curT.name.toUpperCase()}` : `✏️ PERVADINTI TURNYRĄ`;
+            document.getElementById('players-list').innerHTML = players.slice().reverse().map(p => `
+                <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+                    <div class="flex items-center gap-2">
+                        ${p.photo ? `<div class="relative w-9 h-9"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-9 h-9 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
+                        <div class="font-bold text-slate-800 text-sm">${p.name}</div>
+                    </div>
+                    <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
+                </div>`).join('');
+
+            const isSc = settings.winCondition === 'score';
+            document.getElementById('mode-time').className = !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400";
+            document.getElementById('mode-score').className = isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400";
+            document.getElementById('control-duration').style.display = !isSc ? 'block' : 'none';
+            document.getElementById('control-points').style.display = isSc ? 'block' : 'none';
+            document.getElementById('score-mode-text').style.display = isSc ? 'block' : 'none';
+            document.getElementById('timer-controls').style.display = isSc ? 'none' : 'flex';
+            if(isSc) document.getElementById('score-mode-text').innerText = `IKI ${settings.maxPoints} TAŠKŲ`;
+            document.getElementById('val-duration').innerText = settings.matchDuration;
+            document.getElementById('val-points').innerText = settings.maxPoints;
+            document.getElementById('val-courts').innerText = settings.courts;
+            document.getElementById('player-count').innerText = "Viso: " + players.length;
+            document.getElementById('select-format').value = settings.format;
+            document.getElementById('select-ranking').value = settings.rankingMode;
+            updateTimerUI(); renderMatches();
+        }
+
+        function renderGlobalStats() {
+            const tF = document.getElementById('stat-tournament').value;
+            const gF = document.getElementById('stat-gender').value;
+            const pF = document.getElementById('stat-player').value;
+            let cM = [], cP = [];
+            if(tF === 'ALL') { savedTournaments.forEach(t => { cM.push(...t.matches); cP.push(...t.players); }); cM.push(...matches); cP.push(...players); }
+            else if(tF === 'CURRENT') { cM = matches; cP = players; }
+            else { const t = savedTournaments.find(x=>x.id===tF); if(t){ cM=t.matches; cP=t.players; } }
+            const uP = []; const seen = new Set();
+            cP.forEach(p => { if(!seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
+            const list = calculateStats(cM, uP, false);
+            let filtered = list;
+            if(gF !== 'ALL') filtered = filtered.filter(x => x.gender === gF);
+            if(pF !== 'ALL') filtered = filtered.filter(x => x.name === pF);
+            const pSel = document.getElementById('stat-player'); const curP = pSel.value;
+            pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + Array.from(seen).sort().map(n => `<option value="${n}" ${n===curP?'selected':''}>${n}</option>`).join('');
+            document.getElementById('global-stats-body').innerHTML = filtered.map((s, i) => `
+                <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
+                    <div class="w-6 text-slate-400 font-bold">${i+1}</div>
+                    <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
+                        ${s.photo ? `<div class="relative w-6 h-6"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[6px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                        ${s.name}
+                    </div>
+                    <div class="stat-col text-slate-500">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
+                    <div class="stat-col-wide text-slate-900">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div>
+                </div>`).join('');
+        }
+
+        // --- ACTIONS ---
+        function addPlayer(e) { e.preventDefault(); const f = document.getElementById('player-input-field'); const n = f.value.trim(); if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); f.value = ''; curPh = null; document.getElementById('photo-preview').classList.add('hidden'); document.getElementById('photo-placeholder').classList.remove('hidden'); autoSave(); }
+        function handlePhotoUpload(e) { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(ev) { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 120; let w = img.width, h = img.height; if(w>h) { if(w>MAX){ h*=MAX/w; w=MAX; } } else { if(h>MAX){ w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); curPh = c.toDataURL('image/jpeg', 0.6); document.getElementById('photo-preview').src = curPh; document.getElementById('photo-preview').classList.remove('hidden'); document.getElementById('photo-placeholder').classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
+        function setGender(g) { tempGender = g; document.getElementById('gender-m').className = g==='M'?'w-8 font-bold bg-blue-600 text-white text-xs':'w-8 font-bold text-slate-400 text-xs'; document.getElementById('gender-f').className = g==='F'?'w-8 font-bold bg-pink-500 text-white text-xs':'w-8 font-bold text-slate-400 text-xs'; }
+        function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(); }
+        function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
+        function changeFormat(v) { settings.format = v; autoSave(); }
+        function changeRanking(v) { settings.rankingMode = v; autoSave(); }
+        function removePlayer(id) { if(confirm("Trinti žaidėją?")) { players = players.filter(p => p.id !== id); autoSave(); } }
+        function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, m.score1+v); else m.score2=Math.max(0, m.score2+v); autoSave(); } }
+        function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; autoSave(); } }
+        function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; autoSave(); } }
+        function renameCurrentTournament() { const idx = savedTournaments.findIndex(x=>x.id===currentTid); if(idx>-1){ const n=prompt("Pavadinimas:", savedTournaments[idx].name); if(n){ savedTournaments[idx].name=n; autoSave(); }} }
+        function resetScores() { if(confirm("Naujas turnyras? Mačai bus ištrinti.")) { currentTid = null; matches = []; autoSave(); switchView('setup'); } }
+        function resetAll() { if(confirm("VISKĄ TRINTI?")) { players = []; matches = []; currentTid = null; localStorage.clear(); location.reload(); } }
 
         function toggleTimer() {
             if(settings.winCondition==='score') return;
-            if(alarmInterval){stopAlarm();resetTimer();return;}
-            if(isRunning){ clearInterval(timerInterval); isRunning=false; releaseWakeLock(); }
-            else { 
-                if(timeLeft<=0)return; 
-                isRunning=true; requestWakeLock(); endTime=Date.now()+(timeLeft*1000); 
-                timerInterval=setInterval(()=>{ 
-                    const d=Math.ceil((endTime-Date.now())/1000); 
-                    if(d>0){timeLeft=d; updateTimerDisplay();}
-                    else{timeLeft=0; updateTimerDisplay(); clearInterval(timerInterval); isRunning=false; triggerAlarm(); releaseWakeLock();} 
-                }, 1000); 
-            }
-            updatePlayButtonUI();
+            if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; resetTimer(); return; }
+            if(isRunning) { clearInterval(timerInterval); isRunning=false; }
+            else { if(timeLeft <= 0) return; isRunning = true; endTime = Date.now() + (timeLeft * 1000); timerInterval = setInterval(() => { const d = Math.ceil((endTime - Date.now())/1000); if(d > 0) { timeLeft = d; updateTimerUI(); } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } }, 1000); }
+            updateTimerUI();
         }
-
-        function updatePlayButtonUI() {
-            const b=document.getElementById('btn-play'), i1=document.getElementById('icon-play'), i2=document.getElementById('icon-pause'), i3=document.getElementById('icon-stop');
+        function updateTimerUI() {
+            const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), s = (timeLeft%60).toString().padStart(2,'0');
+            document.getElementById('timer-display').innerText = `${m}:${s}`;
+            const b = document.getElementById('btn-play'), i1=document.getElementById('icon-play'), i2=document.getElementById('icon-pause'), i3=document.getElementById('icon-stop');
             i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden');
-            b.className = "w-12 h-12 rounded-full flex items-center justify-center active:scale-95 transition-transform relative ";
-            if(alarmInterval) { b.classList.add('bg-red-600','text-white','alarm-active'); i3.classList.remove('hidden'); }
-            else if(isRunning) { b.classList.add('bg-orange-100','text-orange-600'); i2.classList.remove('hidden'); }
-            else { b.classList.add('bg-green-600','text-white'); i1.classList.remove('hidden'); }
+            if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-600 alarm-active"; i3.classList.remove('hidden'); }
+            else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); }
+            else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white"; i1.classList.remove('hidden'); }
         }
+        function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); render(); }
+        function playBuzzer() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const now = ctx.currentTime; const o1 = ctx.createOscillator(); const g = ctx.createGain(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(130, now); o1.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.6, now+0.05); g.gain.setValueAtTime(0.6, now+1.8); g.gain.linearRampToValueAtTime(0, now+2); o1.start(); o1.stop(now+2); if(navigator.vibrate) navigator.vibrate(1000); } catch(e){} }
+        function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); render(); }
+        function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); render(); } }
 
-        function triggerAlarm() { if(alarmInterval)return; updateTimerDisplay(); playBasketballBuzzer(); alarmInterval=setInterval(playBasketballBuzzer,3000); updatePlayButtonUI(); }
-        function stopAlarm() { clearInterval(alarmInterval); alarmInterval=null; updatePlayButtonUI(); }
-        function resetTimer() {
-            stopAlarm();
-            if (isRunning) { clearInterval(timerInterval); timerInterval=null; isRunning=false; releaseWakeLock(); }
-            timeLeft = (settings.matchDuration || 12) * 60;
-            updateTimerDisplay();
-            updatePlayButtonUI();
+        function switchView(n) {
+            document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById('view-' + n).classList.add('active');
+            document.getElementById('nav-' + n).classList.add('active');
+            if(n==='stats') { const s = document.getElementById('stat-tournament'); s.innerHTML = '<option value="ALL">Visi turnyrai</option><option value="CURRENT">Dabartinis</option>' + savedTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join(''); renderGlobalStats(); }
+            if(n==='history') renderHistoryList();
+            if(n==='leader') render();
         }
-        function adjustTime(s) { if(!isRunning && !alarmInterval && settings.winCondition!=='score') { timeLeft=Math.max(0,timeLeft+s); updateTimerDisplay(); } }
-
-        // --- MATCH GENERATION LOGIC ---
-        function getLeaderboardStats() {
-            const stats = players.map(p => ({ ...p, mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0 }));
-            matches.filter(m => m.finished).forEach(m => {
-                const process = (t, myS, enS) => { t.forEach(p => { const s = stats.find(x => x.id === p.id); if(s) { s.mp++; s.setWon += myS; s.setLost += enS; s.diff = s.setWon - s.setLost; if(myS > enS) { s.w++; s.leaguePts += 2; } else if(myS < enS) s.l++; else { s.d++; s.leaguePts += 1; } } }); };
-                process(m.team1, m.score1, m.score2); process(m.team2, m.score2, m.score1);
-            });
-            return stats.sort((a,b) => { if (settings.rankingMode === 'wins') { if (b.leaguePts !== a.leaguePts) return b.leaguePts - a.leaguePts; if (b.diff !== a.diff) return b.diff - a.diff; return b.setWon - a.setWon; } if (b.setWon !== a.setWon) return b.setWon - a.setWon; if (b.diff !== a.diff) return b.diff - a.diff; return b.w - a.w; });
-        }
-        function getFixedTeamStats() {
-            let teams = []; for (let i = 0; i < players.length; i += 2) if (i + 1 < players.length) teams.push({ p1: players[i], p2: players[i+1], id: players[i].id + '_' + players[i+1].id, name: players[i].name + ' / ' + players[i+1].name, gender: 'TEAM', mp: 0, w: 0, d: 0, l: 0, setWon: 0, setLost: 0, pts: 0, diff: 0, leaguePts: 0 });
-            matches.filter(m => m.finished).forEach(m => { const getT = (pid) => teams.find(t => t.p1.id === pid || t.p2.id === pid); const t1 = getT(m.team1[0].id), t2 = getT(m.team2[0].id); const upd = (t, my, en) => { if(t) { t.mp++; t.setWon+=my; t.setLost+=en; t.diff=t.setWon-t.setLost; if(my>en){t.w++; t.leaguePts+=2;} else if(my<en)t.l++; else{t.d++; t.leaguePts+=1;} } }; upd(t1, m.score1, m.score2); upd(t2, m.score2, m.score1); });
-            return teams.sort((a,b) => { if (settings.rankingMode === 'wins') { if (b.leaguePts !== a.leaguePts) return b.leaguePts - a.leaguePts; return b.setWon - a.setWon; } if (b.setWon !== a.setWon) return b.setWon - a.setWon; return b.w - a.w; });
-        }
-        function getPartnerHistory() { const h = new Map(); matches.forEach(m => { const add = (p1, p2) => { if (!h.has(p1.id)) h.set(p1.id, new Set()); if (!h.has(p2.id)) h.set(p2.id, new Set()); h.get(p1.id).add(p2.id); h.get(p2.id).add(p1.id); }; add(m.team1[0], m.team1[1]); add(m.team2[0], m.team2[1]); }); return h; }
-        function getOpponentCount(tA, tB) { let c = 0; matches.forEach(m => { const t1 = m.team1.map(p=>p.id), t2 = m.team2.map(p=>p.id); const a1 = tA[0].id, a2 = tA[1].id, b1 = tB[0].id, b2 = tB[1].id; if ((t1.includes(a1)||t1.includes(a2)) && (t2.includes(b1)||t2.includes(b2))) c++; else if ((t1.includes(b1)||t1.includes(b2)) && (t2.includes(a1)||t2.includes(a2))) c++; }); return c; }
-        function calcBalance(prop) { const s=new Map(); players.forEach(p=>s.set(p.id,new Map())); const inc = (p1, p2) => { if(p1!==p2) { const m=s.get(p1); m.set(p2, (m.get(p2)||0)+1); const m2=s.get(p2); m2.set(p1, (m.get(p2)||0)+1); } }; [...matches, ...prop].forEach(m => { m.team1.forEach(p1=>m.team2.forEach(p2=>inc(p1.id, p2.id))); }); let cost = 0; for(const [_, m] of s) for(const [_, c] of m) cost += c*c; return cost; }
-
-        function generateRound() {
-            if(players.length < 4) return alert("Reikia bent 4 žaidėjų!");
-            const statsMap = new Map(getLeaderboardStats().map(p=>[p.id,p]));
-            let pool = [...players].sort((a,b)=>(statsMap.get(a.id)?.mp||0)-(statsMap.get(b.id)?.mp||0));
-            let newM = [], round = (matches[matches.length-1]?.round||0)+1;
-
-            if(settings.format==='fixed') {
-                let teams=[]; for(let i=0; i<players.length; i+=2) if(i+1<players.length) teams.push([players[i],players[i+1]]);
-                if(teams.length<2) return alert("Min 2 poros.");
-                const tStats=new Map(); teams.forEach(t=>{let p=0; matches.forEach(m=>{const ids=[...m.team1,...m.team2].map(x=>x.id); if(ids.includes(t[0].id))p++}); tStats.set(t[0].id,p)});
-                teams.sort((a,b)=>tStats.get(a[0].id)-tStats.get(b[0].id)||Math.random()-0.5);
-                let opts=[]; for(let i=0;i<teams.length;i++)for(let j=i+1;j<teams.length;j++) opts.push({t1:teams[i],t2:teams[j],p:getOpponentCount(teams[i],teams[j]),r:Math.random()});
-                opts.sort((a,b)=>a.p-b.p||a.r-b.r);
-                const u=new Set(); for(const o of opts) { if(newM.length>=settings.courts)break; if(!u.has(o.t1[0].id)&&!u.has(o.t2[0].id)) { u.add(o.t1[0].id);u.add(o.t2[0].id); newM.push({id:uid(),round,court:newM.length+1,finished:false,score1:0,score2:0,team1:o.t1,team2:o.t2}); } }
-            } else {
-                let best=null, minC=Infinity, iter=4000;
-                if(settings.format==='americano'){
-                    if(pool.length===4) {
-                        const m4=[[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]]; const c=(round-1)%3; const s=[...pool].sort((a,b)=>a.name.localeCompare(b.name));
-                        best=[{team1:[s[m4[c][0][0]],s[m4[c][0][1]]], team2:[s[m4[c][1][0]],s[m4[c][1][1]]]}]; iter=0;
-                    } else if(pool.length===8) {
-                        const m8=[[[0,1],[2,3],[4,5],[6,7]],[[0,2],[1,3],[4,6],[5,7]],[[0,3],[1,2],[4,7],[5,6]],[[0,4],[1,5],[2,6],[3,7]],[[0,5],[1,4],[2,7],[3,6]],[[0,6],[1,7],[2,4],[3,5]],[[0,7],[1,6],[2,5],[3,4]]];
-                        const s=[...pool].sort((a,b)=>a.name.localeCompare(b.name)); const c=(round-1)%7; const b=Math.floor((round-1)/7);
-                        const pIdx=m8[c]; const pairs=pIdx.map(x=>[s[x[0]],s[x[1]]]);
-                        let cfg; if(b===0)cfg=[[0,1],[2,3]]; else if(b===1)cfg=[[0,2],[1,3]]; else cfg=[[0,3],[1,2]];
-                        best=[{team1:pairs[cfg[0][0]], team2:pairs[cfg[0][1]]}, {team1:pairs[cfg[1][0]], team2:pairs[cfg[1][1]]}]; iter=0;
-                    }
-                }
-                
-                let fallbackPairs = []; // Išsaugome pirmą tinkamą variantą blogiausiam atvejui
-                
-                for(let i=0;i<iter;i++) {
-                    let req=settings.courts*4; let act=pool.slice(0,Math.min(pool.length,req+2)).sort(()=>Math.random()-0.5).slice(0,req);
-                    let pairs=[], valid=true;
-                    if(settings.format.includes('mix')) {
-                        let m=act.filter(p=>p.gender==='M'), w=act.filter(p=>p.gender==='F');
-                        if(m.length<req/2 || w.length<req/2) valid=false; else for(let k=0;k<m.length;k++) pairs.push([m[k],w[k]]);
-                    } else { for(let k=0;k<act.length-1;k+=2) pairs.push([act[k],act[k+1]]); }
-                    if(!valid || pairs.length<2) continue;
-                    
-                    if(fallbackPairs.length === 0) fallbackPairs = [...pairs]; // Saugiklis
-
-                    let cur=[], cost=0;
-                    const hist = getPartnerHistory();
-                    pairs.forEach(p=>{ if(hist.has(p[0].id)&&hist.get(p[0].id).has(p[1].id)) cost+=1000; });
-                    for(let k=0;k<pairs.length-1;k+=2) cur.push({team1:pairs[k], team2:pairs[k+1]});
-                    cost += calcBalance(cur);
-                    if(cost<minC) { minC=cost; best=cur; if(minC===0)break; }
-                }
-
-                // Jei po 4000 iteracijų nerado nieko (pvz., per daug ribojimų), imam fallback
-                if(!best && fallbackPairs.length >= 2) {
-                    best = [];
-                    for(let k=0; k<fallbackPairs.length-1; k+=2) {
-                        if(best.length >= settings.courts) break;
-                        best.push({team1: fallbackPairs[k], team2: fallbackPairs[k+1]});
-                    }
-                }
-
-                if(best) {
-                    best.forEach((m,i)=>{ const s=(p)=>p.sort((a,b)=>a.name.localeCompare(b.name)); newM.push({id:uid(),round,court:i+1,finished:false,score1:0,score2:0,team1:s(m.team1),team2:s(m.team2)}) });
-                }
-            }
-            if(newM.length>0) { matches=[...matches,...newM]; saveData(); switchView('matches'); } else alert("Nepakanka žaidėjų sudaryti mačui.");
-        }
-
-        function updateScore(id, t, v) { 
-            const m=matches.find(x=>x.id===id); 
-            if(m && !m.finished) { 
-                const lim = settings.winCondition==='score' ? (settings.maxPoints || 21) : 999; 
-                if(t===1) m.score1=Math.min(lim, Math.max(0, m.score1+v)); 
-                else m.score2=Math.min(lim, Math.max(0, m.score2+v)); 
-                saveData(); 
-            } 
-        }
-        function finishMatch(id) { const m=matches.find(x=>x.id===id); if(m){ m.finished=true; saveData(); } }
-        function undoMatch(id) { const m=matches.find(x=>x.id===id); if(m){ m.finished=false; saveData(); } }
-
-        // --- GLOBAL STATS LOGIC ---
-        function renderGlobalStats() {
-            const dateFrom = document.getElementById('stat-date-from').value;
-            const dateTo = document.getElementById('stat-date-to').value;
-            const genderFilter = document.getElementById('stat-gender').value;
-            const playerFilter = document.getElementById('stat-player').value;
-
-            const allUniqueNames = new Set();
-            const gStats = new Map();
-
-            const getP = (name, gender) => {
-                allUniqueNames.add(name);
-                if (!gStats.has(name)) gStats.set(name, { name: name, gender: gender, mp: 0, w: 0, d: 0, l: 0, pts: 0, diff: 0, winRate: 0 });
-                return gStats.get(name);
-            };
-
-            const processArr = (matchArr, matchDateStr) => {
-                if (!matchDateStr) return; 
-                const mDate = new Date(matchDateStr);
-                if (dateFrom && mDate < new Date(dateFrom)) return;
-                if (dateTo && mDate > new Date(dateTo + 'T23:59:59')) return;
-
-                matchArr.filter(m => m.finished).forEach(m => {
-                    const pTeam = (t, myS, enS) => {
-                        t.forEach(player => {
-                            const s = getP(player.name, player.gender);
-                            s.mp++; s.pts += myS; s.diff += (myS - enS);
-                            if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.d++;
-                        });
-                    };
-                    pTeam(m.team1, m.score1, m.score2); pTeam(m.team2, m.score2, m.score1);
-                });
-            };
-
-            savedTournaments.forEach(t => processArr(t.matches, t.date));
-            if (matches.length > 0) processArr(matches, new Date().toISOString());
-
-            const playerSelect = document.getElementById('stat-player');
-            const currentSelectedPlayer = playerSelect.value;
-            playerSelect.innerHTML = '<option value="ALL">Visi</option>' + Array.from(allUniqueNames).sort().map(n => `<option value="${n}" ${n === currentSelectedPlayer ? 'selected' : ''}>${n}</option>`).join('');
-
-            let res = Array.from(gStats.values());
-            res.forEach(s => { s.winRate = s.mp > 0 ? Math.round((s.w / s.mp) * 100) : 0; });
-            if (genderFilter !== 'ALL') res = res.filter(p => p.gender === genderFilter);
-            if (playerFilter !== 'ALL') res = res.filter(p => p.name === playerFilter);
-            res.sort((a,b) => b.w - a.w || b.winRate - a.winRate || b.diff - a.diff);
-
-            const container = document.getElementById('global-stats-body');
-            if (res.length === 0) { container.innerHTML = '<div class="text-center text-slate-400 py-10 text-sm">Nėra duomenų pagal šiuos filtrus</div>'; return; }
-            container.innerHTML = res.map((p, i) => `
-                <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
-                    <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
-                    <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
-                        <div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div>
-                        <div class="font-bold text-slate-800 text-sm truncate">${p.name}</div>
-                    </div>
-                    <div class="w-7 font-bold text-slate-500 text-xs">${p.mp}</div>
-                    <div class="w-7 font-bold text-green-600 text-xs">${p.w}</div>
-                    <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
-                    <div class="w-12 text-right font-black text-slate-900">${p.winRate}%</div>
-                </div>`).join('');
-        }
-
-        // --- UI RENDER & SWITCH ---
-        function switchView(n) { 
-            document.querySelectorAll('.view-section').forEach(e=>e.classList.remove('active')); 
-            document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active')); 
-            document.getElementById('view-'+n).classList.add('active'); 
-            document.getElementById('nav-'+n).classList.add('active'); 
-            if(n==='leader') updateLeaderboard(); 
-            if(n==='history') renderHistoryList(); 
-            if(n==='stats') renderGlobalStats();
-        }
-
-        function renderHistoryList() {
-            const l=document.getElementById('history-list'); l.innerHTML = savedTournaments.length===0 ? '<div class="text-center text-slate-400 py-10">Tuščia</div>' : savedTournaments.map(t=>`<div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2"><div class="flex justify-between"><div><h3 class="font-bold text-slate-800">${t.name}</h3><p class="text-xs text-slate-400">${new Date(t.date).toLocaleString()}</p></div><span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold h-fit">${t.settings?.format || 'americano'}</span></div><div class="flex gap-2 mt-2"><button onclick="loadTournament('${t.id}')" class="flex-1 bg-blue-50 text-blue-600 py-2 rounded text-xs font-bold uppercase">Užkrauti</button><button onclick="deleteTournament('${t.id}')" class="px-4 bg-red-50 text-red-500 rounded font-bold">×</button></div></div>`).join('');
-        }
-
-        function render(isFromCloud = false) {
-            document.getElementById('player-count').textContent = `Viso: ${players.length}`;
-            document.getElementById('val-duration').textContent = settings.matchDuration || 12;
-            document.getElementById('val-points').textContent = settings.maxPoints || 21;
-            document.getElementById('val-courts').textContent = settings.courts || 2;
-            document.getElementById('select-format').value = settings.format || 'americano';
-            document.getElementById('fixed-info').style.display = (settings.format === 'fixed') ? 'block' : 'none';
-            document.getElementById('select-ranking').value = settings.rankingMode || 'points';
-
-            const mode = settings.winCondition || 'time';
-            document.getElementById('mode-time').className = mode === 'time' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
-            document.getElementById('mode-score').className = mode === 'score' ? 'flex-1 py-2 text-sm font-bold rounded-md bg-white shadow text-slate-900 transition-all' : 'flex-1 py-2 text-sm font-bold rounded-md text-slate-400 transition-all';
-            document.getElementById('control-duration').style.display = mode === 'time' ? 'block' : 'none';
-            document.getElementById('control-points').style.display = mode === 'score' ? 'block' : 'none';
-
-            document.getElementById('players-list').innerHTML = players.slice().reverse().map(p => `
-                <div class="flex justify-between items-center bg-white p-3 pl-4 rounded-xl border border-slate-100 shadow-sm w-full">
-                    <div class="flex items-center gap-3 overflow-hidden"><div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div><span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span></div>
-                    <button type="button" onclick="removePlayer('${p.id}')" class="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 text-2xl shrink-0">×</button>
-                </div>`).join('');
-
-            renderMatches();
-            updateTimerDisplay();
-            updatePlayButtonUI();
-            
-            try { 
-                updateLeaderboard(); 
-                if (document.getElementById('view-stats').classList.contains('active') || !isFromCloud) renderGlobalStats(); 
-            } catch (e) {}
-        }
-
+        function renderHistoryList() { document.getElementById('history-list').innerHTML = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join(''); }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v65', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v65'); } autoSave(); renderHistoryList(); } }
         function renderMatches() {
             const active = matches.filter(m => !m.finished);
-            const finished = matches.filter(m => m.finished).sort((a,b) => (''+b.id).localeCompare(''+a.id));
-            document.getElementById('matches-container').innerHTML = active.map(m => {
-                const limit = settings.winCondition === 'score' ? (settings.maxPoints || 21) : 999999;
-                const w1 = m.score1 >= limit, w2 = m.score2 >= limit;
-                return `
-                <div class="bg-white rounded-2xl shadow-md shadow-slate-200 border border-slate-100 overflow-hidden mb-6 w-full">
-                    <div class="bg-slate-800 text-white px-4 py-2 text-[10px] font-bold tracking-widest flex justify-between items-center"><span>AIKŠTELĖ ${m.court}</span><span class="bg-slate-700 px-2 py-0.5 rounded text-slate-200">Raundas ${m.round}</span></div>
-                    <div class="p-4 sm:p-5">
-                        <div class="flex justify-between items-center mb-4 transition-opacity ${w2 ? 'opacity-40' : 'opacity-100'}">
-                            <div class="flex flex-col gap-1 overflow-hidden">${m.team1.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
-                            <div class="flex items-center gap-2 shrink-0"><button type="button" onclick="updateScore('${m.id}', 1, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button><span class="text-3xl font-black w-10 text-center ${w1 ? 'text-green-600' : 'text-slate-800'}">${m.score1}</span><button type="button" onclick="updateScore('${m.id}', 1, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button></div>
-                        </div>
-                        <div class="h-px bg-slate-100 mb-4 relative"><span class="absolute left-1/2 -top-2 -translate-x-1/2 bg-white px-2 text-xs text-slate-300 font-bold uppercase">vs</span></div>
-                        <div class="flex justify-between items-center mb-6 transition-opacity ${w1 ? 'opacity-40' : 'opacity-100'}">
-                            <div class="flex flex-col gap-1 overflow-hidden">${m.team2.map(p => `<span class="font-bold text-slate-800 text-lg leading-none truncate">${p.name}</span>`).join('')}</div>
-                            <div class="flex items-center gap-2 shrink-0"><button type="button" onclick="updateScore('${m.id}', 2, -1)" class="w-10 h-10 bg-white rounded-xl text-xl font-bold text-slate-400 border border-slate-200">-</button><span class="text-3xl font-black w-10 text-center ${w2 ? 'text-green-600' : 'text-slate-800'}">${m.score2}</span><button type="button" onclick="updateScore('${m.id}', 2, 1)" class="w-10 h-10 bg-green-500 rounded-xl text-xl font-bold text-white shadow-lg active:scale-95">+</button></div>
-                        </div>
-                        <button type="button" onclick="finishMatch('${m.id}')" class="w-full py-4 rounded-xl font-bold text-base tracking-wide shadow-xl transition-all bg-slate-900 text-white active:scale-95">Užbaigti Mačą</button>
-                    </div>
-                </div>`;
-            }).join('');
-
-            const finContainer = document.getElementById('finished-matches-container');
-            if (finished.length > 0) {
-                finContainer.innerHTML = `<h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 pl-2">Baigti mačai</h3>` + finished.map(m => `
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-center w-full mb-3">
-                        <div class="flex flex-col text-xs font-bold text-slate-600 overflow-hidden pr-2"><span class="truncate">${m.team1.map(p=>p.name).join('/')}</span><span class="text-slate-300 text-[10px] my-0.5">VS</span><span class="truncate">${m.team2.map(p=>p.name).join('/')}</span></div>
-                        <div class="flex flex-col items-end gap-2 shrink-0"><div class="text-xl font-black bg-slate-100 px-3 py-1 rounded-lg text-slate-800">${m.score1} : ${m.score2}</div><button type="button" onclick="undoMatch('${m.id}')" class="text-[10px] text-red-400 hover:text-red-600 font-bold uppercase tracking-wider bg-red-50 px-2 py-1 rounded">Taisyti</button></div>
-                    </div>`).join('');
-            } else { finContainer.innerHTML = ''; }
-        }
-
-        function updateLeaderboard() {
-            const isFixed = settings.format === 'fixed';
-            const stats = isFixed ? getFixedTeamStats() : getLeaderboardStats();
-            const mode = settings.rankingMode || 'points';
-            document.getElementById('leaderboard-header').innerHTML = `<div class="w-6">#</div><div class="flex-1 text-left pl-1">${isFixed ? 'Komanda' : 'Žaidėjas'}</div><div class="w-7 ${mode === 'wins' ? 'text-green-700 font-black' : ''}">W</div><div class="w-7">T</div><div class="w-7">L</div><div class="w-10">+/-</div><div class="w-10 text-right ${mode === 'points' ? 'text-slate-900 font-black' : ''}">TŠK</div>`;
-            document.getElementById('leaderboard-body').innerHTML = stats.map((p, i) => `
-                <div class="flex items-center px-3 py-3 text-sm ${i%2===0 ? 'bg-white' : 'bg-slate-50/50'} text-center">
-                    <div class="w-6 font-bold text-slate-400 text-xs">${i + 1}</div>
-                    <div class="flex items-center gap-2 flex-1 text-left pl-1 overflow-hidden">
-                         ${!isFixed ? `<div class="w-5 h-5 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${p.gender === 'M' ? 'V' : 'M'}</div>` : ''}
-                        <div class="flex flex-col overflow-hidden"><span class="font-bold text-slate-800 text-sm leading-tight truncate">${p.name}</span></div>
-                    </div>
-                    <div class="w-7 font-bold text-xs ${mode === 'wins' ? 'text-green-700 bg-green-100 rounded' : 'text-green-600'}">${p.w}</div>
-                    <div class="w-7 font-bold text-orange-400 text-xs">${p.d}</div>
-                    <div class="w-7 font-bold text-red-400 text-xs">${p.l}</div>
-                    <div class="w-10 font-bold text-xs ${p.diff > 0 ? 'text-green-600' : (p.diff < 0 ? 'text-red-500' : 'text-slate-400')}">${p.diff > 0 ? '+' : ''}${p.diff}</div>
-                    <div class="w-10 text-right font-black text-lg ${mode === 'points' ? 'text-slate-900' : 'text-slate-500'}">${mode === 'wins' ? p.leaguePts : p.setWon}</div>
+            document.getElementById('matches-container').innerHTML = active.map(m => `
+                <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4">
+                    <div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div>
+                    <div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1}</span><button onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
+                    <div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2}</span><button onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
+                    <button onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div>
                 </div>`).join('');
+            const fin = matches.filter(m => m.finished).reverse();
+            document.getElementById('finished-matches-container').innerHTML = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' + fin.map(m => `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1.map(p=>p.name).join('/')} vs ${m.team2.map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1}:${m.score2}</div><button onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`).join('') : '';
         }
+
+        function initFirebaseConnection(silent = false) {
+            const room = document.getElementById('fb-room').value.trim(); if(!room) return;
+            const config = { apiKey: document.getElementById('fb-apiKey').value, authDomain: document.getElementById('fb-authDomain').value, databaseURL: document.getElementById('fb-databaseURL').value, projectId: document.getElementById('fb-projectId').value };
+            try {
+                if(!firebase.apps.length) firebase.initializeApp(config);
+                dbRef = firebase.database().ref('pad_v65/' + room); isCloud = true; localStorage.setItem('r_v65', room);
+                document.getElementById('cloud-status').innerText = "Prijungta"; document.getElementById('cloud-status').className = "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg";
+                document.getElementById('cloud-connect-ui').classList.add('hidden'); document.getElementById('cloud-active-ui').classList.remove('hidden');
+                document.getElementById('cloud-room-name-display').innerText = room;
+                dbRef.on('value', snap => {
+                    const d = snap.val(); if(d && (JSON.stringify(d.players) !== JSON.stringify(players) || JSON.stringify(d.matches) !== JSON.stringify(matches))) {
+                        players = d.players || []; matches = d.matches || []; settings = {...ds, ...d.settings}; render();
+                        document.getElementById('sync-bar').style.width = "100%"; setTimeout(() => document.getElementById('sync-bar').style.width = "0", 400);
+                    }
+                });
+            } catch(e) { console.error(e); }
+        }
+        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v65'); document.getElementById('cloud-connect-ui').classList.remove('hidden'); document.getElementById('cloud-active-ui').classList.add('hidden'); document.getElementById('cloud-status').innerText = "Atsijungta"; }
 
         render();
     </script>
