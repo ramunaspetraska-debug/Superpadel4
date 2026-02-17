@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V65 (Fixed Generator)</title>
+    <title>Padelio PRO V66 (Bulletproof)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -83,7 +83,7 @@
 
             <div id="players-list" class="space-y-2 mb-10"></div>
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
-                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 rounded-xl font-bold text-xs uppercase border border-blue-200">✏️ Kraunama...</button>
+                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider">✏️ PERVADINTI TURNYRĄ</button>
                 <div class="grid grid-cols-2 gap-2">
                     <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-orange-200">NAUJAS TURNYRAS</button>
                     <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-red-200">VALYTI VISKĄ</button>
@@ -94,14 +94,14 @@
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
-                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95">NAUJAS</button>
+                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95 transition-transform">NAUJAS</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
         </div>
 
         <div id="view-leader" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6">Lentelė</h2>
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Rezultatai</h2>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
                  <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
                     <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
@@ -111,12 +111,12 @@
         </div>
 
         <div id="view-stats" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-4">Statistika</h2>
+            <h2 class="text-2xl font-black mb-4 tracking-tight">Statistika</h2>
             <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
                 <div class="grid grid-cols-2 gap-2">
-                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold"></select></div>
-                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold"><option value="ALL">Visi</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
-                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold"><option value="ALL">Visi žaidėjai</option></select></div>
+                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"></select></div>
+                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
+                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
                 </div>
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
@@ -128,7 +128,7 @@
         </div>
 
         <div id="view-history" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6">Istorija</h2>
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Istorija</h2>
             <div id="history-list" class="space-y-4"></div>
         </div>
 
@@ -136,19 +136,19 @@
             <h2 class="text-2xl font-black mb-6">Debesis</h2>
             <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-sm uppercase">☁️ Sinchronizacija</h3>
+                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
                     <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
                 </div>
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
                 <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
                 <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
-                <div id="cloud-connect-ui" class="space-y-4">
-                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase">
-                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase">Prisijungti</button>
+                <div id="cloud-connect-ui" class="space-y-4 text-center">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
                 <div id="cloud-active-ui" class="hidden space-y-4 text-center">
-                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400">---</p>
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p>
                     <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
                 </div>
             </div>
@@ -167,7 +167,7 @@
     </div>
 
     <script>
-        // --- DATA & STATE ---
+        // --- CORE DATA ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
@@ -176,7 +176,7 @@
 
         // --- INIT ---
         try {
-            players = JSON.parse(localStorage.getItem('p_v65')) || [];
+            players = (JSON.parse(localStorage.getItem('p_v65')) || []).filter(p=>p && p.id);
             matches = JSON.parse(localStorage.getItem('m_v65')) || [];
             settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v65')) || {})};
             savedTournaments = JSON.parse(localStorage.getItem('h_v65')) || [];
@@ -184,86 +184,86 @@
             timeLeft = settings.matchDuration * 60;
             const r = localStorage.getItem('r_v65');
             if(r) { document.getElementById('fb-room').value = r; initFirebaseConnection(true); }
-        } catch(e) { localStorage.clear(); }
+        } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- THE BRAINS (BALANCED GENERATOR) ---
+        // --- BRAINS ---
         function getPartnerHistory() {
             const h = new Map();
-            const all = [...savedTournaments.map(t=>t.matches).flat(), ...matches];
-            all.forEach(m => {
-                const add = (p1, p2) => {
-                    if(!h.has(p1.id)) h.set(p1.id, new Map());
-                    const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
-                };
-                if(m.team1.length > 1) { add(m.team1[0], m.team1[1]); add(m.team1[1], m.team1[0]); }
-                if(m.team2.length > 1) { add(m.team2[0], m.team2[1]); add(m.team2[1], m.team2[0]); }
+            const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
+            allM.forEach(m => {
+                if(m && m.team1 && m.team2) {
+                    const add = (p1, p2) => {
+                        if(p1 && p2) {
+                            if(!h.has(p1.id)) h.set(p1.id, new Map());
+                            const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                        }
+                    };
+                    if(m.team1.length > 1) { add(m.team1[0], m.team1[1]); add(m.team1[1], m.team1[0]); }
+                    if(m.team2.length > 1) { add(m.team2[0], m.team2[1]); add(m.team2[1], m.team2[0]); }
+                }
             });
             return h;
         }
 
-        function calculateBalanceCost(prop) {
-            const stats = new Map();
-            players.forEach(p => stats.set(p.id, new Map()));
-            prop.forEach(m => {
-                m.team1.forEach(p1 => m.team2.forEach(p2 => {
-                    const m1 = stats.get(p1.id); if(m1) m1.set(p2.id, (m1.get(p2.id)||0)+1);
-                    const m2 = stats.get(p2.id); if(m2) m2.set(p1.id, (m2.get(p1.id)||0)+1);
-                }));
-            });
-            let cost = 0;
-            for(const [_, m] of stats) for(const [_, c] of m) cost += (c * c);
-            return cost;
-        }
-
         function generateRound() {
-            if(players.length < 4) return alert("Min 4 žaidėjai!");
-            let newM = [], roundNum = (matches[matches.length-1]?.round || 0) + 1;
-            const hist = getPartnerHistory();
-            let bestSet = null, minScore = Infinity;
+            try {
+                if(players.length < 4) return alert("Min 4 žaidėjai!");
+                const safePool = players.filter(p => p && p.id);
+                let newM = [], roundNum = (matches[matches.length-1]?.round || 0) + 1;
+                const hist = getPartnerHistory();
+                let bestSet = null, minScore = Infinity;
 
-            for(let i=0; i<5000; i++) {
-                let pool = [...players].sort(() => Math.random() - 0.5);
-                let currentSet = [], currentScore = 0;
-                
-                if(settings.format.includes('mix')) {
-                    let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
-                    let courtsNeeded = Math.min(settings.courts, Math.floor(m.length/2), Math.floor(f.length/2));
-                    if(courtsNeeded === 0) break;
-                    for(let c=0; c<courtsNeeded; c++) {
-                        const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
-                        currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 50;
-                        currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 50;
-                        currentSet.push({ team1: t1, team2: t2 });
+                for(let i=0; i<1000; i++) {
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    let currentSet = [], currentScore = 0;
+                    
+                    if(settings.format.includes('mix')) {
+                        let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
+                        let pairs = Math.min(Math.floor(m.length), Math.floor(f.length));
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairs/2));
+                        
+                        if(courtsNeeded > 0) {
+                            for(let c=0; c<courtsNeeded; c++) {
+                                const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
+                                if(t1[0] && t1[1] && t2[0] && t2[1]) {
+                                    currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
+                                    currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
+                                    currentSet.push({ team1: t1, team2: t2 });
+                                }
+                            }
+                        }
+                    } else if(settings.format === 'fixed') {
+                        let teams = []; for(let k=0; k<pool.length; k+=2) if(k+1 < pool.length) teams.push([pool[k], pool[k+1]]);
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(teams.length/2));
+                        for(let c=0; c<courtsNeeded; c++) currentSet.push({ team1: teams.pop(), team2: teams.pop() });
+                    } else {
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
+                        for(let c=0; c<courtsNeeded; c++) {
+                            const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
+                            currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
+                            currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
+                            currentSet.push({ team1: t1, team2: t2 });
+                        }
                     }
-                } else if(settings.format === 'fixed') {
-                    let teams = []; for(let k=0; k<players.length; k+=2) if(k+1 < players.length) teams.push([players[k], players[k+1]]);
-                    teams.sort(() => Math.random() - 0.5);
-                    for(let c=0; c < Math.min(settings.courts, Math.floor(teams.length/2)); c++) {
-                        currentSet.push({ team1: teams.pop(), team2: teams.pop() });
-                    }
-                } else {
-                    for(let c=0; c < Math.min(settings.courts, Math.floor(pool.length/4)); c++) {
-                        const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
-                        currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 50;
-                        currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 50;
-                        currentSet.push({ team1: t1, team2: t2 });
-                    }
+
+                    if(currentSet.length > 0 && currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore===0) break; }
                 }
-                if(currentSet.length === 0) continue;
-                currentScore += calculateBalanceCost(currentSet);
-                if(currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore === 0) break; }
-            }
 
-            // Failsafe if Monte Carlo failed
-            if(!bestSet && players.length >= 4) {
-                let pool = [...players].sort(() => Math.random() - 0.5);
-                bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
-            }
+                // FAILSAFE
+                if(!bestSet || bestSet.length === 0) {
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    if(pool.length >= 4) bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
+                }
 
-            if(bestSet) {
-                bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
-                matches = [...matches, ...newM]; autoSave(); switchView('matches');
-            } else alert("Nepavyko suformuoti mačo.");
+                if(bestSet && bestSet.length > 0) {
+                    bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                } else {
+                    alert("Nepakanka žaidėjų parinktam formatui (pvz. Mix reikia lygaus V/M skaičiaus).");
+                }
+            } catch(e) {
+                alert("Klaida generuojant: " + e.message + ". Pabandykite 'VALYTI VISKĄ'.");
+            }
         }
 
         // --- DATA SYNC ---
@@ -288,7 +288,7 @@
             render();
         }
 
-        function calculateStats(mArr, pArr, isF = false) {
+        function calculateResults(mArr, pArr, isF = false) {
             let res = [];
             if(isF) { for(let i=0; i<pArr.length; i+=2) if(i+1 < pArr.length) res.push({ id: pArr[i].id+'_'+pArr[i+1].id, name: pArr[i].name+' / '+pArr[i+1].name, p1: pArr[i], p2: pArr[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
             else { res = pArr.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
@@ -304,7 +304,7 @@
 
         function render() {
             const isF = settings.format === 'fixed';
-            const table = calculateStats(matches, players, isF);
+            const table = calculateResults(matches, players, isF);
             document.getElementById('leaderboard-body').innerHTML = table.map((s, i) => `
                 <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
                     <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
@@ -329,13 +329,16 @@
                 </div>`).join('');
 
             const isSc = settings.winCondition === 'score';
-            document.getElementById('mode-time').className = !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400";
-            document.getElementById('mode-score').className = isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400";
+            document.getElementById('mode-time').className = !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase";
+            document.getElementById('mode-score').className = isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase";
             document.getElementById('control-duration').style.display = !isSc ? 'block' : 'none';
             document.getElementById('control-points').style.display = isSc ? 'block' : 'none';
             document.getElementById('score-mode-text').style.display = isSc ? 'block' : 'none';
             document.getElementById('timer-controls').style.display = isSc ? 'none' : 'flex';
             if(isSc) document.getElementById('score-mode-text').innerText = `IKI ${settings.maxPoints} TAŠKŲ`;
+            
+            const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0');
+            document.getElementById('timer-display').innerText = `${m}:${sec}`;
             document.getElementById('val-duration').innerText = settings.matchDuration;
             document.getElementById('val-points').innerText = settings.maxPoints;
             document.getElementById('val-courts').innerText = settings.courts;
@@ -354,14 +357,11 @@
             else if(tF === 'CURRENT') { cM = matches; cP = players; }
             else { const t = savedTournaments.find(x=>x.id===tF); if(t){ cM=t.matches; cP=t.players; } }
             const uP = []; const seen = new Set();
-            cP.forEach(p => { if(!seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
-            const list = calculateStats(cM, uP, false);
-            let filtered = list;
-            if(gF !== 'ALL') filtered = filtered.filter(x => x.gender === gF);
-            if(pF !== 'ALL') filtered = filtered.filter(x => x.name === pF);
+            cP.forEach(p => { if(p && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
+            const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
             const pSel = document.getElementById('stat-player'); const curP = pSel.value;
             pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + Array.from(seen).sort().map(n => `<option value="${n}" ${n===curP?'selected':''}>${n}</option>`).join('');
-            document.getElementById('global-stats-body').innerHTML = filtered.map((s, i) => `
+            document.getElementById('global-stats-body').innerHTML = list.map((s, i) => `
                 <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
                     <div class="w-6 text-slate-400 font-bold">${i+1}</div>
                     <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
@@ -386,8 +386,8 @@
         function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; autoSave(); } }
         function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; autoSave(); } }
         function renameCurrentTournament() { const idx = savedTournaments.findIndex(x=>x.id===currentTid); if(idx>-1){ const n=prompt("Pavadinimas:", savedTournaments[idx].name); if(n){ savedTournaments[idx].name=n; autoSave(); }} }
-        function resetScores() { if(confirm("Naujas turnyras? Mačai bus ištrinti.")) { currentTid = null; matches = []; autoSave(); switchView('setup'); } }
-        function resetAll() { if(confirm("VISKĄ TRINTI?")) { players = []; matches = []; currentTid = null; localStorage.clear(); location.reload(); } }
+        function resetScores() { if(confirm("Naujas turnyras?")) { currentTid = null; matches = []; autoSave(); switchView('setup'); } }
+        function resetAll() { if(confirm("VALYTI VISKĄ?")) { players = []; matches = []; currentTid = null; localStorage.clear(); location.reload(); } }
 
         function toggleTimer() {
             if(settings.winCondition==='score') return;
