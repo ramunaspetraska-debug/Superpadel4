@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V44 (Full Scale Logic)</title>
+    <title>Padelio PRO V43 (12 Player Smart Mix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { 
@@ -214,10 +214,10 @@
 
         // --- INIT ---
         try {
-            // V44 RAKTAS (Full Scale Fix)
-            players = JSON.parse(localStorage.getItem('padel_players_v44')) || [];
-            matches = JSON.parse(localStorage.getItem('padel_matches_v44')) || [];
-            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v44'));
+            // V43 RAKTAS (12 Player Mix Fix)
+            players = JSON.parse(localStorage.getItem('padel_players_v43')) || [];
+            matches = JSON.parse(localStorage.getItem('padel_matches_v43')) || [];
+            const savedSettings = JSON.parse(localStorage.getItem('padel_settings_v43'));
             if (savedSettings) settings = { ...settings, ...savedSettings };
             timeLeft = settings.matchDuration * 60;
         } catch (e) {
@@ -227,9 +227,9 @@
 
         // --- FUNKCIJOS ---
         function saveData() {
-            localStorage.setItem('padel_players_v44', JSON.stringify(players));
-            localStorage.setItem('padel_matches_v44', JSON.stringify(matches));
-            localStorage.setItem('padel_settings_v44', JSON.stringify(settings));
+            localStorage.setItem('padel_players_v43', JSON.stringify(players));
+            localStorage.setItem('padel_matches_v43', JSON.stringify(matches));
+            localStorage.setItem('padel_settings_v43', JSON.stringify(settings));
             render();
         }
 
@@ -456,7 +456,7 @@
             } 
         }
 
-        // --- STATS ---
+        // --- STATS & HISTORY (INDIVIDUAL) ---
         function getLeaderboardStats() {
             const stats = players.map(p => ({
                 ...p,
@@ -484,6 +484,7 @@
             return sortStats(stats);
         }
 
+        // --- STATS (FIXED TEAMS) ---
         function getFixedTeamStats() {
             let teams = [];
             for (let i = 0; i < players.length; i += 2) {
@@ -600,45 +601,7 @@
             return totalCost;
         }
 
-        // --- HELPER: Optimize Matchups (4 pairs) ---
-        function optimizeMatchups(pairs, round) {
-            if (pairs.length !== 4) return []; 
-
-            const options = [
-                { matches: [[pairs[0], pairs[1]], [pairs[2], pairs[3]]], id: 0 }, 
-                { matches: [[pairs[0], pairs[2]], [pairs[1], pairs[3]]], id: 1 }, 
-                { matches: [[pairs[0], pairs[3]], [pairs[1], pairs[2]]], id: 2 } 
-            ];
-
-            options.forEach(opt => {
-                const simMatches = [
-                    { team1: opt.matches[0][0], team2: opt.matches[0][1] },
-                    { team1: opt.matches[1][0], team2: opt.matches[1][1] }
-                ];
-                opt.cost = calculateGlobalBalanceCost(simMatches);
-                opt.random = Math.random(); 
-            });
-
-            options.sort((a,b) => a.cost - b.cost || a.random - b.random);
-
-            const best = options[0];
-            const newM = [];
-            const sortPair = (p) => p.sort((a,b) => a.name.localeCompare(b.name));
-            
-            newM.push({ 
-                id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, 
-                team1: sortPair(best.matches[0][0]), team2: sortPair(best.matches[0][1]) 
-            });
-            newM.push({ 
-                id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, 
-                team1: sortPair(best.matches[1][0]), team2: sortPair(best.matches[1][1]) 
-            });
-
-            return newM;
-        }
-
-
-        // --- GENERAVIMO LOGIKA (V44) ---
+        // --- GENERAVIMO LOGIKA (V43 - UNIVERSAL MIX/AMERICANO BALANCER) ---
         function generateRound() {
             if (players.length < 4) return alert("Reikia bent 4 žaidėjų!");
             
@@ -708,88 +671,104 @@
                 }
 
             } else if (settings.format.includes('mix')) {
-                // --- MIX SOLVER V44 ---
+                // --- MIX SOLVER V43 ---
                 let men = players.filter(p => p.gender === 'M');
                 let women = players.filter(p => p.gender === 'F');
 
+                // Sort by MP to prioritize resters
                 men.sort((a,b) => (statsMap.get(a.id)?.mp || 0) - (statsMap.get(b.id)?.mp || 0));
                 women.sort((a,b) => (statsMap.get(a.id)?.mp || 0) - (statsMap.get(b.id)?.mp || 0));
 
                 if (settings.format === 'mix_americano') {
-                    // Smart Solver for Mix
-                    if (men.length === 4 && women.length === 4) {
-                        // Use Golden Matrix for 8 (Works perfectly)
-                        men.sort((a,b) => a.name.localeCompare(b.name));
-                        women.sort((a,b) => a.name.localeCompare(b.name));
-                        const partnerShift = (round - 1) % 4;
-                        const wShifted = [];
-                        for (let i = 0; i < 4; i++) wShifted.push(women[(i + partnerShift) % 4]);
-                        const pairs = [ [ men[0], wShifted[0] ], [ men[1], wShifted[1] ], [ men[2], wShifted[2] ], [ men[3], wShifted[3] ] ];
-                        newMatches = optimizeMatchups(pairs, round);
-                    } else {
-                        // Monte Carlo for others (e.g. 12 players)
-                        let bestSetup = null;
-                        let minCost = Infinity;
-                        const iterations = 5000;
+                    // Smart Solver for Mix (Supports 12 players/3 courts etc)
+                    let bestSetup = null;
+                    let minCost = Infinity;
+                    const iterations = 3000;
 
-                        for(let i=0; i<iterations; i++) {
-                            const neededPairs = settings.courts * 2;
-                            // Weighted shuffle 
-                            let activeMen = men.slice(0, Math.min(men.length, neededPairs + 2)).sort(() => Math.random() - 0.5).slice(0, neededPairs);
-                            let activeWomen = women.slice(0, Math.min(women.length, neededPairs + 2)).sort(() => Math.random() - 0.5).slice(0, neededPairs);
+                    for(let i=0; i<iterations; i++) {
+                        // Weighted shuffle - Keep low MP players in front
+                        // How many needed? 
+                        const neededPairs = settings.courts * 2;
+                        const available = Math.min(men.length, women.length);
+                        
+                        if (available < neededPairs) { 
+                            // Not enough players for all courts? Just take all.
+                        }
+
+                        // We copy lists. The sort is stable for MP. 
+                        // We slightly shuffle within same MP tiers? 
+                        // Simple: shuffle complete list, but biased? 
+                        // Actually, just full shuffle is robust enough with high iterations, 
+                        // but to force rotation we need to pick low MP.
+                        
+                        // Strict selection: Take top N low-MP players
+                        // Shuffle them to form pairs
+                        
+                        let activeMen = men.slice(0, Math.min(men.length, neededPairs + 2)).sort(() => Math.random() - 0.5).slice(0, neededPairs);
+                        let activeWomen = women.slice(0, Math.min(women.length, neededPairs + 2)).sort(() => Math.random() - 0.5).slice(0, neededPairs);
+                        
+                        // Form pairs
+                        let pairs = [];
+                        let roundCost = 0;
+                        
+                        for(let k=0; k<activeMen.length; k++) {
+                            const m = activeMen[k];
+                            const w = activeWomen[k];
+                            if (!m || !w) break;
                             
-                            let pairs = [];
-                            let roundCost = 0;
-                            
-                            for(let k=0; k<activeMen.length; k++) {
-                                const m = activeMen[k];
-                                const w = activeWomen[k];
-                                if (!m || !w) break;
-                                if (hasPlayed(m, w)) roundCost += 1000;
-                                pairs.push([m, w]);
-                            }
-                            
-                            if (pairs.length >= 2) {
-                                let currentMatches = [];
-                                for(let m=0; m < pairs.length - 1; m+=2) {
-                                    if (currentMatches.length >= settings.courts) break;
-                                    currentMatches.push({ team1: pairs[m], team2: pairs[m+1] });
-                                }
-                                roundCost += calculateGlobalBalanceCost(currentMatches);
-                                if (roundCost < minCost) {
-                                    minCost = roundCost;
-                                    bestSetup = currentMatches;
-                                }
-                            }
-                            if (minCost === 0) break;
+                            // Partner Penalty
+                            if (hasPlayed(m, w)) roundCost += 1000;
+                            pairs.push([m, w]);
                         }
                         
-                        if(bestSetup) {
-                            bestSetup.forEach((m, idx) => {
-                                 newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
-                            });
-                        } else {
-                             // Fallback
-                             const count = Math.min(men.length, women.length);
-                             const pairs = [];
-                             for(let i=0; i<count; i++) pairs.push([men[i], women[i]]);
-                             for (let i = 0; i < settings.courts; i++) {
-                                if (pairs.length < 2) break;
-                                newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: pairs.shift(), team2: pairs.shift() });
-                             }
+                        if (pairs.length >= 2) {
+                            let currentMatches = [];
+                            
+                            // Pair up the pairs
+                            for(let m=0; m < pairs.length - 1; m+=2) {
+                                if (currentMatches.length >= settings.courts) break;
+                                currentMatches.push({ team1: pairs[m], team2: pairs[m+1] });
+                            }
+                            
+                            roundCost += calculateGlobalBalanceCost(currentMatches);
+                            
+                            if (roundCost < minCost) {
+                                minCost = roundCost;
+                                bestSetup = currentMatches;
+                            }
                         }
+                        if (minCost === 0) break;
+                    }
+                    
+                    if(bestSetup) {
+                        bestSetup.forEach((m, idx) => {
+                             newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
+                        });
+                    } else {
+                         // Fallback logic
+                         const count = Math.min(men.length, women.length);
+                         const pairs = [];
+                         for(let i=0; i<count; i++) pairs.push([men[i], women[i]]);
+                         for (let i = 0; i < settings.courts; i++) {
+                            if (pairs.length < 2) break;
+                            newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: pairs.shift(), team2: pairs.shift() });
+                         }
                     }
 
                 } else {
-                     // Mix Mexicano / Random (Simple)
+                     // Mix Mexicano / Random (MP weighted)
                      const count = Math.min(men.length, women.length);
                      const pairs = [];
+                     // Simple MP sort pair up
                      for(let i=0; i<count; i++) pairs.push([men[i], women[i]]);
+                     
+                     // Mexicano sorts by score?
                      if (settings.format === 'mix_mexicano') {
                          pairs.sort((a,b) => (statsMap.get(b[0].id).setWon - statsMap.get(a[0].id).setWon));
                      } else {
                          pairs.sort(() => Math.random() - 0.5);
                      }
+
                      for (let i = 0; i < settings.courts; i++) {
                         if (pairs.length < 2) break;
                         newMatches.push({ id: uid(), round, court: i+1, finished: false, score1: 0, score2: 0, team1: pairs.shift(), team2: pairs.shift() });
@@ -797,7 +776,7 @@
                 }
 
             } else {
-                // --- AMERICANO (UNIVERSAL BALANCER - V44) ---
+                // --- AMERICANO (UNIVERSAL BALANCER - V42/V43) ---
                 let pool = [...players];
                 
                 // Sort by MP to prioritize resters
@@ -808,106 +787,63 @@
                 });
 
                 if (settings.format === 'americano') {
-                    // NEW: Perfect 4 Matrix
-                    if (pool.length === 4) {
-                        const matrix4 = [
-                            [[0,1], [2,3]], // R1
-                            [[0,2], [1,3]], // R2
-                            [[0,3], [1,2]]  // R3
-                        ];
-                        // Need sorted pool by name for stability
-                        const stablePool = [...pool].sort((a,b) => a.name.localeCompare(b.name));
-                        const cycle = (round - 1) % 3;
-                        const idxs = matrix4[cycle];
-                        const t1 = [stablePool[idxs[0][0]], stablePool[idxs[0][1]]];
-                        const t2 = [stablePool[idxs[1][0]], stablePool[idxs[1][1]]];
-                        
-                        newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: t1, team2: t2 });
+                    let bestSetup = null;
+                    let minCost = Infinity;
+                    const iterations = 3000; 
 
-                    } else if (pool.length === 8) {
-                        // Perfect 8 Matrix (Grand 21)
-                        const stablePool = [...pool].sort((a,b) => a.name.localeCompare(b.name));
-                        const matrix8 = [
-                            [[0,1], [2,3], [4,5], [6,7]], [[0,2], [1,3], [4,6], [5,7]], [[0,3], [1,2], [4,7], [5,6]],
-                            [[0,4], [1,5], [2,6], [3,7]], [[0,5], [1,4], [2,7], [3,6]], [[0,6], [1,7], [2,4], [3,5]],
-                            [[0,7], [1,6], [2,5], [3,4]]
-                        ];
-                        const cycleIdx = (round - 1) % 7;
-                        const blockIdx = Math.floor((round - 1) / 7); 
-                        const pairsIdx = matrix8[cycleIdx];
-                        const currentPairs = [
-                            [stablePool[pairsIdx[0][0]], stablePool[pairsIdx[0][1]]],
-                            [stablePool[pairsIdx[1][0]], stablePool[pairsIdx[1][1]]],
-                            [stablePool[pairsIdx[2][0]], stablePool[pairsIdx[2][1]]],
-                            [stablePool[pairsIdx[3][0]], stablePool[pairsIdx[3][1]]]
-                        ];
-                        let bestConfigMatches;
-                        if (blockIdx === 0) bestConfigMatches = [[currentPairs[0], currentPairs[1]], [currentPairs[2], currentPairs[3]]];
-                        else if (blockIdx === 1) bestConfigMatches = [[currentPairs[0], currentPairs[2]], [currentPairs[1], currentPairs[3]]];
-                        else bestConfigMatches = [[currentPairs[0], currentPairs[3]], [currentPairs[1], currentPairs[2]]]; // R15+
+                    for (let i = 0; i < iterations; i++) {
+                        let needed = settings.courts * 4;
+                        let activePool = pool.slice(0, Math.min(pool.length, needed + 2)); 
+                        activePool.sort(() => Math.random() - 0.5);
+                        activePool = activePool.slice(0, needed); 
 
-                        newMatches.push({ id: uid(), round, court: 1, finished: false, score1: 0, score2: 0, team1: bestConfigMatches[0][0], team2: bestConfigMatches[0][1] });
-                        newMatches.push({ id: uid(), round, court: 2, finished: false, score1: 0, score2: 0, team1: bestConfigMatches[1][0], team2: bestConfigMatches[1][1] });
+                        let pairs = [];
+                        let validPartners = true;
 
-                    } else {
-                        // Monte Carlo Solver (Generic - 5, 6, 9, 10, 12, etc)
-                        let bestSetup = null;
-                        let minCost = Infinity;
-                        const iterations = 5000; 
-
-                        for (let i = 0; i < iterations; i++) {
-                            let needed = settings.courts * 4;
-                            let activePool = pool.slice(0, Math.min(pool.length, needed + 2)); 
-                            activePool.sort(() => Math.random() - 0.5);
-                            activePool = activePool.slice(0, needed); 
-
-                            let pairs = [];
-                            let validPartners = true;
-
-                            for (let j = 0; j < activePool.length - 1; j += 2) {
-                                const p1 = activePool[j];
-                                const p2 = activePool[j+1];
-                                if (hasPlayed(p1, p2)) {
-                                    // Soft penalty generally, hard only for small groups
-                                }
-                                pairs.push([p1, p2]);
+                        for (let j = 0; j < activePool.length - 1; j += 2) {
+                            const p1 = activePool[j];
+                            const p2 = activePool[j+1];
+                            if (hasPlayed(p1, p2)) {
+                                if (pool.length <= 8 && round <= 7) { validPartners = false; } 
                             }
-                            
-                            if (pairs.length >= 2) { 
-                                let currentMatches = [];
-                                let roundCost = 0;
-                                
-                                for (let m = 0; m < pairs.length - 1; m += 2) {
-                                    const t1 = pairs[m];
-                                    const t2 = pairs[m+1];
-                                    
-                                    if (hasPlayed(t1[0], t1[1])) roundCost += 1000;
-                                    if (hasPlayed(t2[0], t2[1])) roundCost += 1000;
-
-                                    currentMatches.push({ team1: t1, team2: t2 });
-                                }
-
-                                roundCost += calculateGlobalBalanceCost(currentMatches);
-
-                                if (roundCost < minCost) {
-                                    minCost = roundCost;
-                                    bestSetup = currentMatches;
-                                }
-                            }
+                            pairs.push([p1, p2]);
                         }
 
-                        if (bestSetup) {
-                            bestSetup.forEach((m, idx) => {
-                                const sortPair = (p) => p.sort((a,b) => a.name.localeCompare(b.name));
-                                newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: sortPair(m.team1), team2: sortPair(m.team2) });
-                            });
-                        } else {
-                            alert("Nepavyko optimizuoti.");
+                        if (!validPartners && pool.length === 8 && round <= 7) continue; 
+                        
+                        if (pairs.length >= 2) { 
+                            let currentMatches = [];
+                            let roundCost = 0;
+                            
+                            for (let m = 0; m < pairs.length - 1; m += 2) {
+                                const t1 = pairs[m];
+                                const t2 = pairs[m+1];
+                                
+                                if (hasPlayed(t1[0], t1[1])) roundCost += 1000;
+                                if (hasPlayed(t2[0], t2[1])) roundCost += 1000;
+
+                                currentMatches.push({ team1: t1, team2: t2 });
+                            }
+
+                            roundCost += calculateGlobalBalanceCost(currentMatches);
+
+                            if (roundCost < minCost) {
+                                minCost = roundCost;
+                                bestSetup = currentMatches;
+                            }
                         }
                     }
 
+                    if (bestSetup) {
+                        bestSetup.forEach((m, idx) => {
+                            const sortPair = (p) => p.sort((a,b) => a.name.localeCompare(b.name));
+                            newMatches.push({ id: uid(), round, court: idx+1, finished: false, score1: 0, score2: 0, team1: sortPair(m.team1), team2: sortPair(m.team2) });
+                        });
+                    } else {
+                        alert("Nepavyko optimizuoti.");
+                    }
+
                 } else if (settings.format === 'mexicano' || settings.format === 'super_mexicano') {
-                    // Mexicano...
                     pool.sort((a,b) => {
                         const sa = statsMap.get(a.id) || {setWon:0, diff:0, mp:0};
                         const sb = statsMap.get(b.id) || {setWon:0, diff:0, mp:0};
