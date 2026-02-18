@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V71 (Final)</title>
+    <title>Padelio PRO V72 (Correct Logic)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -16,9 +16,8 @@
         .view-section { display: none; }
         .view-section.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        /* Photo Frames & Badges */
-        .avatar-frame-m { border: 2px solid #2563eb; } /* Blue-600 */
-        .avatar-frame-f { border: 2px solid #db2777; } /* Pink-600 */
+        .avatar-frame-m { border: 2px solid #3b82f6; }
+        .avatar-frame-f { border: 2px solid #ec4899; }
         input, select { font-size: 16px !important; }
         .stat-col { text-align: center; font-weight: bold; font-size: 10px; width: 22px; flex-shrink: 0; }
         .stat-col-wide { text-align: right; font-weight: 900; font-size: 12px; width: 42px; flex-shrink: 0; }
@@ -87,20 +86,19 @@
             </div>
 
             <div id="players-list" class="space-y-2 mb-10"></div>
-            
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
-                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
+                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider">✏️ PERVADINTI TURNYRĄ</button>
                 <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 transition-colors">NAUJAS TURNYRAS</button>
-                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-[10px] uppercase border border-red-200 transition-colors">VALYTI VISKĄ</button>
+                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-orange-200">NAUJAS TURNYRAS</button>
+                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-red-200">VALYTI VISKĄ</button>
                 </div>
             </div>
         </div>
 
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
-                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Mačai</h2>
+                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95 transition-transform">NAUJAS +</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
@@ -183,36 +181,41 @@
         function safeDisplay(id, d) { const e = el(id); if(e) e.style.display = d; }
         function showError(msg) { console.error(msg); alert(msg); }
 
-        // --- STATE & DATA (V71 NEW KEYS) ---
+        // --- STATE & DATA ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- FIXED SCHEDULES FOR AMERICANO 8, 12, 16 ---
-        const FIXED_SCHEDULES = {
-            8: [
-                [[0,7,1,2],[3,4,5,6]], [[0,1,4,5],[2,3,6,7]], [[0,2,3,7],[1,6,4,5]],
-                [[0,3,1,5],[2,6,4,7]], [[0,4,2,7],[1,3,5,6]], [[0,5,2,6],[1,4,3,7]], [[0,6,1,2],[3,5,4,7]]
-            ],
-            // 4 Players: Round Robin cycle
-            4: [ [[0,1,2,3]], [[0,2,1,3]], [[0,3,1,2]] ]
+        // --- WHIST / AMERICANO LOGIC (PDF BASED) ---
+        // Tables are [p1, p2, p3, p4] indices (1-based from paper).
+        // 8 Players: Mod 7, Pivot 8.
+        // 12 Players: Mod 11, Pivot 12.
+        // 16 Players: Mod 15, Pivot 16.
+        // 20 Players: Mod 19, Pivot 20.
+        const WHIST = {
+            4: { mod: 3, pivot: 4, starter: [[4, 1, 2, 3]] },
+            // PDF: 8-1 vs 2-3 and 4-5 vs 6-7
+            8: { mod: 7, pivot: 8, starter: [[8, 1, 2, 3], [4, 5, 6, 7]] },
+            12: { mod: 11, pivot: 12, starter: [[12, 1, 5, 6], [2, 11, 3, 9], [4, 8, 7, 10]] }, 
+            16: { mod: 15, pivot: 16, starter: [[16, 1, 10, 11], [2, 13, 5, 9], [3, 12, 6, 8], [4, 14, 7, 15]] },
+            20: { mod: 19, pivot: 20, starter: [[20, 19, 14, 15], [1, 10, 16, 18], [6, 13, 4, 7], [12, 17, 5, 9], [3, 11, 2, 8]] }
         };
 
         // --- INIT ---
         try {
-            players = (JSON.parse(localStorage.getItem('p_v71')) || []).filter(p => p && p.id);
-            matches = JSON.parse(localStorage.getItem('m_v71')) || [];
-            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v71')) || {})};
-            savedTournaments = JSON.parse(localStorage.getItem('h_v71')) || [];
-            currentTid = localStorage.getItem('tid_v71');
+            players = (JSON.parse(localStorage.getItem('p_v72')) || []).filter(p => p && p.id);
+            matches = JSON.parse(localStorage.getItem('m_v72')) || [];
+            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v72')) || {})};
+            savedTournaments = JSON.parse(localStorage.getItem('h_v72')) || [];
+            currentTid = localStorage.getItem('tid_v72');
             timeLeft = settings.matchDuration * 60;
-            const r = localStorage.getItem('r_v71');
+            const r = localStorage.getItem('r_v72');
             if(r) { safeVal('fb-room', r); initFirebaseConnection(true); }
         } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- GENERATOR LOGIC ---
+        // --- BRAINS ---
         function getPartnerHistory() {
             const h = new Map();
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
@@ -231,37 +234,62 @@
             return h;
         }
 
+        function calculateBalanceCost(prop) {
+            const stats = new Map();
+            players.forEach(p => stats.set(p.id, new Map()));
+            prop.forEach(m => {
+                m.team1.forEach(p1 => m.team2.forEach(p2 => {
+                    const m1 = stats.get(p1.id); if(m1) m1.set(p2.id, (m1.get(p2.id)||0)+1);
+                    const m2 = stats.get(p2.id); if(m2) m2.set(p1.id, (m2.get(p1.id)||0)+1);
+                }));
+            });
+            let cost = 0;
+            for(const [_, m] of stats) for(const [_, c] of m) cost += (c * c);
+            return cost;
+        }
+
         function generateRound() {
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
                 const safePool = players.filter(p => p && p.id);
                 let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                // 1. FIXED SCHEDULE FOR 8 PLAYERS (Americano)
-                if (settings.format === 'americano' && FIXED_SCHEDULES[safePool.length]) {
-                    const sched = FIXED_SCHEDULES[safePool.length];
-                    // Cycle through available rounds (mod)
-                    const roundIdx = (roundNum - 1) % sched.length;
-                    const roundConfig = sched[roundIdx];
+                // STRATEGY 1: WHIST LOGIC (Determininstic for Americano 4, 8, 12, 16, 20)
+                if (settings.format === 'americano' && WHIST[safePool.length]) {
+                    const N = safePool.length;
+                    const cfg = WHIST[N];
+                    const shift = roundNum - 1;
                     
-                    // Sort players by ID to have a stable index map
-                    // Or keep them as added. Let's use current array order as index 0..N
-                    // To shuffle for variety, we can shuffle ONCE at start of tourney, but simple is better here.
-                    
-                    roundConfig.forEach((table, tIdx) => {
-                        // table is [p1, p2, p3, p4] indices
-                        const p1 = safePool[table[0]];
-                        const p2 = safePool[table[1]];
-                        const p3 = safePool[table[2]];
-                        const p4 = safePool[table[3]];
-                        newM.push({ id: uid(), round: roundNum, court: tIdx + 1, finished: false, score1:0, score2:0, team1: [p1, p2], team2: [p3, p4] });
-                    });
-                    
+                    if (N === 4) {
+                        const m4 = [[[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]]];
+                        const c = shift % 3;
+                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[m4[c][0][0]], safePool[m4[c][0][1]]], team2: [safePool[m4[c][1][0]], safePool[m4[c][1][1]]] });
+                    } else {
+                        // Whist Logic for 8, 12, 16, 20
+                        const unmapIdx = (val) => val - 1;
+                        
+                        cfg.starter.forEach((table, tIdx) => {
+                            const pIndices = table.map(starterVal => {
+                                if (starterVal === cfg.pivot) return cfg.pivot;
+                                // Correct Whist Rotation: (val + shift - 1) % mod + 1
+                                // But here values are 1-based, mod is N-1.
+                                let v = starterVal + shift;
+                                while(v > cfg.mod) v -= cfg.mod;
+                                return v;
+                            });
+                            // pIndices is [p1, p2, p3, p4] (1-based)
+                            newM.push({
+                                id: uid(), round: roundNum, court: tIdx + 1, finished: false, score1: 0, score2: 0,
+                                team1: [safePool[unmapIdx(pIndices[0])], safePool[unmapIdx(pIndices[1])]],
+                                team2: [safePool[unmapIdx(pIndices[2])], safePool[unmapIdx(pIndices[3])]]
+                            });
+                        });
+                    }
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
                     return;
                 }
 
-                // 2. SMART GENERATOR FOR OTHERS (Mix, Fixed, Non-standard N)
+                // STRATEGY 2: MONTE CARLO (Fallback)
                 const hist = getPartnerHistory();
                 let bestSet = null, minScore = Infinity;
 
@@ -276,9 +304,11 @@
                         if(courtsNeeded > 0) {
                             for(let c=0; c<courtsNeeded; c++) {
                                 const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
-                                currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
-                                currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
-                                currentSet.push({ team1: t1, team2: t2 });
+                                if(t1[0] && t1[1] && t2[0] && t2[1]) {
+                                    currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
+                                    currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
+                                    currentSet.push({ team1: t1, team2: t2 });
+                                }
                             }
                         }
                     } else if(settings.format === 'fixed') {
@@ -298,10 +328,9 @@
                     if(currentSet.length > 0 && currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore===0) break; }
                 }
 
-                // FAILSAFE
-                if(!bestSet || bestSet.length === 0) {
+                if(!bestSet && players.length >= 4) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    if(pool.length >= 4) bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
+                    bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
                 }
 
                 if(bestSet && bestSet.length > 0) {
@@ -310,17 +339,15 @@
                 } else {
                     alert("Nepakanka žaidėjų.");
                 }
-            } catch(e) {
-                showError("Generavimo klaida: " + e.message);
-            }
+            } catch(e) { showError("Generavimo klaida: " + e.message); }
         }
 
-        // --- SAVE/LOAD ---
+        // --- DATA SYNC ---
         function autoSave() {
             try {
                 if(players.length === 0 && matches.length === 0) return;
                 if(!currentTid) {
-                    currentTid = uid(); localStorage.setItem('tid_v71', currentTid);
+                    currentTid = uid(); localStorage.setItem('tid_v72', currentTid);
                     savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [], matches: [], settings: {} });
                 }
                 const idx = savedTournaments.findIndex(x => x.id === currentTid);
@@ -330,10 +357,10 @@
                     savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
                     savedTournaments[idx].lastUpdate = Date.now();
                 }
-                localStorage.setItem('p_v71', JSON.stringify(players));
-                localStorage.setItem('m_v71', JSON.stringify(matches));
-                localStorage.setItem('s_v71', JSON.stringify(settings));
-                localStorage.setItem('h_v71', JSON.stringify(savedTournaments));
+                localStorage.setItem('p_v72', JSON.stringify(players));
+                localStorage.setItem('m_v72', JSON.stringify(matches));
+                localStorage.setItem('s_v72', JSON.stringify(settings));
+                localStorage.setItem('h_v72', JSON.stringify(savedTournaments));
                 if(isCloud && dbRef) dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
                 render();
             } catch (e) { showError("Klaida išsaugant: " + e.message); }
@@ -355,7 +382,6 @@
             return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif));
         }
 
-        // --- RENDER ---
         function render() {
             try {
                 const isF = settings.format === 'fixed';
@@ -490,8 +516,8 @@
         function renderHistoryList() { 
             safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button type="button" onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join('')); 
         }
-        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v71', id); resetTimer(); autoSave(); switchView('matches'); } }
-        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v71'); } autoSave(); renderHistoryList(); } }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v72', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v72'); } autoSave(); renderHistoryList(); } }
         function renderMatches() {
             try {
                 const active = matches.filter(m => !m.finished);
@@ -512,7 +538,7 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                dbRef = firebase.database().ref('pad_v71/' + room); isCloud = true; localStorage.setItem('r_v71', room);
+                dbRef = firebase.database().ref('pad_v72/' + room); isCloud = true; localStorage.setItem('r_v72', room);
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
@@ -524,7 +550,7 @@
                 });
             } catch(e) { console.error(e); showError("Cloud Error"); }
         }
-        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v71'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
+        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v72'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
 
         render();
     </script>
