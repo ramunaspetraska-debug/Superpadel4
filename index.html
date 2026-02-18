@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V72 (Correct Logic)</title>
+    <title>Padelio PRO V73 (Whist Perfect)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -86,19 +86,20 @@
             </div>
 
             <div id="players-list" class="space-y-2 mb-10"></div>
+            
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
-                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider">✏️ PERVADINTI TURNYRĄ</button>
+                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
                 <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-orange-200">NAUJAS TURNYRAS</button>
-                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white rounded-xl font-bold text-[10px] uppercase border border-red-200">VALYTI VISKĄ</button>
+                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 transition-colors">NAUJAS TURNYRAS</button>
+                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-[10px] uppercase border border-red-200 transition-colors">VALYTI VISKĄ</button>
                 </div>
             </div>
         </div>
 
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Mačai</h2>
-                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
+                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
@@ -147,7 +148,6 @@
                 <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
                 <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
-                
                 <div id="cloud-connect-ui" class="space-y-4 text-center">
                     <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
                     <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
@@ -163,8 +163,8 @@
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
             <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
-            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
-            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
+            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Mačai</span></button>
+            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Lentelė</span></button>
             <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
             <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
             <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
@@ -188,30 +188,24 @@
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- WHIST / AMERICANO LOGIC (PDF BASED) ---
-        // Tables are [p1, p2, p3, p4] indices (1-based from paper).
-        // 8 Players: Mod 7, Pivot 8.
-        // 12 Players: Mod 11, Pivot 12.
-        // 16 Players: Mod 15, Pivot 16.
-        // 20 Players: Mod 19, Pivot 20.
+        // --- WHIST CONFIG (FROM PDF) ---
         const WHIST = {
-            4: { mod: 3, pivot: 4, starter: [[4, 1, 2, 3]] },
-            // PDF: 8-1 vs 2-3 and 4-5 vs 6-7
-            8: { mod: 7, pivot: 8, starter: [[8, 1, 2, 3], [4, 5, 6, 7]] },
-            12: { mod: 11, pivot: 12, starter: [[12, 1, 5, 6], [2, 11, 3, 9], [4, 8, 7, 10]] }, 
-            16: { mod: 15, pivot: 16, starter: [[16, 1, 10, 11], [2, 13, 5, 9], [3, 12, 6, 8], [4, 14, 7, 15]] },
-            20: { mod: 19, pivot: 20, starter: [[20, 19, 14, 15], [1, 10, 16, 18], [6, 13, 4, 7], [12, 17, 5, 9], [3, 11, 2, 8]] }
+            4: { mod: 3, pivot: 3, starter: [[3, 0, 1, 2]] }, // 0-based: Pivot is index 3 (Player 4)
+            8: { mod: 7, pivot: 7, starter: [[7, 0, 1, 2], [3, 4, 5, 6]] }, // 0-based: Pivot is index 7 (Player 8)
+            12: { mod: 11, pivot: 11, starter: [[11, 0, 4, 5], [1, 10, 2, 8], [3, 7, 6, 9]] },
+            16: { mod: 15, pivot: 15, starter: [[15, 0, 9, 10], [1, 12, 4, 8], [2, 11, 5, 7], [3, 13, 6, 14]] },
+            20: { mod: 19, pivot: 19, starter: [[19, 18, 13, 14], [0, 9, 15, 17], [5, 12, 3, 6], [11, 16, 4, 8], [2, 10, 1, 7]] }
         };
 
         // --- INIT ---
         try {
-            players = (JSON.parse(localStorage.getItem('p_v72')) || []).filter(p => p && p.id);
-            matches = JSON.parse(localStorage.getItem('m_v72')) || [];
-            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v72')) || {})};
-            savedTournaments = JSON.parse(localStorage.getItem('h_v72')) || [];
-            currentTid = localStorage.getItem('tid_v72');
+            players = (JSON.parse(localStorage.getItem('p_v73')) || []).filter(p => p && p.id);
+            matches = JSON.parse(localStorage.getItem('m_v73')) || [];
+            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v73')) || {})};
+            savedTournaments = JSON.parse(localStorage.getItem('h_v73')) || [];
+            currentTid = localStorage.getItem('tid_v73');
             timeLeft = settings.matchDuration * 60;
-            const r = localStorage.getItem('r_v72');
+            const r = localStorage.getItem('r_v73');
             if(r) { safeVal('fb-room', r); initFirebaseConnection(true); }
         } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
@@ -260,31 +254,19 @@
                     const cfg = WHIST[N];
                     const shift = roundNum - 1;
                     
-                    if (N === 4) {
-                        const m4 = [[[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]]];
-                        const c = shift % 3;
-                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[m4[c][0][0]], safePool[m4[c][0][1]]], team2: [safePool[m4[c][1][0]], safePool[m4[c][1][1]]] });
-                    } else {
-                        // Whist Logic for 8, 12, 16, 20
-                        const unmapIdx = (val) => val - 1;
-                        
-                        cfg.starter.forEach((table, tIdx) => {
-                            const pIndices = table.map(starterVal => {
-                                if (starterVal === cfg.pivot) return cfg.pivot;
-                                // Correct Whist Rotation: (val + shift - 1) % mod + 1
-                                // But here values are 1-based, mod is N-1.
-                                let v = starterVal + shift;
-                                while(v > cfg.mod) v -= cfg.mod;
-                                return v;
-                            });
-                            // pIndices is [p1, p2, p3, p4] (1-based)
-                            newM.push({
-                                id: uid(), round: roundNum, court: tIdx + 1, finished: false, score1: 0, score2: 0,
-                                team1: [safePool[unmapIdx(pIndices[0])], safePool[unmapIdx(pIndices[1])]],
-                                team2: [safePool[unmapIdx(pIndices[2])], safePool[unmapIdx(pIndices[3])]]
-                            });
+                    cfg.starter.forEach((table, tIdx) => {
+                        const pIndices = table.map(starterVal => {
+                            if (starterVal === cfg.pivot) return cfg.pivot;
+                            return (starterVal + shift) % cfg.mod;
                         });
-                    }
+                        // Map back to player objects
+                        newM.push({
+                            id: uid(), round: roundNum, court: tIdx + 1, finished: false, score1: 0, score2: 0,
+                            team1: [safePool[pIndices[0]], safePool[pIndices[1]]],
+                            team2: [safePool[pIndices[2]], safePool[pIndices[3]]]
+                        });
+                    });
+                    
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
                     return;
                 }
@@ -347,7 +329,7 @@
             try {
                 if(players.length === 0 && matches.length === 0) return;
                 if(!currentTid) {
-                    currentTid = uid(); localStorage.setItem('tid_v72', currentTid);
+                    currentTid = uid(); localStorage.setItem('tid_v73', currentTid);
                     savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [], matches: [], settings: {} });
                 }
                 const idx = savedTournaments.findIndex(x => x.id === currentTid);
@@ -357,10 +339,10 @@
                     savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
                     savedTournaments[idx].lastUpdate = Date.now();
                 }
-                localStorage.setItem('p_v72', JSON.stringify(players));
-                localStorage.setItem('m_v72', JSON.stringify(matches));
-                localStorage.setItem('s_v72', JSON.stringify(settings));
-                localStorage.setItem('h_v72', JSON.stringify(savedTournaments));
+                localStorage.setItem('p_v73', JSON.stringify(players));
+                localStorage.setItem('m_v73', JSON.stringify(matches));
+                localStorage.setItem('s_v73', JSON.stringify(settings));
+                localStorage.setItem('h_v73', JSON.stringify(savedTournaments));
                 if(isCloud && dbRef) dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
                 render();
             } catch (e) { showError("Klaida išsaugant: " + e.message); }
@@ -516,8 +498,8 @@
         function renderHistoryList() { 
             safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button type="button" onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join('')); 
         }
-        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v72', id); resetTimer(); autoSave(); switchView('matches'); } }
-        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v72'); } autoSave(); renderHistoryList(); } }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v73', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v73'); } autoSave(); renderHistoryList(); } }
         function renderMatches() {
             try {
                 const active = matches.filter(m => !m.finished);
@@ -538,7 +520,7 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                dbRef = firebase.database().ref('pad_v72/' + room); isCloud = true; localStorage.setItem('r_v72', room);
+                dbRef = firebase.database().ref('pad_v73/' + room); isCloud = true; localStorage.setItem('r_v73', room);
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
@@ -550,7 +532,7 @@
                 });
             } catch(e) { console.error(e); showError("Cloud Error"); }
         }
-        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v72'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
+        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v73'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
 
         render();
     </script>
