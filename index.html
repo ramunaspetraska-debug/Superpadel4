@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V69 (Whist Logic)</title>
+    <title>Padelio PRO V70 (Rainbow Logic)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -163,8 +163,8 @@
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
             <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
-            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
-            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
+            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Mačai</span></button>
+            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Lentelė</span></button>
             <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
             <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
             <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
@@ -188,28 +188,28 @@
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- WHIST CONFIG (FROM PDF) ---
+        // --- RAINBOW STARTERS (100% UNIQUE) ---
         const WHIST = {
-            4: { mod: 3, pivot: 4, tables: [[1, 2, 3, 4]] }, // Special case handled manually in function logic usually, but here mapped
-            8: { mod: 7, pivot: 8, starter: [[8, 1, 2, 3], [4, 5, 6, 7]] },
-            12: { mod: 11, pivot: 12, starter: [[12, 1, 5, 6], [2, 11, 3, 9], [4, 8, 7, 10]] }, // Note: 0 mapped to 11 in logic
-            16: { mod: 15, pivot: 16, starter: [[16, 1, 10, 11], [2, 13, 5, 9], [3, 12, 6, 8], [4, 14, 7, 15]] },
-            20: { mod: 19, pivot: 20, starter: [[20, 19, 14, 15], [1, 10, 16, 18], [6, 13, 4, 7], [12, 17, 5, 9], [3, 11, 2, 8]] }
+            4: { mod: 3, pivot: 4, starter: [[4, 1, 2, 3]] },
+            8: { mod: 7, pivot: 8, starter: [[8, 7, 1, 6], [2, 5, 3, 4]] },
+            12: { mod: 11, pivot: 12, starter: [[12, 11, 1, 10], [2, 9, 3, 8], [4, 7, 5, 6]] },
+            16: { mod: 15, pivot: 16, starter: [[16, 15, 1, 14], [2, 13, 3, 12], [4, 11, 5, 10], [6, 9, 7, 8]] },
+            20: { mod: 19, pivot: 20, starter: [[20, 19, 1, 18], [2, 17, 3, 16], [4, 15, 5, 14], [6, 13, 7, 12], [8, 11, 9, 10]] }
         };
 
         // --- INIT ---
         try {
-            players = (JSON.parse(localStorage.getItem('p_v69')) || []).filter(p => p && p.id);
-            matches = JSON.parse(localStorage.getItem('m_v69')) || [];
-            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v69')) || {})};
-            savedTournaments = JSON.parse(localStorage.getItem('h_v69')) || [];
-            currentTid = localStorage.getItem('tid_v69');
+            players = (JSON.parse(localStorage.getItem('p_v70')) || []).filter(p => p && p.id);
+            matches = JSON.parse(localStorage.getItem('m_v70')) || [];
+            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v70')) || {})};
+            savedTournaments = JSON.parse(localStorage.getItem('h_v70')) || [];
+            currentTid = localStorage.getItem('tid_v70');
             timeLeft = settings.matchDuration * 60;
-            const r = localStorage.getItem('r_v69');
+            const r = localStorage.getItem('r_v70');
             if(r) { safeVal('fb-room', r); initFirebaseConnection(true); }
         } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- BRAINS: WHIST + MONTE CARLO FALLBACK ---
+        // --- BRAINS ---
         function getPartnerHistory() {
             const h = new Map();
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
@@ -248,32 +248,25 @@
                 const safePool = players.filter(p => p && p.id);
                 let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                // STRATEGY 1: WHIST LOGIC (Determininstic for Americano 4, 8, 12, 16, 20)
+                // RAINBOW WHIST GENERATOR
                 if (settings.format === 'americano' && WHIST[safePool.length]) {
                     const N = safePool.length;
                     const cfg = WHIST[N];
                     const shift = roundNum - 1;
                     
-                    // Specific logic for 4 players (Hardcoded cycle)
                     if (N === 4) {
                         const m4 = [[[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]]];
                         const c = shift % 3;
                         newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[m4[c][0][0]], safePool[m4[c][0][1]]], team2: [safePool[m4[c][1][0]], safePool[m4[c][1][1]]] });
                     } else {
-                        // Whist Logic for 8, 12, 16, 20
-                        // Map players 0..N-1 to 1..N indices for algo
-                        const mapIdx = (idx) => idx + 1;
                         const unmapIdx = (val) => val - 1;
-                        
                         cfg.starter.forEach((table, tIdx) => {
                             const pIndices = table.map(starterVal => {
                                 if (starterVal === cfg.pivot) return cfg.pivot;
                                 let newVal = (starterVal + shift) % cfg.mod;
-                                if (newVal === 0) newVal = cfg.mod; // 0 in mod math maps to max modulus
+                                if (newVal === 0) newVal = cfg.mod; 
                                 return newVal;
                             });
-                            // pIndices is [p1, p2, p3, p4] (1-based)
-                            // Map back to player objects
                             newM.push({
                                 id: uid(), round: roundNum, court: tIdx + 1, finished: false, score1: 0, score2: 0,
                                 team1: [safePool[unmapIdx(pIndices[0])], safePool[unmapIdx(pIndices[1])]],
@@ -285,7 +278,7 @@
                     return;
                 }
 
-                // STRATEGY 2: MONTE CARLO (Fallback for Mix, Fixed, or non-standard N)
+                // FALLBACK MONTE CARLO
                 const hist = getPartnerHistory();
                 let bestSet = null, minScore = Infinity;
 
@@ -295,8 +288,9 @@
                     
                     if(settings.format.includes('mix')) {
                         let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
-                        let pairs = Math.min(m.length, f.length);
+                        let pairs = Math.min(Math.floor(m.length), Math.floor(f.length));
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pairs/2));
+                        
                         if(courtsNeeded > 0) {
                             for(let c=0; c<courtsNeeded; c++) {
                                 const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
@@ -324,7 +318,6 @@
                     if(currentSet.length > 0 && currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore===0) break; }
                 }
 
-                // FAILSAFE
                 if(!bestSet || bestSet.length === 0) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     if(pool.length >= 4) bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
@@ -336,9 +329,7 @@
                 } else {
                     alert("Nepakanka žaidėjų.");
                 }
-            } catch(e) {
-                showError("Generavimo klaida: " + e.message);
-            }
+            } catch(e) { showError("Generavimo klaida: " + e.message); }
         }
 
         // --- DATA SYNC ---
@@ -346,7 +337,7 @@
             try {
                 if(players.length === 0 && matches.length === 0) return;
                 if(!currentTid) {
-                    currentTid = uid(); localStorage.setItem('tid_v69', currentTid);
+                    currentTid = uid(); localStorage.setItem('tid_v70', currentTid);
                     savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [], matches: [], settings: {} });
                 }
                 const idx = savedTournaments.findIndex(x => x.id === currentTid);
@@ -356,10 +347,10 @@
                     savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
                     savedTournaments[idx].lastUpdate = Date.now();
                 }
-                localStorage.setItem('p_v69', JSON.stringify(players));
-                localStorage.setItem('m_v69', JSON.stringify(matches));
-                localStorage.setItem('s_v69', JSON.stringify(settings));
-                localStorage.setItem('h_v69', JSON.stringify(savedTournaments));
+                localStorage.setItem('p_v70', JSON.stringify(players));
+                localStorage.setItem('m_v70', JSON.stringify(matches));
+                localStorage.setItem('s_v70', JSON.stringify(settings));
+                localStorage.setItem('h_v70', JSON.stringify(savedTournaments));
                 if(isCloud && dbRef) dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
                 render();
             } catch (e) { showError("Klaida išsaugant: " + e.message); }
@@ -515,8 +506,8 @@
         function renderHistoryList() { 
             safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button type="button" onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join('')); 
         }
-        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v69', id); resetTimer(); autoSave(); switchView('matches'); } }
-        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v69'); } autoSave(); renderHistoryList(); } }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v70', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v70'); } autoSave(); renderHistoryList(); } }
         function renderMatches() {
             try {
                 const active = matches.filter(m => !m.finished);
@@ -537,7 +528,7 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                dbRef = firebase.database().ref('pad_v69/' + room); isCloud = true; localStorage.setItem('r_v69', room);
+                dbRef = firebase.database().ref('pad_v70/' + room); isCloud = true; localStorage.setItem('r_v70', room);
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
@@ -549,7 +540,7 @@
                 });
             } catch(e) { console.error(e); showError("Cloud Error"); }
         }
-        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v69'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
+        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v70'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
 
         render();
     </script>
