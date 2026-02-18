@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V68 (Bulletproof)</title>
+    <title>Padelio PRO V69 (Whist Logic)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -25,8 +25,6 @@
 </head>
 <body>
 
-    <div id="error-box" style="display:none; position:fixed; top:0; left:0; width:100%; background:#ef4444; color:white; padding:12px; z-index:9999; font-size:12px; font-weight:bold; text-align:center;" onclick="this.style.display='none'"></div>
-    
     <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
 
     <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full">
@@ -37,7 +35,7 @@
         </div>
         <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
         <div class="flex items-center gap-2">
-            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-10 h-10 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-10 h-10 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95">
                 <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 <svg id="icon-stop" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
@@ -79,9 +77,9 @@
                     <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase">Pagal Taškus</button>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
-                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button type="button" onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button type="button" onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button type="button" onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
                 <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="super_mexicano">Super Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
@@ -100,7 +98,7 @@
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
-                <button type="button" onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95 transition-transform">NAUJAS</button>
+                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg text-sm active:scale-95 transition-transform">NAUJAS</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
@@ -139,7 +137,7 @@
         </div>
 
         <div id="view-cloud" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6 leading-tight tracking-tight">Debesų<br>Sinchronizacija</h2>
+            <h2 class="text-2xl font-black mb-6">Debesis</h2>
             <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
@@ -152,11 +150,11 @@
                 
                 <div id="cloud-connect-ui" class="space-y-4 text-center">
                     <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
-                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
+                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
                 <div id="cloud-active-ui" class="hidden space-y-4 text-center">
                     <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p>
-                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
+                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
                 </div>
             </div>
         </div>
@@ -164,46 +162,54 @@
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
-            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
-            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
-            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
-            <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
-            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
-            <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
+            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
+            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
+            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
+            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
+            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
+            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
         </div>
     </div>
 
     <script>
-        // --- SAFE RENDER HELPERS ---
+        // --- HELPERS ---
         function el(id) { return document.getElementById(id); }
-        function safeText(id, txt) { const e = el(id); if(e) e.innerText = txt; }
-        function safeHTML(id, html) { const e = el(id); if(e) e.innerHTML = html; }
-        function safeVal(id, val) { const e = el(id); if(e) e.value = val; }
-        function safeClass(id, cls) { const e = el(id); if(e) e.className = cls; }
+        function safeText(id, t) { const e = el(id); if(e) e.innerText = t; }
+        function safeHTML(id, h) { const e = el(id); if(e) e.innerHTML = h; }
+        function safeVal(id, v) { const e = el(id); if(e) e.value = v; }
+        function safeClass(id, c) { const e = el(id); if(e) e.className = c; }
         function safeDisplay(id, d) { const e = el(id); if(e) e.style.display = d; }
-        function showError(msg) { const eb = el('error-box'); if(eb) { eb.style.display = 'block'; eb.innerText = msg; setTimeout(()=>eb.style.display='none', 5000); } }
+        function showError(msg) { console.error(msg); alert(msg); }
 
-        // --- DATA STATE ---
+        // --- STATE ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- SAFE INIT ---
+        // --- WHIST CONFIG (FROM PDF) ---
+        const WHIST = {
+            4: { mod: 3, pivot: 4, tables: [[1, 2, 3, 4]] }, // Special case handled manually in function logic usually, but here mapped
+            8: { mod: 7, pivot: 8, starter: [[8, 1, 2, 3], [4, 5, 6, 7]] },
+            12: { mod: 11, pivot: 12, starter: [[12, 1, 5, 6], [2, 11, 3, 9], [4, 8, 7, 10]] }, // Note: 0 mapped to 11 in logic
+            16: { mod: 15, pivot: 16, starter: [[16, 1, 10, 11], [2, 13, 5, 9], [3, 12, 6, 8], [4, 14, 7, 15]] },
+            20: { mod: 19, pivot: 20, starter: [[20, 19, 14, 15], [1, 10, 16, 18], [6, 13, 4, 7], [12, 17, 5, 9], [3, 11, 2, 8]] }
+        };
+
+        // --- INIT ---
         try {
-            // Nauji raktai V68, kad neimtų sugadintų senų duomenų
-            players = (JSON.parse(localStorage.getItem('p_v68')) || []).filter(p => p && p.id);
-            matches = JSON.parse(localStorage.getItem('m_v68')) || [];
-            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v68')) || {})};
-            savedTournaments = JSON.parse(localStorage.getItem('h_v68')) || [];
-            currentTid = localStorage.getItem('tid_v68');
+            players = (JSON.parse(localStorage.getItem('p_v69')) || []).filter(p => p && p.id);
+            matches = JSON.parse(localStorage.getItem('m_v69')) || [];
+            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v69')) || {})};
+            savedTournaments = JSON.parse(localStorage.getItem('h_v69')) || [];
+            currentTid = localStorage.getItem('tid_v69');
             timeLeft = settings.matchDuration * 60;
-            const r = localStorage.getItem('r_v68');
+            const r = localStorage.getItem('r_v69');
             if(r) { safeVal('fb-room', r); initFirebaseConnection(true); }
         } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- BRAINS ---
+        // --- BRAINS: WHIST + MONTE CARLO FALLBACK ---
         function getPartnerHistory() {
             const h = new Map();
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
@@ -222,15 +228,67 @@
             return h;
         }
 
+        function calculateBalanceCost(prop) {
+            const stats = new Map();
+            players.forEach(p => stats.set(p.id, new Map()));
+            prop.forEach(m => {
+                m.team1.forEach(p1 => m.team2.forEach(p2 => {
+                    const m1 = stats.get(p1.id); if(m1) m1.set(p2.id, (m1.get(p2.id)||0)+1);
+                    const m2 = stats.get(p2.id); if(m2) m2.set(p1.id, (m2.get(p1.id)||0)+1);
+                }));
+            });
+            let cost = 0;
+            for(const [_, m] of stats) for(const [_, c] of m) cost += (c * c);
+            return cost;
+        }
+
         function generateRound() {
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
                 const safePool = players.filter(p => p && p.id);
                 let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+                
+                // STRATEGY 1: WHIST LOGIC (Determininstic for Americano 4, 8, 12, 16, 20)
+                if (settings.format === 'americano' && WHIST[safePool.length]) {
+                    const N = safePool.length;
+                    const cfg = WHIST[N];
+                    const shift = roundNum - 1;
+                    
+                    // Specific logic for 4 players (Hardcoded cycle)
+                    if (N === 4) {
+                        const m4 = [[[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]]];
+                        const c = shift % 3;
+                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[m4[c][0][0]], safePool[m4[c][0][1]]], team2: [safePool[m4[c][1][0]], safePool[m4[c][1][1]]] });
+                    } else {
+                        // Whist Logic for 8, 12, 16, 20
+                        // Map players 0..N-1 to 1..N indices for algo
+                        const mapIdx = (idx) => idx + 1;
+                        const unmapIdx = (val) => val - 1;
+                        
+                        cfg.starter.forEach((table, tIdx) => {
+                            const pIndices = table.map(starterVal => {
+                                if (starterVal === cfg.pivot) return cfg.pivot;
+                                let newVal = (starterVal + shift) % cfg.mod;
+                                if (newVal === 0) newVal = cfg.mod; // 0 in mod math maps to max modulus
+                                return newVal;
+                            });
+                            // pIndices is [p1, p2, p3, p4] (1-based)
+                            // Map back to player objects
+                            newM.push({
+                                id: uid(), round: roundNum, court: tIdx + 1, finished: false, score1: 0, score2: 0,
+                                team1: [safePool[unmapIdx(pIndices[0])], safePool[unmapIdx(pIndices[1])]],
+                                team2: [safePool[unmapIdx(pIndices[2])], safePool[unmapIdx(pIndices[3])]]
+                            });
+                        });
+                    }
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    return;
+                }
+
+                // STRATEGY 2: MONTE CARLO (Fallback for Mix, Fixed, or non-standard N)
                 const hist = getPartnerHistory();
                 let bestSet = null, minScore = Infinity;
 
-                // Monte Carlo Balancer
                 for(let i=0; i<1000; i++) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     let currentSet = [], currentScore = 0;
@@ -239,7 +297,6 @@
                         let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
                         let pairs = Math.min(m.length, f.length);
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pairs/2));
-                        
                         if(courtsNeeded > 0) {
                             for(let c=0; c<courtsNeeded; c++) {
                                 const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
@@ -258,33 +315,29 @@
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
                         for(let c=0; c<courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
-                            if(t1[0] && t1[1] && t2[0] && t2[1]) {
-                                currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
-                                currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
-                                currentSet.push({ team1: t1, team2: t2 });
-                            }
+                            currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
+                            currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
+                            currentSet.push({ team1: t1, team2: t2 });
                         }
                     }
 
                     if(currentSet.length > 0 && currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore===0) break; }
                 }
 
-                // Failsafe if generator found nothing but we have enough players
+                // FAILSAFE
                 if(!bestSet || bestSet.length === 0) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    if(pool.length >= 4) {
-                        bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
-                    }
+                    if(pool.length >= 4) bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
                 }
 
                 if(bestSet && bestSet.length > 0) {
                     bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
                 } else {
-                    alert("Nepakanka žaidėjų parinktam formatui (pvz. Mix reikia lygaus V/M skaičiaus).");
+                    alert("Nepakanka žaidėjų.");
                 }
             } catch(e) {
-                showError("Klaida generuojant. Detalės: " + e.message);
+                showError("Generavimo klaida: " + e.message);
             }
         }
 
@@ -293,7 +346,7 @@
             try {
                 if(players.length === 0 && matches.length === 0) return;
                 if(!currentTid) {
-                    currentTid = uid(); localStorage.setItem('tid_v68', currentTid);
+                    currentTid = uid(); localStorage.setItem('tid_v69', currentTid);
                     savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [], matches: [], settings: {} });
                 }
                 const idx = savedTournaments.findIndex(x => x.id === currentTid);
@@ -303,10 +356,10 @@
                     savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
                     savedTournaments[idx].lastUpdate = Date.now();
                 }
-                localStorage.setItem('p_v68', JSON.stringify(players));
-                localStorage.setItem('m_v68', JSON.stringify(matches));
-                localStorage.setItem('s_v68', JSON.stringify(settings));
-                localStorage.setItem('h_v68', JSON.stringify(savedTournaments));
+                localStorage.setItem('p_v69', JSON.stringify(players));
+                localStorage.setItem('m_v69', JSON.stringify(matches));
+                localStorage.setItem('s_v69', JSON.stringify(settings));
+                localStorage.setItem('h_v69', JSON.stringify(savedTournaments));
                 if(isCloud && dbRef) dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
                 render();
             } catch (e) { showError("Klaida išsaugant: " + e.message); }
@@ -353,7 +406,7 @@
                             ${p.photo ? `<div class="relative w-9 h-9"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-9 h-9 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
                             <div class="font-bold text-slate-800 text-sm">${p.name}</div>
                         </div>
-                        <button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
+                        <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
                     </div>`).join(''));
 
                 const isSc = settings.winCondition === 'score';
@@ -407,32 +460,8 @@
         }
 
         // --- ACTIONS ---
-        function addPlayer(e) { 
-            e.preventDefault(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; 
-            if(!n) return; 
-            players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); 
-            if(f) f.value = ''; curPh = null; 
-            safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); 
-            autoSave(); 
-        }
-        
-        function handlePhotoUpload(e) { 
-            const file = e.target.files[0]; if(!file) return; 
-            const reader = new FileReader(); 
-            reader.onload = function(ev) { 
-                const img = new Image(); img.onload = function() { 
-                    const c = document.createElement('canvas'); const MAX = 120; let w = img.width, h = img.height; 
-                    if(w>h) { if(w>MAX){ h*=MAX/w; w=MAX; } } else { if(h>MAX){ w*=MAX/h; h=MAX; } } 
-                    c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); 
-                    curPh = c.toDataURL('image/jpeg', 0.6); 
-                    const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); }
-                    const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden');
-                }; 
-                img.src = ev.target.result; 
-            }; 
-            reader.readAsDataURL(file); 
-        }
-        
+        function addPlayer(e) { e.preventDefault(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); }
+        function handlePhotoUpload(e) { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(ev) { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 120; let w = img.width, h = img.height; if(w>h) { if(w>MAX){ h*=MAX/w; w=MAX; } } else { if(h>MAX){ w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); curPh = c.toDataURL('image/jpeg', 0.6); const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); } const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
         function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-8 font-bold bg-blue-600 text-white text-[10px]':'w-8 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-8 font-bold bg-pink-500 text-white text-[10px]':'w-8 font-bold text-slate-400 text-[10px]'); }
         function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(); }
         function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
@@ -486,10 +515,8 @@
         function renderHistoryList() { 
             safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button type="button" onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join('')); 
         }
-        
-        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v68', id); resetTimer(); autoSave(); switchView('matches'); } }
-        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v68'); } autoSave(); renderHistoryList(); } }
-        
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v69', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v69'); } autoSave(); renderHistoryList(); } }
         function renderMatches() {
             try {
                 const active = matches.filter(m => !m.finished);
@@ -510,7 +537,7 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                dbRef = firebase.database().ref('pad_v68/' + room); isCloud = true; localStorage.setItem('r_v68', room);
+                dbRef = firebase.database().ref('pad_v69/' + room); isCloud = true; localStorage.setItem('r_v69', room);
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
@@ -522,7 +549,7 @@
                 });
             } catch(e) { console.error(e); showError("Cloud Error"); }
         }
-        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v68'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
+        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v69'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
 
         render();
     </script>
