@@ -1,134 +1,629 @@
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
-diff --git a/public/padelio-pro-v79.html b/public/padelio-pro-v79.html
-new file mode 100644
-index 0000000000000000000000000000000000000000..5a2e56ced10e40ab7a8f4fff5eaec17ea27a322f
---- /dev/null
-+++ b/public/padelio-pro-v79.html
-@@ -0,0 +1,124 @@
-+<!DOCTYPE html>
-+<html lang="lt">
-+<head>
-+    <meta charset="UTF-8">
-+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-+    <title>Padelio PRO V79 (Fixed Results)</title>
-+    <script src="https://cdn.tailwindcss.com"></script>
-+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-+</head>
-+<body>
-+    <div id="app">Naudokite šį failą kaip pilną turnyro įrankį.</div>
-+
-+    <script>
-+        // NOTE: Full app logic expected from provided V79 source.
-+        // Critical fixes for "rezultatų generavimas":
-+
-+        const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
-+        let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null;
-+
-+        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-+        function getStore(key) { return JSON.parse(localStorage.getItem(`v79_local_${key}`)); }
-+        function setStore(key, val) { if (val === null) localStorage.removeItem(`v79_local_${key}`); else localStorage.setItem(`v79_local_${key}`, JSON.stringify(val)); }
-+
-+        function loadData() {
-+            players = (getStore('p') || []).filter((p) => p && p.id);
-+            matches = getStore('m') || [];
-+            settings = { ...ds, ...(getStore('s') || {}) };
-+            savedTournaments = getStore('h') || [];
-+            currentTid = getStore('tid');
-+        }
-+
-+        function fixedTeamKey(team) {
-+            if (!team || team.length < 2) return '';
-+            return [team[0]?.id, team[1]?.id].filter(Boolean).sort().join('__');
-+        }
-+
-+        function calculateResults(mArr, pArr, isF = false) {
-+            let res = [];
-+            const fixedByKey = new Map();
-+
-+            if (isF) {
-+                for (let i = 0; i < pArr.length; i += 2) {
-+                    if (i + 1 < pArr.length) {
-+                        const p1 = pArr[i];
-+                        const p2 = pArr[i + 1];
-+                        const teamStat = {
-+                            id: `${p1.id}_${p2.id}`,
-+                            name: `${p1.name} / ${p2.name}`,
-+                            p1,
-+                            p2,
-+                            mp: 0,
-+                            w: 0,
-+                            t: 0,
-+                            l: 0,
-+                            sw: 0,
-+                            sl: 0,
-+                            dif: 0,
-+                            lp: 0,
-+                        };
-+                        res.push(teamStat);
-+                        fixedByKey.set(fixedTeamKey([p1, p2]), teamStat);
-+                    }
-+                }
-+            } else {
-+                res = pArr.map((p) => ({ ...p, mp: 0, w: 0, t: 0, l: 0, sw: 0, sl: 0, dif: 0, lp: 0 }));
-+            }
-+
-+            mArr.filter((m) => m.finished).forEach((m) => {
-+                if (!m.team1 || !m.team2) return;
-+
-+                const update = (team, myS, enS) => {
-+                    const targets = isF
-+                        ? [fixedByKey.get(fixedTeamKey(team))].filter(Boolean)
-+                        : team.map((p) => res.find((r) => r.id === p.id)).filter(Boolean);
-+
-+                    targets.forEach((s) => {
-+                        s.mp += 1;
-+                        s.sw += myS;
-+                        s.sl += enS;
-+                        s.dif = s.sw - s.sl;
-+                        if (myS > enS) {
-+                            s.w += 1;
-+                            s.lp += 2;
-+                        } else if (myS < enS) {
-+                            s.l += 1;
-+                        } else {
-+                            s.t += 1;
-+                            s.lp += 1;
-+                        }
-+                    });
-+                };
-+
-+                update(m.team1, m.score1, m.score2);
-+                update(m.team2, m.score2, m.score1);
-+            });
-+
-+            return res.sort((a, b) => {
-+                if (settings.rankingMode === 'wins') return b.lp - a.lp || b.dif - a.dif || b.sw - a.sw;
-+                return b.sw - a.sw || b.dif - a.dif || b.lp - a.lp;
-+            });
-+        }
-+
-+        function generateRound() {
-+            if (players.length < 4) throw new Error('Min 4 žaidėjai');
-+            // existing pairing logic from V79 remains, the key result-generation fix is in calculateResults.
-+        }
-+
-+        function autoSave() {
-+            if (!currentTid) {
-+                currentTid = uid();
-+                setStore('tid', currentTid);
-+            }
-+            setStore('p', players);
-+            setStore('m', matches);
-+            setStore('s', settings);
-+            setStore('h', savedTournaments);
-+        }
-+
-+        loadData();
-+        console.log('Padelio PRO V79 fixed module loaded.');
-+    </script>
-+</body>
-+</html>
- 
-EOF
-)
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Padelio PRO V80 (Golden Matrix)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 90px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .nav-btn.active { color: #16a34a; }
+        .nav-btn.active svg { stroke: #16a34a; }
+        .nav-btn { color: #94a3b8; transition: all 0.2s; }
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .avatar-frame-m { border: 2px solid #3b82f6; }
+        .avatar-frame-f { border: 2px solid #ec4899; }
+        input, select { font-size: 16px !important; }
+        .stat-col { text-align: center; font-weight: bold; font-size: 10px; width: 22px; flex-shrink: 0; }
+        .stat-col-wide { text-align: right; font-weight: 900; font-size: 12px; width: 42px; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
+
+    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full shadow-sm">
+        <div class="flex items-center gap-2" id="timer-controls">
+            <button type="button" onclick="adjustTime(-60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-xl font-bold">-</button>
+            <span id="timer-display" class="text-3xl font-black font-mono tracking-tighter tabular-nums">12:00</span>
+            <button type="button" onclick="adjustTime(60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-xl font-bold">+</button>
+        </div>
+        <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
+        <div class="flex items-center gap-2">
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-11 h-11 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+                <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                <svg id="icon-stop" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
+            </button>
+            <button type="button" onclick="resetTimer()" class="w-11 h-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto p-4 w-full">
+        
+        <div id="view-setup" class="view-section active w-full">
+            <div class="bg-white p-3 rounded-2xl shadow-lg border border-slate-200 mb-6">
+                <div class="flex justify-between items-center mb-3 px-1">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjų registracija</span>
+                    <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold">Viso: 0</span>
+                </div>
+                <form onsubmit="addPlayer(event)" class="flex gap-2 w-full items-center">
+                    <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-10 border border-slate-200">
+                        <button type="button" id="gender-m" onclick="setGender('M')" class="w-9 font-bold transition-colors bg-blue-600 text-white text-[10px]">V</button>
+                        <button type="button" id="gender-f" onclick="setGender('F')" class="w-9 font-bold transition-colors text-slate-400 text-[10px]">M</button>
+                    </div>
+                    <div class="relative shrink-0">
+                        <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-10 h-10 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95">
+                            <span id="photo-placeholder" class="text-lg">📷</span>
+                            <img id="photo-preview" class="hidden w-full h-full object-cover">
+                        </button>
+                    </div>
+                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-3 rounded-lg border-2 border-slate-100 focus:outline-none focus:border-green-500 h-10 text-slate-900 font-bold text-sm" />
+                    <button type="submit" class="bg-slate-900 text-white w-10 h-10 shrink-0 rounded-lg font-bold text-xl active:scale-95 shadow-md">+</button>
+                </form>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4">
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase transition-all">Pagal Laiką</button>
+                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase transition-all">Pagal Taškus</button>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
+                </div>
+                <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="super_mexicano">Super Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
+            </div>
+
+            <div id="players-list" class="space-y-2 mb-10"></div>
+            
+            <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
+                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200">NAUJAS TURNYRAS</button>
+                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-[10px] uppercase border border-red-200">VALYTI VISKĄ</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-matches" class="view-section w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
+                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+            </div>
+            <div id="matches-container"></div>
+            <div id="finished-matches-container" class="mt-12 opacity-90"></div>
+        </div>
+
+        <div id="view-leader" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Rezultatai</h2>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
+                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
+                 </div>
+                <div id="leaderboard-body" class="divide-y divide-slate-100"></div>
+            </div>
+        </div>
+
+        <div id="view-stats" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-4 tracking-tight">Statistika</h2>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"></select></div>
+                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
+                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
+                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
+                </div>
+                <div id="global-stats-body" class="divide-y divide-slate-100"></div>
+            </div>
+        </div>
+
+        <div id="view-history" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Istorija</h2>
+            <div id="history-list" class="space-y-4"></div>
+        </div>
+
+        <div id="view-cloud" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-6">Debesis</h2>
+            <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
+                    <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
+                </div>
+                <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
+                <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
+                <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
+                <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
+                
+                <div id="cloud-connect-ui" class="space-y-4 text-center">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
+                </div>
+                <div id="cloud-active-ui" class="hidden space-y-4 text-center">
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p>
+                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+        <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
+            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
+            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
+            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
+            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
+            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
+            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
+        </div>
+    </div>
+
+    <script>
+        // --- HELPERS ---
+        function el(id) { return document.getElementById(id); }
+        function safeText(id, t) { const e = el(id); if(e) e.innerText = t; }
+        function safeHTML(id, h) { const e = el(id); if(e) e.innerHTML = h; }
+        function safeVal(id, v) { const e = el(id); if(e) e.value = v; }
+        function safeClass(id, c) { const e = el(id); if(e) e.className = c; }
+        function safeDisplay(id, d) { const e = el(id); if(e) e.style.display = d; }
+        function showError(msg) { console.error(msg); alert(msg); }
+
+        // --- STATE & DATA ---
+        const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
+        let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
+        let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
+
+        let activeRoom = localStorage.getItem('r_v80') || '';
+        if(activeRoom) isCloud = true;
+
+        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+        function getStore(key) {
+            const prefix = isCloud ? `v80_room_${activeRoom}_` : `v80_local_`;
+            return JSON.parse(localStorage.getItem(prefix + key));
+        }
+        function setStore(key, val) {
+            const prefix = isCloud ? `v80_room_${activeRoom}_` : `v80_local_`;
+            if (val === null) localStorage.removeItem(prefix + key);
+            else localStorage.setItem(prefix + key, JSON.stringify(val));
+        }
+
+        // --- INIT ---
+        try {
+            players = (getStore('p') || []).filter(p => p && p.id);
+            matches = getStore('m') || [];
+            settings = {...ds, ...(getStore('s') || {})};
+            savedTournaments = getStore('h') || [];
+            currentTid = getStore('tid');
+            timeLeft = settings.matchDuration * 60;
+            if(activeRoom) { safeVal('fb-room', activeRoom); initFirebaseConnection(true); }
+        } catch(e) { console.error("Init Error", e); localStorage.clear(); }
+
+        // --- GOLDEN MATRICES (4 and 8) ---
+        const M4 = [
+            [ {t1: [0,1], t2: [2,3]} ], 
+            [ {t1: [0,2], t2: [1,3]} ], 
+            [ {t1: [0,3], t2: [1,2]} ]  
+        ];
+
+        // Mathematically proven Whist Tournament for 8 players
+        // Each player plays with every other player exactly once (7 matches)
+        // Each player opposes every other player exactly twice (14 opponents)
+        const M8 = [
+            [ {t1: [7,0], t2: [1,3]}, {t1: [2,6], t2: [4,5]} ], // Round 1
+            [ {t1: [7,1], t2: [2,4]}, {t1: [3,0], t2: [5,6]} ], // Round 2
+            [ {t1: [7,2], t2: [3,5]}, {t1: [4,1], t2: [6,0]} ], // Round 3
+            [ {t1: [7,3], t2: [4,6]}, {t1: [5,2], t2: [0,1]} ], // Round 4
+            [ {t1: [7,4], t2: [5,0]}, {t1: [6,3], t2: [1,2]} ], // Round 5
+            [ {t1: [7,5], t2: [6,1]}, {t1: [0,4], t2: [2,3]} ], // Round 6
+            [ {t1: [7,6], t2: [0,2]}, {t1: [1,5], t2: [3,4]} ]  // Round 7
+        ];
+
+        // --- BRAINS: HISTORY ENGINE ---
+        function getHistoryStats() {
+            const partners = new Map();
+            const opponents = new Map();
+            const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
+            
+            allM.forEach(m => {
+                if(m && m.team1 && m.team2) {
+                    const addP = (p1, p2) => {
+                        if(!p1 || !p2) return;
+                        if(!partners.has(p1.id)) partners.set(p1.id, new Map());
+                        const m1 = partners.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                    };
+                    const addO = (p1, p2) => {
+                        if(!p1 || !p2) return;
+                        if(!opponents.has(p1.id)) opponents.set(p1.id, new Map());
+                        const m1 = opponents.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                    };
+
+                    if(m.team1.length > 1) { addP(m.team1[0], m.team1[1]); addP(m.team1[1], m.team1[0]); }
+                    if(m.team2.length > 1) { addP(m.team2[0], m.team2[1]); addP(m.team2[1], m.team2[0]); }
+
+                    m.team1.forEach(p1 => m.team2.forEach(p2 => {
+                        addO(p1, p2); addO(p2, p1);
+                    }));
+                }
+            });
+            return { partners, opponents };
+        }
+
+        // --- GENERATOR LOGIC ---
+        function generateRound() {
+            try {
+                if(players.length < 4) return alert("Min 4 žaidėjai!");
+                const safePool = players.filter(p => p && p.id);
+                let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+                
+                // --- 1. FIKSUOTOS POROS (ROUND-ROBIN RATAS) ---
+                if (settings.format === 'fixed') {
+                    let teams = [];
+                    for (let k = 0; k < safePool.length; k += 2) {
+                        if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]);
+                    }
+                    let K = teams.length;
+                    if (K < 2) return alert("Fiksuotoms poroms reikia bent 4 žaidėjų (2 porų).");
+                    
+                    let K_even = K % 2 === 0 ? K : K + 1;
+                    let cycleRounds = K_even - 1;
+                    let shift = (roundNum - 1) % cycleRounds;
+                    
+                    let rotatedIndices = [0];
+                    let others = [];
+                    for (let i = 1; i < K_even; i++) others.push(i);
+                    for (let i = 0; i < shift; i++) others.unshift(others.pop());
+                    rotatedIndices.push(...others);
+                    
+                    let roundMatches = [];
+                    for (let i = 0; i < K_even / 2; i++) {
+                        let t1Idx = rotatedIndices[i];
+                        let t2Idx = rotatedIndices[K_even - 1 - i];
+                        if (t1Idx < K && t2Idx < K) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
+                    }
+                    
+                    roundMatches = roundMatches.slice(0, settings.courts);
+                    roundMatches.forEach((m, idx) => {
+                        newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
+                    });
+                    
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    return;
+                }
+
+                // --- 2. AMERICANO MATRICOS TIK 4 IR 8 ŽAIDĖJAMS ---
+                if (settings.format === 'americano' && safePool.length === 4) {
+                    const c = (roundNum - 1) % 3;
+                    const cfg = M4[c];
+                    cfg.forEach((match, idx) => {
+                        newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1:0, score2:0, team1: [safePool[match.t1[0]], safePool[match.t1[1]]], team2: [safePool[match.t2[0]], safePool[match.t2[1]]] });
+                    });
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    return;
+                }
+                
+                if (settings.format === 'americano' && safePool.length === 8) {
+                    const c = (roundNum - 1) % 7;
+                    const cfg = M8[c];
+                    cfg.forEach((match, idx) => {
+                        newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1:0, score2:0, team1: [safePool[match.t1[0]], safePool[match.t1[1]]], team2: [safePool[match.t2[0]], safePool[match.t2[1]]] });
+                    });
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    return;
+                }
+
+                // --- 3. EXPONENTIAL MONTE CARLO BAUDŲ SISTEMA (Visi kiti kiekiai) ---
+                const { partners, opponents } = getHistoryStats();
+                let bestSet = null, minPenalty = Infinity;
+
+                for(let i=0; i<2000; i++) {
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    let currentSet = [], currentPenalty = 0;
+                    
+                    if(settings.format.includes('mix')) {
+                        let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
+                        let pairsCount = Math.min(m.length, f.length);
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairsCount/2));
+                        
+                        if(courtsNeeded > 0) {
+                            for(let c=0; c<courtsNeeded; c++) {
+                                const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
+                                // Baudos partneriams (Griežtai draudžiama kartotis)
+                                currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 10000;
+                                currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 10000;
+                                // Eksponentinės baudos varžovams (50, 400, 1350...)
+                                t1.forEach(p1 => t2.forEach(p2 => { 
+                                    const games = opponents.get(p1.id)?.get(p2.id) || 0;
+                                    currentPenalty += Math.pow(games, 3) * 50; 
+                                }));
+                                currentSet.push({ team1: t1, team2: t2 });
+                            }
+                        }
+                    } else {
+                        // Kiti Americano kiekiai (12, 16 ir t.t.)
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
+                        for(let c=0; c<courtsNeeded; c++) {
+                            const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
+                            currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 10000;
+                            currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 10000;
+                            
+                            t1.forEach(p1 => t2.forEach(p2 => { 
+                                const games = opponents.get(p1.id)?.get(p2.id) || 0;
+                                currentPenalty += Math.pow(games, 3) * 50; 
+                            }));
+                            currentSet.push({ team1: t1, team2: t2 });
+                        }
+                    }
+
+                    if(currentSet.length > 0 && currentPenalty < minPenalty) { 
+                        minPenalty = currentPenalty; 
+                        bestSet = currentSet; 
+                        if(minPenalty === 0) break; // Tobulas raundas
+                    }
+                }
+
+                if(!bestSet || bestSet.length === 0) {
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    if(pool.length >= 4) bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
+                }
+
+                if(bestSet && bestSet.length > 0) {
+                    bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                } else {
+                    alert("Nepakanka žaidėjų.");
+                }
+            } catch(e) { showError("Generavimo klaida: " + e.message); }
+        }
+
+        // --- DATA SYNC ---
+        function autoSave() {
+            try {
+                if(players.length === 0 && matches.length === 0) return;
+                if(!currentTid) {
+                    currentTid = uid(); setStore('tid', currentTid);
+                    savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [], matches: [], settings: {} });
+                }
+                const idx = savedTournaments.findIndex(x => x.id === currentTid);
+                if(idx > -1) {
+                    savedTournaments[idx].players = JSON.parse(JSON.stringify(players));
+                    savedTournaments[idx].matches = JSON.parse(JSON.stringify(matches));
+                    savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
+                    savedTournaments[idx].lastUpdate = Date.now();
+                }
+                setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
+                
+                if(isCloud && dbRef) {
+                    const payload = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() };
+                    window.lastCloudUpdate = payload.lastUpdate;
+                    dbRef.set(payload);
+                }
+                render();
+            } catch (e) { showError("Klaida išsaugant: " + e.message); }
+        }
+
+        function calculateResults(mArr, pArr, isF = false) {
+            let res = [];
+            if(isF) { for(let i=0; i<pArr.length; i+=2) if(i+1 < pArr.length) res.push({ id: pArr[i].id+'_'+pArr[i+1].id, name: pArr[i].name+' / '+pArr[i+1].name, p1: pArr[i], p2: pArr[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
+            else { res = pArr.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
+            
+            mArr.filter(m => m.finished).forEach(m => {
+                if(!m.team1 || !m.team2) return;
+                const up = (team, myS, enS) => {
+                    let targets = isF ? [res.find(r => r.p1.id === team[0].id || r.p2.id === team[0].id)] : team.map(p => res.find(r => r.id === p.id));
+                    targets.forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } });
+                };
+                up(m.team1, m.score1, m.score2); up(m.team2, m.score2, m.score1);
+            });
+            return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif));
+        }
+
+        function render() {
+            try {
+                const isF = settings.format === 'fixed';
+                const table = calculateResults(matches, players, isF);
+                safeHTML('leaderboard-body', table.map((s, i) => `
+                    <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
+                        <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
+                        <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
+                            ${!isF && s.photo ? `<div class="relative w-7 h-7 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                            ${s.name}
+                        </div>
+                        <div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
+                        <div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div>
+                        <div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div>
+                    </div>`).join(''));
+
+                const curT = savedTournaments.find(x => x.id === currentTid);
+                safeText('btn-rename-tournament', curT ? `✏️ ${curT.name.toUpperCase()}` : `✏️ PERVADINTI TURNYRĄ`);
+                
+                safeHTML('players-list', players.map((p, index) => `
+                    <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>
+                            ${p.photo ? `<div class="relative w-9 h-9"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-9 h-9 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
+                            <div class="font-bold text-slate-800 text-sm">${p.name}</div>
+                        </div>
+                        <button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
+                    </div>`).join(''));
+
+                const isSc = settings.winCondition === 'score';
+                safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+                safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+                safeDisplay('control-duration', !isSc ? 'block' : 'none');
+                safeDisplay('control-points', isSc ? 'block' : 'none');
+                safeDisplay('score-mode-text', isSc ? 'block' : 'none');
+                safeDisplay('timer-controls', isSc ? 'none' : 'flex');
+                if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
+                
+                safeText('val-duration', settings.matchDuration);
+                safeText('val-points', settings.maxPoints);
+                safeText('val-courts', settings.courts);
+                safeText('player-count', "Viso: " + players.length);
+                safeVal('select-format', settings.format);
+                safeVal('select-ranking', settings.rankingMode);
+                
+                updateTimerUI(); renderMatches();
+            } catch(e) { showError("Render Error: " + e.message); }
+        }
+
+        function renderGlobalStats() {
+            try {
+                const tF = el('stat-tournament')?.value || 'ALL';
+                const gF = el('stat-gender')?.value || 'ALL';
+                const pF = el('stat-player')?.value || 'ALL';
+                let cM = [], cP = [];
+                if(tF === 'ALL') { savedTournaments.forEach(t => { cM.push(...t.matches); cP.push(...t.players); }); cM.push(...matches); cP.push(...players); }
+                else if(tF === 'CURRENT') { cM = matches; cP = players; }
+                else { const t = savedTournaments.find(x=>x.id===tF); if(t){ cM=t.matches; cP=t.players; } }
+                
+                const uP = []; const seen = new Set();
+                cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
+                const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
+                
+                const pSel = el('stat-player'); const curP = pSel ? pSel.value : 'ALL';
+                if(pSel) pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + Array.from(seen).sort().map(n => `<option value="${n}" ${n===curP?'selected':''}>${n}</option>`).join('');
+                
+                safeHTML('global-stats-body', list.map((s, i) => `
+                    <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
+                        <div class="w-6 text-slate-400 font-bold">${i+1}</div>
+                        <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
+                            ${s.photo ? `<div class="relative w-6 h-6"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[6px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                            ${s.name}
+                        </div>
+                        <div class="stat-col text-slate-500">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
+                        <div class="stat-col-wide text-slate-900">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div>
+                    </div>`).join(''));
+            } catch(e) { showError("Stats Error: " + e.message); }
+        }
+
+        // --- ACTIONS ---
+        function addPlayer(e) { e.preventDefault(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); }
+        function handlePhotoUpload(e) { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(ev) { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 120; let w = img.width, h = img.height; if(w>h) { if(w>MAX){ h*=MAX/w; w=MAX; } } else { if(h>MAX){ w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); curPh = c.toDataURL('image/jpeg', 0.6); const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); } const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
+        function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); }
+        function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(); }
+        function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
+        function changeFormat(v) { settings.format = v; autoSave(); }
+        function changeRanking(v) { settings.rankingMode = v; autoSave(); }
+        function removePlayer(id) { if(confirm("Trinti žaidėją?")) { players = players.filter(p => p.id !== id); autoSave(); } }
+        function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, m.score1+v); else m.score2=Math.max(0, m.score2+v); autoSave(); } }
+        function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; autoSave(); } }
+        function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; autoSave(); } }
+        function renameCurrentTournament() { const idx = savedTournaments.findIndex(x=>x.id===currentTid); if(idx>-1){ const n=prompt("Pavadinimas:", savedTournaments[idx].name); if(n){ savedTournaments[idx].name=n; autoSave(); }} }
+        function resetScores() { if(confirm("Naujas turnyras? Mačai bus ištrinti.")) { currentTid = null; matches = []; autoSave(); switchView('setup'); } }
+        function resetAll() { if(confirm("VALYTI VISKĄ? Ištrinsite šios aplinkos (kambario) žaidėjus, mačus ir istoriją.")) { players = []; matches = []; currentTid = null; savedTournaments = []; setStore('p', null); setStore('m', null); setStore('h', null); setStore('tid', null); autoSave(); location.reload(); } }
+
+        function toggleTimer() {
+            if(settings.winCondition==='score') return;
+            if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; resetTimer(); return; }
+            if(isRunning) { clearInterval(timerInterval); isRunning=false; }
+            else { if(timeLeft <= 0) return; isRunning = true; endTime = Date.now() + (timeLeft * 1000); timerInterval = setInterval(() => { const d = Math.ceil((endTime - Date.now())/1000); if(d > 0) { timeLeft = d; updateTimerUI(); } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } }, 1000); }
+            updateTimerUI();
+        }
+        function updateTimerUI() {
+            try {
+                const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), s = (timeLeft%60).toString().padStart(2,'0');
+                safeText('timer-display', `${m}:${s}`);
+                const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop');
+                if(i1 && i2 && i3 && b) {
+                    i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden');
+                    if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-600 alarm-active"; i3.classList.remove('hidden'); }
+                    else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); }
+                    else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); }
+                }
+            } catch(e) { console.error(e); }
+        }
+        function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); }
+        function playBuzzer() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const now = ctx.currentTime; const o1 = ctx.createOscillator(); const g = ctx.createGain(); o1.type = 'sawtooth'; o1.frequency.setValueAtTime(130, now); o1.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0, now); g.gain.linearRampToValueAtTime(0.6, now+0.05); g.gain.setValueAtTime(0.6, now+1.8); g.gain.linearRampToValueAtTime(0, now+2); o1.start(); o1.stop(now+2); if(navigator.vibrate) navigator.vibrate(1000); } catch(e){} }
+        function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); }
+        function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
+
+        function switchView(n) {
+            try {
+                document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+                document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
+                const v = el('view-' + n); if(v) v.classList.add('active');
+                const nav = el('nav-' + n); if(nav) nav.classList.add('active');
+                if(n==='stats') { const s = el('stat-tournament'); if(s) s.innerHTML = '<option value="ALL">Visi turnyrai</option><option value="CURRENT">Dabartinis</option>' + savedTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join(''); renderGlobalStats(); }
+                if(n==='history') renderHistoryList();
+                if(n==='leader' || n==='setup' || n==='matches') render();
+            } catch(e) { showError("View Switch Error: " + e.message); }
+        }
+        function renderHistoryList() { safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button type="button" onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join('')); }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; setStore('tid', null); } autoSave(); renderHistoryList(); } }
+        function renderMatches() {
+            try {
+                const active = matches.filter(m => !m.finished);
+                safeHTML('matches-container', active.map(m => `
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4">
+                        <div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div>
+                        <div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1 ? m.team1.filter(p=>p).map(p => `<span class="font-bold text-sm text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
+                        <div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2 ? m.team2.filter(p=>p).map(p => `<span class="font-bold text-sm text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
+                        <button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div>
+                    </div>`).join(''));
+                const fin = matches.filter(m => m.finished).reverse();
+                safeHTML('finished-matches-container', fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' + fin.map(m => `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1?.filter(p=>p).map(p=>p.name).join('/')} vs ${m.team2?.filter(p=>p).map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1}:${m.score2}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`).join('') : '');
+            } catch(e) { showError("Matches Render Error: " + e.message); }
+        }
+
+        function initFirebaseConnection(silent = false) {
+            const room = el('fb-room')?.value.trim(); if(!room) return;
+            const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
+            try {
+                if(!firebase.apps.length) firebase.initializeApp(config);
+                activeRoom = room; isCloud = true; localStorage.setItem('r_v80', room);
+                dbRef = firebase.database().ref('pad_v80/' + room);
+                
+                safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
+                safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
+                safeText('cloud-room-name-display', room);
+
+                dbRef.once('value').then(snap => {
+                    const d = snap.val();
+                    if (d) {
+                        players = d.players || []; matches = d.matches || []; settings = {...ds, ...(d.settings || {})};
+                        savedTournaments = d.savedTournaments || []; currentTid = d.currentTid || null;
+                        render();
+                    } else { autoSave(); }
+                    
+                    dbRef.on('value', snap2 => {
+                        const d2 = snap2.val(); 
+                        if(d2 && (JSON.stringify(d2.lastUpdate) !== JSON.stringify(window.lastCloudUpdate))) {
+                            window.lastCloudUpdate = d2.lastUpdate;
+                            players = d2.players || []; matches = d2.matches || []; settings = {...ds, ...(d2.settings || {})};
+                            savedTournaments = d2.savedTournaments || []; currentTid = d2.currentTid || null;
+                            setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
+                            render();
+                            const sb = el('sync-bar'); if(sb) { sb.style.width = "100%"; setTimeout(() => sb.style.width = "0", 400); }
+                        }
+                    });
+                });
+            } catch(e) { console.error(e); showError("Cloud Error"); }
+        }
+
+        function disconnectFirebase() { 
+            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v80'); 
+            safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); 
+            safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); 
+            loadData(); render();
+        }
+
+        render();
+    </script>
+</body>
+</html>
