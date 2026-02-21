@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V78 (Isolated Leagues)</title>
+    <title>Padelio PRO V79 (Penalty System Restored)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -90,8 +90,8 @@
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
                 <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
                 <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 transition-colors">NAUJAS TURNYRAS</button>
-                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-[10px] uppercase border border-red-200 transition-colors">VALYTI VISKĄ</button>
+                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200">NAUJAS TURNYRAS</button>
+                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-[10px] uppercase border border-red-200">VALYTI VISKĄ</button>
                 </div>
             </div>
         </div>
@@ -141,7 +141,7 @@
             <h2 class="text-2xl font-black mb-6">Debesis</h2>
             <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Izoliuotas Kambarys</h3>
+                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
                     <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
                 </div>
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
@@ -150,13 +150,11 @@
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
                 
                 <div id="cloud-connect-ui" class="space-y-4 text-center">
-                    <p class="text-xs text-slate-400 mb-2">Prisijungus prie kambario, matysite tik šio kambario turnyrus ir istoriją.</p>
-                    <input type="text" id="fb-room" placeholder="Kambario Pavadinimas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
                     <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
                 <div id="cloud-active-ui" class="hidden space-y-4 text-center">
-                    <p class="text-xs text-green-400 mb-1 uppercase font-bold tracking-widest">Aktyvi Lyga</p>
-                    <p id="cloud-room-name-display" class="text-3xl font-black text-white uppercase tracking-widest mb-4">---</p>
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p>
                     <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
                 </div>
             </div>
@@ -184,84 +182,75 @@
         function safeDisplay(id, d) { const e = el(id); if(e) e.style.display = d; }
         function showError(msg) { console.error(msg); alert(msg); }
 
-        // --- ISOLATED ENVIRONMENT STATE ---
+        // --- STATE & DATA ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
-        let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0;
-        
-        let activeRoom = localStorage.getItem('r_v78') || '';
-        let isCloud = !!activeRoom;
-        let dbRef = null;
+        let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
+
+        let activeRoom = localStorage.getItem('r_v79') || '';
+        if(activeRoom) isCloud = true;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- DYNAMIC LOCAL STORAGE ---
         function getStore(key) {
-            const prefix = isCloud ? `v78_room_${activeRoom}_` : `v78_local_`;
+            const prefix = isCloud ? `v79_room_${activeRoom}_` : `v79_local_`;
             return JSON.parse(localStorage.getItem(prefix + key));
         }
-
         function setStore(key, val) {
-            const prefix = isCloud ? `v78_room_${activeRoom}_` : `v78_local_`;
+            const prefix = isCloud ? `v79_room_${activeRoom}_` : `v79_local_`;
             if (val === null) localStorage.removeItem(prefix + key);
             else localStorage.setItem(prefix + key, JSON.stringify(val));
         }
 
-        function loadData() {
+        // --- INIT ---
+        try {
             players = (getStore('p') || []).filter(p => p && p.id);
             matches = getStore('m') || [];
             settings = {...ds, ...(getStore('s') || {})};
             savedTournaments = getStore('h') || [];
             currentTid = getStore('tid');
             timeLeft = settings.matchDuration * 60;
-        }
+            if(activeRoom) { safeVal('fb-room', activeRoom); initFirebaseConnection(true); }
+        } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- INIT ---
-        try {
-            if (activeRoom) {
-                safeVal('fb-room', activeRoom);
-                loadData();
-                initFirebaseConnection(true); 
-            } else {
-                loadData();
-            }
-        } catch(e) { console.error("Init Error", e); localStorage.clear(); loadData(); }
-
-        // --- WHIST CONFIG (AMERICANO) ---
-        const WHIST = {
-            4: { mod: 3, pivot: 3, starter: [[3, 0, 1, 2]] }, 
-            8: { mod: 7, pivot: 7, starter: [[7, 0, 1, 2], [3, 4, 5, 6]] }, 
-            12: { mod: 11, pivot: 11, starter: [[11, 0, 4, 5], [1, 10, 2, 8], [3, 7, 6, 9]] }, 
-            16: { mod: 15, pivot: 15, starter: [[15, 0, 9, 10], [1, 12, 4, 8], [2, 11, 5, 7], [3, 13, 6, 14]] },
-            20: { mod: 19, pivot: 19, starter: [[19, 18, 13, 14], [0, 9, 15, 17], [5, 12, 3, 6], [11, 16, 4, 8], [2, 10, 1, 7]] }
-        };
-
-        // --- GENERATOR LOGIC ---
-        function getPartnerHistory() {
-            const h = new Map();
+        // --- BRAINS: HISTORY ENGINE ---
+        function getHistoryStats() {
+            const partners = new Map();
+            const opponents = new Map();
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
+            
             allM.forEach(m => {
                 if(m && m.team1 && m.team2) {
-                    const add = (p1, p2) => {
-                        if(p1 && p2) {
-                            if(!h.has(p1.id)) h.set(p1.id, new Map());
-                            const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
-                        }
+                    const addP = (p1, p2) => {
+                        if(!p1 || !p2) return;
+                        if(!partners.has(p1.id)) partners.set(p1.id, new Map());
+                        const m1 = partners.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
                     };
-                    if(m.team1.length > 1) { add(m.team1[0], m.team1[1]); add(m.team1[1], m.team1[0]); }
-                    if(m.team2.length > 1) { add(m.team2[0], m.team2[1]); add(m.team2[1], m.team2[0]); }
+                    const addO = (p1, p2) => {
+                        if(!p1 || !p2) return;
+                        if(!opponents.has(p1.id)) opponents.set(p1.id, new Map());
+                        const m1 = opponents.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                    };
+
+                    if(m.team1.length > 1) { addP(m.team1[0], m.team1[1]); addP(m.team1[1], m.team1[0]); }
+                    if(m.team2.length > 1) { addP(m.team2[0], m.team2[1]); addP(m.team2[1], m.team2[0]); }
+
+                    m.team1.forEach(p1 => m.team2.forEach(p2 => {
+                        addO(p1, p2); addO(p2, p1);
+                    }));
                 }
             });
-            return h;
+            return { partners, opponents };
         }
 
+        // --- GENERATOR LOGIC ---
         function generateRound() {
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
                 const safePool = players.filter(p => p && p.id);
                 let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                // 1. FIXED PAIRS (POLYGON METHOD - UNIVERSAL)
+                // --- 1. FIKSUOTOS POROS (ROUND-ROBIN RATAS) ---
                 if (settings.format === 'fixed') {
                     let teams = [];
                     for (let k = 0; k < safePool.length; k += 2) {
@@ -296,81 +285,77 @@
                     return;
                 }
 
-                // 2. AMERICANO MATRICES
-                if (settings.format === 'americano' && WHIST[safePool.length]) {
-                    const N = safePool.length;
-                    const cfg = WHIST[N];
-                    const shift = roundNum - 1;
-                    
-                    if (N === 4) {
-                        const m4 = [ [[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]] ];
-                        const c = shift % 3;
-                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[m4[c][0][0]], safePool[m4[c][0][1]]], team2: [safePool[m4[c][1][0]], safePool[m4[c][1][1]]] });
-                    } else {
-                        cfg.starter.forEach((table, tIdx) => {
-                            const pIndices = table.map(starterVal => {
-                                if (starterVal === cfg.pivot) return cfg.pivot;
-                                return (starterVal + shift) % cfg.mod;
-                            });
-                            newM.push({
-                                id: uid(), round: roundNum, court: tIdx + 1, finished: false, score1: 0, score2: 0,
-                                team1: [safePool[pIndices[0]], safePool[pIndices[1]]],
-                                team2: [safePool[pIndices[2]], safePool[pIndices[3]]]
-                            });
-                        });
-                    }
+                // --- 2. AMERICANO MATRICA TIK 4 ŽAIDĖJAMS ---
+                if (settings.format === 'americano' && safePool.length === 4) {
+                    const m4 = [ [[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]] ];
+                    const c = (roundNum - 1) % 3;
+                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[m4[c][0][0]], safePool[m4[c][0][1]]], team2: [safePool[m4[c][1][0]], safePool[m4[c][1][1]]] });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
                     return;
                 }
 
-                // 3. MONTE CARLO FALLBACK
-                const hist = getPartnerHistory();
-                let bestSet = null, minScore = Infinity;
+                // --- 3. MONTE CARLO BAUDŲ SISTEMA (Visi kiti - 8, 12, Mix ir t.t.) ---
+                const { partners, opponents } = getHistoryStats();
+                let bestSet = null, minPenalty = Infinity;
 
-                for(let i=0; i<1000; i++) {
+                for(let i=0; i<2000; i++) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    let currentSet = [], currentScore = 0;
+                    let currentSet = [], currentPenalty = 0;
                     
                     if(settings.format.includes('mix')) {
                         let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
-                        let pairs = Math.min(m.length, f.length);
-                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairs/2));
+                        let pairsCount = Math.min(m.length, f.length);
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairsCount/2));
+                        
                         if(courtsNeeded > 0) {
                             for(let c=0; c<courtsNeeded; c++) {
                                 const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
-                                if(t1[0] && t1[1] && t2[0] && t2[1]) {
-                                    currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
-                                    currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
-                                    currentSet.push({ team1: t1, team2: t2 });
-                                }
+                                // Baudos partneriams (Griežtai draudžiama kartotis)
+                                currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 10000;
+                                currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 10000;
+                                // Baudos varžovams (Stengiamasi išvengti)
+                                t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += (opponents.get(p1.id)?.get(p2.id) || 0) * 50; }));
+                                
+                                currentSet.push({ team1: t1, team2: t2 });
                             }
                         }
                     } else {
+                        // Americano Baudų algoritmas (išsprendžia Ramūno ir Pauliaus problemą)
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
                         for(let c=0; c<courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
-                            currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
-                            currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
+                            // Partneriai (10000)
+                            currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 10000;
+                            currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 10000;
+                            // Varžovai (50)
+                            t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += (opponents.get(p1.id)?.get(p2.id) || 0) * 50; }));
+                            
                             currentSet.push({ team1: t1, team2: t2 });
                         }
                     }
 
-                    if(currentSet.length > 0 && currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore===0) break; }
+                    if(currentSet.length > 0 && currentPenalty < minPenalty) { 
+                        minPenalty = currentPenalty; 
+                        bestSet = currentSet; 
+                        if(minPenalty === 0) break; // Tobulas raundas
+                    }
                 }
 
-                if(!bestSet && players.length >= 4) {
+                if(!bestSet || bestSet.length === 0) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
+                    if(pool.length >= 4) bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
                 }
 
                 if(bestSet && bestSet.length > 0) {
                     bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
-                } else { alert("Nepakanka žaidėjų."); }
+                } else {
+                    alert("Nepakanka žaidėjų.");
+                }
             } catch(e) { showError("Generavimo klaida: " + e.message); }
         }
 
-        // --- DATA SYNC (ISOLATED) ---
+        // --- DATA SYNC ---
         function autoSave() {
             try {
                 if(players.length === 0 && matches.length === 0) return;
@@ -385,13 +370,8 @@
                     savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
                     savedTournaments[idx].lastUpdate = Date.now();
                 }
+                setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
                 
-                setStore('p', players);
-                setStore('m', matches);
-                setStore('s', settings);
-                setStore('h', savedTournaments);
-                setStore('tid', currentTid);
-
                 if(isCloud && dbRef) {
                     const payload = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() };
                     window.lastCloudUpdate = payload.lastUpdate;
@@ -417,7 +397,6 @@
             return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif));
         }
 
-        // --- RENDER ---
         function render() {
             try {
                 const isF = settings.format === 'fixed';
@@ -511,13 +490,7 @@
         function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; autoSave(); } }
         function renameCurrentTournament() { const idx = savedTournaments.findIndex(x=>x.id===currentTid); if(idx>-1){ const n=prompt("Pavadinimas:", savedTournaments[idx].name); if(n){ savedTournaments[idx].name=n; autoSave(); }} }
         function resetScores() { if(confirm("Naujas turnyras? Mačai bus ištrinti.")) { currentTid = null; matches = []; autoSave(); switchView('setup'); } }
-        function resetAll() { 
-            if(confirm("VALYTI VISKĄ? Ištrinsite šios aplinkos (kambario) žaidėjus, mačus ir istoriją.")) { 
-                players = []; matches = []; currentTid = null; savedTournaments = [];
-                setStore('p', null); setStore('m', null); setStore('h', null); setStore('tid', null);
-                autoSave(); location.reload(); 
-            } 
-        }
+        function resetAll() { if(confirm("VALYTI VISKĄ? Ištrinsite šios aplinkos (kambario) žaidėjus, mačus ir istoriją.")) { players = []; matches = []; currentTid = null; savedTournaments = []; setStore('p', null); setStore('m', null); setStore('h', null); setStore('tid', null); autoSave(); location.reload(); } }
 
         function toggleTimer() {
             if(settings.winCondition==='score') return;
@@ -558,7 +531,6 @@
         function renderHistoryList() { safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button type="button" onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join('')); }
         function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } }
         function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; setStore('tid', null); } autoSave(); renderHistoryList(); } }
-        
         function renderMatches() {
             try {
                 const active = matches.filter(m => !m.finished);
@@ -574,14 +546,13 @@
             } catch(e) { showError("Matches Render Error: " + e.message); }
         }
 
-        // --- CLOUD ---
         function initFirebaseConnection(silent = false) {
             const room = el('fb-room')?.value.trim(); if(!room) return;
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                activeRoom = room; isCloud = true; localStorage.setItem('r_v78', room);
-                dbRef = firebase.database().ref('pad_v78/' + room);
+                activeRoom = room; isCloud = true; localStorage.setItem('r_v79', room);
+                dbRef = firebase.database().ref('pad_v79/' + room);
                 
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
@@ -593,9 +564,7 @@
                         players = d.players || []; matches = d.matches || []; settings = {...ds, ...(d.settings || {})};
                         savedTournaments = d.savedTournaments || []; currentTid = d.currentTid || null;
                         render();
-                    } else {
-                        autoSave(); // Naujas kambarys - išsiunčiame savo lokalius duomenis
-                    }
+                    } else { autoSave(); }
                     
                     dbRef.on('value', snap2 => {
                         const d2 = snap2.val(); 
@@ -603,7 +572,6 @@
                             window.lastCloudUpdate = d2.lastUpdate;
                             players = d2.players || []; matches = d2.matches || []; settings = {...ds, ...(d2.settings || {})};
                             savedTournaments = d2.savedTournaments || []; currentTid = d2.currentTid || null;
-                            
                             setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
                             render();
                             const sb = el('sync-bar'); if(sb) { sb.style.width = "100%"; setTimeout(() => sb.style.width = "0", 400); }
@@ -614,7 +582,7 @@
         }
 
         function disconnectFirebase() { 
-            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v78'); 
+            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v79'); 
             safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); 
             safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); 
             loadData(); render();
