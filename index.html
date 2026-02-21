@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V76 (Fixed Pairs & Opponent Logic)</title>
+    <title>Padelio PRO V77 (Perfect Fixed Pairs)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -200,56 +200,90 @@
 
         // --- INIT ---
         try {
-            players = (JSON.parse(localStorage.getItem('p_v76')) || []).filter(p => p && p.id);
-            matches = JSON.parse(localStorage.getItem('m_v76')) || [];
-            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v76')) || {})};
-            savedTournaments = JSON.parse(localStorage.getItem('h_v76')) || [];
-            currentTid = localStorage.getItem('tid_v76');
+            players = (JSON.parse(localStorage.getItem('p_v77')) || []).filter(p => p && p.id);
+            matches = JSON.parse(localStorage.getItem('m_v77')) || [];
+            settings = {...ds, ...(JSON.parse(localStorage.getItem('s_v77')) || {})};
+            savedTournaments = JSON.parse(localStorage.getItem('h_v77')) || [];
+            currentTid = localStorage.getItem('tid_v77');
             timeLeft = settings.matchDuration * 60;
-            const r = localStorage.getItem('r_v76');
+            const r = localStorage.getItem('r_v77');
             if(r) { safeVal('fb-room', r); initFirebaseConnection(true); }
         } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- STATS ENGINE (TRACKS PARTNERS & OPPONENTS) ---
-        function getHistoryStats() {
-            const partners = new Map();
-            const opponents = new Map();
+        // --- BRAINS ---
+        function getPartnerHistory() {
+            const h = new Map();
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
-            
             allM.forEach(m => {
                 if(m && m.team1 && m.team2) {
-                    const addP = (p1, p2) => {
-                        if(!p1 || !p2) return;
-                        if(!partners.has(p1.id)) partners.set(p1.id, new Map());
-                        const m1 = partners.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                    const add = (p1, p2) => {
+                        if(p1 && p2) {
+                            if(!h.has(p1.id)) h.set(p1.id, new Map());
+                            const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                        }
                     };
-                    const addO = (p1, p2) => {
-                        if(!p1 || !p2) return;
-                        if(!opponents.has(p1.id)) opponents.set(p1.id, new Map());
-                        const m1 = opponents.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
-                    };
-
-                    // Pildome Partnerius
-                    if(m.team1.length > 1) { addP(m.team1[0], m.team1[1]); addP(m.team1[1], m.team1[0]); }
-                    if(m.team2.length > 1) { addP(m.team2[0], m.team2[1]); addP(m.team2[1], m.team2[0]); }
-
-                    // Pildome Priešininkus
-                    m.team1.forEach(p1 => m.team2.forEach(p2 => {
-                        addO(p1, p2); addO(p2, p1);
-                    }));
+                    if(m.team1.length > 1) { add(m.team1[0], m.team1[1]); add(m.team1[1], m.team1[0]); }
+                    if(m.team2.length > 1) { add(m.team2[0], m.team2[1]); add(m.team2[1], m.team2[0]); }
                 }
             });
-            return { partners, opponents };
+            return h;
         }
 
-        // --- MATCH GENERATOR ---
         function generateRound() {
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
-                const safePool = players.filter(p => p && p.id); // originalioje suvedimo tvarkoje
+                const safePool = players.filter(p => p && p.id);
                 let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                // --- 1. AMERICANO MATRICOS (4, 8, 12, 16, 20) ---
+                // --- 1. FIKSUOTOS POROS (ROUND-ROBIN RATAS) ---
+                // Fiksuotoms poroms nebenaudojamas atsitiktinis spėliojimas. Naudojamas rato algoritmas komandoms.
+                if (settings.format === 'fixed') {
+                    let teams = [];
+                    // Surištos komandos iš eilės: 0-1, 2-3, 4-5 ir t.t.
+                    for (let k = 0; k < safePool.length; k += 2) {
+                        if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]);
+                    }
+                    
+                    let K = teams.length;
+                    if (K < 2) return alert("Fiksuotoms poroms reikia bent 4 žaidėjų (2 porų).");
+                    
+                    // Rato sistemos logika (Polygon Method) komandoms
+                    let K_even = K % 2 === 0 ? K : K + 1;
+                    let cycleRounds = K_even - 1;
+                    let shift = (roundNum - 1) % cycleRounds;
+                    
+                    let rotatedIndices = [0];
+                    let others = [];
+                    for (let i = 1; i < K_even; i++) others.push(i);
+                    
+                    for (let i = 0; i < shift; i++) {
+                        others.unshift(others.pop());
+                    }
+                    rotatedIndices.push(...others);
+                    
+                    let roundMatches = [];
+                    for (let i = 0; i < K_even / 2; i++) {
+                        let t1Idx = rotatedIndices[i];
+                        let t2Idx = rotatedIndices[K_even - 1 - i];
+                        
+                        // Jei K buvo nelyginis ir tIdx == K, ta komanda „ilsisi“ šį raundą
+                        if (t1Idx < K && t2Idx < K) {
+                            roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
+                        }
+                    }
+                    
+                    // Apribojame pagal aikštelių skaičių
+                    roundMatches = roundMatches.slice(0, settings.courts);
+                    
+                    roundMatches.forEach((m, idx) => {
+                        newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
+                    });
+                    
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    return;
+                }
+
+                // --- 2. AMERICANO MATRICOS (4, 8, 12, 16, 20) ---
                 if (settings.format === 'americano' && WHIST[safePool.length]) {
                     const N = safePool.length;
                     const cfg = WHIST[N];
@@ -276,93 +310,51 @@
                     return;
                 }
 
-                // --- 2. HIBRIDINIS GENERATORIUS (Fiksuotos, Mix, ir kiti kiekiai) ---
-                const { partners, opponents } = getHistoryStats();
-                let bestSet = null, minPenalty = Infinity;
+                // --- 3. MONTE CARLO (Fallback: Mix, nestandartiniai Americano) ---
+                const hist = getPartnerHistory();
+                let bestSet = null, minScore = Infinity;
 
-                // Paruošiame fiksuotas komandas pagal įvedimo tvarką
-                let fixedTeams = [];
-                if (settings.format === 'fixed') {
-                    for (let k = 0; k < safePool.length; k += 2) {
-                        if (k + 1 < safePool.length) {
-                            fixedTeams.push([safePool[k], safePool[k + 1]]);
-                        }
-                    }
-                    if (fixedTeams.length < 2) return alert("Fiksuotoms poroms reikia bent 4 žaidėjų (2 porų).");
-                }
-
-                // Monte Carlo ciklas (1000 iteracijų geriausiam variantui rasti)
                 for(let i=0; i<1000; i++) {
-                    let currentSet = [], currentPenalty = 0;
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    let currentSet = [], currentScore = 0;
                     
-                    if (settings.format === 'fixed') {
-                        // Pasirenkame atsitiktinę PORŲ (ne pavienių žaidėjų) tvarką
-                        let shuffledTeams = [...fixedTeams].sort(() => Math.random() - 0.5);
-                        let courtsNeeded = Math.min(settings.courts, Math.floor(shuffledTeams.length / 2));
-                        
-                        for (let c = 0; c < courtsNeeded; c++) {
-                            const t1 = shuffledTeams.pop();
-                            const t2 = shuffledTeams.pop();
-                            
-                            // Bauda, jei šios komandos jau žaidė viena prieš kitą (tikriname priešininkų istoriją)
-                            t1.forEach(p1 => t2.forEach(p2 => {
-                                currentPenalty += (opponents.get(p1.id)?.get(p2.id) || 0) * 10;
-                            }));
-                            
-                            currentSet.push({ team1: t1, team2: t2 });
-                        }
-                    } else if (settings.format.includes('mix')) {
-                        let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    if(settings.format.includes('mix')) {
                         let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
-                        let pairsCount = Math.min(m.length, f.length);
-                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairsCount/2));
-                        
+                        let pairs = Math.min(m.length, f.length);
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairs/2));
                         if(courtsNeeded > 0) {
                             for(let c=0; c<courtsNeeded; c++) {
                                 const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
-                                // Bauda už tą patį partnerį
-                                currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 1000;
-                                currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 1000;
-                                // Bauda už tą patį varžovą
-                                t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += (opponents.get(p1.id)?.get(p2.id) || 0) * 10; }));
-                                currentSet.push({ team1: t1, team2: t2 });
+                                if(t1[0] && t1[1] && t2[0] && t2[1]) {
+                                    currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
+                                    currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
+                                    currentSet.push({ team1: t1, team2: t2 });
+                                }
                             }
                         }
                     } else {
-                        // Standartinis Americano visiems kitiems skaičiams (pvz. 5, 9, 10 žaidėjų)
-                        let pool = [...safePool].sort(() => Math.random() - 0.5);
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
                         for(let c=0; c<courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
-                            currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 1000;
-                            currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 1000;
-                            t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += (opponents.get(p1.id)?.get(p2.id) || 0) * 10; }));
+                            currentScore += (hist.get(t1[0].id)?.get(t1[1].id) || 0) * 10;
+                            currentScore += (hist.get(t2[0].id)?.get(t2[1].id) || 0) * 10;
                             currentSet.push({ team1: t1, team2: t2 });
                         }
                     }
 
-                    if(currentSet.length > 0 && currentPenalty < minPenalty) { 
-                        minPenalty = currentPenalty; 
-                        bestSet = currentSet; 
-                        if(minPenalty === 0) break; // Tobulas variantas rastas
-                    }
+                    if(currentSet.length > 0 && currentScore < minScore) { minScore = currentScore; bestSet = currentSet; if(minScore===0) break; }
                 }
 
-                // FAILSAFE
-                if(!bestSet || bestSet.length === 0) {
-                    if (settings.format === 'fixed' && fixedTeams.length >= 2) {
-                        bestSet = [{ team1: fixedTeams[0], team2: fixedTeams[1] }];
-                    } else {
-                        let pool = [...safePool].sort(() => Math.random() - 0.5);
-                        if(pool.length >= 4) bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
-                    }
+                if(!bestSet && players.length >= 4) {
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
                 }
 
                 if(bestSet && bestSet.length > 0) {
                     bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
                 } else {
-                    alert("Nepakanka žaidėjų. Patikrinkite lytis arba kiekį.");
+                    alert("Nepakanka žaidėjų.");
                 }
             } catch(e) { showError("Generavimo klaida: " + e.message); }
         }
@@ -372,7 +364,7 @@
             try {
                 if(players.length === 0 && matches.length === 0) return;
                 if(!currentTid) {
-                    currentTid = uid(); localStorage.setItem('tid_v76', currentTid);
+                    currentTid = uid(); localStorage.setItem('tid_v77', currentTid);
                     savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [], matches: [], settings: {} });
                 }
                 const idx = savedTournaments.findIndex(x => x.id === currentTid);
@@ -382,10 +374,10 @@
                     savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
                     savedTournaments[idx].lastUpdate = Date.now();
                 }
-                localStorage.setItem('p_v76', JSON.stringify(players));
-                localStorage.setItem('m_v76', JSON.stringify(matches));
-                localStorage.setItem('s_v76', JSON.stringify(settings));
-                localStorage.setItem('h_v76', JSON.stringify(savedTournaments));
+                localStorage.setItem('p_v77', JSON.stringify(players));
+                localStorage.setItem('m_v77', JSON.stringify(matches));
+                localStorage.setItem('s_v77', JSON.stringify(settings));
+                localStorage.setItem('h_v77', JSON.stringify(savedTournaments));
                 if(isCloud && dbRef) dbRef.set({ players, matches, settings, lastUpdate: Date.now() });
                 render();
             } catch (e) { showError("Klaida išsaugant: " + e.message); }
@@ -426,7 +418,6 @@
                 const curT = savedTournaments.find(x => x.id === currentTid);
                 safeText('btn-rename-tournament', curT ? `✏️ ${curT.name.toUpperCase()}` : `✏️ PERVADINTI TURNYRĄ`);
                 
-                // Sąrašas dabar nerodomas atvirkščiai, kad Fiksuotų porų tvarka būtų 100% aiški
                 safeHTML('players-list', players.map((p, index) => `
                     <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
                         <div class="flex items-center gap-3">
@@ -540,8 +531,8 @@
             } catch(e) { showError("View Switch Error: " + e.message); }
         }
         function renderHistoryList() { safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">${t.id===currentTid?'Tęsti':'Užkrauti'}</button><button type="button" onclick="deleteHistory('${t.id}')" class="px-4 py-2 bg-red-50 text-red-500 rounded-lg font-bold">×</button></div></div>`).join('')); }
-        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v76', id); resetTimer(); autoSave(); switchView('matches'); } }
-        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v76'); } autoSave(); renderHistoryList(); } }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(t.players)); matches = JSON.parse(JSON.stringify(t.matches)); settings = {...ds, ...t.settings}; currentTid = id; localStorage.setItem('tid_v77', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id) { currentTid=null; localStorage.removeItem('tid_v77'); } autoSave(); renderHistoryList(); } }
         function renderMatches() {
             try {
                 const active = matches.filter(m => !m.finished);
@@ -562,7 +553,7 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                dbRef = firebase.database().ref('pad_v76/' + room); isCloud = true; localStorage.setItem('r_v76', room);
+                dbRef = firebase.database().ref('pad_v77/' + room); isCloud = true; localStorage.setItem('r_v77', room);
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
@@ -574,7 +565,7 @@
                 });
             } catch(e) { console.error(e); showError("Cloud Error"); }
         }
-        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v76'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
+        function disconnectFirebase() { if(dbRef) dbRef.off(); isCloud = false; dbRef = null; localStorage.removeItem('r_v77'); safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); }
 
         render();
     </script>
