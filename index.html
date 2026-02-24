@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V90 (Smart Engine)</title>
+    <title>Padelio PRO V82 (Smart Penalties)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 90px; font-size: 16px; }
+        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 90px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .nav-btn.active { color: #16a34a; }
         .nav-btn.active svg { stroke: #16a34a; }
@@ -16,32 +16,32 @@
         .view-section { display: none; }
         .view-section.active { display: block; animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .avatar-frame-m { border: 3px solid #3b82f6; }
-        .avatar-frame-f { border: 3px solid #ec4899; }
-        input, select { font-size: 18px !important; }
-        .stat-col { text-align: center; font-weight: bold; font-size: 13px; width: 28px; flex-shrink: 0; }
-        .stat-col-wide { text-align: right; font-weight: 900; font-size: 15px; width: 50px; flex-shrink: 0; }
+        .avatar-frame-m { border: 2px solid #3b82f6; }
+        .avatar-frame-f { border: 2px solid #ec4899; }
+        input, select { font-size: 16px !important; }
+        .stat-col { text-align: center; font-weight: bold; font-size: 10px; width: 22px; flex-shrink: 0; }
+        .stat-col-wide { text-align: right; font-weight: 900; font-size: 12px; width: 42px; flex-shrink: 0; }
     </style>
 </head>
 <body>
 
     <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
 
-    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-20 flex justify-between items-center px-4 w-full shadow-sm">
-        <div class="flex items-center gap-3" id="timer-controls">
-            <button type="button" onclick="adjustTime(-60)" class="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-3xl font-bold">-</button>
-            <span id="timer-display" class="text-4xl font-black font-mono tracking-tighter tabular-nums">12:00</span>
-            <button type="button" onclick="adjustTime(60)" class="w-12 h-12 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-3xl font-bold">+</button>
+    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full shadow-sm">
+        <div class="flex items-center gap-2" id="timer-controls">
+            <button type="button" onclick="adjustTime(-60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-xl font-bold">-</button>
+            <span id="timer-display" class="text-3xl font-black font-mono tracking-tighter tabular-nums">12:00</span>
+            <button type="button" onclick="adjustTime(60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-xl font-bold">+</button>
         </div>
-        <div id="score-mode-text" class="hidden text-lg font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
+        <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
         <div class="flex items-center gap-2">
-            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-14 h-14 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
-                <svg id="icon-play" width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="icon-pause" class="hidden" width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                <svg id="icon-stop" class="hidden" width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-11 h-11 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+                <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                <svg id="icon-stop" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
             </button>
-            <button type="button" onclick="resetTimer()" class="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
-                <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <button type="button" onclick="resetTimer()" class="w-11 h-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
         </div>
     </div>
@@ -49,126 +49,126 @@
     <div class="max-w-md mx-auto p-4 w-full">
         
         <div id="view-setup" class="view-section active w-full">
-            <div class="bg-white p-5 rounded-3xl shadow-lg border border-slate-200 mb-6">
-                <div class="flex justify-between items-center mb-4 px-1">
-                    <span class="text-sm font-black text-slate-400 uppercase tracking-widest">Žaidėjų registracija</span>
-                    <span id="player-count" class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full font-bold">Viso: 0</span>
+            <div class="bg-white p-3 rounded-2xl shadow-lg border border-slate-200 mb-6">
+                <div class="flex justify-between items-center mb-3 px-1">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjų registracija</span>
+                    <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold">Viso: 0</span>
                 </div>
-                <form onsubmit="addPlayer(event)" class="flex gap-3 w-full items-center">
-                    <div class="flex bg-slate-100 rounded-2xl overflow-hidden shrink-0 h-14 border border-slate-200">
-                        <button type="button" id="gender-m" onclick="setGender('M')" class="w-12 font-bold transition-colors bg-blue-600 text-white text-sm">V</button>
-                        <button type="button" id="gender-f" onclick="setGender('F')" class="w-12 font-bold transition-colors text-slate-400 text-sm">M</button>
+                <form onsubmit="addPlayer(event)" class="flex gap-2 w-full items-center">
+                    <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-10 border border-slate-200">
+                        <button type="button" id="gender-m" onclick="setGender('M')" class="w-9 font-bold transition-colors bg-blue-600 text-white text-[10px]">V</button>
+                        <button type="button" id="gender-f" onclick="setGender('F')" class="w-9 font-bold transition-colors text-slate-400 text-[10px]">M</button>
                     </div>
                     <div class="relative shrink-0">
                         <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
-                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-14 h-14 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden active:scale-95 shadow-sm">
-                            <span id="photo-placeholder" class="text-2xl">📷</span>
+                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-10 h-10 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95">
+                            <span id="photo-placeholder" class="text-lg">📷</span>
                             <img id="photo-preview" class="hidden w-full h-full object-cover">
                         </button>
                     </div>
-                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-4 rounded-2xl border-2 border-slate-100 focus:outline-none focus:border-green-500 h-14 text-slate-900 font-bold text-lg" />
-                    <button type="submit" class="bg-slate-900 text-white w-14 h-14 shrink-0 rounded-2xl font-bold text-3xl active:scale-95 shadow-lg">+</button>
+                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-3 rounded-lg border-2 border-slate-100 focus:outline-none focus:border-green-500 h-10 text-slate-900 font-bold text-sm" />
+                    <button type="submit" class="bg-slate-900 text-white w-10 h-10 shrink-0 rounded-lg font-bold text-xl active:scale-95 shadow-md">+</button>
                 </form>
             </div>
 
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 mb-6 space-y-5">
-                <div class="flex bg-slate-100 p-1.5 rounded-2xl">
-                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-3 text-xs font-black rounded-xl bg-white shadow text-slate-900 uppercase transition-all">Pagal Laiką</button>
-                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-3 text-xs font-bold text-slate-400 uppercase transition-all">Pagal Taškus</button>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4">
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase transition-all">Pagal Laiką</button>
+                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase transition-all">Pagal Taškus</button>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
-                    <div id="control-duration"><label class="text-[11px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-12"><button onclick="changeSetting('matchDuration', -1)" class="w-10 h-full bg-slate-100 rounded-xl font-bold text-xl">-</button><span id="val-duration" class="flex-1 text-center font-black text-2xl">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-10 h-full bg-slate-100 rounded-xl font-bold text-xl">+</button></div></div>
-                    <div id="control-points" style="display:none;"><label class="text-[11px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-12"><button onclick="changeSetting('maxPoints', -1)" class="w-10 h-full bg-slate-100 rounded-xl font-bold text-xl">-</button><span id="val-points" class="flex-1 text-center font-black text-2xl">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-10 h-full bg-slate-100 rounded-xl font-bold text-xl">+</button></div></div>
-                    <div><label class="text-[11px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-12"><button onclick="changeSetting('courts', -1)" class="w-10 h-full bg-slate-100 rounded-xl font-bold text-xl">-</button><span id="val-courts" class="flex-1 text-center font-black text-2xl">2</span><button onclick="changeSetting('courts', 1)" class="w-10 h-full bg-slate-100 rounded-xl font-bold text-xl">+</button></div></div>
-                    <div><label class="text-[11px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold text-sm h-12"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
+                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
-                <div><label class="text-[11px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-3 font-bold text-base"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
+                <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="super_mexicano">Super Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
             </div>
 
-            <div id="players-list" class="space-y-3 mb-10"></div>
+            <div id="players-list" class="space-y-2 mb-10"></div>
             
-            <div class="space-y-4 pt-6 border-t border-slate-200 pb-12 text-center">
-                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-4 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-2xl font-bold text-sm uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
-                <div class="grid grid-cols-2 gap-3">
-                    <button type="button" onclick="resetScores()" class="py-4 text-orange-600 bg-white hover:bg-orange-50 rounded-2xl font-bold text-xs uppercase border border-orange-200 transition-colors">NAUJAS TURNYRAS</button>
-                    <button type="button" onclick="resetAll()" class="py-4 text-red-600 bg-white hover:bg-red-50 rounded-2xl font-bold text-xs uppercase border border-red-200 transition-colors">VALYTI VISKĄ</button>
+            <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
+                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 transition-colors">NAUJAS TURNYRAS</button>
+                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-[10px] uppercase border border-red-200 transition-colors">VALYTI VISKĄ</button>
                 </div>
             </div>
         </div>
 
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-3xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
-                <button onclick="generateRound()" class="px-8 py-4 rounded-full bg-green-600 text-white font-bold shadow-xl shadow-green-200 text-lg active:scale-95 transition-transform">NAUJAS +</button>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
+                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
         </div>
 
         <div id="view-leader" class="view-section w-full">
-            <h2 class="text-3xl font-black mb-6 tracking-tight">Rezultatai</h2>
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-4 py-3 text-xs font-black text-slate-400 uppercase text-center">
-                    <div class="w-8">#</div><div class="flex-1 text-left pl-2">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Rezultatai</h2>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
+                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
                  </div>
                 <div id="leaderboard-body" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
         <div id="view-stats" class="view-section w-full">
-            <h2 class="text-3xl font-black mb-6 tracking-tight">Statistika</h2>
-            <div class="bg-white p-5 rounded-3xl border border-slate-200 mb-6 space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold focus:outline-none"></select></div>
-                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
-                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
+            <h2 class="text-2xl font-black mb-4 tracking-tight">Statistika</h2>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"></select></div>
+                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
+                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
                 </div>
             </div>
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-4 py-3 text-xs font-black text-slate-400 uppercase text-center">
-                    <div class="w-8">#</div><div class="flex-1 text-left pl-2">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
+                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
                 </div>
                 <div id="global-stats-body" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
         <div id="view-history" class="view-section w-full">
-            <h2 class="text-3xl font-black mb-6 tracking-tight">Istorija</h2>
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Istorija</h2>
             <div id="history-list" class="space-y-4"></div>
         </div>
 
         <div id="view-cloud" class="view-section w-full">
-            <h2 class="text-3xl font-black mb-6">Debesis</h2>
+            <h2 class="text-2xl font-black mb-6">Debesis</h2>
             <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
-                    <span id="cloud-status" class="text-xs bg-slate-700 px-3 py-1 rounded font-bold text-slate-300">Atsijungta</span>
+                    <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
                 </div>
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
                 <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
                 <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
                 
-                <div id="cloud-connect-ui" class="space-y-5 text-center">
-                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-5 text-white text-xl font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
-                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-base uppercase tracking-widest transition-colors">Prisijungti</button>
+                <div id="cloud-connect-ui" class="space-y-4 text-center">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
-                <div id="cloud-active-ui" class="hidden space-y-5 text-center">
-                    <p id="cloud-room-name-display" class="text-2xl font-black text-green-400 uppercase tracking-widest">---</p>
-                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-base uppercase text-white">Atsijungti</button>
+                <div id="cloud-active-ui" class="hidden space-y-4 text-center">
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p>
+                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-        <div class="flex justify-between items-center h-20 max-w-md mx-auto px-2">
-            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[11px] font-bold mt-1 uppercase">Setup</span></button>
-            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[11px] font-bold mt-1 uppercase">Game</span></button>
-            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[11px] font-bold mt-1 uppercase">Board</span></button>
-            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[11px] font-bold mt-1 uppercase">Stats</span></button>
-            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[11px] font-bold mt-1 uppercase">Hist.</span></button>
-            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[11px] font-bold mt-1 uppercase">Cloud</span></button>
+        <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
+            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
+            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
+            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
+            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
+            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
+            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
         </div>
     </div>
 
@@ -187,17 +187,17 @@
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
 
-        let activeRoom = localStorage.getItem('r_v85') || '';
+        let activeRoom = localStorage.getItem('r_v82') || '';
         if(activeRoom) isCloud = true;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
         function getStore(key) {
-            const prefix = isCloud ? `v85_room_${activeRoom}_` : `v85_local_`;
+            const prefix = isCloud ? `v82_room_${activeRoom}_` : `v82_local_`;
             return JSON.parse(localStorage.getItem(prefix + key));
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `v85_room_${activeRoom}_` : `v85_local_`;
+            const prefix = isCloud ? `v82_room_${activeRoom}_` : `v82_local_`;
             if (val === null) localStorage.removeItem(prefix + key);
             else localStorage.setItem(prefix + key, JSON.stringify(val));
         }
@@ -213,240 +213,175 @@
             if(activeRoom) { safeVal('fb-room', activeRoom); initFirebaseConnection(true); }
         } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- FIXED MATRICES ---
-        const MATRIX_4 = [ [{t1:[0,1], t2:[2,3]}], [{t1:[0,2], t2:[1,3]}], [{t1:[0,3], t2:[1,2]}] ];
-        const MATRIX_8 = [
-            [{t1:[0,7], t2:[1,6]}, {t1:[2,5], t2:[3,4]}], 
-            [{t1:[0,6], t2:[2,4]}, {t1:[1,5], t2:[3,7]}], 
-            [{t1:[0,5], t2:[3,1]}, {t1:[2,6], t2:[4,7]}], 
-            [{t1:[0,4], t2:[5,7]}, {t1:[1,2], t2:[3,6]}], 
-            [{t1:[0,3], t2:[2,7]}, {t1:[1,4], t2:[5,6]}], 
-            [{t1:[0,2], t2:[4,5]}, {t1:[1,7], t2:[3,6]}], 
-            [{t1:[0,1], t2:[2,3]}, {t1:[4,6], t2:[5,7]}]
+        // --- 4 PLAYER FIXED MATRIX (Round Robin) ---
+        const M4 = [
+            [ {t1: [0,1], t2: [2,3]} ], 
+            [ {t1: [0,2], t2: [1,3]} ], 
+            [ {t1: [0,3], t2: [1,2]} ]  
         ];
 
-        // --- BRAINS: STATS & HISTORY ---
-        function calculateResults(mArr, pArr, isF = false) {
-            let res = [];
-            if(isF) { for(let i=0; i<pArr.length; i+=2) if(i+1 < pArr.length) res.push({ id: pArr[i].id+'_'+pArr[i+1].id, name: pArr[i].name+' / '+pArr[i+1].name, p1: pArr[i], p2: pArr[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
-            else { res = pArr.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
-            
-            mArr.filter(m => m.finished).forEach(m => {
-                if(!m.team1 || !m.team2) return;
-                const up = (team, myS, enS) => {
-                    let targets = isF ? [res.find(r => r.p1.id === team[0].id || r.p2.id === team[0].id)] : team.map(p => res.find(r => r.id === p.id));
-                    targets.forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } });
-                };
-                up(m.team1, m.score1, m.score2); up(m.team2, m.score2, m.score1);
-            });
-            // Sort Descending
-            return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif));
-        }
-
-        function getPartnerHistory(allM) {
-            const partners = new Map();
+        // --- BRAINS: SMART PENALTY ENGINE ---
+        function getPartnerHistory() {
+            const h = new Map();
+            const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
             allM.forEach(m => {
-                if(m.team1 && m.team1.length > 1) { const k = [m.team1[0].id, m.team1[1].id].sort().join('_'); partners.set(k, (partners.get(k)||0)+1); }
-                if(m.team2 && m.team2.length > 1) { const k = [m.team2[0].id, m.team2[1].id].sort().join('_'); partners.set(k, (partners.get(k)||0)+1); }
+                if(m && m.team1 && m.team2) {
+                    const add = (p1, p2) => {
+                        if(p1 && p2) {
+                            if(!h.has(p1.id)) h.set(p1.id, new Map());
+                            const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                        }
+                    };
+                    if(m.team1.length > 1) { add(m.team1[0], m.team1[1]); add(m.team1[1], m.team1[0]); }
+                    if(m.team2.length > 1) { add(m.team2[0], m.team2[1]); add(m.team2[1], m.team2[0]); }
+                }
             });
-            return partners;
+            return h;
         }
 
-        function getOpponentHistory(allM) {
-            const opponents = new Map();
-            const add = (p1, p2) => { const k = [p1.id, p2.id].sort().join('_'); opponents.set(k, (opponents.get(k)||0)+1); };
+        function getOpponentHistory() {
+            const h = new Map();
+            const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
             allM.forEach(m => {
-                if(m.team1 && m.team2) m.team1.forEach(p1 => m.team2.forEach(p2 => add(p1, p2)));
+                if(m && m.team1 && m.team2) {
+                    const add = (p1, p2) => {
+                        if(p1 && p2) {
+                            if(!h.has(p1.id)) h.set(p1.id, new Map());
+                            const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                        }
+                    };
+                    m.team1.forEach(p1 => m.team2.forEach(p2 => { add(p1, p2); add(p2, p1); }));
+                }
             });
-            return opponents;
+            return h;
         }
 
-        // --- CORE: GENERATOR ENGINE V90 ---
         function generateRound() {
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
-
-                // 1. Prepare Active Pool (Remove Duplicates)
-                let safePool = [];
-                const seenIds = new Set();
-                players.forEach(p => { if (p && p.id && !seenIds.has(p.id)) { seenIds.add(p.id); safePool.push(p); } });
-
-                // 2. Identify Who Plays (Rotation Logic)
-                const currentStats = calculateResults([...(savedTournaments || []).map(t=>t.matches).flat(), ...matches], safePool);
-                safePool.forEach(p => {
-                    const s = currentStats.find(cs => cs.id === p.id);
-                    p._mp = s ? s.mp : 0; // Matches Played
-                    p._score = s ? (settings.rankingMode === 'wins' ? s.lp * 1000 + s.dif : s.sw * 1000 + s.dif) : 0;
-                });
-
-                // Sort by Matches Played Ascending (So people who sat out play next)
-                // If everyone equal, randomize slightly to mix start
-                safePool.sort((a, b) => (a._mp - b._mp) || (Math.random() - 0.5));
-
-                const needed = Math.min(Math.floor(safePool.length / 4) * 4, settings.courts * 4);
                 
-                // For Mix, we need equal M and F
-                let activePlayers = [];
-                if (settings.format.includes('mix')) {
-                    const poolM = safePool.filter(p => p.gender === 'M').sort((a,b) => a._mp - b._mp);
-                    const poolF = safePool.filter(p => p.gender === 'F').sort((a,b) => a._mp - b._mp);
-                    const pairs = Math.min(poolM.length, poolF.length, needed/2);
-                    activePlayers = [...poolM.slice(0, pairs), ...poolF.slice(0, pairs)];
-                } else {
-                    activePlayers = safePool.slice(0, needed);
-                }
-
-                if (activePlayers.length < 4) return alert("Nepakanka žaidėjų (" + activePlayers.length + ")");
+                // Prevent duplicates (Jolita vs Jolita fix)
+                const uniqueIds = new Set();
+                const safePool = [];
+                players.forEach(p => {
+                    if (p && p.id && !uniqueIds.has(p.id)) {
+                        uniqueIds.add(p.id);
+                        safePool.push(p);
+                    }
+                });
 
                 let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                // === FORMAT LOGIC ===
-
-                // A. FIXED PAIRS
+                // --- 1. FIKSUOTOS POROS ---
                 if (settings.format === 'fixed') {
-                    // Re-fetch original full list for Fixed to maintain pair order if possible, or just use pairs
-                    // Fixed logic implies we treat index 0&1, 2&3 as pairs.
-                    // We will use the simplified cyclic logic on the active set.
                     let teams = [];
-                    for(let k=0; k<activePlayers.length; k+=2) teams.push([activePlayers[k], activePlayers[k+1]]);
-                    
+                    for (let k = 0; k < safePool.length; k += 2) {
+                        if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]);
+                    }
                     let K = teams.length;
-                    let K_even = K % 2 === 0 ? K : K + 1;
-                    let shift = (roundNum - 1) % (K_even - 1);
+                    if (K < 2) return alert("Fiksuotoms poroms reikia bent 4 žaidėjų (2 porų).");
                     
-                    let indices = [0, ...Array.from({length: K_even-1}, (_, i) => i + 1)];
-                    // Rotate
-                    let others = indices.slice(1);
-                    for(let i=0; i<shift; i++) others.unshift(others.pop());
-                    indices = [0, ...others];
-
-                    for(let i=0; i<K_even/2; i++){
-                        let t1 = indices[i], t2 = indices[K_even-1-i];
-                        if(t1<K && t2<K) newM.push({ team1: teams[t1], team2: teams[t2] });
+                    let K_even = K % 2 === 0 ? K : K + 1;
+                    let cycleRounds = K_even - 1;
+                    let shift = (roundNum - 1) % cycleRounds;
+                    let rotatedIndices = [0];
+                    let others = [];
+                    for (let i = 1; i < K_even; i++) others.push(i);
+                    for (let i = 0; i < shift; i++) others.unshift(others.pop());
+                    rotatedIndices.push(...others);
+                    
+                    let roundMatches = [];
+                    for (let i = 0; i < K_even / 2; i++) {
+                        let t1Idx = rotatedIndices[i];
+                        let t2Idx = rotatedIndices[K_even - 1 - i];
+                        if (t1Idx < K && t2Idx < K) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
                     }
+                    
+                    roundMatches = roundMatches.slice(0, settings.courts);
+                    roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    return;
                 }
 
-                // B. MEXICANO (TRUE RANKING BASED)
-                else if (settings.format.includes('mexicano')) {
-                    // Sort active players by SCORE descending
-                    activePlayers.sort((a,b) => b._score - a._score);
-
-                    if (settings.format === 'mix_mexicano') {
-                        // Mix Mexicano: Sort Ms and Fs separately
-                        let ms = activePlayers.filter(p=>p.gender==='M').sort((a,b) => b._score - a._score);
-                        let fs = activePlayers.filter(p=>p.gender==='F').sort((a,b) => b._score - a._score);
-                        
-                        // Pair: Top M + 2nd F vs 2nd M + Top F (Balanced)
-                        while(ms.length >= 2 && fs.length >= 2) {
-                            let m1 = ms.shift(), m2 = ms.shift();
-                            let f1 = fs.shift(), f2 = fs.shift();
-                            // Team 1: M1 + F2 (Strongest M + Weaker F)
-                            // Team 2: M2 + F1 (Weaker M + Strongest F)
-                            newM.push({ team1: [m1, f2], team2: [m2, f1] });
-                        }
-                    } else {
-                        // Standard Mexicano: 1,2,3,4. 
-                        // Balanced Match: (1 & 4) vs (2 & 3)
-                        for(let i=0; i<activePlayers.length; i+=4) {
-                            if(i+3 < activePlayers.length) {
-                                let g = activePlayers.slice(i, i+4);
-                                // g[0] is #1, g[3] is #4
-                                newM.push({ team1: [g[0], g[3]], team2: [g[1], g[2]] });
-                            }
-                        }
-                    }
-                }
-
-                // C. AMERICANO (SMART ENGINE)
-                else {
-                    // Use Matrix if exact match and standard americano
-                    if (settings.format === 'americano' && activePlayers.length === 4) {
-                         const cfg = MATRIX_4[(roundNum - 1) % 3];
-                         cfg.forEach(m => newM.push({ team1: [activePlayers[m.t1[0]], activePlayers[m.t1[1]]], team2: [activePlayers[m.t2[0]], activePlayers[m.t2[1]]] }));
-                    } else if (settings.format === 'americano' && activePlayers.length === 8) {
-                        // Use Hall's logic via Matrix if possible, else fallback to Smart
-                         const cfg = MATRIX_8[(roundNum - 1) % 7];
-                         cfg.forEach(m => newM.push({ team1: [activePlayers[m.t1[0]], activePlayers[m.t1[1]]], team2: [activePlayers[m.t2[0]], activePlayers[m.t2[1]]] }));
-                    } else {
-                        // SMART RANDOMIZER (Universal)
-                        const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
-                        const ph = getPartnerHistory(allM);
-                        const oh = getOpponentHistory(allM);
-
-                        let bestSet = null, minPenalty = Infinity;
-                        
-                        // Increase iterations for "Perfect" results
-                        const ITERATIONS = 2000; 
-
-                        for(let i=0; i<ITERATIONS; i++) {
-                            let pool = [...activePlayers].sort(() => Math.random() - 0.5);
-                            let currentSet = [], currentPenalty = 0, valid = true;
-
-                            if(settings.format.includes('mix')) {
-                                // Mix Logic: Explicitly pair M+F
-                                let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
-                                while(m.length > 0 && f.length > 0) {
-                                    if(m.length < 2 || f.length < 2) break; // Need 4
-                                    let t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
-                                    
-                                    // Calc Penalty
-                                    let pKey1 = [t1[0].id, t1[1].id].sort().join('_');
-                                    let pKey2 = [t2[0].id, t2[1].id].sort().join('_');
-                                    currentPenalty += (ph.get(pKey1)||0) * 10000;
-                                    currentPenalty += (ph.get(pKey2)||0) * 10000;
-                                    
-                                    // Opponent Penalty
-                                    t1.forEach(p1 => t2.forEach(p2 => { 
-                                        let oKey = [p1.id, p2.id].sort().join('_');
-                                        currentPenalty += (oh.get(oKey)||0) * 500; 
-                                    }));
-                                    currentSet.push({team1: t1, team2: t2});
-                                }
-                            } else {
-                                // Standard Americano
-                                while(pool.length >= 4) {
-                                    let t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
-                                    let pKey1 = [t1[0].id, t1[1].id].sort().join('_');
-                                    let pKey2 = [t2[0].id, t2[1].id].sort().join('_');
-                                    currentPenalty += (ph.get(pKey1)||0) * 10000; // Huge penalty for same partner
-                                    currentPenalty += (ph.get(pKey2)||0) * 10000;
-                                    
-                                    t1.forEach(p1 => t2.forEach(p2 => { 
-                                        let oKey = [p1.id, p2.id].sort().join('_');
-                                        currentPenalty += (oh.get(oKey)||0) * 100; // Moderate for opponent
-                                    }));
-                                    currentSet.push({team1: t1, team2: t2});
-                                }
-                            }
-
-                            if(currentSet.length > 0 && currentPenalty < minPenalty) {
-                                minPenalty = currentPenalty;
-                                bestSet = currentSet;
-                                if(minPenalty === 0) break; // Perfect found
-                            }
-                        }
-                        if(bestSet) bestSet.forEach(m => newM.push(m));
-                        else return alert("Nepavyko sugeneruoti (bandykite dar kartą)");
-                    }
-                }
-
-                // 3. Commit Matches
-                newM.forEach((m, idx) => {
-                    matches.push({ 
-                        id: uid(), 
-                        round: roundNum, 
-                        court: idx + 1, 
-                        finished: false, 
-                        score1: 0, 
-                        score2: 0, 
-                        team1: m.team1, 
-                        team2: m.team2 
+                // --- 2. 4-PLAYER AMERICANO (FIXED MATRIX) ---
+                if (settings.format === 'americano' && safePool.length === 4) {
+                    const c = (roundNum - 1) % 3;
+                    const cfg = M4[c];
+                    cfg.forEach((match, idx) => {
+                        newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1:0, score2:0, team1: [safePool[match.t1[0]], safePool[match.t1[1]]], team2: [safePool[match.t2[0]], safePool[match.t2[1]]] });
                     });
-                });
-                
-                autoSave(); 
-                switchView('matches');
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    return;
+                }
 
+                // --- 3. UNIVERSAL SMART PENALTY GENERATOR (8, 12, Mix, etc.) ---
+                const partnersHist = getPartnerHistory();
+                const opponentsHist = getOpponentHistory();
+                let bestSet = null, minPenalty = Infinity;
+
+                // Monte Carlo Simulation (3000 iterations for better accuracy)
+                for(let i=0; i<3000; i++) {
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    let currentSet = [], currentPenalty = 0;
+                    
+                    // Logic selector
+                    if(settings.format.includes('mix')) {
+                        let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
+                        let pairsCount = Math.min(m.length, f.length);
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairsCount/2));
+                        
+                        if(courtsNeeded > 0) {
+                            for(let c=0; c<courtsNeeded; c++) {
+                                const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
+                                // Partner Penalty (HUGE)
+                                currentPenalty += (partnersHist.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
+                                currentPenalty += (partnersHist.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                                // Opponent Penalty (EXPONENTIAL: 50, 400, 1350...)
+                                t1.forEach(p1 => t2.forEach(p2 => { 
+                                    const games = opponentsHist.get(p1.id)?.get(p2.id) || 0;
+                                    currentPenalty += Math.pow(games + 1, 3) * 50; 
+                                }));
+                                currentSet.push({ team1: t1, team2: t2 });
+                            }
+                        }
+                    } else {
+                        // Standard Americano (8, 12, etc.)
+                        let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
+                        for(let c=0; c<courtsNeeded; c++) {
+                            const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
+                            // Partner Penalty
+                            currentPenalty += (partnersHist.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
+                            currentPenalty += (partnersHist.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                            // Opponent Penalty
+                            t1.forEach(p1 => t2.forEach(p2 => { 
+                                const games = opponentsHist.get(p1.id)?.get(p2.id) || 0;
+                                currentPenalty += Math.pow(games + 1, 3) * 50; 
+                            }));
+                            currentSet.push({ team1: t1, team2: t2 });
+                        }
+                    }
+
+                    if(currentSet.length > 0) {
+                         if (currentPenalty < minPenalty) { 
+                            minPenalty = currentPenalty; 
+                            bestSet = currentSet; 
+                            if(minPenalty === 0) break; // Found perfect round
+                        }
+                    }
+                }
+
+                if(!bestSet && safePool.length >= 4) {
+                    // Last resort failsafe
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
+                    bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
+                }
+
+                if(bestSet && bestSet.length > 0) {
+                    bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                } else {
+                    alert("Nepakanka žaidėjų.");
+                }
             } catch(e) { showError("Generavimo klaida: " + e.message); }
         }
 
@@ -476,16 +411,32 @@
             } catch (e) { showError("Klaida išsaugant: " + e.message); }
         }
 
+        function calculateResults(mArr, pArr, isF = false) {
+            let res = [];
+            if(isF) { for(let i=0; i<pArr.length; i+=2) if(i+1 < pArr.length) res.push({ id: pArr[i].id+'_'+pArr[i+1].id, name: pArr[i].name+' / '+pArr[i+1].name, p1: pArr[i], p2: pArr[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
+            else { res = pArr.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
+            
+            mArr.filter(m => m.finished).forEach(m => {
+                if(!m.team1 || !m.team2) return;
+                const up = (team, myS, enS) => {
+                    let targets = isF ? [res.find(r => r.p1.id === team[0].id || r.p2.id === team[0].id)] : team.map(p => res.find(r => r.id === p.id));
+                    targets.forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } });
+                };
+                up(m.team1, m.score1, m.score2); up(m.team2, m.score2, m.score1);
+            });
+            return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif));
+        }
+
         function render() {
             try {
                 const isF = settings.format === 'fixed';
                 const table = calculateResults(matches, players, isF);
                 safeHTML('leaderboard-body', table.map((s, i) => `
                     <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
-                        <div class="w-8 font-bold text-slate-400 text-[10px]">${i+1}</div>
-                        <div class="flex-1 flex items-center gap-3 truncate font-bold text-slate-800">
-                            ${!isF && s.photo ? `<div class="relative w-10 h-10 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
-                            <span class="text-base">${s.name}</span>
+                        <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
+                        <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
+                            ${!isF && s.photo ? `<div class="relative w-7 h-7 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                            ${s.name}
                         </div>
                         <div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
                         <div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div>
@@ -497,17 +448,17 @@
                 
                 safeHTML('players-list', players.map((p, index) => `
                     <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
-                        <div class="flex items-center gap-4">
-                            <span class="text-xs font-black text-slate-300 w-4 text-center">${index + 1}</span>
-                            ${p.photo ? `<div class="relative w-11 h-11"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-11 h-11 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
-                            <div class="font-bold text-slate-800 text-base">${p.name}</div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>
+                            ${p.photo ? `<div class="relative w-9 h-9"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-9 h-9 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
+                            <div class="font-bold text-slate-800 text-sm">${p.name}</div>
                         </div>
-                        <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-xl px-3">×</button>
+                        <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
                     </div>`).join(''));
 
                 const isSc = settings.winCondition === 'score';
-                safeClass('mode-time', !isSc ? "flex-1 py-2 text-xs font-black rounded-xl bg-white shadow text-slate-900 uppercase" : "flex-1 py-2 text-xs font-bold text-slate-400 uppercase");
-                safeClass('mode-score', isSc ? "flex-1 py-2 text-xs font-black rounded-xl bg-white shadow text-slate-900 uppercase" : "flex-1 py-2 text-xs font-bold text-slate-400 uppercase");
+                safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+                safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
                 safeDisplay('control-duration', !isSc ? 'block' : 'none');
                 safeDisplay('control-points', isSc ? 'block' : 'none');
                 safeDisplay('score-mode-text', isSc ? 'block' : 'none');
@@ -544,7 +495,7 @@
                 
                 safeHTML('global-stats-body', list.map((s, i) => `
                     <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
-                        <div class="w-8 text-slate-400 font-bold">${i+1}</div>
+                        <div class="w-6 text-slate-400 font-bold">${i+1}</div>
                         <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
                             ${s.photo ? `<div class="relative w-6 h-6"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[6px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
                             ${s.name}
@@ -558,7 +509,7 @@
         // --- ACTIONS ---
         function addPlayer(e) { e.preventDefault(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); }
         function handlePhotoUpload(e) { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(ev) { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 120; let w = img.width, h = img.height; if(w>h) { if(w>MAX){ h*=MAX/w; w=MAX; } } else { if(h>MAX){ w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); curPh = c.toDataURL('image/jpeg', 0.6); const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); } const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
-        function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-12 font-bold bg-blue-600 text-white text-sm':'w-12 font-bold text-slate-400 text-sm'); safeClass('gender-f', g==='F'?'w-12 font-bold bg-pink-500 text-white text-sm':'w-12 font-bold text-slate-400 text-sm'); }
+        function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); }
         function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(); }
         function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
         function changeFormat(v) { settings.format = v; autoSave(); }
@@ -585,9 +536,9 @@
                 const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop');
                 if(i1 && i2 && i3 && b) {
                     i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden');
-                    if(alarmInterval) { b.className="w-14 h-14 rounded-full flex items-center justify-center bg-red-600 alarm-active"; i3.classList.remove('hidden'); }
-                    else if(isRunning) { b.className="w-14 h-14 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); }
-                    else { b.className="w-14 h-14 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); }
+                    if(alarmInterval) { b.className="w-11 h-11 rounded-full flex items-center justify-center bg-red-600 alarm-active"; i3.classList.remove('hidden'); }
+                    else if(isRunning) { b.className="w-11 h-11 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); }
+                    else { b.className="w-11 h-11 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); }
                 }
             } catch(e) { console.error(e); }
         }
@@ -616,9 +567,9 @@
                 safeHTML('matches-container', active.map(m => `
                     <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4">
                         <div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div>
-                        <div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1 ? m.team1.filter(p=>p).map(p => `<span class="font-bold text-lg text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-10 h-10 bg-slate-50 border rounded-xl font-bold text-xl">-</button><span class="text-3xl font-black w-10 text-center">${m.score1}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-10 h-10 bg-green-500 text-white rounded-xl font-bold text-xl">+</button></div></div>
-                        <div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2 ? m.team2.filter(p=>p).map(p => `<span class="font-bold text-lg text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-10 h-10 bg-slate-50 border rounded-xl font-bold text-xl">-</button><span class="text-3xl font-black w-10 text-center">${m.score2}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-10 h-10 bg-green-500 text-white rounded-xl font-bold text-xl">+</button></div></div>
-                        <button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm uppercase tracking-widest">Užbaigti Mačą</button></div>
+                        <div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1 ? m.team1.filter(p=>p).map(p => `<span class="font-bold text-sm text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
+                        <div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2 ? m.team2.filter(p=>p).map(p => `<span class="font-bold text-sm text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
+                        <button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div>
                     </div>`).join(''));
                 const fin = matches.filter(m => m.finished).reverse();
                 safeHTML('finished-matches-container', fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' + fin.map(m => `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1?.filter(p=>p).map(p=>p.name).join('/')} vs ${m.team2?.filter(p=>p).map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1}:${m.score2}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`).join('') : '');
@@ -630,8 +581,8 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                activeRoom = room; isCloud = true; localStorage.setItem('r_v85', room);
-                dbRef = firebase.database().ref('pad_v85/' + room);
+                activeRoom = room; isCloud = true; localStorage.setItem('r_v82', room);
+                dbRef = firebase.database().ref('pad_v82/' + room);
                 
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
@@ -661,7 +612,7 @@
         }
 
         function disconnectFirebase() { 
-            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v85'); 
+            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v82'); 
             safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); 
             safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); 
             loadData(); render();
