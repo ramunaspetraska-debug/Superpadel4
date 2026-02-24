@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V82 (Smart Penalties)</title>
+    <title>Padelio PRO V83 (Larger UI)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 90px; }
+        /* Padidintas bazinis šriftas */
+        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 90px; font-size: 15px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .nav-btn.active { color: #16a34a; }
         .nav-btn.active svg { stroke: #16a34a; }
@@ -18,30 +19,32 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .avatar-frame-m { border: 2px solid #3b82f6; }
         .avatar-frame-f { border: 2px solid #ec4899; }
-        input, select { font-size: 16px !important; }
-        .stat-col { text-align: center; font-weight: bold; font-size: 10px; width: 22px; flex-shrink: 0; }
-        .stat-col-wide { text-align: right; font-weight: 900; font-size: 12px; width: 42px; flex-shrink: 0; }
+        input, select { font-size: 17px !important; } /* Didesnis įvedimas */
+        
+        /* Padidinti statistikos stulpeliai */
+        .stat-col { text-align: center; font-weight: bold; font-size: 12px; width: 26px; flex-shrink: 0; }
+        .stat-col-wide { text-align: right; font-weight: 900; font-size: 14px; width: 48px; flex-shrink: 0; }
     </style>
 </head>
 <body>
 
     <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
 
-    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full shadow-sm">
-        <div class="flex items-center gap-2" id="timer-controls">
-            <button type="button" onclick="adjustTime(-60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-xl font-bold">-</button>
-            <span id="timer-display" class="text-3xl font-black font-mono tracking-tighter tabular-nums">12:00</span>
-            <button type="button" onclick="adjustTime(60)" class="w-10 h-10 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-xl font-bold">+</button>
+    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-18 flex justify-between items-center px-4 w-full shadow-sm py-2">
+        <div class="flex items-center gap-3" id="timer-controls">
+            <button type="button" onclick="adjustTime(-60)" class="w-11 h-11 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-2xl font-bold">-</button>
+            <span id="timer-display" class="text-4xl font-black font-mono tracking-tighter tabular-nums">12:00</span>
+            <button type="button" onclick="adjustTime(60)" class="w-11 h-11 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-2xl font-bold">+</button>
         </div>
-        <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
+        <div id="score-mode-text" class="hidden text-base font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
         <div class="flex items-center gap-2">
-            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-11 h-11 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
-                <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                <svg id="icon-stop" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-12 h-12 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+                <svg id="icon-play" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" class="hidden" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                <svg id="icon-stop" class="hidden" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
             </button>
-            <button type="button" onclick="resetTimer()" class="w-11 h-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
-                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <button type="button" onclick="resetTimer()" class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
         </div>
     </div>
@@ -49,126 +52,126 @@
     <div class="max-w-md mx-auto p-4 w-full">
         
         <div id="view-setup" class="view-section active w-full">
-            <div class="bg-white p-3 rounded-2xl shadow-lg border border-slate-200 mb-6">
+            <div class="bg-white p-4 rounded-2xl shadow-lg border border-slate-200 mb-6">
                 <div class="flex justify-between items-center mb-3 px-1">
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjų registracija</span>
-                    <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold">Viso: 0</span>
+                    <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Žaidėjų registracija</span>
+                    <span id="player-count" class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded font-bold">Viso: 0</span>
                 </div>
                 <form onsubmit="addPlayer(event)" class="flex gap-2 w-full items-center">
-                    <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-10 border border-slate-200">
-                        <button type="button" id="gender-m" onclick="setGender('M')" class="w-9 font-bold transition-colors bg-blue-600 text-white text-[10px]">V</button>
-                        <button type="button" id="gender-f" onclick="setGender('F')" class="w-9 font-bold transition-colors text-slate-400 text-[10px]">M</button>
+                    <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-12 border border-slate-200">
+                        <button type="button" id="gender-m" onclick="setGender('M')" class="w-10 font-bold transition-colors bg-blue-600 text-white text-xs">V</button>
+                        <button type="button" id="gender-f" onclick="setGender('F')" class="w-10 font-bold transition-colors text-slate-400 text-xs">M</button>
                     </div>
                     <div class="relative shrink-0">
                         <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
-                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-10 h-10 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95">
-                            <span id="photo-placeholder" class="text-lg">📷</span>
+                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-12 h-12 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95">
+                            <span id="photo-placeholder" class="text-xl">📷</span>
                             <img id="photo-preview" class="hidden w-full h-full object-cover">
                         </button>
                     </div>
-                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-3 rounded-lg border-2 border-slate-100 focus:outline-none focus:border-green-500 h-10 text-slate-900 font-bold text-sm" />
-                    <button type="submit" class="bg-slate-900 text-white w-10 h-10 shrink-0 rounded-lg font-bold text-xl active:scale-95 shadow-md">+</button>
+                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-4 rounded-lg border-2 border-slate-100 focus:outline-none focus:border-green-500 h-12 text-slate-900 font-bold text-base" />
+                    <button type="submit" class="bg-slate-900 text-white w-12 h-12 shrink-0 rounded-lg font-bold text-2xl active:scale-95 shadow-md">+</button>
                 </form>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4">
-                <div class="flex bg-slate-100 p-1 rounded-lg">
-                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase transition-all">Pagal Laiką</button>
-                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase transition-all">Pagal Taškus</button>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-5">
+                <div class="flex bg-slate-100 p-1.5 rounded-xl">
+                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-2 text-xs font-black rounded-lg bg-white shadow text-slate-900 uppercase transition-all">Pagal Laiką</button>
+                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-2 text-xs font-bold text-slate-400 uppercase transition-all">Pagal Taškus</button>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
-                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
+                    <div id="control-duration"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-10"><button onclick="changeSetting('matchDuration', -1)" class="w-9 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-lg">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-9 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-points" style="display:none;"><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-10"><button onclick="changeSetting('maxPoints', -1)" class="w-9 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-lg">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-9 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-10"><button onclick="changeSetting('courts', -1)" class="w-9 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-lg">2</span><button onclick="changeSetting('courts', 1)" class="w-9 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-2 font-bold text-xs h-10"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
-                <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="super_mexicano">Super Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
+                <div><label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-3 px-3 font-bold text-sm"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="super_mexicano">Super Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
             </div>
 
-            <div id="players-list" class="space-y-2 mb-10"></div>
+            <div id="players-list" class="space-y-3 mb-10"></div>
             
-            <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
-                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-xs uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="resetScores()" class="py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 transition-colors">NAUJAS TURNYRAS</button>
-                    <button type="button" onclick="resetAll()" class="py-3 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-[10px] uppercase border border-red-200 transition-colors">VALYTI VISKĄ</button>
+            <div class="space-y-4 pt-6 border-t border-slate-200 pb-12 text-center">
+                <button type="button" id="btn-rename-tournament" onclick="renameCurrentTournament()" class="w-full py-4 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl font-bold text-sm uppercase border border-blue-200 tracking-wider transition-colors">✏️ PERVADINTI TURNYRĄ</button>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="resetScores()" class="py-4 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-xs uppercase border border-orange-200 transition-colors">NAUJAS TURNYRAS</button>
+                    <button type="button" onclick="resetAll()" class="py-4 text-red-600 bg-white hover:bg-red-50 rounded-xl font-bold text-xs uppercase border border-red-200 transition-colors">VALYTI VISKĄ</button>
                 </div>
             </div>
         </div>
 
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
-                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                <h2 class="text-3xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
+                <button onclick="generateRound()" class="px-7 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-base active:scale-95 transition-transform">NAUJAS +</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
         </div>
 
         <div id="view-leader" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6 tracking-tight">Rezultatai</h2>
+            <h2 class="text-3xl font-black mb-6 tracking-tight">Rezultatai</h2>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
-                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
+                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-3 text-[11px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-8">#</div><div class="flex-1 text-left pl-2">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
                  </div>
                 <div id="leaderboard-body" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
         <div id="view-stats" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-4 tracking-tight">Statistika</h2>
-            <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"></select></div>
-                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
-                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
+            <h2 class="text-3xl font-black mb-6 tracking-tight">Statistika</h2>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 mb-6 space-y-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-bold focus:outline-none"></select></div>
+                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
+                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
                 </div>
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
-                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
+                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-3 text-[11px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-8">#</div><div class="flex-1 text-left pl-2">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
                 </div>
                 <div id="global-stats-body" class="divide-y divide-slate-100"></div>
             </div>
         </div>
 
         <div id="view-history" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6 tracking-tight">Istorija</h2>
+            <h2 class="text-3xl font-black mb-6 tracking-tight">Istorija</h2>
             <div id="history-list" class="space-y-4"></div>
         </div>
 
         <div id="view-cloud" class="view-section w-full">
-            <h2 class="text-2xl font-black mb-6">Debesis</h2>
+            <h2 class="text-3xl font-black mb-6">Debesis</h2>
             <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
-                    <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
+                    <span id="cloud-status" class="text-xs bg-slate-700 px-3 py-1 rounded font-bold text-slate-300">Atsijungta</span>
                 </div>
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
                 <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
                 <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
                 
-                <div id="cloud-connect-ui" class="space-y-4 text-center">
-                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
-                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
+                <div id="cloud-connect-ui" class="space-y-5 text-center">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-5 text-white text-xl font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-base uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
-                <div id="cloud-active-ui" class="hidden space-y-4 text-center">
-                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p>
-                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
+                <div id="cloud-active-ui" class="hidden space-y-5 text-center">
+                    <p id="cloud-room-name-display" class="text-2xl font-black text-green-400 uppercase tracking-widest">---</p>
+                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-base uppercase text-white">Atsijungti</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-        <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
-            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
-            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
-            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
-            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
-            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
-            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
+        <div class="flex justify-between items-center h-20 max-w-md mx-auto px-2">
+            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[10px] font-bold mt-1 uppercase">Setup</span></button>
+            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[10px] font-bold mt-1 uppercase">Game</span></button>
+            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[10px] font-bold mt-1 uppercase">Board</span></button>
+            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[10px] font-bold mt-1 uppercase">Stats</span></button>
+            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[10px] font-bold mt-1 uppercase">Hist.</span></button>
+            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[10px] font-bold mt-1 uppercase">Cloud</span></button>
         </div>
     </div>
 
@@ -187,17 +190,17 @@
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
 
-        let activeRoom = localStorage.getItem('r_v82') || '';
+        let activeRoom = localStorage.getItem('r_v83') || '';
         if(activeRoom) isCloud = true;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
         function getStore(key) {
-            const prefix = isCloud ? `v82_room_${activeRoom}_` : `v82_local_`;
+            const prefix = isCloud ? `v83_room_${activeRoom}_` : `v83_local_`;
             return JSON.parse(localStorage.getItem(prefix + key));
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `v82_room_${activeRoom}_` : `v82_local_`;
+            const prefix = isCloud ? `v83_room_${activeRoom}_` : `v83_local_`;
             if (val === null) localStorage.removeItem(prefix + key);
             else localStorage.setItem(prefix + key, JSON.stringify(val));
         }
@@ -260,7 +263,7 @@
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
                 
-                // Prevent duplicates (Jolita vs Jolita fix)
+                // Prevent duplicates
                 const uniqueIds = new Set();
                 const safePool = [];
                 players.forEach(p => {
@@ -319,7 +322,7 @@
                 const opponentsHist = getOpponentHistory();
                 let bestSet = null, minPenalty = Infinity;
 
-                // Monte Carlo Simulation (3000 iterations for better accuracy)
+                // Monte Carlo Simulation (3000 iterations)
                 for(let i=0; i<3000; i++) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     let currentSet = [], currentPenalty = 0;
@@ -336,7 +339,7 @@
                                 // Partner Penalty (HUGE)
                                 currentPenalty += (partnersHist.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
                                 currentPenalty += (partnersHist.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                                // Opponent Penalty (EXPONENTIAL: 50, 400, 1350...)
+                                // Opponent Penalty (EXPONENTIAL)
                                 t1.forEach(p1 => t2.forEach(p2 => { 
                                     const games = opponentsHist.get(p1.id)?.get(p2.id) || 0;
                                     currentPenalty += Math.pow(games + 1, 3) * 50; 
@@ -371,7 +374,6 @@
                 }
 
                 if(!bestSet && safePool.length >= 4) {
-                    // Last resort failsafe
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
                 }
@@ -433,10 +435,10 @@
                 const table = calculateResults(matches, players, isF);
                 safeHTML('leaderboard-body', table.map((s, i) => `
                     <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
-                        <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
-                        <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
-                            ${!isF && s.photo ? `<div class="relative w-7 h-7 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
-                            ${s.name}
+                        <div class="w-8 font-bold text-slate-400 text-sm">${i+1}</div>
+                        <div class="flex-1 flex items-center gap-3 truncate font-bold text-slate-800">
+                            ${!isF && s.photo ? `<div class="relative w-10 h-10 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                            <span class="text-base">${s.name}</span>
                         </div>
                         <div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
                         <div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div>
@@ -448,17 +450,17 @@
                 
                 safeHTML('players-list', players.map((p, index) => `
                     <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>
-                            ${p.photo ? `<div class="relative w-9 h-9"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-9 h-9 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
-                            <div class="font-bold text-slate-800 text-sm">${p.name}</div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-xs font-black text-slate-300 w-4 text-center">${index + 1}</span>
+                            ${p.photo ? `<div class="relative w-11 h-11"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-11 h-11 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
+                            <div class="font-bold text-slate-800 text-base">${p.name}</div>
                         </div>
-                        <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
+                        <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-xl px-3">×</button>
                     </div>`).join(''));
 
                 const isSc = settings.winCondition === 'score';
-                safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
-                safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+                safeClass('mode-time', !isSc ? "flex-1 py-2 text-xs font-black rounded-lg bg-white shadow text-slate-900 uppercase" : "flex-1 py-2 text-xs font-bold text-slate-400 uppercase");
+                safeClass('mode-score', isSc ? "flex-1 py-2 text-xs font-black rounded-lg bg-white shadow text-slate-900 uppercase" : "flex-1 py-2 text-xs font-bold text-slate-400 uppercase");
                 safeDisplay('control-duration', !isSc ? 'block' : 'none');
                 safeDisplay('control-points', isSc ? 'block' : 'none');
                 safeDisplay('score-mode-text', isSc ? 'block' : 'none');
@@ -495,7 +497,7 @@
                 
                 safeHTML('global-stats-body', list.map((s, i) => `
                     <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
-                        <div class="w-6 text-slate-400 font-bold">${i+1}</div>
+                        <div class="w-8 text-slate-400 font-bold">${i+1}</div>
                         <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
                             ${s.photo ? `<div class="relative w-6 h-6"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[6px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
                             ${s.name}
@@ -509,7 +511,7 @@
         // --- ACTIONS ---
         function addPlayer(e) { e.preventDefault(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); }
         function handlePhotoUpload(e) { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = function(ev) { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 120; let w = img.width, h = img.height; if(w>h) { if(w>MAX){ h*=MAX/w; w=MAX; } } else { if(h>MAX){ w*=MAX/h; h=MAX; } } c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); curPh = c.toDataURL('image/jpeg', 0.6); const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); } const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden'); }; img.src = ev.target.result; }; reader.readAsDataURL(file); }
-        function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); }
+        function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-10 font-bold bg-blue-600 text-white text-xs':'w-10 font-bold text-slate-400 text-xs'); safeClass('gender-f', g==='F'?'w-10 font-bold bg-pink-500 text-white text-xs':'w-10 font-bold text-slate-400 text-xs'); }
         function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(); }
         function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
         function changeFormat(v) { settings.format = v; autoSave(); }
@@ -536,9 +538,9 @@
                 const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop');
                 if(i1 && i2 && i3 && b) {
                     i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden');
-                    if(alarmInterval) { b.className="w-11 h-11 rounded-full flex items-center justify-center bg-red-600 alarm-active"; i3.classList.remove('hidden'); }
-                    else if(isRunning) { b.className="w-11 h-11 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); }
-                    else { b.className="w-11 h-11 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); }
+                    if(alarmInterval) { b.className="w-12 h-12 rounded-full flex items-center justify-center bg-red-600 alarm-active"; i3.classList.remove('hidden'); }
+                    else if(isRunning) { b.className="w-12 h-12 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); }
+                    else { b.className="w-12 h-12 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); }
                 }
             } catch(e) { console.error(e); }
         }
@@ -567,9 +569,9 @@
                 safeHTML('matches-container', active.map(m => `
                     <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4">
                         <div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div>
-                        <div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1 ? m.team1.filter(p=>p).map(p => `<span class="font-bold text-sm text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
-                        <div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2 ? m.team2.filter(p=>p).map(p => `<span class="font-bold text-sm text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
-                        <button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div>
+                        <div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1 ? m.team1.filter(p=>p).map(p => `<span class="font-bold text-lg text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-10 h-10 bg-slate-50 border rounded font-bold text-xl">-</button><span class="text-3xl font-black w-10 text-center">${m.score1}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-10 h-10 bg-green-500 text-white rounded font-bold text-xl">+</button></div></div>
+                        <div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2 ? m.team2.filter(p=>p).map(p => `<span class="font-bold text-lg text-slate-700">${p.name || '?'}</span>`).join('') : ''}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-10 h-10 bg-slate-50 border rounded font-bold text-xl">-</button><span class="text-3xl font-black w-10 text-center">${m.score2}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-10 h-10 bg-green-500 text-white rounded font-bold text-xl">+</button></div></div>
+                        <button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-sm uppercase tracking-widest">Užbaigti Mačą</button></div>
                     </div>`).join(''));
                 const fin = matches.filter(m => m.finished).reverse();
                 safeHTML('finished-matches-container', fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' + fin.map(m => `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1?.filter(p=>p).map(p=>p.name).join('/')} vs ${m.team2?.filter(p=>p).map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1}:${m.score2}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`).join('') : '');
@@ -581,8 +583,8 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                activeRoom = room; isCloud = true; localStorage.setItem('r_v82', room);
-                dbRef = firebase.database().ref('pad_v82/' + room);
+                activeRoom = room; isCloud = true; localStorage.setItem('r_v83', room);
+                dbRef = firebase.database().ref('pad_v83/' + room);
                 
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
@@ -612,7 +614,7 @@
         }
 
         function disconnectFirebase() { 
-            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v82'); 
+            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v83'); 
             safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); 
             safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); 
             loadData(); render();
