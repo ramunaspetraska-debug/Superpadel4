@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V82 (Smart Penalties)</title>
+    <title>Padelio PRO V88 (Stable Lite)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 90px; }
+        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 80px; font-size: 14px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .nav-btn.active { color: #16a34a; }
         .nav-btn.active svg { stroke: #16a34a; }
@@ -35,12 +35,12 @@
         </div>
         <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
         <div class="flex items-center gap-2">
-            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-11 h-11 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-10 h-10 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
                 <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 <svg id="icon-stop" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
             </button>
-            <button type="button" onclick="resetTimer()" class="w-11 h-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
+            <button type="button" onclick="resetTimer()" class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95">
                 <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
         </div>
@@ -82,7 +82,7 @@
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
-                <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mexicano">Mexicano</option><option value="super_mexicano">Super Mexicano</option><option value="mix_americano">Mix Americano</option><option value="mix_mexicano">Mix Mexicano</option></select></div>
+                <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mix_americano">Mix Americano</option></select></div>
             </div>
 
             <div id="players-list" class="space-y-2 mb-10"></div>
@@ -187,17 +187,17 @@
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
 
-        let activeRoom = localStorage.getItem('r_v82') || '';
+        let activeRoom = localStorage.getItem('r_v88') || '';
         if(activeRoom) isCloud = true;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
         function getStore(key) {
-            const prefix = isCloud ? `v82_room_${activeRoom}_` : `v82_local_`;
+            const prefix = isCloud ? `v88_room_${activeRoom}_` : `v88_local_`;
             return JSON.parse(localStorage.getItem(prefix + key));
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `v82_room_${activeRoom}_` : `v82_local_`;
+            const prefix = isCloud ? `v88_room_${activeRoom}_` : `v88_local_`;
             if (val === null) localStorage.removeItem(prefix + key);
             else localStorage.setItem(prefix + key, JSON.stringify(val));
         }
@@ -226,14 +226,13 @@
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
             allM.forEach(m => {
                 if(m && m.team1 && m.team2) {
-                    const add = (p1, p2) => {
-                        if(p1 && p2) {
-                            if(!h.has(p1.id)) h.set(p1.id, new Map());
-                            const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
-                        }
+                    const addP = (p1, p2) => {
+                        if(!p1 || !p2) return;
+                        if(!h.has(p1.id)) h.set(p1.id, new Map());
+                        const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
                     };
-                    if(m.team1.length > 1) { add(m.team1[0], m.team1[1]); add(m.team1[1], m.team1[0]); }
-                    if(m.team2.length > 1) { add(m.team2[0], m.team2[1]); add(m.team2[1], m.team2[0]); }
+                    if(m.team1.length > 1) { addP(m.team1[0], m.team1[1]); addP(m.team1[1], m.team1[0]); }
+                    if(m.team2.length > 1) { addP(m.team2[0], m.team2[1]); addP(m.team2[1], m.team2[0]); }
                 }
             });
             return h;
@@ -244,13 +243,12 @@
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
             allM.forEach(m => {
                 if(m && m.team1 && m.team2) {
-                    const add = (p1, p2) => {
-                        if(p1 && p2) {
-                            if(!h.has(p1.id)) h.set(p1.id, new Map());
-                            const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
-                        }
+                    const addO = (p1, p2) => {
+                        if(!p1 || !p2) return;
+                        if(!h.has(p1.id)) h.set(p1.id, new Map());
+                        const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
                     };
-                    m.team1.forEach(p1 => m.team2.forEach(p2 => { add(p1, p2); add(p2, p1); }));
+                    m.team1.forEach(p1 => m.team2.forEach(p2 => { addO(p1, p2); addO(p2, p1); }));
                 }
             });
             return h;
@@ -260,7 +258,7 @@
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
                 
-                // Prevent duplicates (Jolita vs Jolita fix)
+                // Prevent duplicates
                 const uniqueIds = new Set();
                 const safePool = [];
                 players.forEach(p => {
@@ -314,18 +312,17 @@
                     return;
                 }
 
-                // --- 3. UNIVERSAL SMART PENALTY GENERATOR (8, 12, Mix, etc.) ---
+                // --- 3. UNIVERSAL SMART PENALTY GENERATOR (8+ Players & Mix) ---
                 const partnersHist = getPartnerHistory();
                 const opponentsHist = getOpponentHistory();
                 let bestSet = null, minPenalty = Infinity;
 
-                // Monte Carlo Simulation (3000 iterations for better accuracy)
                 for(let i=0; i<3000; i++) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     let currentSet = [], currentPenalty = 0;
+                    let validSet = true;
                     
-                    // Logic selector
-                    if(settings.format.includes('mix')) {
+                    if(settings.format === 'mix_americano') {
                         let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
                         let pairsCount = Math.min(m.length, f.length);
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pairsCount/2));
@@ -333,45 +330,50 @@
                         if(courtsNeeded > 0) {
                             for(let c=0; c<courtsNeeded; c++) {
                                 const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
-                                // Partner Penalty (HUGE)
+                                if (t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
+
                                 currentPenalty += (partnersHist.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
                                 currentPenalty += (partnersHist.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                                // Opponent Penalty (EXPONENTIAL: 50, 400, 1350...)
+                                
                                 t1.forEach(p1 => t2.forEach(p2 => { 
                                     const games = opponentsHist.get(p1.id)?.get(p2.id) || 0;
-                                    currentPenalty += Math.pow(games + 1, 3) * 50; 
+                                    // Aggressive opponent penalty for Mix
+                                    currentPenalty += Math.pow(games + 1, 3) * 500; 
                                 }));
                                 currentSet.push({ team1: t1, team2: t2 });
                             }
                         }
                     } else {
-                        // Standard Americano (8, 12, etc.)
+                        // Standard Americano
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
                         for(let c=0; c<courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
+                            if (t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
+                            
                             // Partner Penalty
                             currentPenalty += (partnersHist.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
                             currentPenalty += (partnersHist.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                            // Opponent Penalty
+                            
+                            // Opponent Penalty (SUPER AGGRESSIVE for 8 players)
                             t1.forEach(p1 => t2.forEach(p2 => { 
                                 const games = opponentsHist.get(p1.id)?.get(p2.id) || 0;
-                                currentPenalty += Math.pow(games + 1, 3) * 50; 
+                                // 5000 points penalty for repeating opponent (effectively forbids it unless impossible)
+                                currentPenalty += Math.pow(games + 1, 3) * 5000; 
                             }));
                             currentSet.push({ team1: t1, team2: t2 });
                         }
                     }
 
-                    if(currentSet.length > 0) {
+                    if(validSet && currentSet.length > 0) {
                          if (currentPenalty < minPenalty) { 
                             minPenalty = currentPenalty; 
                             bestSet = currentSet; 
-                            if(minPenalty === 0) break; // Found perfect round
+                            if(minPenalty === 0) break;
                         }
                     }
                 }
 
                 if(!bestSet && safePool.length >= 4) {
-                    // Last resort failsafe
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
                 }
@@ -433,9 +435,9 @@
                 const table = calculateResults(matches, players, isF);
                 safeHTML('leaderboard-body', table.map((s, i) => `
                     <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
-                        <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
+                        <div class="w-8 font-bold text-slate-400 text-[10px]">${i+1}</div>
                         <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
-                            ${!isF && s.photo ? `<div class="relative w-7 h-7 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                            ${!isF && s.photo ? `<div class="relative w-9 h-9 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
                             ${s.name}
                         </div>
                         <div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
@@ -581,8 +583,8 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                activeRoom = room; isCloud = true; localStorage.setItem('r_v82', room);
-                dbRef = firebase.database().ref('pad_v82/' + room);
+                activeRoom = room; isCloud = true; localStorage.setItem('r_v88', room);
+                dbRef = firebase.database().ref('pad_v88/' + room);
                 
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
@@ -612,7 +614,7 @@
         }
 
         function disconnectFirebase() { 
-            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v82'); 
+            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v88'); 
             safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); 
             safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); 
             loadData(); render();
