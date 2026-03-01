@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V88 (Stable Lite)</title>
+    <title>Padelio PRO V89 (Pairs Analytics)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -21,6 +21,7 @@
         input, select { font-size: 16px !important; }
         .stat-col { text-align: center; font-weight: bold; font-size: 10px; width: 22px; flex-shrink: 0; }
         .stat-col-wide { text-align: right; font-weight: 900; font-size: 12px; width: 42px; flex-shrink: 0; }
+        .pair-badge { font-size: 9px; padding: 1px 4px; border-radius: 4px; background: #f1f5f9; color: #64748b; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -120,12 +121,18 @@
             <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
                 <div class="grid grid-cols-2 gap-2">
                     <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"></select></div>
+                    <div class="col-span-2">
+                        <div class="flex bg-slate-100 p-1 rounded-lg">
+                            <button type="button" id="stat-type-indiv" onclick="setStatType('indiv')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase">Žaidėjai</button>
+                            <button type="button" id="stat-type-pairs" onclick="setStatType('pairs')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase">Poros</button>
+                        </div>
+                    </div>
                     <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
                     <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
                 </div>
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
-                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                <div id="stats-header" class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
                     <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
                 </div>
                 <div id="global-stats-body" class="divide-y divide-slate-100"></div>
@@ -141,7 +148,7 @@
             <h2 class="text-2xl font-black mb-6">Debesis</h2>
             <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
+                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Izoliuotas Kambarys</h3>
                     <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
                 </div>
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
@@ -150,7 +157,7 @@
                 <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
                 
                 <div id="cloud-connect-ui" class="space-y-4 text-center">
-                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <input type="text" id="fb-room" placeholder="Kambario Pavadinimas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
                     <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
                 <div id="cloud-active-ui" class="hidden space-y-4 text-center">
@@ -186,18 +193,19 @@
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
+        let statType = 'indiv'; // 'indiv' or 'pairs'
 
-        let activeRoom = localStorage.getItem('r_v88') || '';
+        let activeRoom = localStorage.getItem('r_v89') || '';
         if(activeRoom) isCloud = true;
 
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
         function getStore(key) {
-            const prefix = isCloud ? `v88_room_${activeRoom}_` : `v88_local_`;
+            const prefix = isCloud ? `v89_room_${activeRoom}_` : `v89_local_`;
             return JSON.parse(localStorage.getItem(prefix + key));
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `v88_room_${activeRoom}_` : `v88_local_`;
+            const prefix = isCloud ? `v89_room_${activeRoom}_` : `v89_local_`;
             if (val === null) localStorage.removeItem(prefix + key);
             else localStorage.setItem(prefix + key, JSON.stringify(val));
         }
@@ -213,178 +221,126 @@
             if(activeRoom) { safeVal('fb-room', activeRoom); initFirebaseConnection(true); }
         } catch(e) { console.error("Init Error", e); localStorage.clear(); }
 
-        // --- 4 PLAYER FIXED MATRIX (Round Robin) ---
-        const M4 = [
-            [ {t1: [0,1], t2: [2,3]} ], 
-            [ {t1: [0,2], t2: [1,3]} ], 
-            [ {t1: [0,3], t2: [1,2]} ]  
-        ];
-
-        // --- BRAINS: SMART PENALTY ENGINE ---
-        function getPartnerHistory() {
-            const h = new Map();
+        // --- BRAINS: GENERATOR & STATS ---
+        function getHistoryStats() {
+            const partners = new Map();
+            const opponents = new Map();
             const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
             allM.forEach(m => {
                 if(m && m.team1 && m.team2) {
                     const addP = (p1, p2) => {
                         if(!p1 || !p2) return;
-                        if(!h.has(p1.id)) h.set(p1.id, new Map());
-                        const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                        if(!partners.has(p1.id)) partners.set(p1.id, new Map());
+                        const m1 = partners.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
+                    };
+                    const addO = (p1, p2) => {
+                        if(!p1 || !p2) return;
+                        if(!opponents.has(p1.id)) opponents.set(p1.id, new Map());
+                        const m1 = opponents.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
                     };
                     if(m.team1.length > 1) { addP(m.team1[0], m.team1[1]); addP(m.team1[1], m.team1[0]); }
                     if(m.team2.length > 1) { addP(m.team2[0], m.team2[1]); addP(m.team2[1], m.team2[0]); }
-                }
-            });
-            return h;
-        }
-
-        function getOpponentHistory() {
-            const h = new Map();
-            const allM = [...(savedTournaments || []).map(t=>t.matches).flat(), ...matches];
-            allM.forEach(m => {
-                if(m && m.team1 && m.team2) {
-                    const addO = (p1, p2) => {
-                        if(!p1 || !p2) return;
-                        if(!h.has(p1.id)) h.set(p1.id, new Map());
-                        const m1 = h.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1);
-                    };
                     m.team1.forEach(p1 => m.team2.forEach(p2 => { addO(p1, p2); addO(p2, p1); }));
                 }
             });
-            return h;
+            return { partners, opponents };
         }
 
         function generateRound() {
             try {
                 if(players.length < 4) return alert("Min 4 žaidėjai!");
-                
-                // Prevent duplicates
                 const uniqueIds = new Set();
                 const safePool = [];
-                players.forEach(p => {
-                    if (p && p.id && !uniqueIds.has(p.id)) {
-                        uniqueIds.add(p.id);
-                        safePool.push(p);
-                    }
-                });
+                players.forEach(p => { if (p && p.id && !uniqueIds.has(p.id)) { uniqueIds.add(p.id); safePool.push(p); } });
 
                 let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                // --- 1. FIKSUOTOS POROS ---
                 if (settings.format === 'fixed') {
-                    let teams = [];
-                    for (let k = 0; k < safePool.length; k += 2) {
-                        if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]);
-                    }
-                    let K = teams.length;
-                    if (K < 2) return alert("Fiksuotoms poroms reikia bent 4 žaidėjų (2 porų).");
-                    
+                    let teams = []; for (let k = 0; k < safePool.length; k += 2) if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]);
+                    let K = teams.length; if (K < 2) return alert("Fiksuotoms poroms reikia bent 4 žaidėjų (2 porų).");
                     let K_even = K % 2 === 0 ? K : K + 1;
-                    let cycleRounds = K_even - 1;
-                    let shift = (roundNum - 1) % cycleRounds;
-                    let rotatedIndices = [0];
-                    let others = [];
-                    for (let i = 1; i < K_even; i++) others.push(i);
-                    for (let i = 0; i < shift; i++) others.unshift(others.pop());
-                    rotatedIndices.push(...others);
-                    
+                    let cycleRounds = K_even - 1; let shift = (roundNum - 1) % cycleRounds;
+                    let rotatedIndices = [0]; let others = []; for (let i = 1; i < K_even; i++) others.push(i);
+                    for (let i = 0; i < shift; i++) others.unshift(others.pop()); rotatedIndices.push(...others);
                     let roundMatches = [];
                     for (let i = 0; i < K_even / 2; i++) {
-                        let t1Idx = rotatedIndices[i];
-                        let t2Idx = rotatedIndices[K_even - 1 - i];
+                        let t1Idx = rotatedIndices[i]; let t2Idx = rotatedIndices[K_even - 1 - i];
                         if (t1Idx < K && t2Idx < K) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
                     }
-                    
                     roundMatches = roundMatches.slice(0, settings.courts);
                     roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
                     return;
                 }
 
-                // --- 2. 4-PLAYER AMERICANO (FIXED MATRIX) ---
                 if (settings.format === 'americano' && safePool.length === 4) {
+                    const m4 = [ [[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]] ];
                     const c = (roundNum - 1) % 3;
-                    const cfg = M4[c];
-                    cfg.forEach((match, idx) => {
-                        newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1:0, score2:0, team1: [safePool[match.t1[0]], safePool[match.t1[1]]], team2: [safePool[match.t2[0]], safePool[match.t2[1]]] });
-                    });
+                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[m4[c][0][0]], safePool[m4[c][0][1]]], team2: [safePool[m4[c][1][0]], safePool[m4[c][1][1]]] });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
                     return;
                 }
 
-                // --- 3. UNIVERSAL SMART PENALTY GENERATOR (8+ Players & Mix) ---
-                const partnersHist = getPartnerHistory();
-                const opponentsHist = getOpponentHistory();
+                const { partners, opponents } = getHistoryStats();
                 let bestSet = null, minPenalty = Infinity;
-
                 for(let i=0; i<3000; i++) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    let currentSet = [], currentPenalty = 0;
-                    let validSet = true;
-                    
-                    if(settings.format === 'mix_americano') {
+                    let currentSet = [], currentPenalty = 0, validSet = true;
+                    if(settings.format.includes('mix')) {
                         let m = pool.filter(p=>p.gender==='M'), f = pool.filter(p=>p.gender==='F');
-                        let pairsCount = Math.min(m.length, f.length);
-                        let courtsNeeded = Math.min(settings.courts, Math.floor(pairsCount/2));
-                        
+                        let pairsCount = Math.min(m.length, f.length); let courtsNeeded = Math.min(settings.courts, Math.floor(pairsCount/2));
                         if(courtsNeeded > 0) {
                             for(let c=0; c<courtsNeeded; c++) {
                                 const t1 = [m.pop(), f.pop()], t2 = [m.pop(), f.pop()];
                                 if (t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
-
-                                currentPenalty += (partnersHist.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
-                                currentPenalty += (partnersHist.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                                
-                                t1.forEach(p1 => t2.forEach(p2 => { 
-                                    const games = opponentsHist.get(p1.id)?.get(p2.id) || 0;
-                                    // Aggressive opponent penalty for Mix
-                                    currentPenalty += Math.pow(games + 1, 3) * 500; 
-                                }));
+                                currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
+                                currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                                t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
                                 currentSet.push({ team1: t1, team2: t2 });
                             }
                         }
                     } else {
-                        // Standard Americano
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
                         for(let c=0; c<courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
                             if (t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
-                            
-                            // Partner Penalty
-                            currentPenalty += (partnersHist.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
-                            currentPenalty += (partnersHist.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                            
-                            // Opponent Penalty (SUPER AGGRESSIVE for 8 players)
-                            t1.forEach(p1 => t2.forEach(p2 => { 
-                                const games = opponentsHist.get(p1.id)?.get(p2.id) || 0;
-                                // 5000 points penalty for repeating opponent (effectively forbids it unless impossible)
-                                currentPenalty += Math.pow(games + 1, 3) * 5000; 
-                            }));
+                            currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
+                            currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                            t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
                             currentSet.push({ team1: t1, team2: t2 });
                         }
                     }
-
-                    if(validSet && currentSet.length > 0) {
-                         if (currentPenalty < minPenalty) { 
-                            minPenalty = currentPenalty; 
-                            bestSet = currentSet; 
-                            if(minPenalty === 0) break;
-                        }
-                    }
+                    if(validSet && currentSet.length > 0 && currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = currentSet; if(minPenalty === 0) break; }
                 }
-
-                if(!bestSet && safePool.length >= 4) {
-                    let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
-                }
-
+                if(!bestSet && safePool.length >= 4) { let pool = [...safePool].sort(() => Math.random() - 0.5); bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }]; }
                 if(bestSet && bestSet.length > 0) {
                     bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
-                } else {
-                    alert("Nepakanka žaidėjų.");
-                }
+                } else { alert("Nepakanka žaidėjų."); }
             } catch(e) { showError("Generavimo klaida: " + e.message); }
+        }
+
+        // --- PAIRS ANALYSIS LOGIC ---
+        function calculatePairsResults(mArr, pArr) {
+            const pairs = new Map();
+            mArr.filter(m => m.finished).forEach(m => {
+                const processTeam = (team, myS, enS) => {
+                    if (team.length < 2) return;
+                    const pairIds = team.map(p => p.id).sort();
+                    const key = pairIds.join('_');
+                    if (!pairs.has(key)) {
+                        const p1 = pArr.find(x => x.id === pairIds[0]);
+                        const p2 = pArr.find(x => x.id === pairIds[1]);
+                        pairs.set(key, { name: `${p1.name} / ${p2.name}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0 });
+                    }
+                    const s = pairs.get(key);
+                    s.mp++; s.sw += myS;
+                    if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++;
+                };
+                processTeam(m.team1, m.score1, m.score2);
+                processTeam(m.team2, m.score2, m.score1);
+            });
+            return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp);
         }
 
         // --- DATA SYNC ---
@@ -403,11 +359,9 @@
                     savedTournaments[idx].lastUpdate = Date.now();
                 }
                 setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
-                
                 if(isCloud && dbRef) {
                     const payload = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() };
-                    window.lastCloudUpdate = payload.lastUpdate;
-                    dbRef.set(payload);
+                    window.lastCloudUpdate = payload.lastUpdate; dbRef.set(payload);
                 }
                 render();
             } catch (e) { showError("Klaida išsaugant: " + e.message); }
@@ -417,9 +371,7 @@
             let res = [];
             if(isF) { for(let i=0; i<pArr.length; i+=2) if(i+1 < pArr.length) res.push({ id: pArr[i].id+'_'+pArr[i+1].id, name: pArr[i].name+' / '+pArr[i+1].name, p1: pArr[i], p2: pArr[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
             else { res = pArr.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
-            
             mArr.filter(m => m.finished).forEach(m => {
-                if(!m.team1 || !m.team2) return;
                 const up = (team, myS, enS) => {
                     let targets = isF ? [res.find(r => r.p1.id === team[0].id || r.p2.id === team[0].id)] : team.map(p => res.find(r => r.id === p.id));
                     targets.forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } });
@@ -435,47 +387,44 @@
                 const table = calculateResults(matches, players, isF);
                 safeHTML('leaderboard-body', table.map((s, i) => `
                     <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
-                        <div class="w-8 font-bold text-slate-400 text-[10px]">${i+1}</div>
+                        <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
                         <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
-                            ${!isF && s.photo ? `<div class="relative w-9 h-9 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
+                            ${!isF && s.photo ? `<div class="relative w-7 h-7 shrink-0"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
                             ${s.name}
                         </div>
                         <div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
                         <div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div>
                         <div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div>
                     </div>`).join(''));
-
                 const curT = savedTournaments.find(x => x.id === currentTid);
                 safeText('btn-rename-tournament', curT ? `✏️ ${curT.name.toUpperCase()}` : `✏️ PERVADINTI TURNYRĄ`);
-                
                 safeHTML('players-list', players.map((p, index) => `
                     <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>
+                        <div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>
                             ${p.photo ? `<div class="relative w-9 h-9"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">${p.gender==='M'?'V':'M'}</div></div>` : `<div class="w-9 h-9 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">${p.gender==='M'?'V':'M'}</div>`}
                             <div class="font-bold text-slate-800 text-sm">${p.name}</div>
                         </div>
                         <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
                     </div>`).join(''));
-
                 const isSc = settings.winCondition === 'score';
                 safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
                 safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
-                safeDisplay('control-duration', !isSc ? 'block' : 'none');
-                safeDisplay('control-points', isSc ? 'block' : 'none');
-                safeDisplay('score-mode-text', isSc ? 'block' : 'none');
-                safeDisplay('timer-controls', isSc ? 'none' : 'flex');
+                safeDisplay('control-duration', !isSc ? 'block' : 'none'); safeDisplay('control-points', isSc ? 'block' : 'none');
+                safeDisplay('score-mode-text', isSc ? 'block' : 'none'); safeDisplay('timer-controls', isSc ? 'none' : 'flex');
                 if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
-                
-                safeText('val-duration', settings.matchDuration);
-                safeText('val-points', settings.maxPoints);
-                safeText('val-courts', settings.courts);
-                safeText('player-count', "Viso: " + players.length);
-                safeVal('select-format', settings.format);
-                safeVal('select-ranking', settings.rankingMode);
-                
+                const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0');
+                safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration);
+                safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts);
+                safeText('player-count', "Viso: " + players.length); safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
                 updateTimerUI(); renderMatches();
             } catch(e) { showError("Render Error: " + e.message); }
+        }
+
+        function setStatType(type) {
+            statType = type;
+            safeClass('stat-type-indiv', statType === 'indiv' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+            safeClass('stat-type-pairs', statType === 'pairs' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+            renderGlobalStats();
         }
 
         function renderGlobalStats() {
@@ -487,24 +436,33 @@
                 if(tF === 'ALL') { savedTournaments.forEach(t => { cM.push(...t.matches); cP.push(...t.players); }); cM.push(...matches); cP.push(...players); }
                 else if(tF === 'CURRENT') { cM = matches; cP = players; }
                 else { const t = savedTournaments.find(x=>x.id===tF); if(t){ cM=t.matches; cP=t.players; } }
-                
                 const uP = []; const seen = new Set();
                 cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
-                const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-                
                 const pSel = el('stat-player'); const curP = pSel ? pSel.value : 'ALL';
                 if(pSel) pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + Array.from(seen).sort().map(n => `<option value="${n}" ${n===curP?'selected':''}>${n}</option>`).join('');
-                
-                safeHTML('global-stats-body', list.map((s, i) => `
-                    <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
-                        <div class="w-6 text-slate-400 font-bold">${i+1}</div>
-                        <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">
-                            ${s.photo ? `<div class="relative w-6 h-6"><img src="${s.photo}" class="w-full h-full rounded-full object-cover ${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[6px] text-white font-black ${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">${s.gender==='M'?'V':'M'}</div></div>` : ''}
-                            ${s.name}
-                        </div>
-                        <div class="stat-col text-slate-500">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
-                        <div class="stat-col-wide text-slate-900">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div>
-                    </div>`).join(''));
+
+                if (statType === 'indiv') {
+                    const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
+                    safeHTML('global-stats-body', list.map((s, i) => `
+                        <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
+                            <div class="w-6 text-slate-400 font-bold">${i+1}</div>
+                            <div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">${s.name}</div>
+                            <div class="stat-col text-slate-500">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
+                            <div class="stat-col-wide text-slate-900">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div>
+                        </div>`).join(''));
+                } else {
+                    const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1.name === pF || x.p2.name === pF));
+                    safeHTML('global-stats-body', list.map((s, i) => `
+                        <div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50">
+                            <div class="w-6 text-slate-400 font-bold">${i+1}</div>
+                            <div class="flex-1 flex flex-col gap-0.5 truncate font-bold text-slate-800">
+                                <span>${s.name}</span>
+                                <div class="flex gap-1"><span class="pair-badge">${s.p1.gender}${s.p2.gender}</span></div>
+                            </div>
+                            <div class="stat-col text-slate-500">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
+                            <div class="stat-col-wide text-slate-900">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div>
+                        </div>`).join(''));
+                }
             } catch(e) { showError("Stats Error: " + e.message); }
         }
 
@@ -583,21 +541,17 @@
             const config = { apiKey: el('fb-apiKey').value, authDomain: el('fb-authDomain').value, databaseURL: el('fb-databaseURL').value, projectId: el('fb-projectId').value };
             try {
                 if(!firebase.apps.length) firebase.initializeApp(config);
-                activeRoom = room; isCloud = true; localStorage.setItem('r_v88', room);
-                dbRef = firebase.database().ref('pad_v88/' + room);
-                
+                activeRoom = room; isCloud = true; localStorage.setItem('r_v89', room);
+                dbRef = firebase.database().ref('pad_v89/' + room);
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-status', "text-[10px] bg-green-500 px-2 py-1 rounded font-bold text-white shadow-lg");
                 safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
-
                 dbRef.once('value').then(snap => {
                     const d = snap.val();
                     if (d) {
                         players = d.players || []; matches = d.matches || []; settings = {...ds, ...(d.settings || {})};
-                        savedTournaments = d.savedTournaments || []; currentTid = d.currentTid || null;
-                        render();
+                        savedTournaments = d.savedTournaments || []; currentTid = d.currentTid || null; render();
                     } else { autoSave(); }
-                    
                     dbRef.on('value', snap2 => {
                         const d2 = snap2.val(); 
                         if(d2 && (JSON.stringify(d2.lastUpdate) !== JSON.stringify(window.lastCloudUpdate))) {
@@ -605,8 +559,7 @@
                             players = d2.players || []; matches = d2.matches || []; settings = {...ds, ...(d2.settings || {})};
                             savedTournaments = d2.savedTournaments || []; currentTid = d2.currentTid || null;
                             setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
-                            render();
-                            const sb = el('sync-bar'); if(sb) { sb.style.width = "100%"; setTimeout(() => sb.style.width = "0", 400); }
+                            render(); const sb = el('sync-bar'); if(sb) { sb.style.width = "100%"; setTimeout(() => sb.style.width = "0", 400); }
                         }
                     });
                 });
@@ -614,7 +567,7 @@
         }
 
         function disconnectFirebase() { 
-            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v88'); 
+            if(dbRef) dbRef.off(); isCloud = false; dbRef = null; activeRoom = ''; localStorage.removeItem('r_v89'); 
             safeClass('cloud-connect-ui', "space-y-4 text-center"); safeClass('cloud-active-ui', "hidden space-y-4 text-center"); 
             safeText('cloud-status', "Atsijungta"); safeClass('cloud-status', "text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300"); 
             loadData(); render();
