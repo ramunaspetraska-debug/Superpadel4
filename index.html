@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V92 (Error Fix)</title>
+    <title>Padelio PRO V93 (History Fixed)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -39,7 +39,7 @@
             <span class="text-lg font-black text-slate-800 tracking-tighter block text-center leading-none">PRO</span>
         </div>
         <div class="flex items-center gap-2">
-            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-11 h-11 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform">
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-11 h-11 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95">
                 <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                 <svg id="icon-stop" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
@@ -53,22 +53,20 @@
     <div class="max-w-md mx-auto p-4 w-full">
         
         <div id="view-setup" class="view-section active w-full">
-            <div class="bg-white p-3 rounded-2xl shadow-lg border border-slate-200 mb-6">
+            <div class="bg-white p-3 rounded-2xl shadow-lg border border-slate-200 mb-4">
                 <div class="flex justify-between items-center mb-3 px-1">
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjų registracija</span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Turnyro informacija</span>
+                </div>
+                <input type="text" id="tournament-name-field" onchange="updateTournamentName(this.value)" placeholder="Turnyro pavadinimas..." class="w-full px-3 py-2 bg-slate-50 border-2 border-slate-100 rounded-lg focus:outline-none focus:border-blue-500 font-bold text-slate-700 mb-4" />
+                
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjai</span>
                     <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded font-bold">Viso: 0</span>
                 </div>
                 <form onsubmit="addPlayer(event)" class="flex gap-2 w-full items-center">
                     <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-10 border border-slate-200">
                         <button type="button" id="gender-m" onclick="setGender('M')" class="w-9 font-bold transition-colors bg-blue-600 text-white text-[10px]">V</button>
                         <button type="button" id="gender-f" onclick="setGender('F')" class="w-9 font-bold transition-colors text-slate-400 text-[10px]">M</button>
-                    </div>
-                    <div class="relative shrink-0">
-                        <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
-                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-10 h-10 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95">
-                            <span id="photo-placeholder" class="text-lg">📷</span>
-                            <img id="photo-preview" class="hidden w-full h-full object-cover">
-                        </button>
                     </div>
                     <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-3 rounded-lg border-2 border-slate-100 focus:outline-none focus:border-green-500 h-10 text-slate-900 font-bold text-sm" />
                     <button type="submit" class="bg-slate-900 text-white w-10 h-10 shrink-0 rounded-lg font-bold text-xl active:scale-95 shadow-md">+</button>
@@ -205,27 +203,17 @@
         function safeHTML(id, h) { const e = el(id); if(e) e.innerHTML = h; }
         function safeVal(id, v) { const e = el(id); if(e) e.value = v; }
         function safeClass(id, c) { const e = el(id); if(e) e.className = c; }
-        function safeDisplay(id, d) { const e = el(id); if(e) e.style.display = d; }
-        function showError(msg) { console.error(msg); alert(msg); }
+        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- CONSTANTS ---
-        const ST_KEY = "sp_pro_permanent_v92";
-
-        // --- STATE ---
+        // --- STATE & PERMANENT STORAGE ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-
-        // --- STORAGE ENGINE ---
         function getStore(key) {
             const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_local_`;
-            try {
-                const val = localStorage.getItem(prefix + key);
-                return val ? JSON.parse(val) : null;
-            } catch(e) { return null; }
+            try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
             const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_local_`;
@@ -247,7 +235,19 @@
 
         loadData();
 
-        // --- GENERATOR ---
+        // --- INITIALIZE NEW TOURNAMENT IF NEEDED ---
+        function ensureTournamentId() {
+            if(!currentTid) {
+                currentTid = uid();
+                const name = new Date().toLocaleDateString('lt-LT') + ' Turnyras';
+                savedTournaments.unshift({ id: currentTid, name: name, date: new Date().toISOString(), players: [], matches: [], settings: settings });
+                setStore('tid', currentTid);
+                safeVal('tournament-name-field', name);
+                autoSave();
+            }
+        }
+
+        // --- BRAINS: GENERATOR ---
         function getHistoryStats() {
             const partners = new Map(), opponents = new Map();
             const allM = [...(savedTournaments || []).map(t=>t.matches || []).flat(), ...matches];
@@ -264,49 +264,48 @@
         }
 
         function generateRound() {
-            try {
-                if(players.length < 4) return alert("Min 4 žaidėjai!");
-                const safePool = players.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-                let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-                
-                if (settings.format === 'fixed') {
-                    let teams = []; for (let k = 0; k < safePool.length; k += 2) if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]);
-                    let K = teams.length; if (K < 2) return alert("Reikia bent 2 porų.");
-                    let K_even = K % 2 === 0 ? K : K + 1;
-                    let cycleRounds = K_even - 1; let shift = (roundNum - 1) % cycleRounds;
-                    let rotatedIndices = [0]; let others = []; for (let i = 1; i < K_even; i++) others.push(i);
-                    for (let i = 0; i < shift; i++) others.unshift(others.pop()); rotatedIndices.push(...others);
-                    let roundMatches = [];
-                    for (let i = 0; i < K_even / 2; i++) {
-                        let t1Idx = rotatedIndices[i]; let t2Idx = rotatedIndices[K_even - 1 - i];
-                        if (t1Idx < K && t2Idx < K) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
-                    }
-                    roundMatches = roundMatches.slice(0, settings.courts);
-                    roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
-                    matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
+            ensureTournamentId();
+            if(players.length < 4) return alert("Min 4 žaidėjai!");
+            const safePool = players.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+            let newM = [], roundNum = (matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+            
+            if (settings.format === 'fixed') {
+                let teams = []; for (let k = 0; k < safePool.length; k += 2) if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]);
+                let K = teams.length; if (K < 2) return alert("Reikia bent 2 porų.");
+                let K_even = K % 2 === 0 ? K : K + 1;
+                let cycleRounds = K_even - 1; let shift = (roundNum - 1) % cycleRounds;
+                let rotatedIndices = [0]; let others = []; for (let i = 1; i < K_even; i++) others.push(i);
+                for (let i = 0; i < shift; i++) others.unshift(others.pop()); rotatedIndices.push(...others);
+                let roundMatches = [];
+                for (let i = 0; i < K_even / 2; i++) {
+                    let t1Idx = rotatedIndices[i]; let t2Idx = rotatedIndices[K_even - 1 - i];
+                    if (t1Idx < K && t2Idx < K) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
                 }
+                roundMatches = roundMatches.slice(0, settings.courts);
+                roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
+                matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
+            }
 
-                const { partners, opponents } = getHistoryStats();
-                let bestSet = null, minPenalty = Infinity;
-                for(let i=0; i<3000; i++) {
-                    let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    let currentSet = [], currentPenalty = 0, validSet = true;
-                    let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
-                    for(let c=0; c<courtsNeeded; c++) {
-                        const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
-                        if (t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
-                        currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
-                        currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                        t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
-                        currentSet.push({ team1: t1, team2: t2 });
-                    }
-                    if(validSet && currentSet.length > 0 && currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = currentSet; if(minPenalty === 0) break; }
+            const { partners, opponents } = getHistoryStats();
+            let bestSet = null, minPenalty = Infinity;
+            for(let i=0; i<3000; i++) {
+                let pool = [...safePool].sort(() => Math.random() - 0.5);
+                let currentSet = [], currentPenalty = 0, validSet = true;
+                let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length/4));
+                for(let c=0; c<courtsNeeded; c++) {
+                    const t1 = [pool.pop(), pool.pop()], t2 = [pool.pop(), pool.pop()];
+                    if (t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
+                    currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
+                    currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                    t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
+                    currentSet.push({ team1: t1, team2: t2 });
                 }
-                if(bestSet) {
-                    bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
-                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
-                } else { alert("Nepakanka žaidėjų."); }
-            } catch(e) { showError("Generavimo klaida: " + e.message); }
+                if(validSet && currentSet.length > 0 && currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = currentSet; if(minPenalty === 0) break; }
+            }
+            if(bestSet) {
+                bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx+1, finished: false, score1:0, score2:0, team1: m.team1, team2: m.team2 }); });
+                matches = [...matches, ...newM]; autoSave(); switchView('matches');
+            } else { alert("Nepakanka žaidėjų."); }
         }
 
         // --- PAIRS RESULTS ---
@@ -331,20 +330,17 @@
             return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp);
         }
 
-        // --- ADMIN LOGIN ---
-        function adminClick() {
-            adminClickCount++;
-            clearTimeout(adminTimer);
-            adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000);
-            if (adminClickCount >= 5) {
-                const pass = prompt("Admin slaptažodis:");
-                if (pass === "123") switchView('admin');
-                adminClickCount = 0;
-            }
-        }
-
         // --- DATA SYNC ---
         function autoSave() {
+            if(currentTid) {
+                const idx = savedTournaments.findIndex(x => x.id === currentTid);
+                if(idx > -1) {
+                    savedTournaments[idx].players = JSON.parse(JSON.stringify(players));
+                    savedTournaments[idx].matches = JSON.parse(JSON.stringify(matches));
+                    savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
+                    savedTournaments[idx].lastUpdate = Date.now();
+                }
+            }
             setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
             if(isCloud && dbRef) {
                 const payload = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() };
@@ -372,23 +368,12 @@
             try {
                 const isF = settings.format === 'fixed';
                 const table = calculateResults(matches, players, isF);
-                safeHTML('leaderboard-body', table.map((s, i) => `
-                    <div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50">
-                        <div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div>
-                        <div class="flex-1 font-bold text-slate-800">${s.name}</div>
-                        <div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div>
-                        <div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div>
-                        <div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div>
-                    </div>`).join(''));
+                safeHTML('leaderboard-body', table.map((s, i) => `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`).join(''));
+                
                 const curT = savedTournaments.find(x => x.id === currentTid);
-                safeText('btn-rename-tournament', curT ? `✏️ ${curT.name.toUpperCase()}` : `✏️ PERVADINTI TURNYRĄ`);
-                safeHTML('players-list', players.map((p, index) => `
-                    <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
-                        <div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>
-                            <div class="font-bold text-slate-800 text-sm">${p.name}</div>
-                        </div>
-                        <button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button>
-                    </div>`).join(''));
+                safeVal('tournament-name-field', curT ? curT.name : '');
+
+                safeHTML('players-list', players.map((p, index) => `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span><div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button></div>`).join(''));
                 const isSc = settings.winCondition === 'score';
                 safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
                 safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
@@ -419,9 +404,6 @@
                 const pSel = el('stat-player'); const curP = pSel ? pSel.value : 'ALL';
                 if(pSel) pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + Array.from(seen).sort().map(n => `<option value="${n}" ${n===curP?'selected':''}>${n}</option>`).join('');
 
-                safeClass('stat-type-indiv', statType === 'indiv' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
-                safeClass('stat-type-pairs', statType === 'pairs' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
-
                 if (statType === 'indiv') {
                     const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
                     safeHTML('global-stats-body', list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join(''));
@@ -432,19 +414,14 @@
             } catch(e) { console.error("Stats Error:", e); }
         }
 
-        function renderAdmin() {
-            safeHTML('admin-tournaments-list', savedTournaments.map(t => `<div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-xs font-bold"><span>${t.name}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`).join(''));
-            const uP = []; const seen = new Set();
-            [...players, ...savedTournaments.flatMap(t => t.players || [])].forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } });
-            safeHTML('admin-players-list', uP.map(p => `<div class="flex justify-between items-center p-2 text-xs"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`).join(''));
+        function adminClick() {
+            adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000);
+            if (adminClickCount >= 5) { const pass = prompt("Admin slaptažodis:"); if (pass === "123") switchView('admin'); adminClickCount = 0; }
         }
 
-        function adminDeleteTournament(id) { if(confirm("Trinti turnyrą?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(); renderAdmin(); } }
-        function adminDeletePlayer(id) { if(confirm("Šalinti žaidėją?")) { players = players.filter(p => p.id !== id); autoSave(); renderAdmin(); } }
+        function updateTournamentName(val) { ensureTournamentId(); const idx = savedTournaments.findIndex(x => x.id === currentTid); if(idx > -1) { savedTournaments[idx].name = val; autoSave(); } }
 
-        // --- ACTIONS ---
-        function addPlayer(e) { e.preventDefault(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); }
-        function handlePhotoUpload(e) { const file = e.target.files[0]; if(!file) return; const r = new FileReader(); r.onload = (ev) => { curPh = ev.target.result; el('photo-preview').src = curPh; el('photo-preview').classList.remove('hidden'); el('photo-placeholder').classList.add('hidden'); }; r.readAsDataURL(file); }
+        function addPlayer(e) { e.preventDefault(); ensureTournamentId(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender }); if(f) f.value = ''; autoSave(); }
         function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); }
         function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(); }
         function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
@@ -454,16 +431,12 @@
         function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, m.score1+v); else m.score2=Math.max(0, m.score2+v); autoSave(); } }
         function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; autoSave(); } }
         function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; autoSave(); } }
-        function renameCurrentTournament() { const idx = savedTournaments.findIndex(x=>x.id===currentTid); if(idx>-1){ const n=prompt("Vardas:", savedTournaments[idx].name); if(n){ savedTournaments[idx].name=n; autoSave(); }} }
-        function resetScores() { if(confirm("Naujas žaidimas?")) { currentTid = null; matches = []; autoSave(); switchView('setup'); } }
+        function resetScores() { if(confirm("Naujas žaidimas?")) { currentTid = null; matches = []; ensureTournamentId(); switchView('setup'); } }
         
         function resetAll() { 
-            if(confirm("VALYTI VISKĄ? Ištrinsite visą kambario istoriją.")) { 
-                players = []; matches = []; currentTid = null; savedTournaments = [];
-                setStore('p', []); setStore('m', []); setStore('h', []); setStore('tid', null);
-                if(isCloud && dbRef) {
-                    dbRef.set({ players: [], matches: [], settings: ds, savedTournaments: [], currentTid: null, lastUpdate: Date.now() });
-                }
+            if(confirm("VALYTI VISKĄ?")) { 
+                localStorage.clear();
+                if(isCloud && dbRef) dbRef.set(null);
                 setTimeout(() => location.reload(), 500);
             } 
         }
@@ -485,7 +458,7 @@
             }
         }
         function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); }
-        function playBuzzer() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); const g = ctx.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); } catch(e){} }
+        function playBuzzer() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); } catch(e){} }
         function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); }
         function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
 
@@ -494,22 +467,16 @@
             document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
             const v = el('view-' + n); if(v) v.classList.add('active');
             const nav = el('nav-' + n); if(nav) nav.classList.add('active');
-            if(n==='stats') renderGlobalStats();
+            if(n==='stats') { const s = el('stat-tournament'); if(s) s.innerHTML = '<option value="ALL">Visi turnyrai</option><option value="CURRENT">Dabartinis</option>' + savedTournaments.map(t => `<option value="${t.id}">${t.name}</option>`).join(''); renderGlobalStats(); }
             if(n==='history') renderHistoryList();
             if(n==='admin') renderAdmin();
             if(n==='leader' || n==='setup' || n==='matches') render();
         }
         function renderHistoryList() { safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button></div></div>`).join('')); }
-        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = [...t.players]; matches = [...t.matches]; settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...t.players]; matches = [...t.matches]; settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } }
         function renderMatches() {
             const active = matches.filter(m => m && !m.finished);
-            safeHTML('matches-container', active.map(m => `
-                <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4">
-                    <div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div>
-                    <div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1?.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1}</span><button onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
-                    <div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2?.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2}</span><button onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div>
-                    <button onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div>
-                </div>`).join(''));
+            safeHTML('matches-container', active.map(m => `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1?.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1}</span><button onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2?.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2}</span><button onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`).join(''));
             const fin = matches.filter(m => m && m.finished).reverse();
             safeHTML('finished-matches-container', fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' + fin.map(m => `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1?.map(p=>p.name).join('/')} vs ${m.team2?.map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1}:${m.score2}</div><button onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`).join('') : '');
         }
@@ -517,9 +484,8 @@
         function initFirebaseConnection() {
             const room = el('fb-room')?.value.trim(); if(!room) return;
             activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room', room);
-            dbRef = firebase.database().ref('pad_v92/' + room);
-            safeText('cloud-status', "Prijungta");
-            safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4");
+            dbRef = firebase.database().ref('pad_final/' + room);
+            safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4");
             dbRef.on('value', snap => {
                 const d = snap.val(); if(d && d.lastUpdate !== window.lastCloudUpdate) {
                     window.lastCloudUpdate = d.lastUpdate;
@@ -529,10 +495,16 @@
                 }
             });
         }
-        function disconnectFirebase() { 
-            if(dbRef) dbRef.off(); isCloud = false; activeRoom = ''; localStorage.removeItem('sp_active_room'); 
-            location.reload();
+        function disconnectFirebase() { localStorage.removeItem('sp_active_room'); location.reload(); }
+        function renderAdmin() {
+            safeHTML('admin-tournaments-list', savedTournaments.map(t => `<div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-xs font-bold"><span>${t.name}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`).join(''));
+            const uP = []; const seen = new Set();
+            [...players, ...savedTournaments.flatMap(t => t.players || [])].forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } });
+            safeHTML('admin-players-list', uP.map(p => `<div class="flex justify-between items-center p-2 text-xs"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`).join(''));
         }
+        function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(); renderAdmin(); } }
+        function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = players.filter(p => p.id !== id); autoSave(); renderAdmin(); } }
+
         render();
     </script>
 </body>
