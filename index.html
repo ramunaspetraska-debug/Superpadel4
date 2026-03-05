@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V106 (Ultimate Mix Engine)</title>
+    <title>Padelio PRO V107 (V105 Generator Restored)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -238,38 +238,28 @@
             return [];
         }
 
-        // Real Fisher-Yates shuffle for true randomness
-        function shuffleArray(array) {
-            let arr = [...array];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
-        }
-
         // --- STATE & PERMANENT STORAGE ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        const DB_KEY = "pad_v106"; 
-        const REG_KEY = "pad_v106_rooms"; 
+        const DB_KEY = "pad_v107"; 
+        const REG_KEY = "pad_v107_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v106_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v107_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v106_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v107_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v106') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v107') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -309,29 +299,12 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- MATRICES (Only for Exact 4 & 8) ---
-        const MATRIX_4 = [
-            [{t1:[0,1], t2:[2,3]}], 
-            [{t1:[0,2], t2:[1,3]}], 
-            [{t1:[0,3], t2:[1,2]}]
-        ];
-        
-        const MATRIX_8 = [
-            [{t1:[0,7], t2:[1,6]}, {t1:[2,5], t2:[3,4]}], 
-            [{t1:[0,6], t2:[2,4]}, {t1:[1,5], t2:[3,7]}], 
-            [{t1:[0,5], t2:[3,1]}, {t1:[2,6], t2:[4,7]}], 
-            [{t1:[0,4], t2:[5,7]}, {t1:[1,2], t2:[3,6]}], 
-            [{t1:[0,3], t2:[2,7]}, {t1:[1,4], t2:[5,6]}], 
-            [{t1:[0,2], t2:[4,5]}, {t1:[1,7], t2:[3,6]}], 
-            [{t1:[0,1], t2:[2,3]}, {t1:[4,6], t2:[5,7]}]  
-        ];
-
-        // --- BRAINS: GENERATOR SECTION ---
+        // --- BRAINS: EXACT V105 PENALTY SYSTEM RESTORED ---
         function getHistoryStats() {
             const partners = new Map(), opponents = new Map();
             try {
                 const allM = [];
-                safeArr(savedTournaments).forEach(t => { if(t) allM.push(...safeArr(t.matches)); });
+                safeArr(savedTournaments).forEach(t => { if(t && Array.isArray(t.matches)) allM.push(...safeArr(t.matches)); });
                 allM.push(...safeArr(matches));
                 
                 allM.forEach(m => {
@@ -355,7 +328,7 @@
                 const safeP = safeArr(players);
                 
                 if(safeP.length < 4 || safeP.length % 4 !== 0) {
-                    return alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4 (pvz. 4, 8, 12, 16)! Šiuo metu yra: ${safeP.length}.`);
+                    return alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4 (4, 8, 12, 16...), kad neliktų atsarginių! Šiuo metu yra: ${safeP.length}.`);
                 }
                 
                 const safePool = [];
@@ -371,14 +344,12 @@
                 if (settings.format === 'fixed') {
                     let teams = []; 
                     for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); }
-                    
                     let K_even = teams.length; 
                     let cycleRounds = K_even - 1; let shift = (roundNum - 1) % cycleRounds;
                     let rotatedIndices = [0]; let others = []; 
                     for (let i = 1; i < K_even; i++) others.push(i);
                     for (let i = 0; i < shift; i++) others.unshift(others.pop());
                     rotatedIndices.push(...others);
-                    
                     let roundMatches = [];
                     for (let i = 0; i < K_even / 2; i++) {
                         let t1Idx = rotatedIndices[i]; let t2Idx = rotatedIndices[K_even - 1 - i];
@@ -388,133 +359,69 @@
                     matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 2. PERFECT AMERICANO 4 PLAYERS
-                if (settings.format === 'americano' && safePool.length === 4) {
-                    const c = (roundNum - 1) % 3;
-                    let mappedPool = [...safePool];
-                    const cycle = Math.floor((roundNum - 1) / 3);
-                    if (cycle > 0) { for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift()); }
-                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mappedPool[MATRIX_4[c][0].t1[0]], mappedPool[MATRIX_4[c][0].t1[1]]], team2: [mappedPool[MATRIX_4[c][0].t2[0]], mappedPool[MATRIX_4[c][0].t2[1]]] });
-                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
-                }
-
-                // 3. PERFECT AMERICANO 8 PLAYERS
-                if (settings.format === 'americano' && safePool.length === 8) {
-                    const c = (roundNum - 1) % 7;
-                    let mappedPool = [...safePool];
-                    const cycle = Math.floor((roundNum - 1) / 7);
-                    if (cycle > 0) { for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift()); }
-                    MATRIX_8[c].forEach((m, idx) => {
-                        newM.push({ 
-                            id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, 
-                            team1: [mappedPool[m.t1[0]], mappedPool[m.t1[1]]], 
-                            team2: [mappedPool[m.t2[0]], mappedPool[m.t2[1]]] 
-                        });
-                    });
-                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
-                }
-
-                // 4. MIX AMERICANO 4 PLAYERS
-                if (settings.format === 'mix_americano' && safePool.length === 4) {
-                    let mP = safePool.filter(p => p.gender === 'M');
-                    let fP = safePool.filter(p => p.gender === 'F');
-                    if (mP.length !== 2 || fP.length !== 2) return alert("KLAIDA: Mix Americano 4 žaidėjams reikalauja lygiai 2 vyrų ir 2 moterų!");
-                    
-                    const isOddRound = (roundNum % 2 !== 0);
-                    if (isOddRound) newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[0]], team2: [mP[1], fP[1]] });
-                    else newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[1]], team2: [mP[1], fP[0]] });
-                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
-                }
-
-                // 5. CUBIC PENALTY SYSTEM (For >=12 players Americano, and >=8 players Mix Americano)
+                // EXACT V105 ENGINE FOR AMERICANO & MIX AMERICANO
                 const { partners, opponents } = getHistoryStats();
                 let bestSet = null, minPenalty = Infinity;
                 
                 for(let i=0; i<5000; i++) {
+                    // Normal random shuffle as in V105
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
                     let currentSet = [], currentPenalty = 0, validSet = true;
                     
                     if(settings.format === 'mix_americano') {
-                        let mPool = shuffleArray(safePool.filter(p => p.gender === 'M'));
-                        let fPool = shuffleArray(safePool.filter(p => p.gender === 'F'));
+                        let mPool = pool.filter(p => p.gender === 'M');
+                        let fPool = pool.filter(p => p.gender === 'F');
+                        let pairsCount = Math.min(mPool.length, fPool.length); 
+                        let localCourtsNeeded = Math.min(settings.courts, Math.floor(pairsCount / 2));
                         
-                        if (mPool.length !== fPool.length) {
-                            return alert("KLAIDA: Mix formatui reikia vienodo vyrų ir moterų skaičiaus (pvz., 4 vyrai ir 4 moterys)!");
-                        }
-                        
+                        if(localCourtsNeeded > 0) {
+                            for(let c = 0; c < localCourtsNeeded; c++) {
+                                const t1 = [mPool.pop(), fPool.pop()]; const t2 = [mPool.pop(), fPool.pop()];
+                                if (!t1[0] || !t1[1] || !t2[0] || !t2[1] || t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
+                                
+                                currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
+                                currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                                
+                                t1.forEach(p1 => t2.forEach(p2 => { 
+                                    currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; 
+                                }));
+                                currentSet.push({ team1: t1, team2: t2 });
+                            }
+                        } else { validSet = false; }
+                    } else {
+                        // Standard Americano (All Sizes, identical to V105)
                         for(let c = 0; c < courtsNeeded; c++) {
-                            const t1 = [mPool.pop(), fPool.pop()]; const t2 = [mPool.pop(), fPool.pop()];
-                            if (!t1[0] || !t1[1] || !t2[0] || !t2[1]) { validSet = false; break; }
+                            const t1 = [pool.pop(), pool.pop()]; const t2 = [pool.pop(), pool.pop()];
+                            if (!t1[0] || !t1[1] || !t2[0] || !t2[1] || t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
                             
-                            const getP = (a, b) => (partners.get(a.id)?.get(b.id) || 0);
-                            const getO = (a, b) => (opponents.get(a.id)?.get(b.id) || 0);
+                            currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
+                            currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
                             
-                            // Partner Penalty (Strict 50k penalty for repeating)
-                            const p1p = getP(t1[0], t1[1]);
-                            const p2p = getP(t2[0], t2[1]);
-                            currentPenalty += p1p * 50000;
-                            currentPenalty += p2p * 50000;
-                            
-                            // Opponent Penalty (0-based Cubic)
-                            const o1 = getO(t1[0], t2[0]);
-                            const o2 = getO(t1[0], t2[1]);
-                            const o3 = getO(t1[1], t2[0]);
-                            const o4 = getO(t1[1], t2[1]);
-                            
-                            currentPenalty += (o1 * 100) + (Math.pow(o1, 3) * 500);
-                            currentPenalty += (o2 * 100) + (Math.pow(o2, 3) * 500);
-                            currentPenalty += (o3 * 100) + (Math.pow(o3, 3) * 500);
-                            currentPenalty += (o4 * 100) + (Math.pow(o4, 3) * 500);
-                            
+                            t1.forEach(p1 => t2.forEach(p2 => { 
+                                currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; 
+                            }));
                             currentSet.push({ team1: t1, team2: t2 });
                         }
-                    } else {
-                        // Standard Americano fallback for large groups (>8)
-                        let pool = shuffleArray([...safePool]);
-                        for(let c = 0; c < courtsNeeded; c++) {
-                            const p1 = pool.pop(); const p2 = pool.pop();
-                            const p3 = pool.pop(); const p4 = pool.pop();
-                            if (!p1 || !p2 || !p3 || !p4) { validSet = false; break; }
-                            
-                            const getP = (a, b) => (partners.get(a.id)?.get(b.id) || 0);
-                            const getO = (a, b) => (opponents.get(a.id)?.get(b.id) || 0);
-                            
-                            // Partner
-                            const p1p = getP(p1, p2);
-                            const p2p = getP(p3, p4);
-                            currentPenalty += p1p * 50000;
-                            currentPenalty += p2p * 50000;
-                            
-                            // Opponent (0-based Cubic)
-                            const o1 = getO(p1, p3); const o2 = getO(p1, p4);
-                            const o3 = getO(p2, p3); const o4 = getO(p2, p4);
-                            
-                            currentPenalty += (o1 * 100) + (Math.pow(o1, 3) * 500);
-                            currentPenalty += (o2 * 100) + (Math.pow(o2, 3) * 500);
-                            currentPenalty += (o3 * 100) + (Math.pow(o3, 3) * 500);
-                            currentPenalty += (o4 * 100) + (Math.pow(o4, 3) * 500);
-                            
-                            currentSet.push({ team1: [p1, p2], team2: [p3, p4] });
-                        }
                     }
-                    if(validSet && currentPenalty < minPenalty) { 
-                        minPenalty = currentPenalty; 
-                        bestSet = currentSet; 
+                    if(validSet && currentSet.length > 0 && currentPenalty < minPenalty) { 
+                        minPenalty = currentPenalty; bestSet = currentSet; 
                         if(minPenalty === 0) break; 
                     }
                 }
                 
-                // Fallback if penalty loop fails
-                if(!bestSet) {
-                    let pool = shuffleArray([...safePool]);
+                // Fallback
+                if(!bestSet && safePool.length >= 4) {
+                    let pool = [...safePool].sort(() => Math.random() - 0.5);
                     bestSet = [];
                     for(let c = 0; c < courtsNeeded; c++) {
                         bestSet.push({ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] });
                     }
                 }
                 
-                bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
-                matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches');
-                
+                if(bestSet && bestSet.length > 0) {
+                    bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
+                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches');
+                } else { alert("Nepakanka žaidėjų formatui sugeneruoti."); }
             } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Išvalykite duomenis."); }
         }
 
@@ -860,7 +767,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v106', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v107', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -883,7 +790,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v106'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v107'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
