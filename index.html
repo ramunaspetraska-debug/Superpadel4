@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V96 (Super Admin)</title>
+    <title>Padelio PRO V98 (Pure Penalty Generator)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -86,9 +86,9 @@
                     <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase transition-all">Pagal Taškus</button>
                 </div>
                 <div class="grid grid-cols-3 gap-3">
-                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button type="button" onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button type="button" onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button type="button" onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
                 <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mix_americano">Mix Americano</option></select></div>
@@ -107,7 +107,7 @@
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
-                <button onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                <button type="button" onclick="generateRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
@@ -154,7 +154,7 @@
         <div id="view-admin" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-red-600 tracking-tight">Kambario Admin</h2>
-                <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
+                <button type="button" onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
             </div>
             <div class="space-y-4">
                 <div class="bg-white p-4 rounded-2xl border border-slate-200">
@@ -171,7 +171,7 @@
         <div id="view-superadmin" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-purple-600 tracking-tight">Super Admin</h2>
-                <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
+                <button type="button" onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 uppercase bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
             </div>
             <div class="bg-white p-4 rounded-2xl border border-slate-200">
                 <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Visi Pasaulio Kambariai</h3>
@@ -196,11 +196,11 @@
                 
                 <div id="cloud-connect-ui" class="space-y-4 text-center">
                     <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
-                    <button onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
+                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
                 <div id="cloud-active-ui" class="hidden space-y-4 text-center">
                     <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p>
-                    <button onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
+                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
                 </div>
             </div>
         </div>
@@ -208,58 +208,66 @@
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
-            <button onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
-            <button onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
-            <button onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
-            <button onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
-            <button onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
-            <button onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
+            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
+            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
+            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
+            <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
+            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Hist.</span></button>
+            <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Cloud</span></button>
         </div>
     </div>
 
     <script>
+        // --- GLOBAL ERROR CATCHER ---
+        window.onerror = function(msg, url, line) {
+            console.error("Global Error: ", msg, "at line", line);
+            return true; 
+        };
+
         // --- HELPERS ---
         function el(id) { return document.getElementById(id); }
-        function safeText(id, t) { const e = el(id); if(e) e.innerText = t; }
-        function safeHTML(id, h) { const e = el(id); if(e) e.innerHTML = h; }
-        function safeVal(id, v) { const e = el(id); if(e) e.value = v; }
-        function safeClass(id, c) { const e = el(id); if(e) e.className = c; }
-        function safeDisplay(id, d) { const e = el(id); if(e) e.style.display = d; }
+        function safeText(id, t) { try { const e = el(id); if(e) e.innerText = t; } catch(e){} }
+        function safeHTML(id, h) { try { const e = el(id); if(e) e.innerHTML = h; } catch(e){} }
+        function safeVal(id, v) { try { const e = el(id); if(e) e.value = v; } catch(e){} }
+        function safeClass(id, c) { try { const e = el(id); if(e) e.className = c; } catch(e){} }
+        function safeDisplay(id, d) { try { const e = el(id); if(e) e.style.display = d; } catch(e){} }
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- STATE & PERMANENT STORAGE (V96 Master) ---
+        // --- STATE & PERMANENT STORAGE (V98 - Same Key to keep data if clean) ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        const DB_KEY = "pad_v96"; // Master data branch
-        const REG_KEY = "pad_v96_rooms"; // Central Room Registry
+        const DB_KEY = "pad_v97"; 
+        const REG_KEY = "pad_v97_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v96_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v97_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v96_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v97_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v96') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v97') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
-            if(!firebase.apps.length) {
-                firebase.initializeApp({ 
-                    apiKey: el('fb-apiKey').value, 
-                    authDomain: el('fb-authDomain').value, 
-                    databaseURL: el('fb-databaseURL').value, 
-                    projectId: el('fb-projectId').value 
-                });
-            }
+            try {
+                if(typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp({ 
+                        apiKey: el('fb-apiKey')?.value || '', 
+                        authDomain: el('fb-authDomain')?.value || '', 
+                        databaseURL: el('fb-databaseURL')?.value || '', 
+                        projectId: el('fb-projectId')?.value || '' 
+                    });
+                }
+            } catch(e) { console.error("Firebase init err", e); }
         }
 
         function loadData() {
@@ -272,14 +280,13 @@
                 timeLeft = settings.matchDuration * 60;
             } catch(e) { console.error("LoadDataErr:", e); }
         }
-        loadData();
-
+        
         function ensureTournamentId() {
             try {
                 if(!currentTid) {
                     currentTid = uid();
                     const name = new Date().toLocaleDateString('lt-LT') + ' Turnyras';
-                    savedTournaments.unshift({ id: currentTid, name: name, date: new Date().toISOString(), players: [], matches: [], settings: settings });
+                    savedTournaments.unshift({ id: currentTid, name: name, date: new Date().toISOString(), players: [...players], matches: [...matches], settings: {...settings} });
                     setStore('tid', currentTid);
                     safeVal('tournament-name-field', name);
                     autoSave();
@@ -287,7 +294,7 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- BRAINS: GENERATOR ---
+        // --- BRAINS: PURE PENALTY GENERATOR ---
         function getHistoryStats() {
             const partners = new Map(), opponents = new Map();
             try {
@@ -324,7 +331,7 @@
 
                 let newM = [], roundNum = (Array.isArray(matches) && matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                // FIXED FORMAT
+                // 1. FIXED FORMAT (Kept as Round-Robin)
                 if (settings.format === 'fixed') {
                     let teams = []; 
                     for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); }
@@ -348,15 +355,7 @@
                     matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 4-PLAYER FIXED MATRIX
-                if (settings.format === 'americano' && safePool.length === 4) {
-                    const M4 = [ [[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]] ];
-                    const c = (roundNum - 1) % 3;
-                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[M4[c][0][0]], safePool[M4[c][0][1]]], team2: [safePool[M4[c][1][0]], safePool[M4[c][1][1]]] });
-                    matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
-                }
-
-                // AMERICANO & MIX
+                // 2. AMERICANO & MIX (PURE MONTE CARLO PENALTY SYSTEM)
                 const { partners, opponents } = getHistoryStats();
                 let bestSet = null, minPenalty = Infinity;
                 
@@ -381,31 +380,44 @@
                             }
                         } else { validSet = false; }
                     } else {
-                        // Standard Americano
+                        // Standard Americano (All sizes: 4, 8, 12, etc.)
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length / 4));
                         if(courtsNeeded === 0) validSet = false;
                         for(let c = 0; c < courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()]; const t2 = [pool.pop(), pool.pop()];
                             if (!t1[0] || !t1[1] || !t2[0] || !t2[1] || t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
+                            
+                            // HUGE Penalty for repeating partners
                             currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
                             currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                            
+                            // Exponential Penalty for repeating opponents
                             t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
                             currentSet.push({ team1: t1, team2: t2 });
                         }
                     }
-                    if(validSet && currentSet.length > 0 && currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = currentSet; if(minPenalty === 0) break; }
+                    if(validSet && currentSet.length > 0 && currentPenalty < minPenalty) { 
+                        minPenalty = currentPenalty; 
+                        bestSet = currentSet; 
+                        if(minPenalty === 0) break; // Perfect round found
+                    }
                 }
                 
+                // Fallback: If 5000 iterations found no valid set (e.g. courts limit issue), just grab a random set to prevent failing.
                 if(!bestSet && safePool.length >= 4) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    bestSet = [{ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] }];
+                    let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length / 4));
+                    bestSet = [];
+                    for(let c = 0; c < courtsNeeded; c++) {
+                        bestSet.push({ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] });
+                    }
                 }
                 
                 if(bestSet && bestSet.length > 0) {
                     bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
                     matches = [...matches, ...newM]; autoSave(); switchView('matches');
-                } else { alert("Nepakanka žaidėjų tinkamam formatui sugeneruoti."); }
-            } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Patikrinkite žaidėjus."); }
+                } else { alert("Nepakanka žaidėjų formatui sugeneruoti."); }
+            } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Išvalykite duomenis."); }
         }
 
         // --- PAIRS RESULTS ---
@@ -477,18 +489,28 @@
             try {
                 const isF = settings.format === 'fixed';
                 const table = calculateResults(matches, players, isF);
-                safeHTML('leaderboard-body', table.map((s, i) => `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`).join(''));
+                let lHtml = '';
+                table.forEach((s, i) => {
+                    lHtml += `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
+                });
+                safeHTML('leaderboard-body', lHtml);
                 
                 const curT = savedTournaments.find(x => x && x.id === currentTid);
                 safeVal('tournament-name-field', curT ? curT.name : '');
 
-                safeHTML('players-list', players.map((p, index) => `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span><div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button></div>`).join(''));
+                let pHtml = '';
+                players.forEach((p, index) => {
+                    pHtml += `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span><div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button></div>`;
+                });
+                safeHTML('players-list', pHtml);
+
                 const isSc = settings.winCondition === 'score';
                 safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
                 safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
                 safeDisplay('control-duration', !isSc ? 'block' : 'none'); safeDisplay('control-points', !isSc ? 'none' : 'block');
                 safeDisplay('score-mode-text', isSc ? 'block' : 'none'); safeDisplay('timer-controls', isSc ? 'none' : 'flex');
                 if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
+                
                 const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0');
                 safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration);
                 safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts);
@@ -516,117 +538,138 @@
                 const uP = []; const seen = new Set();
                 cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
                 const pSel = el('stat-player'); const curP = pSel ? pSel.value : 'ALL';
-                if(pSel) pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + Array.from(seen).sort().map(n => `<option value="${n}" ${n===curP?'selected':''}>${n}</option>`).join('');
+                if(pSel) {
+                    let opt = '<option value="ALL">Visi žaidėjai</option>';
+                    Array.from(seen).sort().forEach(n => { opt += `<option value="${n}" ${n===curP?'selected':''}>${n}</option>`; });
+                    pSel.innerHTML = opt;
+                }
 
                 safeClass('stat-type-indiv', statType === 'indiv' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
                 safeClass('stat-type-pairs', statType === 'pairs' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
 
+                let html = '';
                 if (statType === 'indiv') {
                     const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-                    safeHTML('global-stats-body', list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join(''));
+                    list.forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
                 } else {
                     const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
-                    safeHTML('global-stats-body', list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}<div class="pair-badge">${s.p1?.gender||''}${s.p2?.gender||''}</div></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join(''));
+                    list.forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}<div class="pair-badge">${s.p1?.gender||''}${s.p2?.gender||''}</div></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
                 }
+                safeHTML('global-stats-body', html);
             } catch(e) { console.error("StatsErr:", e); }
         }
 
-        // --- SUPER ADMIN LOGIC ---
+        // --- ADMIN ---
         function adminClick() {
-            adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000);
-            if (adminClickCount >= 5) { 
-                const pass = prompt("Įveskite slaptažodį:"); 
-                if (pass === "123") { switchView('admin'); }
-                else if (pass === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); }
-                adminClickCount = 0; 
-            }
+            try {
+                adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000);
+                if (adminClickCount >= 5) { 
+                    const pass = prompt("Įveskite slaptažodį:"); 
+                    if (pass === "123") { switchView('admin'); }
+                    else if (pass === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); }
+                    adminClickCount = 0; 
+                }
+            } catch(e){}
         }
         
         function loadSuperAdmin() {
-            ensureFirebaseInit();
-            safeHTML('superadmin-rooms-list', '<div class="text-center text-xs text-slate-400 py-4">Ieškoma kambarių...</div>');
-            firebase.database().ref(REG_KEY).once('value').then(snap => {
-                const rooms = snap.val();
-                if(!rooms) { safeHTML('superadmin-rooms-list', '<div class="text-xs text-slate-400">Kambarių nerasta.</div>'); return; }
-                const html = Object.keys(rooms).map(r => `
-                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <span class="font-bold text-sm text-slate-800">${r}</span>
-                        <div class="flex gap-2">
-                            <button onclick="superAdminJoin('${r}')" class="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-1 rounded">ĮEITI</button>
-                            <button onclick="superAdminDelete('${r}')" class="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-1 rounded">IŠTRINTI</button>
-                        </div>
-                    </div>
-                `).join('');
-                safeHTML('superadmin-rooms-list', html);
-            }).catch(e => { safeHTML('superadmin-rooms-list', '<div class="text-xs text-red-400">Klaida kraunant duomenis.</div>'); });
-        }
-
-        function superAdminJoin(roomName) {
-            safeVal('fb-room', roomName);
-            initFirebaseConnection();
-            switchView('setup');
-            alert(`Sėkmingai prisijungta prie "${roomName}".`);
-        }
-
-        function superAdminDelete(roomName) {
-            if(confirm(`AR TIKRAI? Negrįžtamai ištrinsite kambarį "${roomName}" su visais turnyrais ir žaidėjais!`)) {
+            try {
                 ensureFirebaseInit();
-                firebase.database().ref(DB_KEY + '/' + roomName).remove();
-                firebase.database().ref(REG_KEY + '/' + roomName).remove();
-                loadSuperAdmin();
-            }
+                safeHTML('superadmin-rooms-list', '<div class="text-center text-xs text-slate-400 py-4">Ieškoma...</div>');
+                firebase.database().ref(REG_KEY).once('value').then(snap => {
+                    const rooms = snap.val();
+                    if(!rooms) { safeHTML('superadmin-rooms-list', '<div class="text-xs text-slate-400">Nerasta.</div>'); return; }
+                    let html = '';
+                    Object.keys(rooms).forEach(r => {
+                        html += `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100"><span class="font-bold text-sm text-slate-800">${r}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${r}')" class="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-1 rounded">ĮEITI</button><button type="button" onclick="superAdminDelete('${r}')" class="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-1 rounded">IŠTRINTI</button></div></div>`;
+                    });
+                    safeHTML('superadmin-rooms-list', html);
+                }).catch(e => { safeHTML('superadmin-rooms-list', '<div class="text-xs text-red-400">Klaida.</div>'); });
+            } catch(e) { console.error("SupAdmErr:", e); }
         }
 
-        // --- NORMAL ADMIN RENDER ---
+        function superAdminJoin(roomName) { safeVal('fb-room', roomName); initFirebaseConnection(); switchView('setup'); alert(`Prisijungta prie "${roomName}".`); }
+        function superAdminDelete(roomName) {
+            try {
+                if(confirm(`AR TIKRAI ištrinsite kambarį "${roomName}"?`)) {
+                    ensureFirebaseInit();
+                    firebase.database().ref(DB_KEY + '/' + roomName).remove();
+                    firebase.database().ref(REG_KEY + '/' + roomName).remove();
+                    loadSuperAdmin();
+                }
+            } catch(e){}
+        }
+
         function renderAdmin() {
             try {
-                safeHTML('admin-tournaments-list', (savedTournaments||[]).map(t => `<div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-xs font-bold"><span>${t?.name}</span><button onclick="adminDeleteTournament('${t?.id}')" class="text-red-500">Trinti</button></div>`).join(''));
+                let tHtml = '';
+                (savedTournaments||[]).forEach(t => { if(t) tHtml += `<div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-xs font-bold"><span>${t.name}</span><button type="button" onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`; });
+                safeHTML('admin-tournaments-list', tHtml);
+                
                 const uP = []; const seen = new Set();
                 if(Array.isArray(players)) players.forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } });
                 if(Array.isArray(savedTournaments)) savedTournaments.forEach(t => { if(t && Array.isArray(t.players)) t.players.forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); });
-                safeHTML('admin-players-list', uP.map(p => `<div class="flex justify-between items-center p-2 text-xs border-b border-slate-50"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`).join(''));
+                
+                let pHtml = '';
+                uP.forEach(p => { pHtml += `<div class="flex justify-between items-center p-2 text-xs border-b border-slate-50"><span>${p.name}</span><button type="button" onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`; });
+                safeHTML('admin-players-list', pHtml);
             } catch(e) { console.error("AdminErr:", e); }
         }
-        function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x && x.id !== id); autoSave(); renderAdmin(); } }
-        function adminDeletePlayer(id) { if(confirm("Šalinti iš visos istorijos?")) { players = players.filter(p => p && p.id !== id); autoSave(); renderAdmin(); } }
+        function adminDeleteTournament(id) { try { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x && x.id !== id); autoSave(); renderAdmin(); } } catch(e){} }
+        function adminDeletePlayer(id) { try { if(confirm("Šalinti iš istorijos?")) { players = players.filter(p => p && p.id !== id); autoSave(); renderAdmin(); } } catch(e){} }
 
         // --- ACTIONS ---
         function updateTournamentName(val) { try { ensureTournamentId(); const idx = savedTournaments.findIndex(x => x && x.id === currentTid); if(idx > -1) { savedTournaments[idx].name = val; autoSave(); } } catch(e){} }
         function addPlayer(e) { try { e.preventDefault(); ensureTournamentId(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); } catch(e){} }
-        function setGender(g) { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); }
-        function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(); }
-        function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
-        function changeFormat(v) { settings.format = v; autoSave(); }
-        function changeRanking(v) { settings.rankingMode = v; autoSave(); }
-        function removePlayer(id) { if(confirm("Trinti žaidėją?")) { players = players.filter(p => p && p.id !== id); autoSave(); } }
+        function setGender(g) { try { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); } catch(e){} }
+        function setMode(m) { try { settings.winCondition = m; resetTimer(); autoSave(); } catch(e){} }
+        function changeSetting(k, v) { try { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); } catch(e){} }
+        function changeFormat(v) { try { settings.format = v; autoSave(); } catch(e){} }
+        function changeRanking(v) { try { settings.rankingMode = v; autoSave(); } catch(e){} }
+        function removePlayer(id) { try { if(confirm("Trinti žaidėją?")) { players = players.filter(p => p && p.id !== id); autoSave(); } } catch(e){} }
         function updSc(id, t, v) { try { const m = matches.find(x=>x && x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); autoSave(); } } catch(e){} }
         function finM(id) { try { const m = matches.find(x=>x && x.id===id); if(m){ m.finished=true; autoSave(); } } catch(e){} }
         function undoM(id) { try { const m = matches.find(x=>x && x.id===id); if(m){ m.finished=false; autoSave(); } } catch(e){} }
-        function resetScores() { if(confirm("Pradėti naują turnyrą? (Dabartinis bus išsaugotas istorijoje)")) { currentTid = null; matches = []; ensureTournamentId(); switchView('setup'); } }
+        function resetScores() { try { if(confirm("Pradėti naują turnyrą? (Dabartinis bus išsaugotas istorijoje)")) { currentTid = null; matches = []; ensureTournamentId(); switchView('setup'); } } catch(e){} }
         
+        // IRONCLAD RESET (Cleans all possible local storage remnants)
         function resetAll() { 
-            if(confirm("DĖMESIO: Ištrinsite VISĄ šio kambario istoriją!")) { 
-                localStorage.removeItem(isCloud ? `sp_room_${activeRoom}_p` : `sp_v96_local_p`);
-                localStorage.removeItem(isCloud ? `sp_room_${activeRoom}_m` : `sp_v96_local_m`);
-                localStorage.removeItem(isCloud ? `sp_room_${activeRoom}_h` : `sp_v96_local_h`);
-                localStorage.removeItem(isCloud ? `sp_room_${activeRoom}_tid` : `sp_v96_local_tid`);
-                if(isCloud && dbRef) dbRef.set(null);
-                setTimeout(() => location.reload(), 500);
-            } 
+            try {
+                if(confirm("DĖMESIO: Ištrinsite VISĄ šio įrenginio ir kambario istoriją!")) { 
+                    Object.keys(localStorage).forEach(k => { if(k.startsWith('sp_')) localStorage.removeItem(k); });
+                    if(isCloud && dbRef) dbRef.set(null);
+                    setTimeout(() => location.reload(), 500);
+                } 
+            } catch(e) { alert("Klaida valant duomenis."); location.reload(); }
         }
 
         // --- TIMER & VIEW SWITCH ---
         function toggleTimer() {
-            if(settings.winCondition==='score') return;
-            if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; resetTimer(); return; }
-            if(isRunning) { clearInterval(timerInterval); isRunning=false; }
-            else { if(timeLeft <= 0) return; isRunning = true; endTime = Date.now() + (timeLeft * 1000); timerInterval = setInterval(() => { const d = Math.ceil((endTime - Date.now())/1000); if(d > 0) { timeLeft = d; updateTimerUI(); } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } }, 1000); }
-            updateTimerUI();
+            try {
+                if(settings.winCondition==='score') return;
+                if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; resetTimer(); return; }
+                if(isRunning) { clearInterval(timerInterval); isRunning=false; }
+                else { if(timeLeft <= 0) return; isRunning = true; endTime = Date.now() + (timeLeft * 1000); timerInterval = setInterval(() => { const d = Math.ceil((endTime - Date.now())/1000); if(d > 0) { timeLeft = d; updateTimerUI(); } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } }, 1000); }
+                updateTimerUI();
+            } catch(e){}
         }
-        function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); }
+        function updateTimerUI() {
+            try {
+                const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), s = (timeLeft%60).toString().padStart(2,'0');
+                safeText('timer-display', `${m}:${s}`);
+                const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop');
+                if(i1 && i2 && i3 && b) {
+                    i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden');
+                    if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-600"; i3.classList.remove('hidden'); }
+                    else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); }
+                    else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); }
+                }
+            } catch(e){}
+        }
+        function triggerAlarm() { try { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); } catch(e){} }
         function playBuzzer() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); } catch(e){} }
-        function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); }
-        function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
+        function resetTimer() { try { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); } catch(e){} }
+        function adjustTime(s) { try { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } } catch(e){} }
 
         function switchView(n) {
             try {
@@ -641,45 +684,67 @@
                 if(n==='leader' || n==='setup' || n==='matches') render();
             } catch(e) { console.error(e); }
         }
-        function renderHistoryList() { safeHTML('history-list', savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button></div></div>`).join('')); }
-        function loadHistory(id) { const t = savedTournaments.find(x => x && x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...(t.players||[])]; matches = [...(t.matches||[])]; settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } }
+        function renderHistoryList() { 
+            try {
+                let html = '';
+                savedTournaments.forEach(t => { 
+                    if(t) html += `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button></div></div>`; 
+                });
+                safeHTML('history-list', html); 
+            } catch(e){}
+        }
+        function loadHistory(id) { try { const t = savedTournaments.find(x => x && x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...(t.players||[])]; matches = [...(t.matches||[])]; settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } } catch(e){} }
         function renderMatches() {
             try {
                 const active = matches.filter(m => m && !m.finished);
-                safeHTML('matches-container', active.map(m => `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1?.filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2?.filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`).join(''));
+                let aHtml = '';
+                active.forEach(m => {
+                    aHtml += `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1?.filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2?.filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
+                });
+                safeHTML('matches-container', aHtml);
+
                 const fin = matches.filter(m => m && m.finished).reverse();
-                safeHTML('finished-matches-container', fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' + fin.map(m => `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1?.filter(p=>p&&p.name).map(p=>p.name).join('/')} vs ${m.team2?.filter(p=>p&&p.name).map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`).join('') : '');
+                let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : '';
+                fin.forEach(m => {
+                    fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1?.filter(p=>p&&p.name).map(p=>p.name).join('/')} vs ${m.team2?.filter(p=>p&&p.name).map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
+                });
+                safeHTML('finished-matches-container', fHtml);
             } catch(e) { console.error("RndrMtchErr:", e); }
         }
 
         // --- CLOUD ENGINE ---
         function initFirebaseConnection() {
-            const room = el('fb-room')?.value.trim(); if(!room) return;
             try {
+                const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v96', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v97', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
                 
                 dbRef = firebase.database().ref(DB_KEY + '/' + room);
-                safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4");
+                safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
                 
                 dbRef.on('value', snap => {
-                    const d = snap.val(); if(d && d.lastUpdate !== window.lastCloudUpdate) {
-                        window.lastCloudUpdate = d.lastUpdate;
-                        players = Array.isArray(d.players) ? d.players : []; 
-                        matches = Array.isArray(d.matches) ? d.matches : []; 
-                        settings = d.settings ? {...ds, ...d.settings} : {...ds};
-                        savedTournaments = Array.isArray(d.savedTournaments) ? d.savedTournaments.filter(t => t && t.id) : [];
-                        currentTid = d.currentTid || null; render();
-                    }
+                    try {
+                        const d = snap.val(); if(d && d.lastUpdate !== window.lastCloudUpdate) {
+                            window.lastCloudUpdate = d.lastUpdate;
+                            players = Array.isArray(d.players) ? d.players : []; 
+                            matches = Array.isArray(d.matches) ? d.matches : []; 
+                            settings = d.settings ? {...ds, ...d.settings} : {...ds};
+                            savedTournaments = Array.isArray(d.savedTournaments) ? d.savedTournaments.filter(t => t && t.id) : [];
+                            currentTid = d.currentTid || null; render();
+                        }
+                    } catch(e){}
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { localStorage.removeItem('sp_active_room_v96'); location.reload(); }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v97'); location.reload(); } catch(e){} }
 
+        window.onload = () => {
+            render();
+        };
     </script>
 </body>
 </html>
