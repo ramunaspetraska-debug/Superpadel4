@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V102 (No Spares)</title>
+    <title>Padelio PRO V104 (Pure Penalty Americano)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -85,9 +85,10 @@
                     <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase transition-all">Pagal Laiką</button>
                     <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase transition-all">Pagal Taškus</button>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-3 gap-3">
                     <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button type="button" onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button type="button" onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button type="button" onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
                 <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mix_americano">Mix Americano</option></select></div>
@@ -236,28 +237,28 @@
             return [];
         }
 
-        // --- STATE & PERMANENT STORAGE (V102) ---
-        const ds = { matchDuration: 12, maxPoints: 21, winCondition: 'time', format: 'americano', rankingMode: 'points' };
+        // --- STATE & PERMANENT STORAGE ---
+        const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        const DB_KEY = "pad_v102"; 
-        const REG_KEY = "pad_v102_rooms"; 
+        const DB_KEY = "pad_v104"; 
+        const REG_KEY = "pad_v104_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v102_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v104_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v102_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v104_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v102') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v104') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -297,24 +298,7 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- MATRICES (Only for Exact Multiples of 4) ---
-        const MATRIX_4 = [
-            [{t1:[0,1], t2:[2,3]}], 
-            [{t1:[0,2], t2:[1,3]}], 
-            [{t1:[0,3], t2:[1,2]}]
-        ];
-        
-        const MATRIX_8 = [
-            [{t1:[0,7], t2:[1,6]}, {t1:[2,5], t2:[3,4]}], 
-            [{t1:[0,6], t2:[2,4]}, {t1:[1,5], t2:[3,7]}], 
-            [{t1:[0,5], t2:[3,1]}, {t1:[2,6], t2:[4,7]}], 
-            [{t1:[0,4], t2:[5,7]}, {t1:[1,2], t2:[3,6]}], 
-            [{t1:[0,3], t2:[2,7]}, {t1:[1,4], t2:[5,6]}], 
-            [{t1:[0,2], t2:[4,5]}, {t1:[1,7], t2:[3,6]}], 
-            [{t1:[0,1], t2:[2,3]}, {t1:[4,6], t2:[5,7]}]  
-        ];
-
-        // --- BRAINS: GENERATOR SECTION ---
+        // --- BRAINS: HISTORY STATS ---
         function getHistoryStats() {
             const partners = new Map(), opponents = new Map();
             try {
@@ -337,14 +321,14 @@
             return { partners, opponents };
         }
 
+        // --- BRAINS: SEPARATED GENERATOR ---
         function generateRound() {
             try {
                 ensureTournamentId();
                 const safeP = safeArr(players);
                 
-                // STRICT MULTIPLE OF 4 RULE
                 if(safeP.length < 4 || safeP.length % 4 !== 0) {
-                    return alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4 (4, 8, 12, 16...), kad neliktų atsarginių! Šiuo metu yra: ${safeP.length}. Pridėkite arba pašalinkite žaidėjus.`);
+                    return alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4 (4, 8, 12, 16...), kad neliktų atsarginių! Šiuo metu yra: ${safeP.length}.`);
                 }
                 
                 const safePool = [];
@@ -354,10 +338,11 @@
                 });
 
                 let newM = [], roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-                // Auto-calculate courts (everyone plays)
                 let courtsNeeded = safePool.length / 4;
                 
-                // 1. FIXED FORMAT
+                // ---------------------------------------------------------
+                // 1. FIKSUOTOS POROS
+                // ---------------------------------------------------------
                 if (settings.format === 'fixed') {
                     let teams = []; 
                     for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); }
@@ -378,99 +363,99 @@
                     matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 2. PERFECT AMERICANO 4 PLAYERS
-                if (settings.format === 'americano' && safePool.length === 4) {
-                    const c = (roundNum - 1) % 3;
-                    let mappedPool = [...safePool];
-                    const cycle = Math.floor((roundNum - 1) / 3);
-                    if (cycle > 0) { for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift()); }
-                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mappedPool[MATRIX_4[c][0].t1[0]], mappedPool[MATRIX_4[c][0].t1[1]]], team2: [mappedPool[MATRIX_4[c][0].t2[0]], mappedPool[MATRIX_4[c][0].t2[1]]] });
-                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
-                }
-
-                // 3. PERFECT AMERICANO 8 PLAYERS
-                if (settings.format === 'americano' && safePool.length === 8) {
-                    const c = (roundNum - 1) % 7;
-                    let mappedPool = [...safePool];
-                    const cycle = Math.floor((roundNum - 1) / 7);
-                    if (cycle > 0) { for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift()); }
-                    MATRIX_8[c].forEach((m, idx) => {
-                        newM.push({ 
-                            id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, 
-                            team1: [mappedPool[m.t1[0]], mappedPool[m.t1[1]]], 
-                            team2: [mappedPool[m.t2[0]], mappedPool[m.t2[1]]] 
-                        });
-                    });
-                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
-                }
-
-                // 4. MIX AMERICANO 4 PLAYERS
-                if (settings.format === 'mix_americano' && safePool.length === 4) {
-                    let mP = safePool.filter(p => p.gender === 'M');
-                    let fP = safePool.filter(p => p.gender === 'F');
-                    if (mP.length !== 2 || fP.length !== 2) return alert("KLAIDA: Mix Americano 4 žaidėjams reikalauja lygiai 2 vyrų ir 2 moterų!");
+                // ---------------------------------------------------------
+                // 2. MIX AMERICANO
+                // ---------------------------------------------------------
+                else if (settings.format === 'mix_americano') {
+                    let mPool = safePool.filter(p => p.gender === 'M');
+                    let fPool = safePool.filter(p => p.gender === 'F');
                     
-                    const isOddRound = (roundNum % 2 !== 0);
-                    if (isOddRound) newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[0]], team2: [mP[1], fP[1]] });
-                    else newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[1]], team2: [mP[1], fP[0]] });
-                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
-                }
+                    if (mPool.length !== fPool.length) {
+                        return alert("KLAIDA: Mix formatui reikia lygiai tokio paties vyrų ir moterų skaičiaus!");
+                    }
 
-                // 5. PENALTY SYSTEM (For 12, 16 players, Mix > 4 players)
-                const { partners, opponents } = getHistoryStats();
-                let bestSet = null, minPenalty = Infinity;
-                
-                for(let i=0; i<5000; i++) {
-                    let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    let currentSet = [], currentPenalty = 0, validSet = true;
-                    
-                    if(settings.format === 'mix_americano') {
-                        let mPool = pool.filter(p => p.gender === 'M');
-                        let fPool = pool.filter(p => p.gender === 'F');
-                        
-                        if (mPool.length !== fPool.length) {
-                            return alert("KLAIDA: Mix formatui reikia vienodo vyrų ir moterų skaičiaus (pvz., 4 vyrai ir 4 moterys)!");
-                        }
-                        
-                        for(let c = 0; c < courtsNeeded; c++) {
-                            const t1 = [mPool.pop(), fPool.pop()]; const t2 = [mPool.pop(), fPool.pop()];
-                            if (!t1[0] || !t1[1] || !t2[0] || !t2[1] || t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
-                            currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
-                            currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                            t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
-                            currentSet.push({ team1: t1, team2: t2 });
-                        }
+                    if (safePool.length === 4) {
+                        const isOddRound = (roundNum % 2 !== 0);
+                        if (isOddRound) newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mPool[0], fPool[0]], team2: [mPool[1], fPool[1]] });
+                        else newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mPool[0], fPool[1]], team2: [mPool[1], fPool[0]] });
+                        matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                     } else {
-                        // Standard Americano (12, 16, etc.)
+                        const { partners, opponents } = getHistoryStats();
+                        let bestSet = null, minPenalty = Infinity;
+                        
+                        for(let i=0; i<5000; i++) {
+                            let tempM = [...mPool].sort(() => Math.random() - 0.5);
+                            let tempF = [...fPool].sort(() => Math.random() - 0.5);
+                            let currentSet = [], currentPenalty = 0, validSet = true;
+                            
+                            for(let c = 0; c < courtsNeeded; c++) {
+                                const t1 = [tempM.pop(), tempF.pop()]; const t2 = [tempM.pop(), tempF.pop()];
+                                if (!t1[0] || !t1[1] || !t2[0] || !t2[1]) { validSet = false; break; }
+                                
+                                const getP = (a, b) => (partners.get(a.id)?.get(b.id) || 0);
+                                const getO = (a, b) => (opponents.get(a.id)?.get(b.id) || 0);
+                                
+                                currentPenalty += getP(t1[0], t1[1]) * 1000;
+                                currentPenalty += getP(t2[0], t2[1]) * 1000;
+                                t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow(getO(p1, p2) + 1, 3) * 50; }));
+                                currentSet.push({ team1: t1, team2: t2 });
+                            }
+                            if(validSet && currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = currentSet; if(minPenalty === 0) break; }
+                        }
+                        
+                        if(bestSet && bestSet.length > 0) {
+                            bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
+                            matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
+                        } else { return alert("Nepavyko sugeneruoti Mix formato."); }
+                    }
+                }
+
+                // ---------------------------------------------------------
+                // 3. AMERICANO (GRYNOJI BAUDŲ SISTEMA VISIEMS KIEKIAMS)
+                // ---------------------------------------------------------
+                else if (settings.format === 'americano') {
+                    const { partners, opponents } = getHistoryStats();
+                    let bestSet = null, minPenalty = Infinity;
+                    
+                    for(let i=0; i<5000; i++) {
+                        let pool = [...safePool].sort(() => Math.random() - 0.5);
+                        let currentSet = [], currentPenalty = 0, validSet = true;
+                        
                         for(let c = 0; c < courtsNeeded; c++) {
-                            const t1 = [pool.pop(), pool.pop()]; const t2 = [pool.pop(), pool.pop()];
-                            if (!t1[0] || !t1[1] || !t2[0] || !t2[1] || t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
+                            const p1 = pool.pop(); const p2 = pool.pop();
+                            const p3 = pool.pop(); const p4 = pool.pop();
                             
-                            currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
-                            currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
+                            if (!p1 || !p2 || !p3 || !p4) { validSet = false; break; }
                             
-                            t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
-                            currentSet.push({ team1: t1, team2: t2 });
+                            const getP = (a, b) => (partners.get(a.id)?.get(b.id) || 0);
+                            const getO = (a, b) => (opponents.get(a.id)?.get(b.id) || 0);
+
+                            // TAISYKLĖ 1: Partnerio pasikartojimas (Griežta bauda)
+                            currentPenalty += getP(p1, p2) * 1000;
+                            currentPenalty += getP(p3, p4) * 1000;
+
+                            // TAISYKLĖ 2: Priešininko pasikartojimas (Kubinis augimas)
+                            currentPenalty += Math.pow(getO(p1, p3) + 1, 3) * 100;
+                            currentPenalty += Math.pow(getO(p1, p4) + 1, 3) * 100;
+                            currentPenalty += Math.pow(getO(p2, p3) + 1, 3) * 100;
+                            currentPenalty += Math.pow(getO(p2, p4) + 1, 3) * 100;
+
+                            currentSet.push({ team1: [p1, p2], team2: [p3, p4] });
+                        }
+
+                        if(validSet && currentPenalty < minPenalty) { 
+                            minPenalty = currentPenalty; 
+                            bestSet = currentSet; 
+                            if(minPenalty === 0) break; // Tobulas raundas
                         }
                     }
-                    if(validSet && currentSet.length > 0 && currentPenalty < minPenalty) { 
-                        minPenalty = currentPenalty; bestSet = currentSet; 
-                        if(minPenalty === 0) break; 
-                    }
+                    
+                    if(bestSet && bestSet.length > 0) {
+                        bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
+                        matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
+                    } else { return alert("Nepavyko sugeneruoti Americano formato."); }
                 }
-                
-                if(!bestSet) {
-                    // Ultimate fallback
-                    let pool = [...safePool].sort(() => Math.random() - 0.5);
-                    bestSet = [];
-                    for(let c = 0; c < courtsNeeded; c++) {
-                        bestSet.push({ team1: [pool.pop(), pool.pop()], team2: [pool.pop(), pool.pop()] });
-                    }
-                }
-                
-                bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
-                matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches');
-                
+
             } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Išvalykite duomenis."); }
         }
 
@@ -547,7 +532,7 @@
                 const table = calculateResults(matches, players, isF);
                 let lHtml = '';
                 safeArr(table).forEach((s, i) => {
-                    lHtml += `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
+                    lHtml += `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">${!isF ? (s.photo ? \`<div class="relative w-7 h-7 shrink-0"><img src="\${s.photo}" class="w-full h-full rounded-full object-cover \${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black \${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">\${s.gender==='M'?'V':'M'}</div></div>\` : \`<div class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white \${s.gender==='M'?'bg-blue-500':'bg-pink-500'}">\${s.gender==='M'?'V':'M'}</div>\`) : ''}${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
                 });
                 safeHTML('leaderboard-body', lHtml);
                 
@@ -556,7 +541,7 @@
 
                 let pHtml = '';
                 safeArr(players).forEach((p, index) => {
-                    pHtml += `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span><div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button></div>`;
+                    pHtml += `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>${p.photo ? \`<div class="relative w-9 h-9 shrink-0"><img src="\${p.photo}" class="w-full h-full rounded-full object-cover \${p.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black \${p.gender==='M'?'bg-blue-600':'bg-pink-600'}">\${p.gender==='M'?'V':'M'}</div></div>\` : \`<div class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white \${p.gender==='M'?'bg-blue-500':'bg-pink-500'}">\${p.gender==='M'?'V':'M'}</div>\`}<div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button></div>`;
                 });
                 safeHTML('players-list', pHtml);
 
@@ -569,7 +554,7 @@
                 
                 const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0');
                 safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration);
-                safeText('val-points', settings.maxPoints); 
+                safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts);
                 safeText('player-count', "Viso: " + safeArr(players).length); safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
                 updateTimerUI(); renderMatches();
             } catch(e) { console.error("RenderErr:", e); }
@@ -605,7 +590,7 @@
                 let html = '';
                 if (statType === 'indiv') {
                     const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-                    safeArr(list).forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
+                    safeArr(list).forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800">${s.photo ? \`<div class="relative w-6 h-6 shrink-0"><img src="\${s.photo}" class="w-full h-full rounded-full object-cover \${s.gender==='M'?'avatar-frame-m':'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full flex items-center justify-center text-[6px] text-white font-black \${s.gender==='M'?'bg-blue-600':'bg-pink-600'}">\${s.gender==='M'?'V':'M'}</div></div>\` : \`<div class="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[8px] font-bold text-white \${s.gender==='M'?'bg-blue-500':'bg-pink-500'}">\${s.gender==='M'?'V':'M'}</div>\`}${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
                 } else {
                     const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
                     safeArr(list).forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}<div class="pair-badge">${s.p1?.gender||''}${s.p2?.gender||''}</div></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
@@ -771,7 +756,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v102', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v104', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -794,7 +779,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v102'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v104'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
