@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V99 (Mix 4-Player Fix)</title>
+    <title>Padelio PRO V100 (Perfect Match & Error Free)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -232,29 +232,37 @@
         function safeClass(id, c) { try { const e = el(id); if(e) e.className = c; } catch(e){} }
         function safeDisplay(id, d) { try { const e = el(id); if(e) e.style.display = d; } catch(e){} }
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+        
+        // THE ULTIMATE ARRAY SAFEGUARD (Fixes "t.matches is not iterable" crash permanently)
+        function safeArr(val) {
+            if (!val) return [];
+            if (Array.isArray(val)) return val;
+            if (typeof val === 'object') return Object.values(val);
+            return [];
+        }
 
-        // --- STATE & PERMANENT STORAGE ---
+        // --- STATE & PERMANENT STORAGE (V100 - Clean Slate) ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        const DB_KEY = "pad_v97"; 
-        const REG_KEY = "pad_v97_rooms"; 
+        const DB_KEY = "pad_v100"; 
+        const REG_KEY = "pad_v100_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v97_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v100_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v97_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v100_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v97') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v100') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -272,10 +280,10 @@
 
         function loadData() {
             try {
-                let pData = getStore('p'); players = Array.isArray(pData) ? pData.filter(p => p && p.id) : [];
-                let mData = getStore('m'); matches = Array.isArray(mData) ? mData : [];
+                let pData = getStore('p'); players = safeArr(pData).filter(p => p && p.id);
+                let mData = getStore('m'); matches = safeArr(mData);
                 let sData = getStore('s'); settings = (sData && typeof sData === 'object') ? {...ds, ...sData} : {...ds};
-                let hData = getStore('h'); savedTournaments = Array.isArray(hData) ? hData.filter(t => t && t.id) : [];
+                let hData = getStore('h'); savedTournaments = safeArr(hData).filter(t => t && t.id);
                 currentTid = getStore('tid');
                 timeLeft = settings.matchDuration * 60;
             } catch(e) { console.error("LoadDataErr:", e); }
@@ -286,7 +294,7 @@
                 if(!currentTid) {
                     currentTid = uid();
                     const name = new Date().toLocaleDateString('lt-LT') + ' Turnyras';
-                    savedTournaments.unshift({ id: currentTid, name: name, date: new Date().toISOString(), players: [...players], matches: [...matches], settings: {...settings} });
+                    savedTournaments.unshift({ id: currentTid, name: name, date: new Date().toISOString(), players: [...safeArr(players)], matches: [...safeArr(matches)], settings: {...settings} });
                     setStore('tid', currentTid);
                     safeVal('tournament-name-field', name);
                     autoSave();
@@ -311,23 +319,23 @@
             [{t1:[0,1], t2:[2,3]}, {t1:[4,6], t2:[5,7]}]  
         ];
 
-        // --- BRAINS: GENERATOR SECTION (ONLY MIX AMERICANO 4 PLAYERS TOUCHED) ---
+        // --- BRAINS: GENERATOR SECTION ---
         function getHistoryStats() {
             const partners = new Map(), opponents = new Map();
             try {
                 const allM = [];
-                if(Array.isArray(savedTournaments)) {
-                    savedTournaments.forEach(t => { if(t && Array.isArray(t.matches)) allM.push(...t.matches); });
-                }
-                if(Array.isArray(matches)) allM.push(...matches);
+                safeArr(savedTournaments).forEach(t => { if(t) allM.push(...safeArr(t.matches)); });
+                allM.push(...safeArr(matches));
                 
                 allM.forEach(m => {
-                    if(m && Array.isArray(m.team1) && Array.isArray(m.team2)) {
+                    if(m && safeArr(m.team1).length > 0 && safeArr(m.team2).length > 0) {
                         const addP = (p1, p2) => { if(p1 && p2 && p1.id && p2.id) { if(!partners.has(p1.id)) partners.set(p1.id, new Map()); const m1 = partners.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1); } };
                         const addO = (p1, p2) => { if(p1 && p2 && p1.id && p2.id) { if(!opponents.has(p1.id)) opponents.set(p1.id, new Map()); const m1 = opponents.get(p1.id); m1.set(p2.id, (m1.get(p2.id) || 0) + 1); } };
-                        if(m.team1.length > 1) { addP(m.team1[0], m.team1[1]); addP(m.team1[1], m.team1[0]); }
-                        if(m.team2.length > 1) { addP(m.team2[0], m.team2[1]); addP(m.team2[1], m.team2[0]); }
-                        m.team1.forEach(p1 => m.team2.forEach(p2 => { addO(p1, p2); addO(p2, p1); }));
+                        
+                        let t1 = safeArr(m.team1); let t2 = safeArr(m.team2);
+                        if(t1.length > 1) { addP(t1[0], t1[1]); addP(t1[1], t1[0]); }
+                        if(t2.length > 1) { addP(t2[0], t2[1]); addP(t2[1], t2[0]); }
+                        t1.forEach(p1 => t2.forEach(p2 => { addO(p1, p2); addO(p2, p1); }));
                     }
                 });
             } catch(e) { console.error("HistStatErr:", e); }
@@ -337,16 +345,17 @@
         function generateRound() {
             try {
                 ensureTournamentId();
-                if(!Array.isArray(players) || players.length < 4) return alert("Min 4 žaidėjai!");
+                const safeP = safeArr(players);
+                if(safeP.length < 4) return alert("Min 4 žaidėjai!");
                 
                 const safePool = [];
                 const seenIds = new Set();
-                players.forEach(p => {
+                safeP.forEach(p => {
                     if (p && p.id && !seenIds.has(p.id)) { seenIds.add(p.id); safePool.push(p); }
                 });
                 if(safePool.length < 4) return alert("Nepakanka unikalių žaidėjų!");
 
-                let newM = [], roundNum = (Array.isArray(matches) && matches.length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+                let newM = [], roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
                 // 1. FIXED FORMAT
                 if (settings.format === 'fixed') {
@@ -369,29 +378,19 @@
                     }
                     roundMatches = roundMatches.slice(0, settings.courts);
                     roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
-                    matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
+                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 2. AMERICANO 4 PLAYERS
+                // 2. PERFECT AMERICANO 4 PLAYERS (Fixed Matrix, No Rotation)
                 if (settings.format === 'americano' && safePool.length === 4) {
                     const c = (roundNum - 1) % 3;
-                    let mappedPool = [...safePool];
-                    const cycle = Math.floor((roundNum - 1) / 3);
-                    if (cycle > 0) {
-                        for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift());
-                    }
-                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mappedPool[MATRIX_4[c][0].t1[0]], mappedPool[MATRIX_4[c][0].t1[1]]], team2: [mappedPool[MATRIX_4[c][0].t2[0]], mappedPool[MATRIX_4[c][0].t2[1]]] });
-                    matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
+                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[MATRIX_4[c][0].t1[0]], safePool[MATRIX_4[c][0].t1[1]]], team2: [safePool[MATRIX_4[c][0].t2[0]], safePool[MATRIX_4[c][0].t2[1]]] });
+                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 3. AMERICANO 8 PLAYERS
+                // 3. PERFECT AMERICANO 8 PLAYERS (Fixed Matrix, No Rotation)
                 if (settings.format === 'americano' && safePool.length === 8) {
                     const c = (roundNum - 1) % 7;
-                    let mappedPool = [...safePool];
-                    const cycle = Math.floor((roundNum - 1) / 7);
-                    if (cycle > 0) {
-                        for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift());
-                    }
                     MATRIX_8[c].forEach((m, idx) => {
                         newM.push({ 
                             id: uid(), 
@@ -400,40 +399,27 @@
                             finished: false, 
                             score1: 0, 
                             score2: 0, 
-                            team1: [mappedPool[m.t1[0]], mappedPool[m.t1[1]]], 
-                            team2: [mappedPool[m.t2[0]], mappedPool[m.t2[1]]] 
+                            team1: [safePool[m.t1[0]], safePool[m.t1[1]]], 
+                            team2: [safePool[m.t2[0]], safePool[m.t2[1]]] 
                         });
                     });
-                    matches = [...matches, ...newM]; 
-                    autoSave(); 
-                    switchView('matches'); 
-                    return;
+                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 4. MIX AMERICANO 4 PLAYERS (Special Exception added here)
+                // 4. MIX AMERICANO 4 PLAYERS (Special Alternating Rules)
                 if (settings.format === 'mix_americano' && safePool.length === 4) {
                     let mP = safePool.filter(p => p.gender === 'M');
                     let fP = safePool.filter(p => p.gender === 'F');
+                    if (mP.length !== 2 || fP.length !== 2) return alert("Mix Americano 4 žaidėjams reikalauja lygiai 2 vyrų ir 2 moterų!");
                     
-                    if (mP.length !== 2 || fP.length !== 2) {
-                        return alert("Dėmesio: Mix Americano 4 žaidėjams reikalauja lygiai 2 vyrų ir 2 moterų!");
-                    }
-                    
-                    // There are only 2 valid Mixed matches. We alternate them.
                     const isOddRound = (roundNum % 2 !== 0);
+                    if (isOddRound) newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[0]], team2: [mP[1], fP[1]] });
+                    else newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[1]], team2: [mP[1], fP[0]] });
                     
-                    if (isOddRound) {
-                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[0]], team2: [mP[1], fP[1]] });
-                    } else {
-                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[1]], team2: [mP[1], fP[0]] });
-                    }
-                    matches = [...matches, ...newM]; 
-                    autoSave(); 
-                    switchView('matches'); 
-                    return;
+                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 5. KITI FORMATAI (12, 16 žaidėjų, dideli Mix formatai - Naudojama Baudų Sistema)
+                // 5. PENALTY SYSTEM (For 12, 16 players, Mix > 4 players, etc.)
                 const { partners, opponents } = getHistoryStats();
                 let bestSet = null, minPenalty = Infinity;
                 
@@ -458,16 +444,14 @@
                             }
                         } else { validSet = false; }
                     } else {
-                        // Standard Americano (>8 players)
+                        // Standard Americano fallback for large groups
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length / 4));
                         if(courtsNeeded === 0) validSet = false;
                         for(let c = 0; c < courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()]; const t2 = [pool.pop(), pool.pop()];
                             if (!t1[0] || !t1[1] || !t2[0] || !t2[1] || t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
-                            
                             currentPenalty += (partners.get(t1[0].id)?.get(t1[1].id) || 0) * 100000;
                             currentPenalty += (partners.get(t2[0].id)?.get(t2[1].id) || 0) * 100000;
-                            
                             t1.forEach(p1 => t2.forEach(p2 => { currentPenalty += Math.pow((opponents.get(p1.id)?.get(p2.id) || 0) + 1, 3) * 50; }));
                             currentSet.push({ team1: t1, team2: t2 });
                         }
@@ -479,7 +463,7 @@
                     }
                 }
                 
-                // Fallback
+                // Absolute fallback to prevent freezing
                 if(!bestSet && safePool.length >= 4) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length / 4));
@@ -491,23 +475,24 @@
                 
                 if(bestSet && bestSet.length > 0) {
                     bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
-                    matches = [...matches, ...newM]; autoSave(); switchView('matches');
+                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches');
                 } else { alert("Nepakanka žaidėjų formatui sugeneruoti."); }
-            } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Išvalykite duomenis."); }
+            } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Pabandykite dar kartą."); }
         }
 
         // --- PAIRS RESULTS ---
         function calculatePairsResults(mArr, pArr) {
             const pairs = new Map();
             try {
-                mArr.filter(m => m && m.finished).forEach(m => {
+                safeArr(mArr).filter(m => m && m.finished).forEach(m => {
                     const proc = (team, myS, enS) => {
-                        if (team && team.length >= 2 && team[0] && team[1]) {
-                            const ids = [team[0].id, team[1].id].sort();
+                        let safeTeam = safeArr(team);
+                        if (safeTeam.length >= 2 && safeTeam[0] && safeTeam[1]) {
+                            const ids = [safeTeam[0].id, safeTeam[1].id].sort();
                             const key = ids.join('_');
                             if (!pairs.has(key)) {
-                                const p1 = pArr.find(x => x && x.id === ids[0]);
-                                const p2 = pArr.find(x => x && x.id === ids[1]);
+                                const p1 = safeArr(pArr).find(x => x && x.id === ids[0]);
+                                const p2 = safeArr(pArr).find(x => x && x.id === ids[1]);
                                 pairs.set(key, { name: `${p1?.name || '?'}/${p2?.name || '?'}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0 });
                             }
                             const s = pairs.get(key); s.mp++; s.sw += myS;
@@ -523,18 +508,18 @@
         // --- DATA SYNC ---
         function autoSave() {
             try {
-                if(currentTid && Array.isArray(savedTournaments)) {
-                    const idx = savedTournaments.findIndex(x => x && x.id === currentTid);
+                if(currentTid) {
+                    const idx = safeArr(savedTournaments).findIndex(x => x && x.id === currentTid);
                     if(idx > -1) {
-                        savedTournaments[idx].players = JSON.parse(JSON.stringify(players));
-                        savedTournaments[idx].matches = JSON.parse(JSON.stringify(matches));
+                        savedTournaments[idx].players = JSON.parse(JSON.stringify(safeArr(players)));
+                        savedTournaments[idx].matches = JSON.parse(JSON.stringify(safeArr(matches)));
                         savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings));
                         savedTournaments[idx].lastUpdate = Date.now();
                     }
                 }
                 setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid);
                 if(isCloud && dbRef) {
-                    const payload = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() };
+                    const payload = { players: safeArr(players), matches: safeArr(matches), settings: settings, savedTournaments: safeArr(savedTournaments), currentTid: currentTid, lastUpdate: Date.now() };
                     window.lastCloudUpdate = payload.lastUpdate; dbRef.set(payload);
                 }
                 render();
@@ -544,18 +529,19 @@
         function calculateResults(mArr, pArr, isF = false) {
             let res = [];
             try {
-                if(isF) { for(let i=0; i<pArr.length; i+=2) if(i+1 < pArr.length) res.push({ id: pArr[i].id+'_'+pArr[i+1].id, name: pArr[i].name+' / '+pArr[i+1].name, p1: pArr[i], p2: pArr[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
-                else { res = pArr.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
-                if(Array.isArray(mArr)) {
-                    mArr.filter(m => m && m.finished).forEach(m => {
-                        const up = (team, myS, enS) => {
-                            if(!team || !team[0]) return;
-                            let targets = isF ? [res.find(r => r && (r.p1.id === team[0].id || r.p2.id === team[0].id))] : team.map(p => res.find(r => r && r.id === p?.id));
-                            targets.forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } });
-                        };
-                        if(m.team1 && m.team2) { up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); }
-                    });
-                }
+                let safeP = safeArr(pArr);
+                if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 }); }
+                else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); }
+                
+                safeArr(mArr).filter(m => m && m.finished).forEach(m => {
+                    const up = (team, myS, enS) => {
+                        let t = safeArr(team);
+                        if(t.length === 0) return;
+                        let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && r.id === p?.id));
+                        safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } });
+                    };
+                    if(m.team1 && m.team2) { up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); }
+                });
             } catch(e) { console.error("CalcErr:", e); }
             return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif));
         }
@@ -566,16 +552,16 @@
                 const isF = settings.format === 'fixed';
                 const table = calculateResults(matches, players, isF);
                 let lHtml = '';
-                table.forEach((s, i) => {
+                safeArr(table).forEach((s, i) => {
                     lHtml += `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
                 });
                 safeHTML('leaderboard-body', lHtml);
                 
-                const curT = savedTournaments.find(x => x && x.id === currentTid);
+                const curT = safeArr(savedTournaments).find(x => x && x.id === currentTid);
                 safeVal('tournament-name-field', curT ? curT.name : '');
 
                 let pHtml = '';
-                players.forEach((p, index) => {
+                safeArr(players).forEach((p, index) => {
                     pHtml += `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span><div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 text-lg px-2">×</button></div>`;
                 });
                 safeHTML('players-list', pHtml);
@@ -590,7 +576,7 @@
                 const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0');
                 safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration);
                 safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts);
-                safeText('player-count', "Viso: " + players.length); safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
+                safeText('player-count', "Viso: " + safeArr(players).length); safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
                 updateTimerUI(); renderMatches();
             } catch(e) { console.error("RenderErr:", e); }
         }
@@ -604,12 +590,11 @@
                 const pF = el('stat-player')?.value || 'ALL';
                 let cM = [], cP = [];
                 if(tF === 'ALL') { 
-                    if(Array.isArray(savedTournaments)) savedTournaments.forEach(t => { if(t && Array.isArray(t.matches)) cM.push(...t.matches); if(t && Array.isArray(t.players)) cP.push(...t.players); }); 
-                    if(Array.isArray(matches)) cM.push(...matches); 
-                    if(Array.isArray(players)) cP.push(...players); 
+                    safeArr(savedTournaments).forEach(t => { if(t) { cM.push(...safeArr(t.matches)); cP.push(...safeArr(t.players)); } }); 
+                    cM.push(...safeArr(matches)); cP.push(...safeArr(players)); 
                 }
-                else if(tF === 'CURRENT') { if(Array.isArray(matches)) cM.push(...matches); if(Array.isArray(players)) cP.push(...players); }
-                else { const t = savedTournaments.find(x=>x && x.id===tF); if(t){ if(Array.isArray(t.matches)) cM.push(...t.matches); if(Array.isArray(t.players)) cP.push(...t.players); } }
+                else if(tF === 'CURRENT') { cM.push(...safeArr(matches)); cP.push(...safeArr(players)); }
+                else { const t = safeArr(savedTournaments).find(x=>x && x.id===tF); if(t){ cM.push(...safeArr(t.matches)); cP.push(...safeArr(t.players)); } }
                 
                 const uP = []; const seen = new Set();
                 cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
@@ -626,10 +611,10 @@
                 let html = '';
                 if (statType === 'indiv') {
                     const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-                    list.forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
+                    safeArr(list).forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
                 } else {
                     const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
-                    list.forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}<div class="pair-badge">${s.p1?.gender||''}${s.p2?.gender||''}</div></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
+                    safeArr(list).forEach((s, i) => { html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}<div class="pair-badge">${s.p1?.gender||''}${s.p2?.gender||''}</div></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; });
                 }
                 safeHTML('global-stats-body', html);
             } catch(e) { console.error("StatsErr:", e); }
@@ -679,33 +664,33 @@
         function renderAdmin() {
             try {
                 let tHtml = '';
-                (savedTournaments||[]).forEach(t => { if(t) tHtml += `<div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-xs font-bold"><span>${t.name}</span><button type="button" onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`; });
+                safeArr(savedTournaments).forEach(t => { if(t) tHtml += `<div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg text-xs font-bold"><span>${t.name}</span><button type="button" onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`; });
                 safeHTML('admin-tournaments-list', tHtml);
                 
                 const uP = []; const seen = new Set();
-                if(Array.isArray(players)) players.forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } });
-                if(Array.isArray(savedTournaments)) savedTournaments.forEach(t => { if(t && Array.isArray(t.players)) t.players.forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); });
+                safeArr(players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } });
+                safeArr(savedTournaments).forEach(t => { if(t) safeArr(t.players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); });
                 
                 let pHtml = '';
                 uP.forEach(p => { pHtml += `<div class="flex justify-between items-center p-2 text-xs border-b border-slate-50"><span>${p.name}</span><button type="button" onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`; });
                 safeHTML('admin-players-list', pHtml);
             } catch(e) { console.error("AdminErr:", e); }
         }
-        function adminDeleteTournament(id) { try { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x && x.id !== id); autoSave(); renderAdmin(); } } catch(e){} }
-        function adminDeletePlayer(id) { try { if(confirm("Šalinti iš istorijos?")) { players = players.filter(p => p && p.id !== id); autoSave(); renderAdmin(); } } catch(e){} }
+        function adminDeleteTournament(id) { try { if(confirm("Trinti?")) { savedTournaments = safeArr(savedTournaments).filter(x => x && x.id !== id); autoSave(); renderAdmin(); } } catch(e){} }
+        function adminDeletePlayer(id) { try { if(confirm("Šalinti iš istorijos?")) { players = safeArr(players).filter(p => p && p.id !== id); autoSave(); renderAdmin(); } } catch(e){} }
 
         // --- ACTIONS ---
-        function updateTournamentName(val) { try { ensureTournamentId(); const idx = savedTournaments.findIndex(x => x && x.id === currentTid); if(idx > -1) { savedTournaments[idx].name = val; autoSave(); } } catch(e){} }
+        function updateTournamentName(val) { try { ensureTournamentId(); const idx = safeArr(savedTournaments).findIndex(x => x && x.id === currentTid); if(idx > -1) { savedTournaments[idx].name = val; autoSave(); } } catch(e){} }
         function addPlayer(e) { try { e.preventDefault(); ensureTournamentId(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); } catch(e){} }
         function setGender(g) { try { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); } catch(e){} }
         function setMode(m) { try { settings.winCondition = m; resetTimer(); autoSave(); } catch(e){} }
         function changeSetting(k, v) { try { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); } catch(e){} }
         function changeFormat(v) { try { settings.format = v; autoSave(); } catch(e){} }
         function changeRanking(v) { try { settings.rankingMode = v; autoSave(); } catch(e){} }
-        function removePlayer(id) { try { if(confirm("Trinti žaidėją?")) { players = players.filter(p => p && p.id !== id); autoSave(); } } catch(e){} }
-        function updSc(id, t, v) { try { const m = matches.find(x=>x && x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); autoSave(); } } catch(e){} }
-        function finM(id) { try { const m = matches.find(x=>x && x.id===id); if(m){ m.finished=true; autoSave(); } } catch(e){} }
-        function undoM(id) { try { const m = matches.find(x=>x && x.id===id); if(m){ m.finished=false; autoSave(); } } catch(e){} }
+        function removePlayer(id) { try { if(confirm("Trinti žaidėją?")) { players = safeArr(players).filter(p => p && p.id !== id); autoSave(); } } catch(e){} }
+        function updSc(id, t, v) { try { const m = safeArr(matches).find(x=>x && x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); autoSave(); } } catch(e){} }
+        function finM(id) { try { const m = safeArr(matches).find(x=>x && x.id===id); if(m){ m.finished=true; autoSave(); } } catch(e){} }
+        function undoM(id) { try { const m = safeArr(matches).find(x=>x && x.id===id); if(m){ m.finished=false; autoSave(); } } catch(e){} }
         function resetScores() { try { if(confirm("Pradėti naują turnyrą? (Dabartinis bus išsaugotas istorijoje)")) { currentTid = null; matches = []; ensureTournamentId(); switchView('setup'); } } catch(e){} }
         
         function resetAll() { 
@@ -762,26 +747,26 @@
         function renderHistoryList() { 
             try {
                 let html = '';
-                savedTournaments.forEach(t => { 
+                safeArr(savedTournaments).forEach(t => { 
                     if(t) html += `<div class="bg-white p-4 rounded-xl border ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button></div></div>`; 
                 });
                 safeHTML('history-list', html); 
             } catch(e){}
         }
-        function loadHistory(id) { try { const t = savedTournaments.find(x => x && x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...(t.players||[])]; matches = [...(t.matches||[])]; settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } } catch(e){} }
+        function loadHistory(id) { try { const t = safeArr(savedTournaments).find(x => x && x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } } catch(e){} }
         function renderMatches() {
             try {
-                const active = matches.filter(m => m && !m.finished);
+                const active = safeArr(matches).filter(m => m && !m.finished);
                 let aHtml = '';
                 active.forEach(m => {
-                    aHtml += `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${m.team1?.filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${m.team2?.filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
+                    aHtml += `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${safeArr(m.team1).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${safeArr(m.team2).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('')}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
                 });
                 safeHTML('matches-container', aHtml);
 
-                const fin = matches.filter(m => m && m.finished).reverse();
+                const fin = safeArr(matches).filter(m => m && m.finished).reverse();
                 let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : '';
                 fin.forEach(m => {
-                    fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${m.team1?.filter(p=>p&&p.name).map(p=>p.name).join('/')} vs ${m.team2?.filter(p=>p&&p.name).map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
+                    fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/')} vs ${safeArr(m.team2).filter(p=>p&&p.name).map(p=>p.name).join('/')}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
                 });
                 safeHTML('finished-matches-container', fHtml);
             } catch(e) { console.error("RndrMtchErr:", e); }
@@ -792,7 +777,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v97', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v100', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -805,17 +790,17 @@
                     try {
                         const d = snap.val(); if(d && d.lastUpdate !== window.lastCloudUpdate) {
                             window.lastCloudUpdate = d.lastUpdate;
-                            players = Array.isArray(d.players) ? d.players : []; 
-                            matches = Array.isArray(d.matches) ? d.matches : []; 
+                            players = safeArr(d.players); 
+                            matches = safeArr(d.matches); 
                             settings = d.settings ? {...ds, ...d.settings} : {...ds};
-                            savedTournaments = Array.isArray(d.savedTournaments) ? d.savedTournaments.filter(t => t && t.id) : [];
+                            savedTournaments = safeArr(d.savedTournaments).filter(t => t && t.id);
                             currentTid = d.currentTid || null; render();
                         }
                     } catch(e){}
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v97'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v100'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
