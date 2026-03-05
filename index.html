@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V99 (Perfect 8-Player Americano)</title>
+    <title>Padelio PRO V99 (Mix 4-Player Fix)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -233,7 +233,7 @@
         function safeDisplay(id, d) { try { const e = el(id); if(e) e.style.display = d; } catch(e){} }
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-        // --- STATE & PERMANENT STORAGE (V97 KEYS MAINTAINED) ---
+        // --- STATE & PERMANENT STORAGE ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
@@ -294,7 +294,24 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- BRAINS: GENERATOR SECTION (Modified strictly for 8 & 4 players matrices) ---
+        // --- MATRICES ---
+        const MATRIX_4 = [
+            [{t1:[0,1], t2:[2,3]}], 
+            [{t1:[0,2], t2:[1,3]}], 
+            [{t1:[0,3], t2:[1,2]}]
+        ];
+        
+        const MATRIX_8 = [
+            [{t1:[0,7], t2:[1,6]}, {t1:[2,5], t2:[3,4]}], 
+            [{t1:[0,6], t2:[2,4]}, {t1:[1,5], t2:[3,7]}], 
+            [{t1:[0,5], t2:[3,1]}, {t1:[2,6], t2:[4,7]}], 
+            [{t1:[0,4], t2:[5,7]}, {t1:[1,2], t2:[3,6]}], 
+            [{t1:[0,3], t2:[2,7]}, {t1:[1,4], t2:[5,6]}], 
+            [{t1:[0,2], t2:[4,5]}, {t1:[1,7], t2:[3,6]}], 
+            [{t1:[0,1], t2:[2,3]}, {t1:[4,6], t2:[5,7]}]  
+        ];
+
+        // --- BRAINS: GENERATOR SECTION (ONLY MIX AMERICANO 4 PLAYERS TOUCHED) ---
         function getHistoryStats() {
             const partners = new Map(), opponents = new Map();
             try {
@@ -355,26 +372,27 @@
                     matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 2. TOBULAS AMERICANO 8 ŽAIDĖJAMS (Pagal matematinę matricą)
+                // 2. AMERICANO 4 PLAYERS
+                if (settings.format === 'americano' && safePool.length === 4) {
+                    const c = (roundNum - 1) % 3;
+                    let mappedPool = [...safePool];
+                    const cycle = Math.floor((roundNum - 1) / 3);
+                    if (cycle > 0) {
+                        for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift());
+                    }
+                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mappedPool[MATRIX_4[c][0].t1[0]], mappedPool[MATRIX_4[c][0].t1[1]]], team2: [mappedPool[MATRIX_4[c][0].t2[0]], mappedPool[MATRIX_4[c][0].t2[1]]] });
+                    matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
+                }
+
+                // 3. AMERICANO 8 PLAYERS
                 if (settings.format === 'americano' && safePool.length === 8) {
-                    const M8 = [
-                        [{t1:[7,0], t2:[1,3]}, {t1:[2,6], t2:[4,5]}], 
-                        [{t1:[7,1], t2:[2,4]}, {t1:[3,0], t2:[5,6]}], 
-                        [{t1:[7,2], t2:[3,5]}, {t1:[4,1], t2:[6,0]}], 
-                        [{t1:[7,3], t2:[4,6]}, {t1:[5,2], t2:[0,1]}], 
-                        [{t1:[7,4], t2:[5,0]}, {t1:[6,3], t2:[1,2]}], 
-                        [{t1:[7,5], t2:[6,1]}, {t1:[0,4], t2:[2,3]}], 
-                        [{t1:[7,6], t2:[0,2]}, {t1:[1,5], t2:[3,4]}]  
-                    ];
                     const c = (roundNum - 1) % 7;
-                    
                     let mappedPool = [...safePool];
                     const cycle = Math.floor((roundNum - 1) / 7);
                     if (cycle > 0) {
                         for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift());
                     }
-
-                    M8[c].forEach((m, idx) => {
+                    MATRIX_8[c].forEach((m, idx) => {
                         newM.push({ 
                             id: uid(), 
                             round: roundNum, 
@@ -392,20 +410,30 @@
                     return;
                 }
 
-                // 3. TOBULAS AMERICANO 4 ŽAIDĖJAMS
-                if (settings.format === 'americano' && safePool.length === 4) {
-                    const M4 = [ [[0,1],[2,3]], [[0,2],[1,3]], [[0,3],[1,2]] ];
-                    const c = (roundNum - 1) % 3;
-                    let mappedPool = [...safePool];
-                    const cycle = Math.floor((roundNum - 1) / 3);
-                    if (cycle > 0) {
-                        for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift());
+                // 4. MIX AMERICANO 4 PLAYERS (Special Exception added here)
+                if (settings.format === 'mix_americano' && safePool.length === 4) {
+                    let mP = safePool.filter(p => p.gender === 'M');
+                    let fP = safePool.filter(p => p.gender === 'F');
+                    
+                    if (mP.length !== 2 || fP.length !== 2) {
+                        return alert("Dėmesio: Mix Americano 4 žaidėjams reikalauja lygiai 2 vyrų ir 2 moterų!");
                     }
-                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mappedPool[M4[c][0][0]], mappedPool[M4[c][0][1]]], team2: [mappedPool[M4[c][1][0]], mappedPool[M4[c][1][1]]] });
-                    matches = [...matches, ...newM]; autoSave(); switchView('matches'); return;
+                    
+                    // There are only 2 valid Mixed matches. We alternate them.
+                    const isOddRound = (roundNum % 2 !== 0);
+                    
+                    if (isOddRound) {
+                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[0]], team2: [mP[1], fP[1]] });
+                    } else {
+                        newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mP[0], fP[1]], team2: [mP[1], fP[0]] });
+                    }
+                    matches = [...matches, ...newM]; 
+                    autoSave(); 
+                    switchView('matches'); 
+                    return;
                 }
 
-                // 4. KITI FORMATAI (12, 16 žaidėjų arba Mix - Naudojama Baudų Sistema)
+                // 5. KITI FORMATAI (12, 16 žaidėjų, dideli Mix formatai - Naudojama Baudų Sistema)
                 const { partners, opponents } = getHistoryStats();
                 let bestSet = null, minPenalty = Infinity;
                 
@@ -430,7 +458,7 @@
                             }
                         } else { validSet = false; }
                     } else {
-                        // Standard Americano (12, 16, etc.)
+                        // Standard Americano (>8 players)
                         let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length / 4));
                         if(courtsNeeded === 0) validSet = false;
                         for(let c = 0; c < courtsNeeded; c++) {
@@ -451,6 +479,7 @@
                     }
                 }
                 
+                // Fallback
                 if(!bestSet && safePool.length >= 4) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     let courtsNeeded = Math.min(settings.courts, Math.floor(pool.length / 4));
