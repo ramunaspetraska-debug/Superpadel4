@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V100 (Perfect Match & Error Free)</title>
+    <title>Padelio PRO V101 (Locked Matrices)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -233,7 +233,7 @@
         function safeDisplay(id, d) { try { const e = el(id); if(e) e.style.display = d; } catch(e){} }
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
         
-        // THE ULTIMATE ARRAY SAFEGUARD (Fixes "t.matches is not iterable" crash permanently)
+        // ULTIMATE ARRAY SAFEGUARD
         function safeArr(val) {
             if (!val) return [];
             if (Array.isArray(val)) return val;
@@ -241,28 +241,28 @@
             return [];
         }
 
-        // --- STATE & PERMANENT STORAGE (V100 - Clean Slate) ---
+        // --- STATE & PERMANENT STORAGE ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        const DB_KEY = "pad_v100"; 
-        const REG_KEY = "pad_v100_rooms"; 
+        const DB_KEY = "pad_v101"; 
+        const REG_KEY = "pad_v101_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v100_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v101_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v100_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v101_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v100') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v101') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -381,16 +381,26 @@
                     matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 2. PERFECT AMERICANO 4 PLAYERS (Fixed Matrix, No Rotation)
+                // 2. PERFECT AMERICANO 4 PLAYERS
                 if (settings.format === 'americano' && safePool.length === 4) {
                     const c = (roundNum - 1) % 3;
-                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [safePool[MATRIX_4[c][0].t1[0]], safePool[MATRIX_4[c][0].t1[1]]], team2: [safePool[MATRIX_4[c][0].t2[0]], safePool[MATRIX_4[c][0].t2[1]]] });
+                    let mappedPool = [...safePool];
+                    const cycle = Math.floor((roundNum - 1) / 3);
+                    if (cycle > 0) {
+                        for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift());
+                    }
+                    newM.push({ id: uid(), round: roundNum, court: 1, finished: false, score1:0, score2:0, team1: [mappedPool[MATRIX_4[c][0].t1[0]], mappedPool[MATRIX_4[c][0].t1[1]]], team2: [mappedPool[MATRIX_4[c][0].t2[0]], mappedPool[MATRIX_4[c][0].t2[1]]] });
                     matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 3. PERFECT AMERICANO 8 PLAYERS (Fixed Matrix, No Rotation)
+                // 3. PERFECT AMERICANO 8 PLAYERS (Restored exactly from V99)
                 if (settings.format === 'americano' && safePool.length === 8) {
                     const c = (roundNum - 1) % 7;
+                    let mappedPool = [...safePool];
+                    const cycle = Math.floor((roundNum - 1) / 7);
+                    if (cycle > 0) {
+                        for(let i=0; i<cycle; i++) mappedPool.push(mappedPool.shift());
+                    }
                     MATRIX_8[c].forEach((m, idx) => {
                         newM.push({ 
                             id: uid(), 
@@ -399,14 +409,17 @@
                             finished: false, 
                             score1: 0, 
                             score2: 0, 
-                            team1: [safePool[m.t1[0]], safePool[m.t1[1]]], 
-                            team2: [safePool[m.t2[0]], safePool[m.t2[1]]] 
+                            team1: [mappedPool[m.t1[0]], mappedPool[m.t1[1]]], 
+                            team2: [mappedPool[m.t2[0]], mappedPool[m.t2[1]]] 
                         });
                     });
-                    matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
+                    matches = [...safeArr(matches), ...newM]; 
+                    autoSave(); 
+                    switchView('matches'); 
+                    return;
                 }
 
-                // 4. MIX AMERICANO 4 PLAYERS (Special Alternating Rules)
+                // 4. MIX AMERICANO 4 PLAYERS
                 if (settings.format === 'mix_americano' && safePool.length === 4) {
                     let mP = safePool.filter(p => p.gender === 'M');
                     let fP = safePool.filter(p => p.gender === 'F');
@@ -477,7 +490,7 @@
                     bestSet.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
                     matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches');
                 } else { alert("Nepakanka žaidėjų formatui sugeneruoti."); }
-            } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Pabandykite dar kartą."); }
+            } catch(e) { console.error("GenErr:", e); alert("Klaida generuojant mačus. Išvalykite duomenis."); }
         }
 
         // --- PAIRS RESULTS ---
@@ -590,7 +603,7 @@
                 const pF = el('stat-player')?.value || 'ALL';
                 let cM = [], cP = [];
                 if(tF === 'ALL') { 
-                    safeArr(savedTournaments).forEach(t => { if(t) { cM.push(...safeArr(t.matches)); cP.push(...safeArr(t.players)); } }); 
+                    safeArr(savedTournaments).forEach(t => { if(t && Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); if(t && Array.isArray(t.players)) cP.push(...safeArr(t.players)); }); 
                     cM.push(...safeArr(matches)); cP.push(...safeArr(players)); 
                 }
                 else if(tF === 'CURRENT') { cM.push(...safeArr(matches)); cP.push(...safeArr(players)); }
@@ -777,7 +790,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v100', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v101', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -800,7 +813,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v100'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v101'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
