@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V107 (V105 Generator Restored)</title>
+    <title>Padelio PRO V108 (Photos Restored)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -238,28 +238,56 @@
             return [];
         }
 
+        // Restore the image handling (added in V108)
+        function handlePhotoUpload(e) {
+            try {
+                const file = e.target.files[0];
+                if(!file) return;
+                const r = new FileReader();
+                r.onload = (ev) => {
+                    const img = new Image();
+                    img.onload = function() {
+                        const c = document.createElement('canvas');
+                        const MAX = 120;
+                        let w = img.width, h = img.height;
+                        if(w > h) { if(w > MAX){ h *= MAX/w; w = MAX; } } 
+                        else { if(h > MAX){ w *= MAX/h; h = MAX; } }
+                        c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(img, 0, 0, w, h);
+                        curPh = c.toDataURL('image/jpeg', 0.6);
+                        const pr = el('photo-preview');
+                        if(pr) { pr.src = curPh; pr.classList.remove('hidden'); }
+                        const pl = el('photo-placeholder');
+                        if(pl) pl.classList.add('hidden');
+                    };
+                    img.src = ev.target.result;
+                };
+                r.readAsDataURL(file);
+            } catch(err) { console.error("PhotoErr:", err); }
+        }
+
         // --- STATE & PERMANENT STORAGE ---
         const ds = { matchDuration: 12, maxPoints: 21, courts: 2, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        const DB_KEY = "pad_v107"; 
-        const REG_KEY = "pad_v107_rooms"; 
+        const DB_KEY = "pad_v108"; 
+        const REG_KEY = "pad_v108_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v107_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v108_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v107_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v108_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v107') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v108') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -340,7 +368,7 @@
                 let newM = [], roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 let courtsNeeded = safePool.length / 4;
                 
-                // 1. FIXED FORMAT
+                // 1. FIKSUOTOS POROS
                 if (settings.format === 'fixed') {
                     let teams = []; 
                     for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); }
@@ -359,12 +387,11 @@
                     matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // EXACT V105 ENGINE FOR AMERICANO & MIX AMERICANO
+                // 2. MIX AMERICANO IR PURE AMERICANO (V105 ENGINE)
                 const { partners, opponents } = getHistoryStats();
                 let bestSet = null, minPenalty = Infinity;
                 
                 for(let i=0; i<5000; i++) {
-                    // Normal random shuffle as in V105
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     let currentSet = [], currentPenalty = 0, validSet = true;
                     
@@ -389,7 +416,7 @@
                             }
                         } else { validSet = false; }
                     } else {
-                        // Standard Americano (All Sizes, identical to V105)
+                        // Standard Americano (Visiems skaičiams)
                         for(let c = 0; c < courtsNeeded; c++) {
                             const t1 = [pool.pop(), pool.pop()]; const t2 = [pool.pop(), pool.pop()];
                             if (!t1[0] || !t1[1] || !t2[0] || !t2[1] || t1[0].id === t1[1].id || t2[0].id === t2[1].id) { validSet = false; break; }
@@ -666,7 +693,21 @@
 
         // --- ACTIONS ---
         function updateTournamentName(val) { try { ensureTournamentId(); const idx = safeArr(savedTournaments).findIndex(x => x && x.id === currentTid); if(idx > -1) { savedTournaments[idx].name = val; autoSave(); } } catch(e){} }
-        function addPlayer(e) { try { e.preventDefault(); ensureTournamentId(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return; players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); if(f) f.value = ''; curPh = null; safeClass('photo-preview', 'hidden'); safeClass('photo-placeholder', 'text-base'); autoSave(); } catch(e){} }
+        function addPlayer(e) { 
+            try { 
+                e.preventDefault(); 
+                ensureTournamentId(); 
+                const f = el('player-input-field'); 
+                const n = f ? f.value.trim() : ''; 
+                if(!n) return; 
+                players.push({ id: uid(), name: n, gender: tempGender, photo: curPh }); 
+                if(f) f.value = ''; 
+                curPh = null; 
+                const pr = el('photo-preview'); if(pr) { pr.classList.add('hidden'); pr.src = ''; }
+                const pl = el('photo-placeholder'); if(pl) pl.classList.remove('hidden');
+                autoSave(); 
+            } catch(e){} 
+        }
         function setGender(g) { try { tempGender = g; safeClass('gender-m', g==='M'?'w-9 font-bold bg-blue-600 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); safeClass('gender-f', g==='F'?'w-9 font-bold bg-pink-500 text-white text-[10px]':'w-9 font-bold text-slate-400 text-[10px]'); } catch(e){} }
         function setMode(m) { try { settings.winCondition = m; resetTimer(); autoSave(); } catch(e){} }
         function changeSetting(k, v) { try { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); } catch(e){} }
@@ -767,7 +808,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v107', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v108', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -790,7 +831,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v107'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v108'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
