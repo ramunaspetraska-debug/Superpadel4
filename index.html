@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V110 (Ultimate A.I. Engine Integrated)</title>
+    <title>Padelio PRO V111 (Exact Match Memory)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -272,22 +272,22 @@
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
 
-        const DB_KEY = "pad_v110"; 
-        const REG_KEY = "pad_v110_rooms"; 
+        const DB_KEY = "pad_v111"; 
+        const REG_KEY = "pad_v111_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v110_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v111_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v110_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v111_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v110') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v111') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -327,9 +327,9 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- BRAINS: A.I. TIME-BOXED ENGINE (V8 SANDBOX LOGIC) ---
+        // --- BRAINS: A.I. TIME-BOXED ENGINE WITH EXACT MATCH MEMORY ---
         function getHistoryStats() {
-            const partners = new Map(), opponents = new Map();
+            const partners = new Map(), opponents = new Map(), pastMatches = new Set();
             try {
                 const allM = [];
                 safeArr(savedTournaments).forEach(t => { if(t && Array.isArray(t.matches)) allM.push(...safeArr(t.matches)); });
@@ -344,10 +344,18 @@
                         if(t1.length > 1) { addP(t1[0], t1[1]); addP(t1[1], t1[0]); }
                         if(t2.length > 1) { addP(t2[0], t2[1]); addP(t2[1], t2[0]); }
                         t1.forEach(p1 => t2.forEach(p2 => { addO(p1, p2); addO(p2, p1); }));
+
+                        // Nauja: Identiškų mačų atsiminimas (kad išvengtume pasikartojančių komandų kovų)
+                        if(t1.length >= 1 && t2.length >= 1) {
+                            let t1_ids = t1.map(p=>p.id).sort().join('+');
+                            let t2_ids = t2.map(p=>p.id).sort().join('+');
+                            let match_key = [t1_ids, t2_ids].sort().join(' VS ');
+                            pastMatches.add(match_key);
+                        }
                     }
                 });
             } catch(e) { console.error("HistStatErr:", e); }
-            return { partners, opponents };
+            return { partners, opponents, pastMatches };
         }
 
         function generateRound() {
@@ -387,14 +395,21 @@
                     matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); return;
                 }
 
-                // 2. A.I. TIME-BOXED ENGINE FOR AMERICANO & MIX AMERICANO
-                // Saugus laikas, per kurį UI neatrodo visiškai užstrigęs (0.8 sekundės fono skaičiavimams)
+                // 2. A.I. TIME-BOXED ENGINE (0.8 sekundės maksimalus paieškos laikas)
                 const startTime = Date.now();
                 const MAX_TIME_MS = 800; 
 
-                const { partners, opponents } = getHistoryStats();
+                const { partners, opponents, pastMatches } = getHistoryStats();
                 const getP = (a, b) => { const c = partners.get(a.id)?.get(b.id) || 0; return c; };
                 const getO = (a, b) => { const c = opponents.get(a.id)?.get(b.id) || 0; return c; };
+                
+                // Identiško mačo baudos apskaičiavimas
+                const getExactMatchPenalty = (t1, t2) => {
+                    let t1_ids = t1.map(p=>p.id).sort().join('+');
+                    let t2_ids = t2.map(p=>p.id).sort().join('+');
+                    let mk = [t1_ids, t2_ids].sort().join(' VS ');
+                    return pastMatches.has(mk) ? 50000 : 0;
+                };
 
                 let bestSet = null, minPenalty = Infinity;
 
@@ -416,25 +431,28 @@
                             const t2 = [mPool.pop(), fPool.pop()];
                             if (!t1[0] || !t1[1] || !t2[0] || !t2[1]) { validSet = false; break; }
                             
-                            // Partnerio pasikartojimas - griežčiausia bauda (keliama 4 laipsniu)
+                            // Partneriai
                             currentPenalty += Math.pow(getP(t1[0], t1[1]) + 1, 4) * 10000;
                             currentPenalty += Math.pow(getP(t2[0], t2[1]) + 1, 4) * 10000;
 
-                            // Varžovų pasikartojimas (keliama 3 laipsniu)
-                            currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 3) * 100; // V vs V
-                            currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 3) * 100; // M vs M
-                            currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 3) * 150; // V vs M
-                            currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 3) * 150; // M vs V
+                            // NAUJA: Identiško mačo bauda (išvengia komandų dublių)
+                            currentPenalty += getExactMatchPenalty(t1, t2);
+
+                            // Varžovai
+                            currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 3) * 100; 
+                            currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 3) * 100; 
+                            currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 3) * 150; 
+                            currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 3) * 150; 
                             
                             currentSet.push({ team1: t1, team2: t2 });
                         }
                         if(validSet && currentPenalty < minPenalty) { 
                             minPenalty = currentPenalty; bestSet = currentSet; 
-                            if(minPenalty === 0) break; // Jei atrado tobulą be praeities klaidų, baigiame
+                            if(minPenalty === 0) break; 
                         }
                     }
                 } else {
-                    // Standard Americano (Visiems skaičiams: 8, 12, 16...)
+                    // Standard Americano
                     while (Date.now() - startTime < MAX_TIME_MS) {
                         let pool = [...safePool].sort(() => Math.random() - 0.5);
                         let currentSet = [], currentPenalty = 0, validSet = true;
@@ -444,9 +462,14 @@
                             const p3 = pool.pop(); const p4 = pool.pop();
                             if (!p1 || !p2 || !p3 || !p4) { validSet = false; break; }
                             
+                            // Partneriai
                             currentPenalty += Math.pow(getP(p1, p2) + 1, 4) * 10000;
                             currentPenalty += Math.pow(getP(p3, p4) + 1, 4) * 10000;
+
+                            // NAUJA: Identiško mačo bauda
+                            currentPenalty += getExactMatchPenalty([p1, p2], [p3, p4]);
                             
+                            // Varžovai
                             currentPenalty += Math.pow(getO(p1, p3) + 1, 3) * 100;
                             currentPenalty += Math.pow(getO(p1, p4) + 1, 3) * 100;
                             currentPenalty += Math.pow(getO(p2, p3) + 1, 3) * 100;
@@ -461,7 +484,6 @@
                     }
                 }
                 
-                // Fallback jei viskas sugriūna (teoriškai neturėtų niekada įvykti)
                 if(!bestSet && safePool.length >= 4) {
                     let pool = [...safePool].sort(() => Math.random() - 0.5);
                     bestSet = [];
