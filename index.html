@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V113 (Universal Hybrid Engine)</title>
+    <title>Padelio PRO V114 (Infinite Hybrid Engine)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -97,7 +97,7 @@
                 <div class="grid grid-cols-3 gap-3">
                     <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button type="button" onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button type="button" onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Plan. Raundai</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('plannedRounds', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-plannedRounds" class="flex-1 text-center font-black text-sm">12</span><button type="button" onclick="changeSetting('plannedRounds', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button type="button" onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
                 <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mix_americano">Mix Americano</option></select></div>
@@ -217,7 +217,7 @@
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
-            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1-1-1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
+            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
             <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
             <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
             <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
@@ -282,29 +282,29 @@
         }
 
         // --- STATE & PERMANENT STORAGE ---
-        const ds = { matchDuration: 12, maxPoints: 21, plannedRounds: 12, winCondition: 'time', format: 'americano', rankingMode: 'points' };
+        const ds = { matchDuration: 12, maxPoints: 21, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null;
         
         let preGeneratedTournament = [];
 
-        const DB_KEY = "pad_v113"; 
-        const REG_KEY = "pad_v113_rooms"; 
+        const DB_KEY = "pad_v114"; 
+        const REG_KEY = "pad_v114_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v113_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v114_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v113_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v114_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v113') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v114') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -347,12 +347,11 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- V113: UNIVERSAL HYBRID ENGINE (LOOKAHEAD) ---
+        // --- V114: INFINITE HYBRID ENGINE (LOOKAHEAD 30 ROUNDS) ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
             
-            // Fiksuotoms poroms "Lookahead" nereikalingas
             if (settings.format === 'fixed') {
                 return generateFixedRound(safeP);
             }
@@ -371,30 +370,28 @@
 
             let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
 
-            // Jei neturime paruoštų raundų ateičiai (arba išnaudojome visus planuotus), sugeneruojame naują paketą!
-            if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length) {
+            // Jei neturime sugeneruoto šio raundo, paleidžiame didelį generavimą fone
+            if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]) {
                 el('loading-overlay').style.display = 'flex';
                 
-                // Leidžiame UI parodyti "Kraunama" užsklandą
                 setTimeout(() => {
-                    generateLookaheadTournament(safeP, settings.plannedRounds);
+                    // Visada sugeneruoja 30 raundų į priekį
+                    generateLookaheadTournament(safeP, roundNum, 30);
                     el('loading-overlay').style.display = 'none';
                     dispatchRoundFromPreGen(roundNum);
                 }, 50);
             } else {
-                // Tiesiog ištraukiame sekantį raundą iš atminties
                 dispatchRoundFromPreGen(roundNum);
             }
         }
 
-        function generateLookaheadTournament(safePool, roundsToGenerate) {
+        function generateLookaheadTournament(safePool, startRound, countToGenerate) {
             let M = [], F = [];
             
             if (settings.format === 'mix_americano') {
                 M = safePool.filter(p => p.gender === 'M');
                 F = safePool.filter(p => p.gender === 'F');
             } else {
-                // Standartiniame Americano lytis nesvarbi, todėl pusę dedam į M, pusę į F (tik dėl algoritmo struktūros)
                 let shuffledPool = shuffle([...safePool]);
                 let half = shuffledPool.length / 2;
                 M = shuffledPool.slice(0, half);
@@ -404,10 +401,9 @@
             let halfNum = M.length;
             let courtsNeeded = halfNum / 2;
 
-            let finalSchedule = [];
             let partners = new Map(); let opponents = new Map(); let pastMatches = new Set();
-            
             const PLAYERS = [...M, ...F];
+            
             PLAYERS.forEach(p1 => {
                 partners.set(p1.id, new Map()); opponents.set(p1.id, new Map());
                 PLAYERS.forEach(p2 => { partners.get(p1.id).set(p2.id, 0); opponents.get(p1.id).set(p2.id, 0); });
@@ -433,19 +429,22 @@
                 pastMatches.add(mk);
             };
 
-            // Įtraukiame istoriją (jei tęsiame turnyrą, o ne pradedame naują)
+            // Užkrauname jau išžaistus mačus iš atminties, kad A.I. matytų istoriją
             safeArr(matches).forEach(m => {
                 if(m && safeArr(m.team1).length > 0 && safeArr(m.team2).length > 0) {
                     addStats({ t1: m.team1, t2: m.team2 });
                 }
             });
 
-            // V11 UNIVERSALUS HIBRIDAS
-            for (let round = 1; round <= roundsToGenerate; round++) {
+            let newPreGen = [];
+            let isFreshTournament = (matches.length === 0);
+
+            for (let round = startRound; round < startRound + countToGenerate; round++) {
                 let bestSet = null;
                 let minPenalty = Infinity;
                 
-                let isDeterministicRound = (round <= halfNum); // Pirmas ratas visada tobulas partneriams
+                // Matrica įsijungia TIK jei turnyras visiškai naujas (0 mačų istorijoje) ir esame pirmuosiuose raunduose
+                let isDeterministicRound = isFreshTournament && (round <= halfNum); 
                 let iterations = isDeterministicRound ? 1000 : 5000;
 
                 for (let iter = 0; iter < iterations; iter++) {
@@ -504,16 +503,17 @@
                 }
 
                 bestSet.forEach(m => addStats(m));
-                finalSchedule.push(bestSet);
+                newPreGen.push(bestSet);
             }
 
-            preGeneratedTournament = finalSchedule;
+            // Užpildome tuščias vietas, kad masyvo indeksas sutaptų su raundo numeriu (pvz., raundas 5 bus indekse 4)
+            let fullPreGen = new Array(startRound - 1).fill(null).concat(newPreGen);
+            preGeneratedTournament = fullPreGen;
             setStore('pregen', preGeneratedTournament);
         }
 
         function dispatchRoundFromPreGen(roundNum) {
             let newM = [];
-            // RoundNum prasideda nuo 1, masyvo indeksas nuo 0
             let roundData = preGeneratedTournament[roundNum - 1]; 
             
             if (roundData) {
@@ -524,7 +524,7 @@
                 autoSave(); 
                 switchView('matches');
             } else {
-                alert("Nepavyko užkrauti raundo iš atminties. Išvalykite duomenis ir bandykite dar kartą.");
+                alert("Klaida užkraunant raundą. Bandykite pridėti žaidėją iš naujo.");
             }
         }
 
@@ -668,7 +668,6 @@
                 const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0');
                 safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration);
                 safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts);
-                safeText('val-plannedRounds', settings.plannedRounds || 12);
                 safeText('player-count', "Viso: " + safeArr(players).length); safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
                 updateTimerUI(); renderMatches();
             } catch(e) { console.error("RenderErr:", e); }
@@ -814,7 +813,6 @@
             try { 
                 settings[k] = Math.max(1, (settings[k]||0)+v); 
                 if(k==='matchDuration') resetTimer(); 
-                if(k==='plannedRounds') { preGeneratedTournament = []; setStore('pregen', []); } // Pakeitus planą - išvalome atmintį
                 autoSave(); 
             } catch(e){} 
         }
@@ -915,7 +913,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v113', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v114', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -940,7 +938,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v113'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v114'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
