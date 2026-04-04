@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V114 (Infinite Hybrid Engine)</title>
+    <title>Padelio PRO V116 (Anti-Cluster Engine)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -33,7 +33,7 @@
 
     <div id="loading-overlay">
         <div class="spinner mb-4"></div>
-        <p class="text-sm font-bold text-slate-700">Generuojamas idealus turnyras...</p>
+        <p class="text-sm font-bold text-slate-700">Skaičiuojami idealūs raundai...</p>
     </div>
 
     <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full shadow-sm">
@@ -217,7 +217,7 @@
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
         <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
-            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
+            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43.25a2 2 0 0 1-1-1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Setup</span></button>
             <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Game</span></button>
             <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Board</span></button>
             <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><span class="text-[8px] font-bold mt-1 uppercase">Stats</span></button>
@@ -289,22 +289,22 @@
         
         let preGeneratedTournament = [];
 
-        const DB_KEY = "pad_v114"; 
-        const REG_KEY = "pad_v114_rooms"; 
+        const DB_KEY = "pad_v116"; 
+        const REG_KEY = "pad_v116_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v114_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v116_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v114_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v116_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v114') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v116') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -340,14 +340,14 @@
                     savedTournaments.unshift({ id: currentTid, name: name, date: new Date().toISOString(), players: [...safeArr(players)], matches: [...safeArr(matches)], settings: {...settings} });
                     setStore('tid', currentTid);
                     safeVal('tournament-name-field', name);
-                    preGeneratedTournament = []; // Išvalome seną pre-gen atmintį
+                    preGeneratedTournament = []; 
                     setStore('pregen', preGeneratedTournament);
                     autoSave();
                 }
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- V114: INFINITE HYBRID ENGINE (LOOKAHEAD 30 ROUNDS) ---
+        // --- V116: ANTI-CLUSTER ENGINE (CONSECUTIVE OPPONENT PENALTY) ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
@@ -370,12 +370,10 @@
 
             let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
 
-            // Jei neturime sugeneruoto šio raundo, paleidžiame didelį generavimą fone
             if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]) {
                 el('loading-overlay').style.display = 'flex';
                 
                 setTimeout(() => {
-                    // Visada sugeneruoja 30 raundų į priekį
                     generateLookaheadTournament(safeP, roundNum, 30);
                     el('loading-overlay').style.display = 'none';
                     dispatchRoundFromPreGen(roundNum);
@@ -429,29 +427,47 @@
                 pastMatches.add(mk);
             };
 
+            // V116: Trumpalaikė Atmintis (Praėjusio Raundo Varžovai)
+            let lastRoundOpponents = new Set();
+            const updateLastRoundOpponents = (roundMatches) => {
+                lastRoundOpponents.clear();
+                if(!roundMatches) return;
+                roundMatches.forEach(m => {
+                    m.t1.forEach(p1 => m.t2.forEach(p2 => {
+                        lastRoundOpponents.add(p1.id + '_' + p2.id);
+                        lastRoundOpponents.add(p2.id + '_' + p1.id);
+                    }));
+                });
+            };
+
             // Užkrauname jau išžaistus mačus iš atminties, kad A.I. matytų istoriją
+            let maxHistoricalRound = 0;
             safeArr(matches).forEach(m => {
                 if(m && safeArr(m.team1).length > 0 && safeArr(m.team2).length > 0) {
                     addStats({ t1: m.team1, t2: m.team2 });
+                    if(m.round > maxHistoricalRound) maxHistoricalRound = m.round;
                 }
             });
 
+            // Užpildome Trumpalaikę Atmintį, jei tęsiame turnyrą
+            if (maxHistoricalRound > 0) {
+                let lastHistRound = safeArr(matches).filter(m => m.round === maxHistoricalRound).map(m => ({t1: m.team1, t2: m.team2}));
+                updateLastRoundOpponents(lastHistRound);
+            }
+
             let newPreGen = [];
-            let isFreshTournament = (matches.length === 0);
 
             for (let round = startRound; round < startRound + countToGenerate; round++) {
                 let bestSet = null;
                 let minPenalty = Infinity;
-                
-                // Matrica įsijungia TIK jei turnyras visiškai naujas (0 mačų istorijoje) ir esame pirmuosiuose raunduose
-                let isDeterministicRound = isFreshTournament && (round <= halfNum); 
-                let iterations = isDeterministicRound ? 1000 : 5000;
+                let iterations = 5000;
 
                 for (let iter = 0; iter < iterations; iter++) {
                     let currentPenalty = 0; 
                     let roundMatches = [];
 
-                    if (isDeterministicRound) {
+                    if (settings.format === 'mix_americano') {
+                        // GELEŽINIS UŽRAKTAS: Partneriai VISADA parenkami griežtai pagal Eilerio rotaciją
                         let roundShift = round - 1;
                         let pairs = [];
                         for(let i = 0; i < halfNum; i++) {
@@ -467,6 +483,13 @@
                             let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS');
                             if (pastMatches.has(mk)) currentPenalty += 50000;
 
+                            // V116: ANTI-CLUSTER (Bauda už žaidimą prieš tą patį varžovą du raundus iš eilės)
+                            t1.forEach(p1 => t2.forEach(p2 => {
+                                if (lastRoundOpponents.has(p1.id + '_' + p2.id)) {
+                                    currentPenalty += 15000; // Milžiniška bauda, jei varžovai kartojasi iškart po praeito raundo!
+                                }
+                            }));
+
                             currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 3) * 100;
                             currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 3) * 100;
                             currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 3) * 150;
@@ -475,6 +498,7 @@
                             roundMatches.push({ t1: t1, t2: t2 });
                         }
                     } else {
+                        // Standartinis Americano
                         let tempM = shuffle([...M]); let tempF = shuffle([...F]);
                         
                         for(let c = 0; c < courtsNeeded; c++) {
@@ -483,6 +507,11 @@
                             
                             let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS');
                             if (pastMatches.has(mk)) currentPenalty += 50000;
+
+                            // V116: ANTI-CLUSTER
+                            t1.forEach(p1 => t2.forEach(p2 => {
+                                if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 15000;
+                            }));
 
                             currentPenalty += Math.pow(getP(t1[0], t1[1]) + 1, 4) * 10000;
                             currentPenalty += Math.pow(getP(t2[0], t2[1]) + 1, 4) * 10000;
@@ -504,9 +533,11 @@
 
                 bestSet.forEach(m => addStats(m));
                 newPreGen.push(bestSet);
+                
+                // Atnaujiname trumpalaikę atmintį kitam raundui!
+                updateLastRoundOpponents(bestSet);
             }
 
-            // Užpildome tuščias vietas, kad masyvo indeksas sutaptų su raundo numeriu (pvz., raundas 5 bus indekse 4)
             let fullPreGen = new Array(startRound - 1).fill(null).concat(newPreGen);
             preGeneratedTournament = fullPreGen;
             setStore('pregen', preGeneratedTournament);
@@ -801,7 +832,6 @@
                 const pr = el('photo-preview'); if(pr) { pr.classList.add('hidden'); pr.src = ''; }
                 const pl = el('photo-placeholder'); if(pl) pl.classList.remove('hidden');
                 
-                // Išvalome seną pre-gen atmintį
                 preGeneratedTournament = []; setStore('pregen', preGeneratedTournament);
                 
                 autoSave(); 
@@ -913,7 +943,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v114', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v116', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -938,7 +968,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v114'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v116'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
