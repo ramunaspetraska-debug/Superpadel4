@@ -3,12 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V125 (Perfect Interleaved Matrix)</title>
+    <title>Padelio PRO V125.1 (Perfect Matrix + UX Safe)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; padding-bottom: 80px; font-size: 14px; }
+        /* Pridėta apsauga nuo Pull-to-refresh ir Swipe navigacijos */
+        html, body { 
+            overscroll-behavior-y: none; 
+            overscroll-behavior-x: none; 
+            background-color: #f8fafc; 
+            font-family: -apple-system, system-ui, sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            padding-bottom: 80px; 
+            font-size: 14px; 
+        }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .nav-btn.active { color: #16a34a; }
         .nav-btn.active svg { stroke: #16a34a; }
@@ -347,7 +356,7 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- V125: INTERLEAVED MATRICA ---
+        // --- V125: THE PERFECT MATRIX WITH INTERLEAVING ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
@@ -390,7 +399,6 @@
             }
         }
 
-        // V125: THE PERFECT MATRIX WITH INTERLEAVING
         function generateInterleavedMix8Matrix(safePool) {
             let M = safePool.filter(p => p.gender === 'M');
             let F = safePool.filter(p => p.gender === 'F');
@@ -416,8 +424,7 @@
                 baseRounds.push(roundMatches);
             }
 
-            // V125 PERMAIŠYMAS: Čia keičiame raundų seką taip, kad išvengtume Consecutive Opponent klaidos.
-            // Magiška seka: 0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7
+            // V125 PERMAIŠYMAS: Magiška seka išvengiant pasikartojimų iš eilės
             const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7];
             let interleavedRounds = [];
             
@@ -992,7 +999,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v125', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v125.1', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -1017,10 +1024,40 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v125'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v125.1'); location.reload(); } catch(e){} }
 
+        // Apsauga nuo netyčinio puslapio uždarymo / perkrovimo
+        window.addEventListener('beforeunload', function (e) {
+            // Jei yra nebaigtų mačų, rodome naršyklės perspėjimą
+            const hasUnfinishedMatches = safeArr(matches).some(m => !m.finished);
+            if (hasUnfinishedMatches) {
+                e.preventDefault();
+                e.returnValue = ''; // Senesnėms naršyklėms
+            }
+        });
+
+        // Užsikrovus programėlei:
         window.onload = () => {
+            // 1. Ištraukiame viską iš telefono atminties!
+            loadData(); 
+            
+            // Jei buvo debesis - atstatome ryšį
+            if (isCloud && activeRoom) {
+                const roomInput = el('fb-room');
+                if(roomInput) roomInput.value = activeRoom;
+                initFirebaseConnection();
+            }
+
+            // 2. Iškart atnaujiname UI su užkrautais duomenimis
             render();
+
+            // 3. Jei atmintyje yra sugeneruotų mačų, iškart rodome "Žaidimo" langą
+            if (safeArr(matches).length > 0) {
+                switchView('matches');
+            } else {
+                // Jei mačų nėra, rodome pradinį ekraną
+                switchView('setup');
+            }
         };
     </script>
 </body>
