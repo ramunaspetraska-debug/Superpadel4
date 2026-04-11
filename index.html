@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V125.1 (Perfect Matrix + UX Safe)</title>
+    <title>Padelio PRO V125.2 (Match Numbers Design)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        /* Pridėta apsauga nuo Pull-to-refresh ir Swipe navigacijos */
         html, body { 
             overscroll-behavior-y: none; 
             overscroll-behavior-x: none; 
@@ -34,6 +33,22 @@
         #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 100; justify-content: center; align-items: center; flex-direction: column; }
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #16a34a; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* NAUJA: Stilius mačo numeriui */
+        .match-number-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background-color: #f1f5f9;
+            color: #64748b;
+            border-radius: 50%;
+            font-size: 9px;
+            font-weight: 900;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -298,22 +313,22 @@
         
         let preGeneratedTournament = [];
 
-        const DB_KEY = "pad_v125"; 
-        const REG_KEY = "pad_v125_rooms"; 
+        const DB_KEY = "pad_v125_2"; 
+        const REG_KEY = "pad_v125_2_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v125_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v125_2_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v125_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v125_2_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v125') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v125_2') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -356,7 +371,7 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- V125: THE PERFECT MATRIX WITH INTERLEAVING ---
+        // --- V125.2: THE PERFECT MATRIX WITH INTERLEAVING ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
@@ -383,7 +398,6 @@
                 el('loading-overlay').style.display = 'flex';
                 
                 setTimeout(() => {
-                    // V125: Išmaišyta Matrica 8 Mix žaidėjams
                     if (settings.format === 'mix_americano' && safeP.length === 8) {
                         preGeneratedTournament = generateInterleavedMix8Matrix(safeP);
                         setStore('pregen', preGeneratedTournament);
@@ -403,7 +417,6 @@
             let M = safePool.filter(p => p.gender === 'M');
             let F = safePool.filter(p => p.gender === 'F');
 
-            // Bazinis matematinis varžovų ciklas (V124 pagrindas)
             const opponentCycles = [
                 [[0, 1], [2, 3]], 
                 [[0, 2], [1, 3]], 
@@ -424,7 +437,6 @@
                 baseRounds.push(roundMatches);
             }
 
-            // V125 PERMAIŠYMAS: Magiška seka išvengiant pasikartojimų iš eilės
             const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7];
             let interleavedRounds = [];
             
@@ -971,24 +983,73 @@
             } catch(e){}
         }
         function loadHistory(id) { try { const t = safeArr(savedTournaments).find(x => x && x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; preGeneratedTournament = []; setStore('pregen', []); setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } } catch(e){} }
+        
+        // V125.2: Atnaujinta renderMatches funkcija su mačo numeriais
         function renderMatches() {
             try {
                 const active = safeArr(matches).filter(m => m && !m.finished);
                 let aHtml = '';
-                active.forEach(m => {
+                // Skaičiuojame globalų mačo indeksą (aktyviems mačams)
+                let totalMatchesCount = safeArr(matches).length;
+                let activeStartIndex = totalMatchesCount - active.length + 1;
+
+                active.forEach((m, i) => {
+                    let matchIndex = activeStartIndex + i;
                     let t1Html = safeArr(m.team1).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
                     let t2Html = safeArr(m.team2).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
                     
-                    aHtml += `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1Html}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2Html}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
+                    aHtml += `
+                    <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4">
+                        <div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-slate-600 px-1.5 py-0.5 rounded text-[8px]">#${matchIndex}</span>
+                                <span>AIKŠTELĖ ${m.court}</span>
+                            </div>
+                            <span>RAUNDAS ${m.round}</span>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex justify-between items-center mb-3">
+                                <div class="flex flex-col gap-1">${t1Html}</div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button>
+                                    <span class="text-2xl font-black w-8 text-center">${m.score1||0}</span>
+                                    <button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center mb-5">
+                                <div class="flex flex-col gap-1">${t2Html}</div>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button>
+                                    <span class="text-2xl font-black w-8 text-center">${m.score2||0}</span>
+                                    <button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button>
+                                </div>
+                            </div>
+                            <button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button>
+                        </div>
+                    </div>`;
                 });
                 safeHTML('matches-container', aHtml);
 
                 const fin = safeArr(matches).filter(m => m && m.finished).reverse();
                 let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : '';
-                fin.forEach(m => {
+                
+                // Skaičiuojame pabaigtų mačų indeksus (kadangi masyvas apverstas su 'reverse()', skaičiuojame atgal)
+                fin.forEach((m, i) => {
+                    let matchIndex = totalMatchesCount - active.length - i;
                     let n1 = safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/');
                     let n2 = safeArr(m.team2).filter(p=>p&&p.name).map(p=>p.name).join('/');
-                    fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div><div class="flex items-center gap-3"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
+                    
+                    fHtml += `
+                    <div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]">
+                        <div class="flex items-center truncate">
+                            <span class="match-number-badge">${matchIndex}</span>
+                            <div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0 pl-2">
+                            <div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div>
+                            <button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button>
+                        </div>
+                    </div>`;
                 });
                 safeHTML('finished-matches-container', fHtml);
             } catch(e) { console.error("RndrMtchErr:", e); }
@@ -999,7 +1060,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v125.1', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v125_2', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -1024,38 +1085,27 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v125.1'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v125_2'); location.reload(); } catch(e){} }
 
-        // Apsauga nuo netyčinio puslapio uždarymo / perkrovimo
         window.addEventListener('beforeunload', function (e) {
-            // Jei yra nebaigtų mačų, rodome naršyklės perspėjimą
             const hasUnfinishedMatches = safeArr(matches).some(m => !m.finished);
             if (hasUnfinishedMatches) {
                 e.preventDefault();
-                e.returnValue = ''; // Senesnėms naršyklėms
+                e.returnValue = ''; 
             }
         });
 
-        // Užsikrovus programėlei:
         window.onload = () => {
-            // 1. Ištraukiame viską iš telefono atminties!
             loadData(); 
-            
-            // Jei buvo debesis - atstatome ryšį
             if (isCloud && activeRoom) {
                 const roomInput = el('fb-room');
                 if(roomInput) roomInput.value = activeRoom;
                 initFirebaseConnection();
             }
-
-            // 2. Iškart atnaujiname UI su užkrautais duomenimis
             render();
-
-            // 3. Jei atmintyje yra sugeneruotų mačų, iškart rodome "Žaidimo" langą
             if (safeArr(matches).length > 0) {
                 switchView('matches');
             } else {
-                // Jei mačų nėra, rodome pradinį ekraną
                 switchView('setup');
             }
         };
