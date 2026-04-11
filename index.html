@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V118 (Ultimate Hard Rule Engine)</title>
+    <title>Padelio PRO V119 (Absolute Anti-Cluster Engine)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -33,7 +33,7 @@
 
     <div id="loading-overlay">
         <div class="spinner mb-4"></div>
-        <p class="text-sm font-bold text-slate-700">Taikomos "Hard Rule" taisyklės...</p>
+        <p class="text-sm font-bold text-slate-700">Taikomos "Griežtosios" taisyklės...</p>
     </div>
 
     <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full shadow-sm">
@@ -289,22 +289,22 @@
         
         let preGeneratedTournament = [];
 
-        const DB_KEY = "pad_v118"; 
-        const REG_KEY = "pad_v118_rooms"; 
+        const DB_KEY = "pad_v119"; 
+        const REG_KEY = "pad_v119_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v118_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v119_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v118_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v119_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v118') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_v119') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -347,7 +347,7 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- V118: THE ULTIMATE HARD RULE ENGINE (All Formats) ---
+        // --- V119: THE NUCLEAR HARD RULE ENGINE (All Formats) ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
@@ -399,7 +399,6 @@
             let halfNum = M.length;
             let courtsNeeded = halfNum / 2;
 
-            // 1. TRACKING
             let partners = new Map(); let opponents = new Map(); let pastMatches = new Set();
             const PLAYERS = [...M, ...F];
             const totalPlayers = PLAYERS.length;
@@ -461,16 +460,16 @@
                 let minPenalty = Infinity;
                 let iterations = 10000; 
                 
-                // 3. HARD RULE MATH
-                let cycleLength = settings.format === 'mix_americano' ? halfNum : (totalPlayers - 1);
-                let maxAllowedP = Math.ceil(round / cycleLength);
+                // V119: HARD CAPS (Griežti matematiniai limitai viskam)
+                let maxAllowedP = settings.format === 'mix_americano' ? Math.ceil(round / halfNum) : Math.ceil(round / (totalPlayers - 1));
+                let maxAllowedO_Same = settings.format === 'mix_americano' ? Math.ceil(round / (halfNum - 1)) : Math.ceil(round / ((totalPlayers - 1) / 2));
+                let maxAllowedO_Diff = settings.format === 'mix_americano' ? Math.ceil(round / halfNum) : 999;
 
                 for (let iter = 0; iter < iterations; iter++) {
                     let currentPenalty = 0; 
                     let roundMatches = [];
 
                     if (settings.format === 'mix_americano') {
-                        // Mix Geležinis Užraktas
                         let roundShift = round - 1;
                         let pairs = [];
                         for(let i = 0; i < halfNum; i++) {
@@ -486,11 +485,17 @@
                             let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS');
                             if (pastMatches.has(mk)) currentPenalty += 50000;
 
+                            // ANTI-CLUSTER: Branduolinė bauda
                             t1.forEach(p1 => t2.forEach(p2 => {
-                                if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 15000;
+                                if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000;
                             }));
 
-                            // SCORING: Skatinti naujas kombinacijas
+                            // OPPONENT HARD RULES
+                            if (getO(t1[0], t2[0]) >= maxAllowedO_Same) currentPenalty += 5000000;
+                            if (getO(t1[1], t2[1]) >= maxAllowedO_Same) currentPenalty += 5000000;
+                            if (getO(t1[0], t2[1]) >= maxAllowedO_Diff) currentPenalty += 5000000;
+                            if (getO(t1[1], t2[0]) >= maxAllowedO_Diff) currentPenalty += 5000000;
+
                             let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]);
                             if (oSum === 0) currentPenalty -= 5000; 
 
@@ -502,7 +507,7 @@
                             roundMatches.push({ t1: t1, t2: t2 });
                         }
                     } else {
-                        // V118: Standartinis Americano (Su HARD RULE)
+                        // V119: Standartinis Americano
                         let tempM = shuffle([...M]); let tempF = shuffle([...F]);
                         let tempAll = shuffle([...tempM, ...tempF]);
                         
@@ -510,19 +515,17 @@
                             const t1 = [tempAll.pop(), tempAll.pop()]; 
                             const t2 = [tempAll.pop(), tempAll.pop()];
                             
-                            // HARD RULE CHECK: Ar pora nesikartoja per anksti?
                             if (getP(t1[0], t1[1]) >= maxAllowedP) currentPenalty += 5000000;
                             if (getP(t2[0], t2[1]) >= maxAllowedP) currentPenalty += 5000000;
 
                             let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS');
                             if (pastMatches.has(mk)) currentPenalty += 50000;
 
-                            // Anti-Cluster blokas
                             t1.forEach(p1 => t2.forEach(p2 => {
-                                if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 15000;
+                                if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000;
+                                if (getO(p1, p2) >= maxAllowedO_Same) currentPenalty += 5000000;
                             }));
 
-                            // SCORING: Milžiniški bonusai už visiškai naujus varžovus/partnerius
                             if (getP(t1[0], t1[1]) === 0) currentPenalty -= 10000; 
                             if (getP(t2[0], t2[1]) === 0) currentPenalty -= 10000;
                             
@@ -958,7 +961,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v118', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v119', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -983,7 +986,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v118'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v119'); location.reload(); } catch(e){} }
 
         window.onload = () => {
             render();
