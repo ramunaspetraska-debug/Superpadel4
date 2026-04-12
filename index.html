@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V125.2 (Match Numbers Design)</title>
+    <title>Padelio PRO V126 (Master Memory Engine)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -34,7 +34,6 @@
         .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #16a34a; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* NAUJA: Stilius mačo numeriui */
         .match-number-badge {
             display: flex;
             align-items: center;
@@ -277,7 +276,6 @@
             return arr;
         }
 
-        // Image handling
         function handlePhotoUpload(e) {
             try {
                 const file = e.target.files[0];
@@ -305,7 +303,7 @@
             } catch(err) { console.error("PhotoErr:", err); }
         }
 
-        // --- STATE & PERMANENT STORAGE ---
+        // --- MASTER STATE & PERMANENT STORAGE ---
         const ds = { matchDuration: 12, maxPoints: 21, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
@@ -313,22 +311,23 @@
         
         let preGeneratedTournament = [];
 
-        const DB_KEY = "pad_v125_2"; 
-        const REG_KEY = "pad_v125_2_rooms"; 
+        // NAUJA: MASTER raktai (daugiau niekada nesikeis versijų metu)
+        const DB_KEY = "padelio_pro_master"; 
+        const REG_KEY = "padelio_pro_master_rooms"; 
 
         function getStore(key) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v125_2_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`;
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; }
         }
         function setStore(key, val) {
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_v125_2_local_`;
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`;
             try {
                 if (val === null) localStorage.removeItem(prefix + key);
                 else localStorage.setItem(prefix + key, JSON.stringify(val));
             } catch(e) {}
         }
 
-        let activeRoom = localStorage.getItem('sp_active_room_v125_2') || '';
+        let activeRoom = localStorage.getItem('sp_active_room_master') || '';
         if(activeRoom) isCloud = true;
 
         function ensureFirebaseInit() {
@@ -342,6 +341,25 @@
                     });
                 }
             } catch(e) { console.error("Firebase init err", e); }
+        }
+
+        // NAUJA: Duomenų migracija iš senų versijų į MASTER stalčių
+        function migrateOldData() {
+            // Jei MASTER stalčius jau turi duomenų, migracijos nereikia
+            if (localStorage.getItem('sp_master_local_p')) return;
+
+            // Tikriname senus raktus nuo naujausio iki seniausio
+            const oldPrefixes = ['sp_v125_2_local_', 'sp_v125_local_', 'sp_v124_local_', 'sp_v123_local_', 'sp_v122_local_', 'sp_v121_local_', 'sp_v120_local_'];
+            for (let prefix of oldPrefixes) {
+                if (localStorage.getItem(prefix + 'p')) { 
+                    ['p', 'm', 's', 'h', 'tid', 'pregen'].forEach(k => {
+                        let oldVal = localStorage.getItem(prefix + k);
+                        if (oldVal) localStorage.setItem('sp_master_local_' + k, oldVal);
+                    });
+                    console.log("Sėkmingai atstatyti duomenys iš senos versijos: " + prefix);
+                    break; 
+                }
+            }
         }
 
         function loadData() {
@@ -371,7 +389,6 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- V125.2: THE PERFECT MATRIX WITH INTERLEAVING ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
@@ -920,7 +937,7 @@
         function updSc(id, t, v) { try { const m = safeArr(matches).find(x=>x && x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); autoSave(); } } catch(e){} }
         function finM(id) { try { const m = safeArr(matches).find(x=>x && x.id===id); if(m){ m.finished=true; autoSave(); } } catch(e){} }
         function undoM(id) { try { const m = safeArr(matches).find(x=>x && x.id===id); if(m){ m.finished=false; autoSave(); } } catch(e){} }
-        function resetScores() { try { if(confirm("Pradėti naują turnyrą? (Dabartinis bus išsaugotas istorijoje)")) { currentTid = null; matches = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); switchView('setup'); } } catch(e){} }
+        function resetScores() { try { if(confirm("DĖMESIO! Ar tikrai norite pradėti NAUJĄ turnyrą? (Dabartinis bus išsaugotas istorijoje)")) { currentTid = null; matches = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); switchView('setup'); } } catch(e){} }
         
         function resetAll() { 
             try {
@@ -984,12 +1001,10 @@
         }
         function loadHistory(id) { try { const t = safeArr(savedTournaments).find(x => x && x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; preGeneratedTournament = []; setStore('pregen', []); setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } } catch(e){} }
         
-        // V125.2: Atnaujinta renderMatches funkcija su mačo numeriais
         function renderMatches() {
             try {
                 const active = safeArr(matches).filter(m => m && !m.finished);
                 let aHtml = '';
-                // Skaičiuojame globalų mačo indeksą (aktyviems mačams)
                 let totalMatchesCount = safeArr(matches).length;
                 let activeStartIndex = totalMatchesCount - active.length + 1;
 
@@ -1033,7 +1048,6 @@
                 const fin = safeArr(matches).filter(m => m && m.finished).reverse();
                 let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : '';
                 
-                // Skaičiuojame pabaigtų mačų indeksus (kadangi masyvas apverstas su 'reverse()', skaičiuojame atgal)
                 fin.forEach((m, i) => {
                     let matchIndex = totalMatchesCount - active.length - i;
                     let n1 = safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/');
@@ -1060,7 +1074,7 @@
             try {
                 const room = el('fb-room')?.value.trim(); if(!room) return;
                 ensureFirebaseInit();
-                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_v125_2', room);
+                activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room);
                 
                 // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
@@ -1085,7 +1099,7 @@
                 });
             } catch(e) { console.error("CloudErr:", e); alert("Nepavyko prisijungti prie debesies."); }
         }
-        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_v125_2'); location.reload(); } catch(e){} }
+        function disconnectFirebase() { try { localStorage.removeItem('sp_active_room_master'); location.reload(); } catch(e){} }
 
         window.addEventListener('beforeunload', function (e) {
             const hasUnfinishedMatches = safeArr(matches).some(m => !m.finished);
@@ -1096,7 +1110,12 @@
         });
 
         window.onload = () => {
+            // 1. Išgelbstime senus duomenis į "Master" stalčių
+            migrateOldData();
+
+            // 2. Užkrauname duomenis iš "Master" stalčiaus
             loadData(); 
+            
             if (isCloud && activeRoom) {
                 const roomInput = el('fb-room');
                 if(roomInput) roomInput.value = activeRoom;
