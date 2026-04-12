@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V126 (Master Memory Engine)</title>
+    <title>Padelio PRO V127 (Holy Grail Matrices 8 & 16)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -311,7 +311,6 @@
         
         let preGeneratedTournament = [];
 
-        // NAUJA: MASTER raktai (daugiau niekada nesikeis versijų metu)
         const DB_KEY = "padelio_pro_master"; 
         const REG_KEY = "padelio_pro_master_rooms"; 
 
@@ -343,12 +342,8 @@
             } catch(e) { console.error("Firebase init err", e); }
         }
 
-        // NAUJA: Duomenų migracija iš senų versijų į MASTER stalčių
         function migrateOldData() {
-            // Jei MASTER stalčius jau turi duomenų, migracijos nereikia
             if (localStorage.getItem('sp_master_local_p')) return;
-
-            // Tikriname senus raktus nuo naujausio iki seniausio
             const oldPrefixes = ['sp_v125_2_local_', 'sp_v125_local_', 'sp_v124_local_', 'sp_v123_local_', 'sp_v122_local_', 'sp_v121_local_', 'sp_v120_local_'];
             for (let prefix of oldPrefixes) {
                 if (localStorage.getItem(prefix + 'p')) { 
@@ -356,7 +351,7 @@
                         let oldVal = localStorage.getItem(prefix + k);
                         if (oldVal) localStorage.setItem('sp_master_local_' + k, oldVal);
                     });
-                    console.log("Sėkmingai atstatyti duomenys iš senos versijos: " + prefix);
+                    console.log("Migracija sėkminga iš " + prefix);
                     break; 
                 }
             }
@@ -389,6 +384,7 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
+        // --- V127: MULTI-MATRIX ENGINE ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
@@ -415,9 +411,16 @@
                 el('loading-overlay').style.display = 'flex';
                 
                 setTimeout(() => {
-                    if (settings.format === 'mix_americano' && safeP.length === 8) {
-                        preGeneratedTournament = generateInterleavedMix8Matrix(safeP);
-                        setStore('pregen', preGeneratedTournament);
+                    if (settings.format === 'mix_americano') {
+                        if (safeP.length === 8) {
+                            preGeneratedTournament = generateInterleavedMix8Matrix(safeP);
+                            setStore('pregen', preGeneratedTournament);
+                        } else if (safeP.length === 16) {
+                            preGeneratedTournament = generatePerfectMix16Matrix(safeP);
+                            setStore('pregen', preGeneratedTournament);
+                        } else {
+                            generateLookaheadTournament(safeP, roundNum, 30);
+                        }
                     } else {
                         generateLookaheadTournament(safeP, roundNum, 30);
                     }
@@ -430,6 +433,7 @@
             }
         }
 
+        // --- 8 ŽAIDĖJŲ MATRICA ---
         function generateInterleavedMix8Matrix(safePool) {
             let M = safePool.filter(p => p.gender === 'M');
             let F = safePool.filter(p => p.gender === 'F');
@@ -456,10 +460,7 @@
 
             const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7];
             let interleavedRounds = [];
-            
-            interleavePattern.forEach(idx => {
-                interleavedRounds.push(baseRounds[idx]);
-            });
+            interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); });
 
             let extendedPreGen = [];
             for (let copy = 0; copy < 3; copy++) {
@@ -468,6 +469,52 @@
             return extendedPreGen;
         }
 
+        // --- 16 ŽAIDĖJŲ MATRICA (HOLY GRAIL) ---
+        function generatePerfectMix16Matrix(safePool) {
+            let M = safePool.filter(p => p.gender === 'M');
+            let F = safePool.filter(p => p.gender === 'F');
+
+            const perfectMatrix16 = [
+                [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]],
+                [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]],
+                [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]],
+                [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]],
+                [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]],
+                [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]],
+                [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]],
+                [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]],
+                [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]],
+                [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]],
+                [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]],
+                [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]],
+                [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]],
+                [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]],
+                [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]],
+                [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]]
+            ];
+
+            let baseRounds = [];
+            perfectMatrix16.forEach((roundData) => {
+                let currentRound = [];
+                roundData.forEach((match) => {
+                    let m1_idx = match[0][0]; let w1_idx = match[0][1];
+                    let m2_idx = match[1][0]; let w2_idx = match[1][1];
+                    currentRound.push({
+                        t1: [M[m1_idx], F[w1_idx]],
+                        t2: [M[m2_idx], F[w2_idx]]
+                    });
+                });
+                baseRounds.push(currentRound);
+            });
+
+            let extendedPreGen = [];
+            for (let copy = 0; copy < 3; copy++) { // 48 raundai
+                baseRounds.forEach(rm => extendedPreGen.push(rm));
+            }
+            return extendedPreGen;
+        }
+
+        // --- A.I. VARIKLIS KITIEMS SKAIČIAMS (12, 20 ir t.t.) ---
         function generateLookaheadTournament(safePool, startRound, countToGenerate) {
             let M = [], F = [];
             if (settings.format === 'mix_americano') {
@@ -1076,10 +1123,9 @@
                 ensureFirebaseInit();
                 activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room);
                 
-                // Register room in global index
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
-                
                 dbRef = firebase.database().ref(DB_KEY + '/' + room);
+                
                 safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center");
                 safeText('cloud-room-name-display', room);
                 
@@ -1110,10 +1156,7 @@
         });
 
         window.onload = () => {
-            // 1. Išgelbstime senus duomenis į "Master" stalčių
             migrateOldData();
-
-            // 2. Užkrauname duomenis iš "Master" stalčiaus
             loadData(); 
             
             if (isCloud && activeRoom) {
