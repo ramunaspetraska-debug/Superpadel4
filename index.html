@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V128 (Trinity Holy Grail Engine)</title>
+    <title>Padelio PRO V128.1 (Round Badges)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -38,15 +38,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 20px;
+            padding: 0 6px;
             height: 20px;
-            background-color: #f1f5f9;
-            color: #64748b;
-            border-radius: 50%;
+            background-color: #e2e8f0;
+            color: #475569;
+            border-radius: 10px;
             font-size: 9px;
             font-weight: 900;
             margin-right: 8px;
             flex-shrink: 0;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
@@ -384,7 +385,7 @@
             } catch(e) { console.error("EnsTIDErr:", e); }
         }
 
-        // --- V128: THE TRINITY ENGINE (8, 12, 16 Matrices) ---
+        // --- V128.1: THE TRINITY ENGINE (8, 12, 16 Matrices) ---
         function requestNextRound() {
             ensureTournamentId();
             const safeP = safeArr(players);
@@ -1092,25 +1093,21 @@
         }
         function loadHistory(id) { try { const t = safeArr(savedTournaments).find(x => x && x.id === id); if(t && confirm("Užkrauti šį turnyrą?")) { players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; preGeneratedTournament = []; setStore('pregen', []); setStore('tid', id); resetTimer(); autoSave(); switchView('matches'); } } catch(e){} }
         
+        // --- ATNAUJINTAS RENDER MATCHES SU RAUNDŲ NUMERIAIS ---
         function renderMatches() {
             try {
                 const active = safeArr(matches).filter(m => m && !m.finished);
                 let aHtml = '';
-                let totalMatchesCount = safeArr(matches).length;
-                let activeStartIndex = totalMatchesCount - active.length + 1;
 
-                active.forEach((m, i) => {
-                    let matchIndex = activeStartIndex + i;
+                active.forEach((m) => {
                     let t1Html = safeArr(m.team1).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
                     let t2Html = safeArr(m.team2).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
                     
+                    // Aktyviems mačams paliktas švarus išdėstymas
                     aHtml += `
                     <div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4">
                         <div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase">
-                            <div class="flex items-center gap-2">
-                                <span class="bg-slate-600 px-1.5 py-0.5 rounded text-[8px]">#${matchIndex}</span>
-                                <span>AIKŠTELĖ ${m.court}</span>
-                            </div>
+                            <span>AIKŠTELĖ ${m.court}</span>
                             <span>RAUNDAS ${m.round}</span>
                         </div>
                         <div class="p-4">
@@ -1139,15 +1136,15 @@
                 const fin = safeArr(matches).filter(m => m && m.finished).reverse();
                 let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : '';
                 
-                fin.forEach((m, i) => {
-                    let matchIndex = totalMatchesCount - active.length - i;
+                fin.forEach((m) => {
                     let n1 = safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/');
                     let n2 = safeArr(m.team2).filter(p=>p&&p.name).map(p=>p.name).join('/');
                     
+                    // Baigtiems mačams dedamas stilingas Raundo (R1, R2) ženkliukas
                     fHtml += `
                     <div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]">
                         <div class="flex items-center truncate">
-                            <span class="match-number-badge">${matchIndex}</span>
+                            <span class="match-number-badge">R${m.round}</span>
                             <div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div>
                         </div>
                         <div class="flex items-center gap-3 shrink-0 pl-2">
