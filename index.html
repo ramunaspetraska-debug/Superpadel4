@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V131 (Player Profiles & DB)</title>
+    <title>Padelio PRO V132 (Flawless Profiles & DB Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -230,7 +230,6 @@
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null, preGeneratedTournament = [];
-        
         let editingPlayerId = null, tempEditGender = 'M', tempEditPhoto = null;
 
         const DB_KEY = "padelio_pro_master"; const REG_KEY = "padelio_pro_master_rooms"; 
@@ -245,12 +244,12 @@
         function loadData() { let pData = getStore('p'); players = safeArr(pData).filter(p => p && p.id); matches = safeArr(getStore('m')); settings = getStore('s') ? {...ds, ...getStore('s')} : {...ds}; savedTournaments = safeArr(getStore('h')).filter(t => t && t.id); preGeneratedTournament = safeArr(getStore('pregen')); currentTid = getStore('tid'); timeLeft = settings.matchDuration * 60; }
         function ensureTournamentId() { if(!currentTid) { currentTid = uid(); savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [...safeArr(players)], matches: [...safeArr(matches)], settings: {...settings} }); setStore('tid', currentTid); preGeneratedTournament = []; setStore('pregen', preGeneratedTournament); autoSave(); } }
 
-        // --- V131: MODALS LOGIC ---
+        // --- V132: MODALS & DB SYNC LOGIC ---
         function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
         
         function openPlayerBank() {
             let u = new Map();
-            safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if (p && p.name && !u.has(p.name)) u.set(p.name, p); }); });
+            safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if (p && p.id && !u.has(p.id)) u.set(p.id, p); }); });
             const currNames = safeArr(players).map(p => p.name);
             let available = Array.from(u.values()).filter(p => !currNames.includes(p.name));
             
@@ -259,23 +258,26 @@
             else {
                 available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
                     let av = p.photo ? `<img src="${p.photo}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">${p.gender==='M'?'V':'M'}</div>`;
-                    html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${p.name}</span></div><button onclick="addFromBank('${p.name}', '${p.gender}', '${p.photo||''}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`;
+                    html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${p.name}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`;
                 });
             }
             safeHTML('bank-list', html);
             el('modal-bank').style.display = 'flex';
         }
-        function addFromBank(name, gender, photoStr) {
-            players.push({ id: uid(), name: name, gender: gender, photo: photoStr ? photoStr : null });
-            preGeneratedTournament = []; setStore('pregen', []); autoSave();
-            closeModals(); openPlayerBank(); // refresh list
+        function addFromBank(id) {
+            let u = new Map(); safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if (p && p.id && !u.has(p.id)) u.set(p.id, p); }); });
+            const pToAdd = u.get(id);
+            if (pToAdd && !players.find(x => x.name === pToAdd.name)) {
+                players.push({ id: pToAdd.id, name: pToAdd.name, gender: pToAdd.gender, photo: pToAdd.photo });
+                preGeneratedTournament = []; setStore('pregen', []); autoSave();
+                closeModals(); openPlayerBank();
+            }
         }
 
         function openEditModal(id) {
             const p = players.find(x => x.id === id); if(!p) return;
             editingPlayerId = id; tempEditGender = p.gender; tempEditPhoto = p.photo;
-            safeVal('edit-player-name', p.name);
-            setEditGender(p.gender);
+            safeVal('edit-player-name', p.name); setEditGender(p.gender);
             const pr = el('edit-photo-preview'), pl = el('edit-photo-placeholder');
             if(p.photo) { pr.src = p.photo; pr.classList.remove('hidden'); pl.classList.add('hidden'); }
             else { pr.classList.add('hidden'); pr.src = ''; pl.classList.remove('hidden'); }
@@ -288,7 +290,17 @@
         }
         function savePlayerEdit() {
             const p = players.find(x => x.id === editingPlayerId);
-            if(p) { p.name = el('edit-player-name').value.trim() || p.name; p.gender = tempEditGender; p.photo = tempEditPhoto; autoSave(); }
+            if(p) { 
+                p.name = el('edit-player-name').value.trim() || p.name; 
+                p.gender = tempEditGender; 
+                p.photo = tempEditPhoto; 
+                // V132: Atnaujiname mačų duomenis gyvai
+                matches.forEach(m => {
+                    if(m.team1) m.team1.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; tp.photo = p.photo; }});
+                    if(m.team2) m.team2.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; tp.photo = p.photo; }});
+                });
+                autoSave(); 
+            }
             closeModals();
         }
 
@@ -297,11 +309,10 @@
             let cP = []; safeArr(savedTournaments).forEach(t => { if(t && Array.isArray(t.players)) cP.push(...safeArr(t.players)); }); cP.push(...safeArr(players));
             
             const uP = []; const seen = new Set(); cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
-            
             const stats = calculateResults(cM, uP, false).find(x => x.name === name);
             if(!stats) return;
             
-            // Find best partner
+            // V132: Ieškoma geriausio partnerio pagal vardus (atsparu klaidoms)
             const pairsList = calculatePairsResults(cM, uP).filter(x => x.p1?.name === name || x.p2?.name === name);
             let bestPartner = "Nėra", maxWins = -1;
             pairsList.forEach(pair => { if(pair.w > maxWins) { maxWins = pair.w; bestPartner = (pair.p1.name === name) ? pair.p2.name : pair.p1.name; } });
@@ -427,11 +438,13 @@
         function dispatchRoundFromPreGen(roundNum) { let newM = []; let roundData = preGeneratedTournament[roundNum - 1]; if (roundData) { roundData.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }); }); matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); } else { alert("Klaida užkraunant raundą."); } }
         function generateFixedRound(safePool) { let newM = [], roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1, teams = []; for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); } let K_even = teams.length, cycleRounds = K_even - 1, shift = (roundNum - 1) % cycleRounds, rotatedIndices = [0], others = []; for (let i = 1; i < K_even; i++) others.push(i); for (let i = 0; i < shift; i++) others.unshift(others.pop()); rotatedIndices.push(...others); let roundMatches = []; for (let i = 0; i < K_even / 2; i++) { let t1Idx = rotatedIndices[i], t2Idx = rotatedIndices[K_even - 1 - i]; if (t1Idx < teams.length && t2Idx < teams.length) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] }); } roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); }); matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); }
 
-        function calculatePairsResults(mArr, pArr) { const pairs = new Map(); try { safeArr(mArr).filter(m => m && m.finished).forEach(m => { const proc = (team, myS, enS) => { let safeTeam = safeArr(team); if (safeTeam.length >= 2 && safeTeam[0] && safeTeam[1]) { const ids = [safeTeam[0].id, safeTeam[1].id].sort(), key = ids.join('_'); if (!pairs.has(key)) { const p1 = safeArr(pArr).find(x => x && x.id === ids[0]), p2 = safeArr(pArr).find(x => x && x.id === ids[1]); pairs.set(key, { name: `${p1?.name || '?'}/${p2?.name || '?'}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0 }); } const s = pairs.get(key); s.mp++; s.sw += myS; if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++; } }; proc(m.team1, m.score1, m.score2); proc(m.team2, m.score2, m.score1); }); } catch(e) {} return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp); }
+        // V132: Porų skaičiavimas atnaujintas naudoti vardus
+        function calculatePairsResults(mArr, pArr) { const pairs = new Map(); try { safeArr(mArr).filter(m => m && m.finished).forEach(m => { const proc = (team, myS, enS) => { let safeTeam = safeArr(team); if (safeTeam.length >= 2 && safeTeam[0] && safeTeam[1]) { const names = [safeTeam[0].name, safeTeam[1].name].sort(), key = names.join('_'); if (!pairs.has(key)) { const p1 = safeArr(pArr).find(x => x && (x.id === safeTeam[0].id || x.name === safeTeam[0].name)) || safeTeam[0]; const p2 = safeArr(pArr).find(x => x && (x.id === safeTeam[1].id || x.name === safeTeam[1].name)) || safeTeam[1]; pairs.set(key, { name: `${names[0]}/${names[1]}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0 }); } const s = pairs.get(key); s.mp++; s.sw += myS; if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++; } }; proc(m.team1, m.score1, m.score2); proc(m.team2, m.score2, m.score1); }); } catch(e) {} return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp); }
 
         function autoSave() { try { if(currentTid) { const idx = safeArr(savedTournaments).findIndex(x => x && x.id === currentTid); if(idx > -1) { savedTournaments[idx].players = JSON.parse(JSON.stringify(safeArr(players))); savedTournaments[idx].matches = JSON.parse(JSON.stringify(safeArr(matches))); savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings)); savedTournaments[idx].lastUpdate = Date.now(); } } setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); if(isCloud && dbRef) { const payload = { players: safeArr(players), matches: safeArr(matches), settings: settings, savedTournaments: safeArr(savedTournaments), currentTid: currentTid, lastUpdate: Date.now() }; window.lastCloudUpdate = payload.lastUpdate; dbRef.set(payload); } render(); } catch(e) {} }
 
-        function calculateResults(mArr, pArr, isF = false) { let res = []; try { let safeP = safeArr(pArr); if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, photo:null, gender:'M' }); } else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); } safeArr(mArr).filter(m => m && m.finished).forEach(m => { const up = (team, myS, enS) => { let t = safeArr(team); if(t.length === 0) return; let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && r.id === p?.id)); safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } }); }; if(m.team1 && m.team2) { up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); } }); } catch(e) {} return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); }
+        // V132: Žaidėjų rezultatų skaičiavimas atnaujintas naudoti vardus
+        function calculateResults(mArr, pArr, isF = false) { let res = []; try { let safeP = safeArr(pArr); if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, photo:null, gender:'M' }); } else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); } safeArr(mArr).filter(m => m && m.finished).forEach(m => { const up = (team, myS, enS) => { let t = safeArr(team); if(t.length === 0) return; let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } }); }; if(m.team1 && m.team2) { up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); } }); } catch(e) {} return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); }
 
         function render() {
             try {
@@ -442,14 +455,11 @@
                 });
                 safeHTML('leaderboard-body', lHtml);
                 const curT = safeArr(savedTournaments).find(x => x && x.id === currentTid); safeVal('tournament-name-field', curT ? curT.name : '');
-                
-                // V131 Edit Pencil
                 let pHtml = ''; safeArr(players).forEach((p, index) => {
                     let av = ''; if (p.photo) { let fc = p.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f', bg = p.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = p.gender === 'M' ? 'V' : 'M'; av = `<div class="relative w-9 h-9 shrink-0"><img src="${p.photo}" class="w-full h-full rounded-full object-cover ${fc}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${bg}">${bt}</div></div>`; } else { let bg = p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500', bt = p.gender === 'M' ? 'V' : 'M'; av = `<div class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${bg}">${bt}</div>`; }
                     pHtml += `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${index + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${p.name}</div></div><div class="flex items-center gap-2"><button type="button" onclick="openEditModal('${p.id}')" class="text-slate-400 p-1 text-lg leading-none active:scale-90">✏️</button><button type="button" onclick="removePlayer('${p.id}')" class="text-red-300 text-xl font-bold px-2 active:scale-90">&times;</button></div></div>`;
                 });
                 safeHTML('players-list', pHtml);
-                
                 const isSc = settings.winCondition === 'score'; safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); safeDisplay('control-duration', !isSc ? 'block' : 'none'); safeDisplay('control-points', !isSc ? 'none' : 'block'); safeDisplay('score-mode-text', isSc ? 'block' : 'none'); safeDisplay('timer-controls', isSc ? 'none' : 'flex');
                 if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
                 const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0'); safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts); safeText('player-count', "Viso: " + safeArr(players).length); safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
