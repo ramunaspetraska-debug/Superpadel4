@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V142 (HD Photos & Share)</title>
+    <title>Padelio PRO V144 (Ultra HD Share)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -32,25 +32,12 @@
         .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); padding: 20px; max-height: 90vh; overflow-y: auto; }
         .clickable-name { color: #0ea5e9; cursor: pointer; transition: color 0.2s; }
         .clickable-name:active { color: #0284c7; }
-
-        /* Share Area Styles */
-        #share-area { background: white; padding: 20px; border-radius: 0px; width: 380px; position: fixed; left: -9999px; top: 0; }
-        .share-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; }
     </style>
 </head>
 <body>
 
     <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
-    <div id="loading-overlay"><div class="spinner mb-4"></div><p class="text-sm font-bold text-slate-700">Kraunama...</p></div>
-
-    <div id="share-area">
-        <div class="share-header">
-            <h1 style="font-size: 24px; font-weight: 900; color: #0f172a; margin-bottom: 4px;">Padelio PRO</h1>
-            <h2 id="share-tournament-title" style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Turnyro Rezultatai</h2>
-        </div>
-        <div id="share-table-body"></div>
-        <div style="margin-top: 20px; text-align: center; font-size: 10px; color: #cbd5e1; font-weight: bold;">Sugeneruota su www.superpadel.lt</div>
-    </div>
+    <div id="loading-overlay"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
     <div id="modal-bank" class="modal-overlay">
         <div class="modal-content">
@@ -176,9 +163,10 @@
         <div id="view-leader" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black tracking-tight">Rezultatai</h2>
-                <button onclick="shareResultsAsImage()" class="px-4 py-2 bg-blue-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-md active:scale-95">Dalintis 📤</button>
+                <button onclick="shareResultsAsImage()" class="px-4 py-2 bg-blue-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-transform">Dalintis 📤</button>
             </div>
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full" id="leaderboard-capture-target">
+            
+            <div id="leaderboard-capture-target" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full transition-all">
                  <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
                     <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
                  </div>
@@ -236,22 +224,8 @@
         function safeClass(id, c) { try { const e = el(id); if(e) e.className = c; } catch(e){} }
         function safeDisplay(id, d) { try { const e = el(id); if(e) e.style.display = d; } catch(e){} }
         function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-        
-        function safeArr(val) { 
-            if (!val) return []; 
-            if (Array.isArray(val)) return val; 
-            if (typeof val === 'object') return Object.values(val); 
-            return []; 
-        }
-        
-        function shuffle(array) { 
-            let arr = [...array]; 
-            for (let i = arr.length - 1; i > 0; i--) { 
-                const j = Math.floor(Math.random() * (i + 1)); 
-                [arr[i], arr[j]] = [arr[j], arr[i]]; 
-            } 
-            return arr; 
-        }
+        function safeArr(val) { if (!val) return []; if (Array.isArray(val)) return val; if (typeof val === 'object') return Object.values(val); return []; }
+        function shuffle(array) { let arr = [...array]; for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
         const ds = { matchDuration: 12, maxPoints: 21, winCondition: 'time', format: 'americano', rankingMode: 'points' };
         let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
@@ -259,60 +233,29 @@
         let statType = 'indiv', adminClickCount = 0, adminTimer = null, preGeneratedTournament = [];
         let editingPlayerId = null, tempEditGender = 'M', tempEditPhoto = null;
 
-        const DB_KEY = "padelio_pro_master"; 
-        const REG_KEY = "padelio_pro_master_rooms"; 
-
-        function getStore(key) { 
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; 
-            try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; } 
-        }
-
-        function setStore(key, val) { 
-            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; 
-            try { if (val === null) localStorage.removeItem(prefix + key); else localStorage.setItem(prefix + key, JSON.stringify(val)); } catch(e) {} 
-        }
+        const DB_KEY = "padelio_pro_master"; const REG_KEY = "padelio_pro_master_rooms"; 
+        function getStore(key) { const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; } }
+        function setStore(key, val) { const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; try { if (val === null) localStorage.removeItem(prefix + key); else localStorage.setItem(prefix + key, JSON.stringify(val)); } catch(e) {} }
 
         let activeRoom = localStorage.getItem('sp_active_room_master') || '';
         if(activeRoom) isCloud = true;
 
-        function ensureFirebaseInit() { 
-            try { 
-                if(typeof firebase !== 'undefined' && !firebase.apps.length) {
-                    firebase.initializeApp({ apiKey: el('fb-apiKey')?.value||'', authDomain: el('fb-authDomain')?.value||'', databaseURL: el('fb-databaseURL')?.value||'', projectId: el('fb-projectId')?.value||'' }); 
-                }
-            } catch(e){} 
-        }
-
-        function migrateOldData() { 
-            if (localStorage.getItem('sp_master_local_p')) return; 
-            const old = ['sp_v125_2_local_', 'sp_v125_local_', 'sp_v124_local_', 'sp_v123_local_', 'sp_v122_local_', 'sp_v121_local_', 'sp_v120_local_']; 
-            for (let prefix of old) { 
-                if (localStorage.getItem(prefix + 'p')) { 
-                    ['p', 'm', 's', 'h', 'tid', 'pregen'].forEach(k => { 
-                        let oldVal = localStorage.getItem(prefix + k); 
-                        if (oldVal) localStorage.setItem('sp_master_local_' + k, oldVal); 
-                    }); 
-                    break; 
-                } 
-            } 
-        }
-
-        function loadData() { 
-            let pData = getStore('p'); players = safeArr(pData).filter(p => p && p.id); matches = safeArr(getStore('m')); 
-            settings = getStore('s') ? {...ds, ...getStore('s')} : {...ds}; savedTournaments = safeArr(getStore('h')).filter(t => t && t.id); 
-            preGeneratedTournament = safeArr(getStore('pregen')); currentTid = getStore('tid'); timeLeft = settings.matchDuration * 60; 
-        }
-
+        function ensureFirebaseInit() { try { if(typeof firebase !== 'undefined' && !firebase.apps.length) firebase.initializeApp({ apiKey: el('fb-apiKey')?.value||'', authDomain: el('fb-authDomain')?.value||'', databaseURL: el('fb-databaseURL')?.value||'', projectId: el('fb-projectId')?.value||'' }); } catch(e){} }
+        function migrateOldData() { if (localStorage.getItem('sp_master_local_p')) return; const old = ['sp_v125_2_local_', 'sp_v125_local_', 'sp_v124_local_', 'sp_v123_local_', 'sp_v122_local_', 'sp_v121_local_', 'sp_v120_local_']; for (let prefix of old) { if (localStorage.getItem(prefix + 'p')) { ['p', 'm', 's', 'h', 'tid', 'pregen'].forEach(k => { let oldVal = localStorage.getItem(prefix + k); if (oldVal) localStorage.setItem('sp_master_local_' + k, oldVal); }); break; } } }
+        function loadData() { let pData = getStore('p'); players = safeArr(pData).filter(p => p && p.id); matches = safeArr(getStore('m')); settings = getStore('s') ? {...ds, ...getStore('s')} : {...ds}; savedTournaments = safeArr(getStore('h')).filter(t => t && t.id); preGeneratedTournament = safeArr(getStore('pregen')); currentTid = getStore('tid'); timeLeft = settings.matchDuration * 60; }
+        
         function ensureTournamentId() { 
             if(!currentTid) { 
                 currentTid = uid(); 
                 savedTournaments.unshift({ id: currentTid, name: new Date().toLocaleDateString('lt-LT') + ' Turnyras', date: new Date().toISOString(), players: [...safeArr(players)], matches: [...safeArr(matches)], settings: {...settings} }); 
-                setStore('tid', currentTid); safeVal('tournament-name-field', savedTournaments[0].name);
-                preGeneratedTournament = []; setStore('pregen', preGeneratedTournament); autoSave(); 
+                setStore('tid', currentTid); 
+                safeVal('tournament-name-field', savedTournaments[0].name); 
+                preGeneratedTournament = []; setStore('pregen', preGeneratedTournament); 
+                autoSave(); 
             } 
         }
 
-        // V142: HD PHOTOS ENABLED (MAX=256, Quality=0.85)
+        // V144: HD PHOTOS FOR NEW PLAYERS
         function handlePhotoUpload(e) {
             try {
                 const file = e.target.files[0]; if(!file) return; const r = new FileReader(); 
@@ -372,7 +315,7 @@
             safeClass('edit-gender-f', g==='F'?'w-10 font-bold bg-pink-500 text-white text-[10px]':'w-10 font-bold text-slate-400 text-[10px]'); 
         }
 
-        // V142: HD PHOTOS FOR EDIT (MAX=256, Quality=0.85)
+        // V144: HD PHOTOS FOR EDIT
         function handleEditPhotoUpload(e) {
             const file = e.target.files[0]; if(!file) return; const r = new FileReader(); 
             r.onload = (ev) => { const img = new Image(); img.onload = function() { 
@@ -448,32 +391,88 @@
             el('modal-card').style.display = 'flex';
         }
 
-        // --- SHARE RESULTS FUNCTION ---
+        // V144: VISIBLE DOM CAPTURE FOR PERFECT QUALITY
         function shareResultsAsImage() {
-            const tableClone = el('leaderboard-capture-target').cloneNode(true);
-            const title = el('tournament-name-field').value || "Turnyro Rezultatai";
-            el('share-tournament-title').innerText = title;
-            safeHTML('share-table-body', '');
-            el('share-table-body').appendChild(tableClone);
-            
             el('loading-overlay').style.display = 'flex';
-            safeText('loading-overlay', "Generuojama nuotrauka...");
+            safeText('loading-text', "Kuriama HD nuotrauka...");
+            
+            const target = el('leaderboard-capture-target');
+            const title = el('tournament-name-field').value || "Turnyro Rezultatai";
+            
+            // Create a temporary wrapper to make it look like a high-end graphic
+            const wrapper = document.createElement('div');
+            wrapper.id = 'temp-share-wrapper';
+            wrapper.style.padding = '20px';
+            wrapper.style.background = '#ffffff'; 
+            wrapper.style.borderRadius = '24px'; 
+            wrapper.style.width = '100%'; 
+            
+            const header = document.createElement('div');
+            header.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
+                    <h1 style="font-size: 26px; font-weight: 900; color: #0f172a; margin-bottom: 4px; letter-spacing: -0.5px;">Padelio PRO</h1>
+                    <h2 style="font-size: 14px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 1px;">${title}</h2>
+                </div>
+            `;
+            
+            const footer = document.createElement('div');
+            footer.innerHTML = `
+                <div style="text-align: center; font-size: 11px; color: #94a3b8; font-weight: bold; margin-top: 20px; padding-top: 15px; border-top: 2px solid #f1f5f9;">
+                    Sugeneruota su www.superpadel.lt
+                </div>
+            `;
+            
+            // Perform temporary DOM manipulation to capture exactly what the user sees
+            const parent = target.parentNode;
+            parent.insertBefore(wrapper, target);
+            
+            target.style.boxShadow = 'none'; // Clean look
+            target.style.border = 'none';
+            
+            wrapper.appendChild(header);
+            wrapper.appendChild(target);
+            wrapper.appendChild(footer);
 
-            html2canvas(el('share-area'), { scale: 2, backgroundColor: "#ffffff", useCORS: true }).then(canvas => {
-                el('loading-overlay').style.display = 'none';
-                const imgData = canvas.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.download = `${title}.png`;
-                link.href = imgData;
-                link.click();
-                
-                if (navigator.share) {
-                    canvas.toBlob(blob => {
-                        const file = new File([blob], "rezultatai.png", { type: "image/png" });
-                        navigator.share({ files: [file], title: title, text: 'Turnyro rezultatai' }).catch(err => console.log(err));
-                    });
-                }
-            });
+            setTimeout(() => {
+                html2canvas(wrapper, { 
+                    scale: 4, // 4X UHD RES (išsprendžia visas susiliejimo problemas)
+                    backgroundColor: "#ffffff", 
+                    useCORS: true,
+                    allowTaint: true
+                }).then(canvas => {
+                    // Restore original DOM state
+                    target.style.boxShadow = ''; 
+                    target.style.border = '';
+                    parent.insertBefore(target, wrapper); 
+                    parent.removeChild(wrapper); 
+                    
+                    el('loading-overlay').style.display = 'none';
+                    safeText('loading-text', "Kraunama..."); 
+                    
+                    const imgData = canvas.toDataURL('image/png', 1.0);
+                    const link = document.createElement('a');
+                    link.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_rezultatai.png`;
+                    link.href = imgData;
+                    link.click();
+                    
+                    // Native share prompt for mobile phones
+                    if (navigator.share) {
+                        canvas.toBlob(blob => {
+                            const file = new File([blob], "rezultatai.png", { type: "image/png" });
+                            navigator.share({ files: [file], title: title, text: 'Turnyro rezultatai' }).catch(err => console.log(err));
+                        });
+                    }
+                }).catch(err => {
+                    target.style.boxShadow = '';
+                    target.style.border = '';
+                    parent.insertBefore(target, wrapper);
+                    parent.removeChild(wrapper);
+                    
+                    console.error(err);
+                    el('loading-overlay').style.display = 'none';
+                    alert("Nepavyko sugeneruoti nuotraukos.");
+                });
+            }, 100);
         }
 
         // --- MULTI-MATRIX ENGINE ---
