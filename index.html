@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V144 (Ultra HD Share)</title>
+    <title>Padelio PRO V146 (QR Code Live Share)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         html, body { overscroll-behavior-y: none; overscroll-behavior-x: none; background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: 80px; font-size: 14px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -32,12 +33,27 @@
         .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); padding: 20px; max-height: 90vh; overflow-y: auto; }
         .clickable-name { color: #0ea5e9; cursor: pointer; transition: color 0.2s; }
         .clickable-name:active { color: #0284c7; }
+
+        /* Share Area Styles */
+        #share-area { background: white; padding: 20px; border-radius: 0px; width: 380px; position: fixed; left: -9999px; top: 0; }
+        .share-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; }
+        
+        /* QR Code Styles */
+        #qrcode img { margin: 0 auto; border-radius: 10px; border: 10px solid white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body>
 
-    <div id="sync-status" class="fixed top-0 left-0 w-full h-1 bg-gray-200 z-[60]"><div id="sync-bar" class="h-full bg-green-500 w-0 transition-all duration-500"></div></div>
     <div id="loading-overlay"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
+
+    <div id="share-area">
+        <div class="share-header">
+            <h1 style="font-size: 24px; font-weight: 900; color: #0f172a; margin-bottom: 4px;">Padelio PRO</h1>
+            <h2 id="share-tournament-title" style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Turnyro Rezultatai</h2>
+        </div>
+        <div id="share-table-body"></div>
+        <div style="margin-top: 20px; text-align: center; font-size: 10px; color: #cbd5e1; font-weight: bold;">Sugeneruota su www.superpadel.lt</div>
+    </div>
 
     <div id="modal-bank" class="modal-overlay">
         <div class="modal-content">
@@ -76,6 +92,18 @@
 
     <div id="modal-card" class="modal-overlay">
         <div class="modal-content" id="card-content"></div>
+    </div>
+
+    <div id="modal-qr" class="modal-overlay">
+        <div class="modal-content bg-slate-900 text-white border border-slate-700">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-black text-lg text-white uppercase tracking-widest">Prisijungti gyvai</h3>
+                <button onclick="closeModals()" class="text-slate-400 text-2xl font-bold px-2">&times;</button>
+            </div>
+            <p class="text-xs text-slate-400 text-center mb-6">Nuskenuokite šį kodą su savo telefono kamera, kad matytumėte rezultatus gyvai.</p>
+            <div id="qrcode" class="flex justify-center mb-6 bg-white p-4 rounded-xl"></div>
+            <p id="qr-room-name" class="text-center font-black text-green-400 text-xl uppercase tracking-widest"></p>
+        </div>
     </div>
 
     <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full shadow-sm">
@@ -200,7 +228,32 @@
         <div id="view-history" class="view-section w-full"><h2 class="text-2xl font-black mb-6 tracking-tight">Istorija</h2><div id="history-list" class="space-y-4"></div></div>
         <div id="view-admin" class="view-section w-full"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-red-600 tracking-tight">Kambario Admin</h2><button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button></div><div class="space-y-4"><div class="bg-white p-4 rounded-2xl border border-slate-200"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Turnyrai</h3><div id="admin-tournaments-list" class="space-y-2"></div></div><div class="bg-white p-4 rounded-2xl border border-slate-200"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Žaidėjai</h3><div id="admin-players-list" class="space-y-1 divide-y divide-slate-50"></div></div></div></div>
         <div id="view-superadmin" class="view-section w-full"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-purple-600 tracking-tight">Super Admin</h2><button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button></div><div class="bg-white p-4 rounded-2xl border border-slate-200"><div id="superadmin-rooms-list" class="space-y-2"><div class="text-center text-xs text-slate-400 py-4">Kraunama...</div></div></div></div>
-        <div id="view-cloud" class="view-section w-full"><h2 class="text-2xl font-black mb-6">Debesis</h2><div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white"><div class="flex justify-between items-center mb-6"><h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3><span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span></div><input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden"><input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden"><input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden"><input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden"><div id="cloud-connect-ui" class="space-y-4 text-center"><input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500"><button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button></div><div id="cloud-active-ui" class="hidden space-y-4 text-center"><p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest">---</p><button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button></div></div></div>
+        
+        <div id="view-cloud" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-6">Debesis</h2>
+            <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
+                    <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
+                </div>
+                <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
+                <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
+                <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
+                <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
+                
+                <div id="cloud-connect-ui" class="space-y-4 text-center">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
+                </div>
+                <div id="cloud-active-ui" class="hidden space-y-4 text-center">
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest mb-4">---</p>
+                    
+                    <button type="button" onclick="showQRCode()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors shadow-lg mb-2">Rodyti QR Kodą</button>
+                    
+                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
@@ -232,6 +285,7 @@
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null, preGeneratedTournament = [];
         let editingPlayerId = null, tempEditGender = 'M', tempEditPhoto = null;
+        let qrCodeInstance = null; // V146: QR kodo kintamasis
 
         const DB_KEY = "padelio_pro_master"; const REG_KEY = "padelio_pro_master_rooms"; 
         function getStore(key) { const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; } }
@@ -255,7 +309,6 @@
             } 
         }
 
-        // V144: HD PHOTOS FOR NEW PLAYERS
         function handlePhotoUpload(e) {
             try {
                 const file = e.target.files[0]; if(!file) return; const r = new FileReader(); 
@@ -315,7 +368,6 @@
             safeClass('edit-gender-f', g==='F'?'w-10 font-bold bg-pink-500 text-white text-[10px]':'w-10 font-bold text-slate-400 text-[10px]'); 
         }
 
-        // V144: HD PHOTOS FOR EDIT
         function handleEditPhotoUpload(e) {
             const file = e.target.files[0]; if(!file) return; const r = new FileReader(); 
             r.onload = (ev) => { const img = new Image(); img.onload = function() { 
@@ -391,7 +443,35 @@
             el('modal-card').style.display = 'flex';
         }
 
-        // V144: VISIBLE DOM CAPTURE FOR PERFECT QUALITY
+        // V146: SHOW QR CODE FUNCTION
+        function showQRCode() {
+            if (!activeRoom) return;
+            const qrContainer = el('qrcode');
+            qrContainer.innerHTML = ''; // Išvalo seną kodą, jei toks buvo
+            
+            // Sugeneruojamas URL adresas su ?room parametru
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = `${baseUrl}?room=${encodeURIComponent(activeRoom)}`;
+            
+            // Sukuriamas pats QR kodas
+            if (qrCodeInstance) {
+                qrCodeInstance.clear();
+                qrCodeInstance.makeCode(shareUrl);
+            } else {
+                qrCodeInstance = new QRCode(qrContainer, {
+                    text: shareUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#0f172a", // Tamsi mėlyna/juoda (Slate 900)
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }
+            
+            safeText('qr-room-name', activeRoom);
+            el('modal-qr').style.display = 'flex';
+        }
+
         function shareResultsAsImage() {
             el('loading-overlay').style.display = 'flex';
             safeText('loading-text', "Kuriama HD nuotrauka...");
@@ -399,7 +479,6 @@
             const target = el('leaderboard-capture-target');
             const title = el('tournament-name-field').value || "Turnyro Rezultatai";
             
-            // Create a temporary wrapper to make it look like a high-end graphic
             const wrapper = document.createElement('div');
             wrapper.id = 'temp-share-wrapper';
             wrapper.style.padding = '20px';
@@ -422,11 +501,10 @@
                 </div>
             `;
             
-            // Perform temporary DOM manipulation to capture exactly what the user sees
             const parent = target.parentNode;
             parent.insertBefore(wrapper, target);
             
-            target.style.boxShadow = 'none'; // Clean look
+            target.style.boxShadow = 'none'; 
             target.style.border = 'none';
             
             wrapper.appendChild(header);
@@ -435,12 +513,11 @@
 
             setTimeout(() => {
                 html2canvas(wrapper, { 
-                    scale: 4, // 4X UHD RES (išsprendžia visas susiliejimo problemas)
+                    scale: 4, 
                     backgroundColor: "#ffffff", 
                     useCORS: true,
                     allowTaint: true
                 }).then(canvas => {
-                    // Restore original DOM state
                     target.style.boxShadow = ''; 
                     target.style.border = '';
                     parent.insertBefore(target, wrapper); 
@@ -455,7 +532,6 @@
                     link.href = imgData;
                     link.click();
                     
-                    // Native share prompt for mobile phones
                     if (navigator.share) {
                         canvas.toBlob(blob => {
                             const file = new File([blob], "rezultatai.png", { type: "image/png" });
@@ -529,8 +605,7 @@
 
         function calculatePairsResults(mArr, pArr) { const pairs = new Map(); try { safeArr(mArr).filter(m => m && m.finished).forEach(m => { const proc = (team, myS, enS) => { let safeTeam = safeArr(team); if (safeTeam.length >= 2 && safeTeam[0] && safeTeam[1]) { const names = [safeTeam[0].name, safeTeam[1].name].sort(), key = names.join('_'); if (!pairs.has(key)) { const p1 = safeArr(pArr).find(x => x && (x.id === safeTeam[0].id || x.name === safeTeam[0].name)) || safeTeam[0]; const p2 = safeArr(pArr).find(x => x && (x.id === safeTeam[1].id || x.name === safeTeam[1].name)) || safeTeam[1]; pairs.set(key, { name: `${names[0]}/${names[1]}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0 }); } const s = pairs.get(key); s.mp++; s.sw += myS; if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++; } }; proc(m.team1, m.score1, m.score2); proc(m.team2, m.score2, m.score1); }); } catch(e) {} return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp); }
 
-        function autoSave() { try { if(currentTid) { const idx = safeArr(savedTournaments).findIndex(x => x && x.id === currentTid); if(idx > -1) { savedTournaments[idx].players = JSON.parse(JSON.stringify(safeArr(players))); savedTournaments[idx].matches = JSON.parse(JSON.stringify(safeArr(matches))); savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings)); savedTournaments[idx].lastUpdate = Date.now(); } } setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); if(isCloud && dbRef) { const payload = { players: safeArr(players), matches: safeArr(matches), settings: settings, savedTournaments: safeArr(savedTournaments), currentTid: currentTid, lastUpdate: Date.now() }; window.lastCloudUpdate = payload.lastUpdate; dbRef.set(payload).then(() => flashSyncIndicator()); } render(); } catch(e) {} }
-        function flashSyncIndicator() { const bar = el('sync-bar'); if(bar) { bar.style.transition = 'none'; bar.style.width = '0%'; setTimeout(() => { bar.style.transition = 'width 0.3s ease-out'; bar.style.width = '100%'; setTimeout(() => { bar.style.transition = 'opacity 0.2s'; bar.style.opacity = '0'; setTimeout(() => { bar.style.width = '0%'; bar.style.opacity = '1'; }, 200); }, 300); }, 10); } }
+        function autoSave() { try { if(currentTid) { const idx = safeArr(savedTournaments).findIndex(x => x && x.id === currentTid); if(idx > -1) { savedTournaments[idx].players = JSON.parse(JSON.stringify(safeArr(players))); savedTournaments[idx].matches = JSON.parse(JSON.stringify(safeArr(matches))); savedTournaments[idx].settings = JSON.parse(JSON.stringify(settings)); savedTournaments[idx].lastUpdate = Date.now(); } } setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); if(isCloud && dbRef) { const payload = { players: safeArr(players), matches: safeArr(matches), settings: settings, savedTournaments: safeArr(savedTournaments), currentTid: currentTid, lastUpdate: Date.now() }; window.lastCloudUpdate = payload.lastUpdate; dbRef.set(payload); } render(); } catch(e) {} }
 
         function calculateResults(mArr, pArr, isF = false) { let res = []; try { let safeP = safeArr(pArr); if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, photo:null, gender:'M' }); } else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); } safeArr(mArr).filter(m => m && m.finished).forEach(m => { const up = (team, myS, enS) => { let t = safeArr(team); if(t.length === 0) return; let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } }); }; if(m.team1 && m.team2) { up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); } }); } catch(e) {} return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); }
 
@@ -625,14 +700,48 @@
             const fin = safeArr(matches).filter(m => m && m.finished).reverse(); let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : ''; fin.forEach((m) => { let n1 = safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/'), n2 = safeArr(m.team2).filter(p=>p&&p.name).map(p=>p.name).join('/'); fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate"><span class="match-number-badge">R${m.round}</span><div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`; }); safeHTML('finished-matches-container', fHtml);
         }
 
+        // V146: CHECK URL PARAMETERS FOR AUTO-JOIN
+        function checkUrlForRoom() {
+            const params = new URLSearchParams(window.location.search);
+            const roomFromUrl = params.get('room');
+            if (roomFromUrl) {
+                activeRoom = roomFromUrl;
+                isCloud = true;
+                localStorage.setItem('sp_active_room_master', activeRoom);
+                // Išvalo URL nuorodą, kad puslapis atrodytų švariai po prisijungimo
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
         function initFirebaseConnection() { 
-            const room = el('fb-room')?.value.trim(); if(!room) return; ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); dbRef = firebase.database().ref(DB_KEY + '/' + room); safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center"); safeText('cloud-room-name-display', room); 
+            const room = el('fb-room')?.value.trim() || activeRoom; 
+            if(!room) return; 
+            ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
+            firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
+            dbRef = firebase.database().ref(DB_KEY + '/' + room); 
+            safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center"); safeText('cloud-room-name-display', room); 
+            
             dbRef.on('value', snap => { const d = snap.val(); if(d && d.lastUpdate !== window.lastCloudUpdate) { window.lastCloudUpdate = d.lastUpdate; players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings ? {...ds, ...d.settings} : {...ds}; savedTournaments = safeArr(d.savedTournaments).filter(t => t && t.id); currentTid = d.currentTid || null; preGeneratedTournament = safeArr(d.preGeneratedTournament); render(); } }); 
         }
+        
         function disconnectFirebase() { localStorage.removeItem('sp_active_room_master'); location.reload(); }
 
         window.addEventListener('beforeunload', function (e) { if (safeArr(matches).some(m => !m.finished)) { e.preventDefault(); e.returnValue = ''; } });
-        window.onload = () => { migrateOldData(); loadData(); if (isCloud && activeRoom) { const r = el('fb-room'); if(r) r.value = activeRoom; initFirebaseConnection(); } render(); if (safeArr(matches).length > 0) switchView('matches'); else switchView('setup'); };
+        
+        window.onload = () => { 
+            migrateOldData(); 
+            loadData(); 
+            checkUrlForRoom(); // V146
+            
+            if (isCloud && activeRoom) { 
+                const r = el('fb-room'); 
+                if(r) r.value = activeRoom; 
+                initFirebaseConnection(); 
+            } 
+            
+            render(); 
+            if (safeArr(matches).length > 0) switchView('matches'); else switchView('setup'); 
+        };
     </script>
 </body>
 </html>
