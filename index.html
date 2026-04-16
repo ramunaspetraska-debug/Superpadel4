@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V146 (QR Code Live Share)</title>
+    <title>Padelio PRO V147 (Inline QR Code)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -39,7 +39,7 @@
         .share-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; }
         
         /* QR Code Styles */
-        #qrcode img { margin: 0 auto; border-radius: 10px; border: 10px solid white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        #qrcode img { margin: 0 auto; border-radius: 10px; border: 5px solid white; }
     </style>
 </head>
 <body>
@@ -92,18 +92,6 @@
 
     <div id="modal-card" class="modal-overlay">
         <div class="modal-content" id="card-content"></div>
-    </div>
-
-    <div id="modal-qr" class="modal-overlay">
-        <div class="modal-content bg-slate-900 text-white border border-slate-700">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="font-black text-lg text-white uppercase tracking-widest">Prisijungti gyvai</h3>
-                <button onclick="closeModals()" class="text-slate-400 text-2xl font-bold px-2">&times;</button>
-            </div>
-            <p class="text-xs text-slate-400 text-center mb-6">Nuskenuokite šį kodą su savo telefono kamera, kad matytumėte rezultatus gyvai.</p>
-            <div id="qrcode" class="flex justify-center mb-6 bg-white p-4 rounded-xl"></div>
-            <p id="qr-room-name" class="text-center font-black text-green-400 text-xl uppercase tracking-widest"></p>
-        </div>
     </div>
 
     <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-4 w-full shadow-sm">
@@ -245,12 +233,14 @@
                     <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
                     <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
                 </div>
-                <div id="cloud-active-ui" class="hidden space-y-4 text-center">
-                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest mb-4">---</p>
+                
+                <div id="cloud-active-ui" class="hidden space-y-4 text-center flex flex-col items-center">
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest mb-2">---</p>
+                    <p class="text-xs text-slate-400 mb-4">Nuskenuokite kodą, kad matytumėte rezultatus gyvai:</p>
                     
-                    <button type="button" onclick="showQRCode()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors shadow-lg mb-2">Rodyti QR Kodą</button>
+                    <div id="qrcode" class="flex justify-center bg-white p-3 rounded-xl shadow-inner mb-4 mx-auto w-max"></div>
                     
-                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white">Atsijungti</button>
+                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white mt-4">Atsijungti</button>
                 </div>
             </div>
         </div>
@@ -285,7 +275,7 @@
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null, preGeneratedTournament = [];
         let editingPlayerId = null, tempEditGender = 'M', tempEditPhoto = null;
-        let qrCodeInstance = null; // V146: QR kodo kintamasis
+        let qrCodeInstance = null;
 
         const DB_KEY = "padelio_pro_master"; const REG_KEY = "padelio_pro_master_rooms"; 
         function getStore(key) { const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; } }
@@ -441,35 +431,6 @@
             `;
             safeHTML('card-content', html);
             el('modal-card').style.display = 'flex';
-        }
-
-        // V146: SHOW QR CODE FUNCTION
-        function showQRCode() {
-            if (!activeRoom) return;
-            const qrContainer = el('qrcode');
-            qrContainer.innerHTML = ''; // Išvalo seną kodą, jei toks buvo
-            
-            // Sugeneruojamas URL adresas su ?room parametru
-            const baseUrl = window.location.origin + window.location.pathname;
-            const shareUrl = `${baseUrl}?room=${encodeURIComponent(activeRoom)}`;
-            
-            // Sukuriamas pats QR kodas
-            if (qrCodeInstance) {
-                qrCodeInstance.clear();
-                qrCodeInstance.makeCode(shareUrl);
-            } else {
-                qrCodeInstance = new QRCode(qrContainer, {
-                    text: shareUrl,
-                    width: 200,
-                    height: 200,
-                    colorDark : "#0f172a", // Tamsi mėlyna/juoda (Slate 900)
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-            }
-            
-            safeText('qr-room-name', activeRoom);
-            el('modal-qr').style.display = 'flex';
         }
 
         function shareResultsAsImage() {
@@ -700,7 +661,28 @@
             const fin = safeArr(matches).filter(m => m && m.finished).reverse(); let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : ''; fin.forEach((m) => { let n1 = safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/'), n2 = safeArr(m.team2).filter(p=>p&&p.name).map(p=>p.name).join('/'); fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate"><span class="match-number-badge">R${m.round}</span><div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`; }); safeHTML('finished-matches-container', fHtml);
         }
 
-        // V146: CHECK URL PARAMETERS FOR AUTO-JOIN
+        // V147: INLINE QR CODE GENERATION
+        function generateInlineQR(room) {
+            const qrContainer = el('qrcode');
+            qrContainer.innerHTML = ''; 
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = `${baseUrl}?room=${encodeURIComponent(room)}`;
+            
+            if (qrCodeInstance) {
+                qrCodeInstance.clear();
+                qrCodeInstance.makeCode(shareUrl);
+            } else {
+                qrCodeInstance = new QRCode(qrContainer, {
+                    text: shareUrl,
+                    width: 160,
+                    height: 160,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            }
+        }
+
         function checkUrlForRoom() {
             const params = new URLSearchParams(window.location.search);
             const roomFromUrl = params.get('room');
@@ -708,7 +690,6 @@
                 activeRoom = roomFromUrl;
                 isCloud = true;
                 localStorage.setItem('sp_active_room_master', activeRoom);
-                // Išvalo URL nuorodą, kad puslapis atrodytų švariai po prisijungimo
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
@@ -719,7 +700,13 @@
             ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
             firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
             dbRef = firebase.database().ref(DB_KEY + '/' + room); 
-            safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); safeClass('cloud-active-ui', "space-y-4 text-center"); safeText('cloud-room-name-display', room); 
+            
+            safeText('cloud-status', "Prijungta"); 
+            safeClass('cloud-connect-ui', "hidden space-y-4 text-center"); 
+            safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); 
+            safeText('cloud-room-name-display', room); 
+            
+            generateInlineQR(room); // Generates QR Code directly in the view
             
             dbRef.on('value', snap => { const d = snap.val(); if(d && d.lastUpdate !== window.lastCloudUpdate) { window.lastCloudUpdate = d.lastUpdate; players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings ? {...ds, ...d.settings} : {...ds}; savedTournaments = safeArr(d.savedTournaments).filter(t => t && t.id); currentTid = d.currentTid || null; preGeneratedTournament = safeArr(d.preGeneratedTournament); render(); } }); 
         }
@@ -731,7 +718,7 @@
         window.onload = () => { 
             migrateOldData(); 
             loadData(); 
-            checkUrlForRoom(); // V146
+            checkUrlForRoom(); 
             
             if (isCloud && activeRoom) { 
                 const r = el('fb-room'); 
