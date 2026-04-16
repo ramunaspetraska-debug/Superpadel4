@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Padelio PRO V149 (Stable Engine)</title>
+    <title>Padelio PRO V150 (Debounced Cloud Sync)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -248,6 +248,7 @@
         let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
         let statType = 'indiv', adminClickCount = 0, adminTimer = null, preGeneratedTournament = [];
         let editingPlayerId = null, tempEditGender = 'M', tempEditPhoto = null, qrCodeInstance = null;
+        let saveTimeout = null; // V150: Debounce timeris
 
         const DB_KEY = "padelio_pro_master"; 
         const REG_KEY = "padelio_pro_master_rooms"; 
@@ -284,6 +285,7 @@
             } 
         }
 
+        // V150: DEBOUNCED AUTOSAVE (Apsauga nuo duomenų dingimo)
         function autoSave() { 
             try { 
                 if(currentTid) { 
@@ -296,13 +298,19 @@
                         savedTournaments[idx].lastUpdate = Date.now(); 
                     } 
                 } 
+                
                 setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); 
-                if(isCloud && dbRef) { 
-                    const payload = { players: safeArr(players), matches: safeArr(matches), settings: settings, savedTournaments: safeArr(savedTournaments), currentTid: currentTid, lastUpdate: Date.now() }; 
-                    window.lastCloudUpdate = payload.lastUpdate; 
-                    dbRef.set(payload); 
-                } 
-                render(); 
+                render(); // Atnaujiname ekraną vartotojui IŠKART
+                
+                // Siunčiame į Firebase tik po 0.3s pauzės
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    if(isCloud && dbRef) { 
+                        const payload = { players: safeArr(players), matches: safeArr(matches), settings: settings, savedTournaments: safeArr(savedTournaments), currentTid: currentTid, lastUpdate: Date.now() }; 
+                        window.lastCloudUpdate = payload.lastUpdate; 
+                        dbRef.set(payload); 
+                    } 
+                }, 300);
             } catch(e) { console.error("Save error", e); } 
         }
 
@@ -379,7 +387,15 @@
             else { available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => { let av = p.photo ? `<img src="${p.photo}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">${p.gender==='M'?'V':'M'}</div>`; html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${p.name}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`; }); }
             safeHTML('bank-list', html); el('modal-bank').style.display = 'flex';
         }
-        function addFromBank(id) { let pToAdd = null; safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if(p.id === id) pToAdd = p; }); }); if (pToAdd && !players.find(x => x.name.trim().toLowerCase() === pToAdd.name.trim().toLowerCase())) { players.push({ id: pToAdd.id, name: pToAdd.name, gender: pToAdd.gender, photo: pToAdd.photo }); preGeneratedTournament = []; setStore('pregen', []); autoSave(); closeModals(); openPlayerBank(); } }
+        
+        function addFromBank(id) { 
+            ensureTournamentId(); // V150 FIX: Užtikrina, kad turnyras sukurtas prieš pridedant
+            let pToAdd = null; safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if(p.id === id) pToAdd = p; }); }); 
+            if (pToAdd && !players.find(x => x.name.trim().toLowerCase() === pToAdd.name.trim().toLowerCase())) { 
+                players.push({ id: pToAdd.id, name: pToAdd.name, gender: pToAdd.gender, photo: pToAdd.photo }); 
+                preGeneratedTournament = []; setStore('pregen', []); autoSave(); closeModals(); openPlayerBank(); 
+            } 
+        }
 
         // EDIT
         function openEditModal(id) { const p = players.find(x => x.id === id); if(!p) return; editingPlayerId = id; tempEditGender = p.gender; tempEditPhoto = p.photo; safeVal('edit-player-name', p.name); setEditGender(p.gender); const pr = el('edit-photo-preview'), pl = el('edit-photo-placeholder'); if(p.photo) { pr.src = p.photo; pr.classList.remove('hidden'); pl.classList.add('hidden'); } else { pr.classList.add('hidden'); pr.src = ''; pl.classList.remove('hidden'); } el('modal-edit').style.display = 'flex'; }
@@ -393,8 +409,8 @@
         function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(); }
         function changeFormat(v) { settings.format = v; preGeneratedTournament = []; setStore('pregen', []); autoSave(); }
         function changeRanking(v) { settings.rankingMode = v; autoSave(); }
-        function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą? Esamas turnyras išliks istorijoje.")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); autoSave(); switchView('setup'); } }
-        function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyrą visam laikui?")) { savedTournaments = safeArr(savedTournaments).filter(x => x && x.id !== id); if (currentTid === id) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); autoSave(); switchView('setup'); } else { autoSave(); renderHistoryList(); } } }
+        function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą? Esamas turnyras išliks istorijoje.")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); autoSave(); switchView('setup'); } }
+        function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyrą visam laikui?")) { savedTournaments = safeArr(savedTournaments).filter(x => x && x.id !== id); if (currentTid === id) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); autoSave(); switchView('setup'); } else { autoSave(); renderHistoryList(); } } }
         function resetAll() { if(confirm("TRINTI VISKĄ?")) { Object.keys(localStorage).forEach(k => { if(k.startsWith('sp_')) localStorage.removeItem(k); }); if(isCloud && dbRef) dbRef.set(null); setTimeout(() => location.reload(), 500); } }
 
         // 6. MATCH ENGINE & SCORING
@@ -409,93 +425,10 @@
         function dispatchRoundFromPreGen(roundNum) { let newM = []; let roundData = preGeneratedTournament[roundNum - 1]; if (roundData) { roundData.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }); }); matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); } else { alert("Klaida užkraunant raundą."); } }
         function generateFixedRound(safePool) { let newM = [], roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1, teams = []; for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); } let K_even = teams.length, cycleRounds = K_even - 1, shift = (roundNum - 1) % cycleRounds, rotatedIndices = [0], others = []; for (let i = 1; i < K_even; i++) others.push(i); for (let i = 0; i < shift; i++) others.unshift(others.pop()); rotatedIndices.push(...others); let roundMatches = []; for (let i = 0; i < K_even / 2; i++) { let t1Idx = rotatedIndices[i], t2Idx = rotatedIndices[K_even - 1 - i]; if (t1Idx < teams.length && t2Idx < teams.length) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] }); } roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); }); matches = [...safeArr(matches), ...newM]; autoSave(); switchView('matches'); }
 
-        // STATS LOGIC
         function calculatePairsResults(mArr, pArr) { const pairs = new Map(); try { safeArr(mArr).filter(m => m && m.finished).forEach(m => { const proc = (team, myS, enS) => { let safeTeam = safeArr(team); if (safeTeam.length >= 2 && safeTeam[0] && safeTeam[1]) { const names = [safeTeam[0].name, safeTeam[1].name].sort(), key = names.join('_'); if (!pairs.has(key)) { const p1 = safeArr(pArr).find(x => x && (x.id === safeTeam[0].id || x.name === safeTeam[0].name)) || safeTeam[0]; const p2 = safeArr(pArr).find(x => x && (x.id === safeTeam[1].id || x.name === safeTeam[1].name)) || safeTeam[1]; pairs.set(key, { name: `${names[0]}/${names[1]}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0 }); } const s = pairs.get(key); s.mp++; s.sw += myS; if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++; } }; proc(m.team1, m.score1, m.score2); proc(m.team2, m.score2, m.score1); }); } catch(e) {} return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp); }
+
         function calculateResults(mArr, pArr, isF = false) { let res = []; try { let safeP = safeArr(pArr); if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, photo:null, gender:'M' }); } else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); } safeArr(mArr).filter(m => m && m.finished).forEach(m => { const up = (team, myS, enS) => { let t = safeArr(team); if(t.length === 0) return; let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } }); }; if(m.team1 && m.team2) { up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); } }); } catch(e) {} return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); }
 
-        function openPlayerCard(name) {
-            let cM = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); }); cM.push(...safeArr(matches));
-            let cP = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.players)) cP.push(...safeArr(t.players)); }); cP.push(...safeArr(players));
-            const uP = []; const seen = new Set(); cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
-            const stats = calculateResults(cM, uP, false).find(x => x.name === name); if(!stats) return;
-            const pairsList = calculatePairsResults(cM, uP).filter(x => x.p1?.name === name || x.p2?.name === name);
-            let bestPartner = "Nėra", maxText = ""; if (pairsList.length > 0) { pairsList.sort((a,b) => b.w - a.w || b.mp - a.mp); let bestPair = pairsList[0]; bestPartner = (bestPair.p1.name === name) ? bestPair.p2.name : bestPair.p1.name; maxText = `(${bestPair.w} pergalės iš ${bestPair.mp})`; }
-            let av = stats.photo ? `<img src="${stats.photo}" class="w-24 h-24 rounded-full object-cover border-4 ${stats.gender==='M'?'border-blue-500':'border-pink-500'} mx-auto mb-4 shadow-lg">` : `<div class="w-24 h-24 rounded-full ${stats.gender==='M'?'bg-blue-500':'bg-pink-500'} mx-auto mb-4 flex items-center justify-center text-3xl font-black text-white shadow-lg">${stats.gender==='M'?'V':'M'}</div>`;
-            let winPerc = stats.mp > 0 ? Math.round((stats.w / stats.mp) * 100) : 0;
-            let html = `<div class="relative text-center pb-4"><button onclick="closeModals()" class="absolute -top-2 -right-2 text-slate-400 text-2xl font-bold">&times;</button>${av}<h2 class="text-2xl font-black text-slate-800 mb-1">${stats.name}</h2><p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">Bendra Karjeros Statistika</p><div class="grid grid-cols-2 gap-4 mb-6"><div class="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div class="text-3xl font-black text-slate-800">${stats.mp}</div><div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mačai</div></div><div class="bg-green-50 p-4 rounded-2xl border border-green-100"><div class="text-3xl font-black text-green-600">${winPerc}%</div><div class="text-[9px] font-black text-green-600 uppercase tracking-widest">Pergalės</div></div></div><div class="flex justify-center gap-6 mb-6 font-bold text-sm"><div class="text-center"><span class="block text-green-600 text-xl">${stats.w}</span><span class="text-[9px] text-slate-400 uppercase">Laimėta</span></div><div class="text-center"><span class="block text-slate-400 text-xl">${stats.t}</span><span class="text-[9px] text-slate-400 uppercase">Lygios</span></div><div class="text-center"><span class="block text-red-500 text-xl">${stats.l}</span><span class="text-[9px] text-slate-400 uppercase">Pralaimėta</span></div></div><div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100"><div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Geriausias Partneris</div><div class="font-bold text-indigo-900">${bestPartner} <span class="text-xs text-indigo-500 font-normal">${maxText}</span></div></div></div>`;
-            safeHTML('card-content', html); el('modal-card').style.display = 'flex';
-        }
-
-        // 7. SHARE & QR CODE
-        function shareResultsAsImage() {
-            el('loading-overlay').style.display = 'flex';
-            safeText('loading-text', "Kuriama HD nuotrauka...");
-            
-            const target = el('leaderboard-capture-target');
-            const title = el('tournament-name-field').value || "Turnyro Rezultatai";
-            
-            const wrapper = document.createElement('div');
-            wrapper.style.position = 'absolute';
-            wrapper.style.left = '-9999px';
-            wrapper.style.top = '0';
-            wrapper.style.width = '800px'; 
-            wrapper.style.padding = '40px';
-            wrapper.style.background = '#ffffff'; 
-            wrapper.style.borderRadius = '0px'; 
-            
-            const header = document.createElement('div');
-            header.style.textAlign = 'center';
-            header.style.marginBottom = '30px';
-            header.style.borderBottom = '4px solid #f1f5f9';
-            header.style.paddingBottom = '20px';
-            header.innerHTML = `<h1 style="font-size: 42px; font-weight: 900; color: #0f172a; margin-bottom: 8px;">Padelio PRO</h1><h2 style="font-size: 20px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 2px;">${title}</h2>`;
-            
-            const content = target.cloneNode(true);
-            content.style.boxShadow = 'none';
-            content.style.border = '1px solid #e2e8f0';
-            content.style.borderRadius = '16px';
-            
-            const allText = content.querySelectorAll('div, span');
-            allText.forEach(t => { if(t.innerText.length > 0) t.style.fontSize = (parseFloat(window.getComputedStyle(t).fontSize) * 1.2) + 'px'; });
-
-            const footer = document.createElement('div');
-            footer.style.textAlign = 'center';
-            footer.style.fontSize = '16px';
-            footer.style.color = '#cbd5e1';
-            footer.style.fontWeight = 'bold';
-            footer.style.marginTop = '30px';
-            footer.innerText = "Sugeneruota su www.superpadel.lt";
-            
-            wrapper.appendChild(header); wrapper.appendChild(content); wrapper.appendChild(footer);
-            document.body.appendChild(wrapper);
-
-            setTimeout(() => {
-                html2canvas(wrapper, { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false }).then(canvas => {
-                    document.body.removeChild(wrapper);
-                    el('loading-overlay').style.display = 'none'; safeText('loading-text', "Kraunama..."); 
-                    const imgData = canvas.toDataURL('image/png', 1.0);
-                    const link = document.createElement('a'); link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; link.href = imgData; link.click();
-                    if (navigator.share) { canvas.toBlob(blob => { const file = new File([blob], "rezultatai.png", { type: "image/png" }); navigator.share({ files: [file], title: title }).catch(e => console.log(e)); }); }
-                }).catch(err => {
-                    if(document.body.contains(wrapper)) document.body.removeChild(wrapper);
-                    el('loading-overlay').style.display = 'none'; alert("Klaida generuojant vaizdą.");
-                });
-            }, 200);
-        }
-
-        function generateInlineQR(room) {
-            const qrContainer = el('qrcode'); if(!qrContainer) return; qrContainer.innerHTML = ''; 
-            const baseUrl = window.location.origin + window.location.pathname;
-            const shareUrl = `${baseUrl}?room=${encodeURIComponent(room)}`;
-            qrCodeInstance = new QRCode(qrContainer, { text: shareUrl, width: 160, height: 160, colorDark : "#0f172a", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
-        }
-
-        function checkUrlForRoom() {
-            const params = new URLSearchParams(window.location.search); const roomFromUrl = params.get('room');
-            if (roomFromUrl) { activeRoom = roomFromUrl; isCloud = true; localStorage.setItem('sp_active_room_master', activeRoom); window.history.replaceState({}, document.title, window.location.pathname); }
-        }
-
-        // 8. RENDER & UI UPDATES
         function render() {
             try {
                 const isF = settings.format === 'fixed'; const table = calculateResults(matches, players, isF); let lHtml = '';
@@ -520,10 +453,7 @@
             } catch(e) { console.error("RenderErr:", e); }
         }
 
-        function renderMatches() {
-            const active = safeArr(matches).filter(m => m && !m.finished); let aHtml = ''; active.forEach((m) => { let t1 = safeArr(m.team1).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join(''), t2 = safeArr(m.team2).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join(''); aHtml += `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`; }); safeHTML('matches-container', aHtml);
-            const fin = safeArr(matches).filter(m => m && m.finished).reverse(); let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : ''; fin.forEach((m) => { let n1 = safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/'), n2 = safeArr(m.team2).filter(p=>p&&p.name).map(p=>p.name).join('/'); fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate"><span class="match-number-badge">R${m.round}</span><div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`; }); safeHTML('finished-matches-container', fHtml);
-        }
+        function setStatType(type) { statType = type; renderGlobalStats(); }
 
         function renderGlobalStats() {
             try {
@@ -552,17 +482,6 @@
             } catch(e) {}
         }
 
-        function renderHistoryList() { let h = ''; safeArr(savedTournaments).forEach(t => { if(t) h += `<div class="bg-white p-4 rounded-xl border mb-2 ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs uppercase">Trinti</button></div></div>`; }); safeHTML('history-list', h); }
-        
-        function setStatType(type) { statType = type; renderGlobalStats(); }
-        
-        function toggleTimer() { if(settings.winCondition==='score') return; if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; resetTimer(); return; } if(isRunning) { clearInterval(timerInterval); isRunning=false; } else { if(timeLeft <= 0) return; isRunning = true; endTime = Date.now() + (timeLeft * 1000); timerInterval = setInterval(() => { const d = Math.ceil((endTime - Date.now())/1000); if(d > 0) { timeLeft = d; updateTimerUI(); } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } }, 1000); } updateTimerUI(); }
-        function updateTimerUI() { const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), s = (timeLeft%60).toString().padStart(2,'0'); safeText('timer-display', `${m}:${s}`); const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop'); if(i1 && i2 && i3 && b) { i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden'); if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-600"; i3.classList.remove('hidden'); } else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); } else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); } } }
-        function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); }
-        function playBuzzer() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); } catch(e){} }
-        function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); }
-        function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
-
         function adminClick() { adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); if (adminClickCount >= 5) { const pass = prompt("Slaptažodis:"); if (pass === "123") { switchView('admin'); } else if (pass === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); } adminClickCount = 0; } }
         function loadSuperAdmin() { ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); firebase.database().ref(REG_KEY).once('value').then(snap => { const rooms = snap.val(); if(!rooms) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } let html = ''; Object.keys(rooms).forEach(r => { html += `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${r}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${r}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${r}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`; }); safeHTML('superadmin-rooms-list', html); }); }
         function superAdminJoin(roomName) { safeVal('fb-room', roomName); initFirebaseConnection(); switchView('setup'); }
@@ -571,25 +490,8 @@
         function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = safeArr(savedTournaments).filter(x => x && x.id !== id); autoSave(); renderAdmin(); } }
         function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = safeArr(players).filter(p => p && p.id !== id); autoSave(); renderAdmin(); } }
 
-        function switchView(n) { document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active')); const v = el('view-' + n); if(v) v.classList.add('active'); const nav = el('nav-' + n); if(nav) nav.classList.add('active'); if(n==='stats') renderGlobalStats(); else if(n==='history') renderHistoryList(); else if(n==='admin') renderAdmin(); else if(n==='superadmin') loadSuperAdmin(); else render(); }
-
-        // 9. EVENT LISTENERS & INIT
         window.addEventListener('beforeunload', function (e) { if (safeArr(matches).some(m => !m.finished)) { e.preventDefault(); e.returnValue = ''; } });
-        
-        window.onload = () => { 
-            migrateOldData(); 
-            loadData(); 
-            checkUrlForRoom(); 
-            
-            if (isCloud && activeRoom) { 
-                const r = el('fb-room'); 
-                if(r) r.value = activeRoom; 
-                initFirebaseConnection(); 
-            } 
-            
-            render(); 
-            if (safeArr(matches).length > 0) switchView('matches'); else switchView('setup'); 
-        };
+        window.onload = () => { migrateOldData(); loadData(); checkUrlForRoom(); if (isCloud && activeRoom) { const r = el('fb-room'); if(r) r.value = activeRoom; initFirebaseConnection(); } render(); if (safeArr(matches).length > 0) switchView('matches'); else switchView('setup'); };
     </script>
 </body>
 </html>
