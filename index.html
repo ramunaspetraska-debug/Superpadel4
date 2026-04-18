@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V161 (Hall of Fame)</title>
+    <title>superpadel.lt V162 (Quota Safe)</title>
     
     <script>
         if ('serviceWorker' in navigator) {
@@ -12,8 +12,8 @@
             });
         }
         window.addEventListener('load', function() {
-            if(!localStorage.getItem('v161_cache_cleared')) {
-                localStorage.setItem('v161_cache_cleared', 'true');
+            if(!localStorage.getItem('v162_cache_cleared')) {
+                localStorage.setItem('v162_cache_cleared', 'true');
                 window.location.reload(true);
             }
         });
@@ -52,7 +52,8 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 bg-rose-600 text-white text-[9px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-lg shadow-md">V161</div>
+    <div class="fixed top-0 left-0 bg-red-600 text-white text-[9px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-lg shadow-md">V162</div>
+    
     <div id="loading-overlay"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
     <div id="modal-bank" class="modal-overlay">
@@ -353,29 +354,31 @@
             try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { return null; } 
         }
 
+        // V162: Šarvuotas duomenų saugojimas su automatiniais perspėjimais
         function setStore(key, val) { 
             const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; 
-            try { if (val === null) localStorage.removeItem(prefix + key); else localStorage.setItem(prefix + key, JSON.stringify(val)); } catch(e) {} 
+            try { 
+                if (val === null) localStorage.removeItem(prefix + key); 
+                else localStorage.setItem(prefix + key, JSON.stringify(val)); 
+            } catch(e) {
+                if (e.name === 'QuotaExceededError' || e.message.includes('quota') || e.message.includes('exceeded')) {
+                    console.error("Quota Exceeded:", e);
+                    alert("⚠️ KLAIDA: Atmintis pilna! Ištrinkite kelis senus turnyrus iš ISTORIJOS (Hist.), kad galėtumėte išsaugoti naujus duomenis.");
+                }
+            } 
         }
 
         let activeRoom = localStorage.getItem('sp_active_room_master') || '';
         if(activeRoom) isCloud = true;
 
-        // V161: Šarvuotas Firebase krovimas ir klaidų pranešimai
+        // V162: Priverstinis, šarvuotas debesies krovimas be jokių nulūžimų
         function initFirebaseConnection() {
             try {
                 const roomInput = el('fb-room');
                 const room = (roomInput ? roomInput.value.trim() : '') || activeRoom;
 
-                if (!room) {
-                    alert("Prašome įvesti kambario pavadinimą!");
-                    return;
-                }
-
-                if (typeof firebase === 'undefined') {
-                    alert("KLAIDA: Nepavyko užkrauti internetinės duomenų bazės. Patikrinkite interneto ryšį arba išjunkite naršyklės AdBlocker (reklamų blokavimą).");
-                    return;
-                }
+                if (!room) { alert("Prašome įvesti kambario pavadinimą!"); return; }
+                if (typeof firebase === 'undefined') { alert("KLAIDA: Nepavyko užkrauti internetinės duomenų bazės. Patikrinkite interneto ryšį arba išjunkite naršyklės reklamų blokavimą."); return; }
 
                 if (firebase.apps.length === 0) {
                     firebase.initializeApp({
@@ -388,13 +391,18 @@
 
                 activeRoom = room;
                 isCloud = true;
-                localStorage.setItem('sp_active_room_master', room);
 
-                // Jei nepavyks užfiksuoti registracijos, išmes į konsolę (bet ne blokuos)
+                // Čia anksčiau buvo jūsų nulūžimas, dabar tai apsaugota!
+                try {
+                    localStorage.setItem('sp_active_room_master', room);
+                } catch (quotaErr) {
+                    console.warn("Quota full setting active room:", quotaErr);
+                    alert("⚠️ DĖMESIO! Jūsų telefono naršyklės atmintis yra 100% pilna. Sistema gali veikti nestabiliai. Būtina išvalyti naršyklės istoriją (Site Data) šiam puslapiui!");
+                }
+
                 firebase.database().ref(REG_KEY + '/' + room).set(Date.now()).catch(e => console.error("Firebase Reg Err:", e));
                 dbRef = firebase.database().ref(DB_KEY + '/' + room);
 
-                // UI keitimas kietuoju būdu (Hard override)
                 const cConnect = el('cloud-connect-ui');
                 const cActive = el('cloud-active-ui');
                 if(cConnect) cConnect.style.display = 'none';
@@ -421,17 +429,12 @@
                                 render();
                             }
                         } else {
-                            // Kambarys tuščias, siunčiame pirmą išsaugojimą
                             autoSave(true);
                         }
-                    } catch (snapErr) {
-                        console.error("Firebase Data Read Error:", snapErr);
-                    }
+                    } catch (snapErr) { console.error("Firebase Data Read Error:", snapErr); }
                 });
 
-            } catch (err) {
-                alert("Sistemos klaida jungiantis prie debesies: " + err.message);
-            }
+            } catch (err) { alert("Sistemos klaida jungiantis prie debesies: " + err.message); }
         }
 
         function migrateOldData() { 
@@ -685,7 +688,7 @@
             catch(e) { console.error(e); }
         }
 
-        // V161: ADVANCED STATS ENGINE (BADGES & NEMESIS)
+        // V162: ADVANCED STATS ENGINE (BADGES & NEMESIS)
         function getPlayerTrophies(playerName) {
             let trophies = 0;
             safeArr(savedTournaments).forEach(t => {
@@ -749,7 +752,6 @@
 
             const getMax = (arr, fn) => Math.max(0, ...arr.map(fn));
 
-            // V161: Atskiri reitingai ir ženkliukai vyrams ir moterims!
             let thresholds = {
                 M: { trophies: getMax(men, s => s.trophies), bagels: getMax(men, s => s.bagels), winRate: getMax(men, s => s.mp >= 5 ? s.w/s.mp : 0), chameleon: getMax(men, s => s.partnersWonWith.size), turtle: getMax(men, s => s.currentLosingStreak) },
                 F: { trophies: getMax(women, s => s.trophies), bagels: getMax(women, s => s.bagels), winRate: getMax(women, s => s.mp >= 5 ? s.w/s.mp : 0), chameleon: getMax(women, s => s.partnersWonWith.size), turtle: getMax(women, s => s.currentLosingStreak) }
@@ -931,83 +933,7 @@
             return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); 
         }
 
-        // --- MULTI-MATRIX ENGINE ---
-        function requestNextRound() {
-            try {
-                ensureTournamentId(); const safeP = safeArr(players); if (settings.format === 'fixed') { return generateFixedRound(safeP); }
-                if (safeP.length < 4 || safeP.length % 4 !== 0) { alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4! (Dabar yra ${safeP.length})`); return; }
-                if (settings.format === 'mix_americano') { const mC = safeP.filter(p => p.gender === 'M').length, fC = safeP.filter(p => p.gender === 'F').length; if (mC !== fC) { alert("KLAIDA: Mix formatui reikia vienodo vyrų ir moterų skaičiaus!"); return; } }
-                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-                
-                if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]) {
-                    el('loading-overlay').style.display = 'flex';
-                    setTimeout(() => {
-                        try {
-                            if (settings.format === 'mix_americano') {
-                                if (safeP.length === 8) { preGeneratedTournament = generateInterleavedMix8Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
-                                else if (safeP.length === 16) { preGeneratedTournament = generatePerfectMix16Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
-                                else { generateLookaheadTournament(safeP, roundNum, 30); }
-                            } else { generateLookaheadTournament(safeP, roundNum, 30); }
-                            el('loading-overlay').style.display = 'none'; dispatchRoundFromPreGen(roundNum);
-                        } catch (e) { alert("Klaida generuojant varžybas: " + e); el('loading-overlay').style.display = 'none'; }
-                    }, 50);
-                } else { dispatchRoundFromPreGen(roundNum); }
-            } catch(e) { alert("Klaida raundo pradžioje: " + e); el('loading-overlay').style.display = 'none'; }
-        }
-
-        function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 3; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
-        function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const perfectMatrix16 = [ [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 3; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
-        function generateLookaheadTournament(safePool, startRound, countToGenerate) {
-            let M = [], F = []; if (settings.format === 'mix_americano') { M = safePool.filter(p => p.gender === 'M'); F = safePool.filter(p => p.gender === 'F'); } else { let shuffledPool = shuffle([...safePool]); let half = shuffledPool.length / 2; M = shuffledPool.slice(0, half); F = shuffledPool.slice(half); }
-            let halfNum = M.length, courtsNeeded = halfNum / 2, partners = new Map(), opponents = new Map(), pastMatches = new Set();
-            const PLAYERS = [...M, ...F], totalPlayers = PLAYERS.length; PLAYERS.forEach(p1 => { partners.set(p1.id, new Map()); opponents.set(p1.id, new Map()); PLAYERS.forEach(p2 => { partners.get(p1.id).set(p2.id, 0); opponents.get(p1.id).set(p2.id, 0); }); });
-            const getP = (a, b) => partners.get(a.id)?.get(b.id) || 0; const getO = (a, b) => opponents.get(a.id)?.get(b.id) || 0;
-            const addStats = (m) => { let m1c = partners.get(m.t1[0].id); m1c.set(m.t1[1].id, (m1c.get(m.t1[1].id)||0)+1); let m2c = partners.get(m.t1[1].id); m2c.set(m.t1[0].id, (m2c.get(m.t1[0].id)||0)+1); let m3c = partners.get(m.t2[0].id); m3c.set(m.t2[1].id, (m3c.get(m.t2[1].id)||0)+1); let m4c = partners.get(m.t2[1].id); m4c.set(m.t2[0].id, (m4c.get(m.t2[0].id)||0)+1); const addOpp = (a, b) => { let o1 = opponents.get(a.id); o1.set(b.id, (o1.get(b.id)||0)+1); let o2 = opponents.get(b.id); o2.set(a.id, (o2.get(a.id)||0)+1); }; addOpp(m.t1[0], m.t2[0]); addOpp(m.t1[0], m.t2[1]); addOpp(m.t1[1], m.t2[0]); addOpp(m.t1[1], m.t2[1]); let mk = [ [m.t1[0].id, m.t1[1].id].sort().join('+'), [m.t2[0].id, m.t2[1].id].sort().join('+') ].sort().join('VS'); pastMatches.add(mk); };
-            let lastRoundOpponents = new Set(); const updateLastRoundOpponents = (roundMatches) => { lastRoundOpponents.clear(); if(!roundMatches) return; roundMatches.forEach(m => { m.t1.forEach(p1 => m.t2.forEach(p2 => { lastRoundOpponents.add(p1.id + '_' + p2.id); lastRoundOpponents.add(p2.id + '_' + p1.id); })); }); };
-            let maxHistoricalRound = 0; safeArr(matches).forEach(m => { if(m && safeArr(m.team1).length > 0 && safeArr(m.team2).length > 0) { addStats({ t1: m.team1, t2: m.team2 }); if(m.round > maxHistoricalRound) maxHistoricalRound = m.round; } }); if (maxHistoricalRound > 0) { let lastHistRound = safeArr(matches).filter(m => m.round === maxHistoricalRound).map(m => ({t1: m.team1, t2: m.team2})); updateLastRoundOpponents(lastHistRound); }
-            let newPreGen = [];
-            for (let round = startRound; round < startRound + countToGenerate; round++) {
-                let bestSet = null, minPenalty = Infinity, iterations = 10000; 
-                for (let iter = 0; iter < iterations; iter++) {
-                    let currentPenalty = 0, roundMatches = [];
-                    if (settings.format === 'mix_americano') {
-                        let roundShift = round - 1, pairs = []; for(let i = 0; i < halfNum; i++) { pairs.push([M[i], F[(i + roundShift) % halfNum]]); } pairs = shuffle(pairs); 
-                        for(let c = 0; c < courtsNeeded; c++) { let t1 = pairs[c * 2], t2 = pairs[c * 2 + 1], mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
-                    } else {
-                        let tempAll = shuffle([...M, ...F]); let maxAllowedP = Math.ceil(round / (totalPlayers - 1));
-                        for(let c = 0; c < courtsNeeded; c++) { const t1 = [tempAll.pop(), tempAll.pop()], t2 = [tempAll.pop(), tempAll.pop()]; if (getP(t1[0], t1[1]) >= maxAllowedP) currentPenalty += 5000000; if (getP(t2[0], t2[1]) >= maxAllowedP) currentPenalty += 5000000; let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); if (getP(t1[0], t1[1]) === 0) currentPenalty -= 10000; if (getP(t2[0], t2[1]) === 0) currentPenalty -= 10000; let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getP(t1[0], t1[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getP(t2[0], t2[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
-                    }
-                    if (currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = roundMatches; }
-                }
-                bestSet.forEach(m => addStats(m)); newPreGen.push(bestSet); updateLastRoundOpponents(bestSet);
-            }
-            let fullPreGen = new Array(startRound - 1).fill(null).concat(newPreGen); preGeneratedTournament = fullPreGen; setStore('pregen', preGeneratedTournament);
-        }
-
-        function dispatchRoundFromPreGen(roundNum) { 
-            try {
-                let newM = []; let roundData = preGeneratedTournament[roundNum - 1]; 
-                if (roundData) { 
-                    roundData.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }); }); 
-                    matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
-                } else { alert("Klaida užkraunant raundą."); } 
-            } catch(e) { console.error(e); }
-        }
-
-        function generateFixedRound(safePool) { 
-            try {
-                let newM = [], roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1, teams = []; 
-                for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); } 
-                let K_even = teams.length, cycleRounds = K_even - 1, shift = (roundNum - 1) % cycleRounds, rotatedIndices = [0], others = []; 
-                for (let i = 1; i < K_even; i++) others.push(i); for (let i = 0; i < shift; i++) others.unshift(others.pop()); rotatedIndices.push(...others); 
-                let roundMatches = []; 
-                for (let i = 0; i < K_even / 2; i++) { let t1Idx = rotatedIndices[i], t2Idx = rotatedIndices[K_even - 1 - i]; if (t1Idx < teams.length && t2Idx < teams.length) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] }); } 
-                roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); }); 
-                matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
-            } catch(e) { console.error(e); }
-        }
-
-        // --- RENDER & UPDATE VIEWS ---
+        // --- RENDER ---
         function render() {
             try {
                 const isF = settings.format === 'fixed'; const table = calculateResults(matches, players, isF); let lHtml = '';
@@ -1050,7 +976,7 @@
             } catch(e) {}
         }
 
-        // V161: ATSKIRŲ VYRŲ IR MOTERŲ ŽENKLIUKŲ (BADGES) LOGIKA
+        // V162: RENDER GLOBAL STATS WITH BADGES
         function setStatType(type) { statType = type; renderGlobalStats(); }
         function renderGlobalStats() {
             try {
@@ -1097,7 +1023,7 @@
                         let pAdv = adv.stats[s.id] || adv.stats[Object.keys(adv.stats).find(k => adv.stats[k].name === s.name)];
                         
                         if(pAdv) {
-                            let th = adv.thresholds[s.gender]; // Ištraukia atskirus slenksčius M ir F
+                            let th = adv.thresholds[s.gender]; 
                             if(th.trophies > 0 && pAdv.trophies === th.trophies) badges += '👑';
                             if(th.winRate > 0 && pAdv.mp >= 5 && (pAdv.w/pAdv.mp) === th.winRate) badges += '🔥';
                             if(th.bagels > 0 && pAdv.bagels === th.bagels) badges += '🥯';
@@ -1119,7 +1045,6 @@
                         let key = [s.p1?.id, s.p2?.id].sort().join('_');
                         let pairAdv = adv.pairs[key] || adv.pairs[Object.keys(adv.pairs).find(k => k.includes(s.p1?.id) && k.includes(s.p2?.id))];
                         
-                        // Priskiriame kardą (Mirtinas Duetas) geriausiai Mix porai
                         if(pairAdv && pairAdv.isMix && pairAdv.w > 0 && pairAdv.w === adv.maxMixWins) badges += ' ⚔️';
 
                         html += `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-5 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name} <span class="text-sm">${badges}</span><div class="pair-badge">${s.p1?.gender||''}${s.p2?.gender||''}</div></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col text-yellow-500">-</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`; 
@@ -1216,6 +1141,11 @@
         function renderAdmin() { let tHtml = ''; safeArr(savedTournaments).forEach(t => { if(t) tHtml += `<div class="flex justify-between items-center p-2 bg-slate-50 mb-1 rounded"><span>${t.name}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`; }); safeHTML('admin-tournaments-list', tHtml); let pHtml = '', uP = []; const seen = new Set(); safeArr(players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); safeArr(savedTournaments).forEach(t => { if(t) safeArr(t.players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); }); uP.forEach(p => { pHtml += `<div class="flex justify-between p-2 text-xs border-b"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`; }); safeHTML('admin-players-list', pHtml); }
         function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = safeArr(savedTournaments).filter(x => x && x.id !== id); autoSave(true); renderAdmin(); } }
         function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = safeArr(players).filter(p => p && p.id !== id); autoSave(true); renderAdmin(); } }
+
+        function generateInlineQR(room) { try { const qrContainer = el('qrcode'); if(!qrContainer) return; qrContainer.innerHTML = ''; const baseUrl = window.location.origin + window.location.pathname; const shareUrl = `${baseUrl}?room=${encodeURIComponent(room)}`; qrCodeInstance = new QRCode(qrContainer, { text: shareUrl, width: 160, height: 160, colorDark : "#0f172a", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H }); } catch (err) {} }
+        function checkUrlForRoom() { const params = new URLSearchParams(window.location.search); const roomFromUrl = params.get('room'); if (roomFromUrl) { activeRoom = roomFromUrl; isCloud = true; localStorage.setItem('sp_active_room_master', activeRoom); window.history.replaceState({}, document.title, window.location.pathname); } }
+        
+        function disconnectFirebase() { localStorage.removeItem('sp_active_room_master'); location.reload(); }
 
         window.addEventListener('beforeunload', function (e) { if (safeArr(matches).some(m => !m.finished)) { e.preventDefault(); e.returnValue = ''; } });
         window.onload = () => { migrateOldData(); loadData(); checkUrlForRoom(); if (isCloud && activeRoom) { const r = el('fb-room'); if(r) r.value = activeRoom; initFirebaseConnection(); } render(); if (safeArr(matches).length > 0) switchView('matches'); else switchView('setup'); };
