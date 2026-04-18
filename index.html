@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V164 (Fixed Analytics)</title>
+    <title>superpadel.lt V165 (Titanium Safe)</title>
     
     <script>
         if ('serviceWorker' in navigator) {
@@ -12,8 +12,8 @@
             });
         }
         window.addEventListener('load', function() {
-            if(!localStorage.getItem('v164_cache_cleared')) {
-                localStorage.setItem('v164_cache_cleared', 'true');
+            if(!localStorage.getItem('v165_cache_cleared')) {
+                localStorage.setItem('v165_cache_cleared', 'true');
                 window.location.reload(true);
             }
         });
@@ -52,7 +52,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 bg-blue-600 text-white text-[9px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-lg shadow-md">V164</div>
+    <div class="fixed top-0 left-0 bg-blue-800 text-white text-[9px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-lg shadow-md">V165</div>
     
     <div id="loading-overlay"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -487,7 +487,7 @@
             } catch(e) {}
         }
 
-        // V164: ADVANCED STATS ENGINE (BADGES & NEMESIS)
+        // V165: ADVANCED STATS ENGINE (WITH OPTIONAL CHAINING FOR NULL PLAYERS)
         function getPlayerTrophies(playerName) {
             let trophies = 0;
             safeArr(savedTournaments).forEach(t => {
@@ -512,7 +512,7 @@
         function computeAdvancedBadges(cM, uP) {
             let stats = {};
             uP.forEach(p => {
-                stats[p.id] = { id: p.id, name: p.name, gender: p.gender, w: 0, l: 0, mp: 0, bagels: 0, partnersWonWith: new Set(), currentLosingStreak: 0, trophies: getPlayerTrophies(p.name) };
+                if(p?.id) stats[p.id] = { id: p.id, name: p.name, gender: p.gender, w: 0, l: 0, mp: 0, bagels: 0, partnersWonWith: new Set(), currentLosingStreak: 0, trophies: getPlayerTrophies(p.name) };
             });
 
             let pairs = {};
@@ -522,12 +522,12 @@
 
                 const processTeam = (myTeam, enTeam, myS, enS) => {
                     myTeam.forEach(p => {
-                        if(!stats[p.id]) return;
+                        if(!p?.id || !stats[p.id]) return;
                         stats[p.id].mp++;
                         if(myS > enS) {
                             stats[p.id].w++; stats[p.id].currentLosingStreak = 0;
                             if(enS === 0) stats[p.id].bagels++;
-                            myTeam.forEach(partner => { if(partner.id !== p.id) stats[p.id].partnersWonWith.add(partner.id); });
+                            myTeam.forEach(partner => { if(partner?.id && partner.id !== p.id) stats[p.id].partnersWonWith.add(partner.id); });
                         } else if (myS < enS) {
                             stats[p.id].l++; stats[p.id].currentLosingStreak++;
                         } else {
@@ -535,7 +535,7 @@
                         }
                     });
 
-                    if (myTeam.length === 2 && myTeam[0] && myTeam[1]) {
+                    if (myTeam.length === 2 && myTeam[0]?.id && myTeam[1]?.id) {
                         let pA = myTeam[0], pB = myTeam[1];
                         let p1Full = uP.find(x => x.id === pA.id) || pA; let p2Full = uP.find(x => x.id === pB.id) || pB;
                         let key = [p1Full?.id, p2Full?.id].sort().join('_');
@@ -568,11 +568,11 @@
             let opps = {};
             safeArr(matchesList).forEach(m => {
                 if(!m.finished) return;
-                let inT1 = safeArr(m.team1).some(p => p.name === playerName); let inT2 = safeArr(m.team2).some(p => p.name === playerName);
+                let inT1 = safeArr(m.team1).some(p => p?.name === playerName); let inT2 = safeArr(m.team2).some(p => p?.name === playerName);
                 if(!inT1 && !inT2) return;
                 let myScore = inT1 ? m.score1 : m.score2; let enScore = inT1 ? m.score2 : m.score1; let enTeam = inT1 ? safeArr(m.team2) : safeArr(m.team1);
                 enTeam.forEach(en => {
-                    if(!en.name) return;
+                    if(!en?.name) return;
                     if(!opps[en.name]) opps[en.name] = { w: 0, l: 0, t: 0, diff: 0 };
                     if(myScore > enScore) opps[en.name].w++; else if(myScore < enScore) opps[en.name].l++; else opps[en.name].t++;
                     opps[en.name].diff += (myScore - enScore);
@@ -594,56 +594,17 @@
             if(btnM && btnF) { if(g === 'M') { btnM.className = 'w-10 font-bold bg-blue-600 text-white text-[10px]'; btnF.className = 'w-10 font-bold text-slate-400 text-[10px]'; } else { btnM.className = 'w-10 font-bold text-slate-400 text-[10px]'; btnF.className = 'w-10 font-bold bg-pink-500 text-white text-[10px]'; } }
         }
 
-        function handleNewPhotoUpload(e) { try { const file = e.target.files[0]; if(!file) return; const r = new FileReader(); r.onload = (ev) => { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 256; let w = img.width, h = img.height; if(w > h) { if(w > MAX){ h *= MAX/w; w = MAX; } } else { if(h > MAX){ w *= MAX/h; h = MAX; } } c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); curPh = c.toDataURL('image/jpeg', 0.85); const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); } const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden'); }; img.src = ev.target.result; }; r.readAsDataURL(file); } catch(err) { } }
+        function handleNewPhotoUpload(e) { try { const file = e.target.files[0]; if(!file) return; const r = new FileReader(); r.onload = (ev) => { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 256; let w = img.width, h = img.height; if(w > h) { if(w > MAX){ h *= MAX/w; w = MAX; } } else { if(h > MAX){ w *= MAX/h; h = MAX; } } c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); curPh = c.toDataURL('image/jpeg', 0.85); const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); } const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden'); }; img.src = ev.target.result; }; r.readAsDataURL(file); } catch(err) {} }
         function handleEditPhotoUpload(e) { try { const file = e.target.files[0]; if(!file) return; const r = new FileReader(); r.onload = (ev) => { const img = new Image(); img.onload = function() { const c = document.createElement('canvas'); const MAX = 256; let w = img.width, h = img.height; if(w > h) { if(w > MAX){ h *= MAX/w; w = MAX; } } else { if(h > MAX){ w *= MAX/h; h = MAX; } } c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); tempEditPhoto = c.toDataURL('image/jpeg', 0.85); const pr = el('edit-photo-preview'); if(pr) { pr.src = tempEditPhoto; pr.classList.remove('hidden'); } const pl = el('edit-photo-placeholder'); if(pl) pl.classList.add('hidden'); }; img.src = ev.target.result; }; r.readAsDataURL(file); } catch(err) {} }
 
-        function addPlayer(e) { 
-            try {
-                if (e) e.preventDefault(); ensureTournamentId(); const f = el('player-input-field'); const n = f ? f.value.trim() : ''; if(!n) return false; 
-                const newId = uid(); if (curPh) { photoBank[newId] = curPh; setStore('photos', photoBank); }
-                players.push({ id: newId, name: n, gender: tempGender }); 
-                if(f) f.value = ''; curPh = null; const pr = el('photo-preview'); if(pr) { pr.classList.add('hidden'); pr.src = ''; } const pl = el('photo-placeholder'); if(pl) pl.classList.remove('hidden'); const pi = el('photo-input'); if(pi) pi.value = ''; 
-                preGeneratedTournament = []; setStore('pregen', []); setGender('M'); autoSave(true); render(); 
-            } catch(err) { }
-            return false;
-        }
-
         function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
-        function openPlayerBank() { try { let u = new Map(); safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if (p && p.name) { let key = p.name.trim().toLowerCase(); if (!u.has(key)) u.set(key, p); } }); }); const currNames = safeArr(players).map(p => p.name.trim().toLowerCase()); let available = Array.from(u.values()).filter(p => !currNames.includes(p.name.trim().toLowerCase())); let html = ''; if (available.length === 0) { html = '<p class="text-xs text-slate-400">Istorijoje nėra senų žaidėjų.</p>'; } else { available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => { let pPhoto = photoBank[p.id]; let av = pPhoto ? `<img src="${pPhoto}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">${p.gender==='M'?'V':'M'}</div>`; html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${p.name}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`; }); } safeHTML('bank-list', html); el('modal-bank').style.display = 'flex'; } catch (e) {} }
-        function addFromBank(id) { try { let pToAdd = null; safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if(p.id === id) pToAdd = p; }); }); if (pToAdd && !players.find(x => x.name.trim().toLowerCase() === pToAdd.name.trim().toLowerCase())) { players.push({ id: pToAdd.id, name: pToAdd.name, gender: pToAdd.gender }); preGeneratedTournament = []; setStore('pregen', []); autoSave(true); closeModals(); openPlayerBank(); } } catch (e) {} }
-        
-        function openEditModal(id) {
-            try {
-                const p = players.find(x => x.id === id); if(!p) return;
-                editingPlayerId = id; tempEditGender = p.gender; tempEditPhoto = photoBank[id] || null; 
-                safeVal('edit-player-name', p.name); setEditGender(p.gender);
-                const pr = el('edit-photo-preview'), pl = el('edit-photo-placeholder');
-                if(tempEditPhoto) { pr.src = tempEditPhoto; pr.classList.remove('hidden'); pl.classList.add('hidden'); } else { pr.classList.add('hidden'); pr.src = ''; pl.classList.remove('hidden'); }
-                el('modal-edit').style.display = 'flex';
-            } catch(e) { console.error(e); }
-        }
+        function openPlayerBank() { try { let u = new Map(); safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if (p && p.name) { let key = p.name.trim().toLowerCase(); if (!u.has(key)) u.set(key, p); } }); }); const currNames = safeArr(players).map(p => p?.name?.trim().toLowerCase()).filter(Boolean); let available = Array.from(u.values()).filter(p => !currNames.includes(p.name.trim().toLowerCase())); let html = ''; if (available.length === 0) { html = '<p class="text-xs text-slate-400">Istorijoje nėra senų žaidėjų.</p>'; } else { available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => { let pPhoto = photoBank[p.id]; let av = pPhoto ? `<img src="${pPhoto}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">${p.gender==='M'?'V':'M'}</div>`; html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${p.name}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`; }); } safeHTML('bank-list', html); el('modal-bank').style.display = 'flex'; } catch (e) {} }
+        function addFromBank(id) { try { let pToAdd = null; safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if(p?.id === id) pToAdd = p; }); }); if (pToAdd && !players.find(x => x?.name?.trim().toLowerCase() === pToAdd.name.trim().toLowerCase())) { players.push({ id: pToAdd.id, name: pToAdd.name, gender: pToAdd.gender }); preGeneratedTournament = []; setStore('pregen', []); autoSave(true); closeModals(); openPlayerBank(); } } catch (e) {} }
+        function openEditModal(id) { try { const p = players.find(x => x?.id === id); if(!p) return; editingPlayerId = id; tempEditGender = p.gender; tempEditPhoto = photoBank[id] || null; safeVal('edit-player-name', p.name); setEditGender(p.gender); const pr = el('edit-photo-preview'), pl = el('edit-photo-placeholder'); if(tempEditPhoto) { pr.src = tempEditPhoto; pr.classList.remove('hidden'); pl.classList.add('hidden'); } else { pr.classList.add('hidden'); pr.src = ''; pl.classList.remove('hidden'); } el('modal-edit').style.display = 'flex'; } catch(e) {} }
+        function savePlayerEdit() { try { const p = players.find(x => x?.id === editingPlayerId); if(p) { p.name = el('edit-player-name').value.trim() || p.name; p.gender = tempEditGender; if (tempEditPhoto) { photoBank[p.id] = tempEditPhoto; setStore('photos', photoBank); } matches.forEach(m => { if(m.team1) m.team1.forEach(tp => { if(tp?.id === p.id) { tp.name = p.name; tp.gender = p.gender; }}); if(m.team2) m.team2.forEach(tp => { if(tp?.id === p.id) { tp.name = p.name; tp.gender = p.gender; }}); }); autoSave(true); } const epi = el('edit-photo-input'); if(epi) epi.value = ''; closeModals(); } catch(e) {} }
+        function removePlayer(id) { try { if(confirm("Trinti žaidėją iš šio turnyro?")) { players = safeArr(players).filter(p => p && p.id !== id); preGeneratedTournament = []; setStore('pregen', []); autoSave(true); closeModals(); } } catch(e) {} }
 
-        function savePlayerEdit() {
-            try {
-                const p = players.find(x => x.id === editingPlayerId);
-                if(p) { 
-                    p.name = el('edit-player-name').value.trim() || p.name; p.gender = tempEditGender; 
-                    if (tempEditPhoto) { photoBank[p.id] = tempEditPhoto; setStore('photos', photoBank); }
-                    matches.forEach(m => {
-                        if(m.team1) m.team1.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
-                        if(m.team2) m.team2.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
-                    });
-                    autoSave(true); 
-                }
-                const epi = el('edit-photo-input'); if(epi) epi.value = ''; closeModals();
-            } catch(e) { console.error(e); }
-        }
-
-        function removePlayer(id) { 
-            try { if(confirm("Trinti žaidėją iš šio turnyro?")) { players = safeArr(players).filter(p => p && p.id !== id); preGeneratedTournament = []; setStore('pregen', []); autoSave(true); closeModals(); } } 
-            catch(e) { console.error(e); }
-        }
-
+        // V165: SAUGUS PLAYER CARD
         function openPlayerCard(name) {
             try {
                 let cM = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); }); cM.push(...safeArr(matches));
@@ -692,7 +653,6 @@
                         </div>
                         <h2 class="text-2xl font-black text-slate-800 mt-2 mb-1">${stats.name}</h2>
                         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Karjeros Statistika</p>
-                        
                         <div class="grid grid-cols-4 gap-2 mb-6">
                             <div class="bg-slate-50 p-2 rounded-xl border border-slate-100 flex flex-col justify-center">
                                 <div class="text-xl font-black text-slate-800 leading-none mb-1">${stats.mp}</div>
@@ -711,13 +671,11 @@
                                 <div class="text-[7px] font-black text-blue-600 uppercase tracking-wider">Sausos 🥯</div>
                             </div>
                         </div>
-                        
                         <div class="flex justify-center gap-8 mb-6 font-bold text-sm bg-slate-50 py-3 rounded-xl">
                             <div class="text-center"><span class="block text-green-600 text-xl leading-none">${stats.w}</span><span class="text-[8px] text-slate-400 uppercase">W</span></div>
                             <div class="text-center"><span class="block text-slate-400 text-xl leading-none">${stats.t}</span><span class="text-[8px] text-slate-400 uppercase">T</span></div>
                             <div class="text-center"><span class="block text-red-500 text-xl leading-none">${stats.l}</span><span class="text-[8px] text-slate-400 uppercase">L</span></div>
                         </div>
-                        
                         <div class="space-y-2">
                             <div class="bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-100 flex justify-between items-center">
                                 <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Partneris</div>
@@ -743,14 +701,14 @@
             try { 
                 let safeP = safeArr(pArr); 
                 if(isF) { 
-                    for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, bagels:0, gender:'M' }); 
+                    for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i]?.id+'_'+safeP[i+1]?.id, name: safeP[i]?.name+' / '+safeP[i+1]?.name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, bagels:0, gender:'M' }); 
                 } else { 
                     res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, bagels:0 })); 
                 } 
                 safeArr(mArr).filter(m => m && m.finished).forEach(m => { 
                     const up = (team, myS, enS) => { 
                         let t = safeArr(team); if(t.length === 0) return; 
-                        let targets = isF ? [res.find(r => r && (r.p1?.id === t[0].id || r.p2?.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); 
+                        let targets = isF ? [res.find(r => r && (r.p1?.id === t[0]?.id || r.p2?.id === t[0]?.id))] : t.map(p => res.find(r => r && (r.name === p?.name))); 
                         safeArr(targets).forEach(s => { 
                             if(!s) return; 
                             s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; 
@@ -765,7 +723,7 @@
             return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); 
         }
 
-        // --- RENDER & UPDATE VIEWS ---
+        // --- RENDER ---
         function render() {
             try {
                 const isF = settings.format === 'fixed'; const table = calculateResults(matches, players, isF); let lHtml = '';
@@ -809,7 +767,7 @@
             } catch(e) {}
         }
 
-        // V164: RENDER GLOBAL STATS WITH BADGES
+        // V165: RENDER GLOBAL STATS WITH BADGES
         function setStatType(type) { statType = type; renderGlobalStats(); }
         function renderGlobalStats() {
             try {
@@ -848,7 +806,6 @@
                 
                 if (statType === 'indiv') {
                     let list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-                    
                     let adv = computeAdvancedBadges(cM, uP);
 
                     list.forEach((s, i) => { 
@@ -967,51 +924,31 @@
             safeHTML('finished-matches-container', fHtml);
         }
 
-        // --- ADMIN & CLOUD ---
-        function adminClick() { adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); if (adminClickCount >= 5) { const pass = prompt("Slaptažodis:"); if (pass === "123") { switchView('admin'); } else if (pass === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); } adminClickCount = 0; } }
-        function loadSuperAdmin() { ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); firebase.database().ref(REG_KEY).once('value').then(snap => { const rooms = snap.val(); if(!rooms) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } let html = ''; Object.keys(rooms).forEach(r => { html += `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${r}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${r}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${r}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`; }); safeHTML('superadmin-rooms-list', html); }); }
-        function superAdminJoin(roomName) { safeVal('fb-room', roomName); initFirebaseConnection(); switchView('setup'); }
-        function superAdminDelete(r) { if(confirm(`Trinti kambarį ${r}?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+r).remove(); firebase.database().ref(REG_KEY+'/'+r).remove(); loadSuperAdmin(); } }
-        function renderAdmin() { let tHtml = ''; safeArr(savedTournaments).forEach(t => { if(t) tHtml += `<div class="flex justify-between items-center p-2 bg-slate-50 mb-1 rounded"><span>${t.name}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`; }); safeHTML('admin-tournaments-list', tHtml); let pHtml = '', uP = []; const seen = new Set(); safeArr(players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); safeArr(savedTournaments).forEach(t => { if(t) safeArr(t.players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); }); uP.forEach(p => { pHtml += `<div class="flex justify-between p-2 text-xs border-b"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`; }); safeHTML('admin-players-list', pHtml); }
-        function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = safeArr(savedTournaments).filter(x => x && x.id !== id); autoSave(true); renderAdmin(); } }
-        function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = safeArr(players).filter(p => p && p.id !== id); autoSave(true); renderAdmin(); } }
-
-        function generateInlineQR(room) { try { const qrContainer = el('qrcode'); if(!qrContainer) return; qrContainer.innerHTML = ''; const baseUrl = window.location.origin + window.location.pathname; const shareUrl = `${baseUrl}?room=${encodeURIComponent(room)}`; qrCodeInstance = new QRCode(qrContainer, { text: shareUrl, width: 160, height: 160, colorDark : "#0f172a", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H }); } catch (err) {} }
-        function checkUrlForRoom() { const params = new URLSearchParams(window.location.search); const roomFromUrl = params.get('room'); if (roomFromUrl) { activeRoom = roomFromUrl; isCloud = true; localStorage.setItem('sp_active_room_master', activeRoom); window.history.replaceState({}, document.title, window.location.pathname); } }
-        function initFirebaseConnection() { 
+        function shareResultsAsImage() {
             try {
-                const roomInput = el('fb-room');
-                const room = (roomInput ? roomInput.value.trim() : '') || activeRoom;
-                if (!room) { alert("Prašome įvesti kambario pavadinimą!"); return; }
-                if (typeof firebase === 'undefined') { alert("KLAIDA: Nepavyko užkrauti internetinės duomenų bazės."); return; }
-                if (firebase.apps.length === 0) { firebase.initializeApp({ apiKey: el('fb-apiKey') ? el('fb-apiKey').value : '', authDomain: el('fb-authDomain') ? el('fb-authDomain').value : '', databaseURL: el('fb-databaseURL') ? el('fb-databaseURL').value : '', projectId: el('fb-projectId') ? el('fb-projectId').value : '' }); }
-                activeRoom = room; isCloud = true;
-                try { localStorage.setItem('sp_active_room_master', room); } catch (e) { alert("⚠️ Telefono atmintis pilna!"); }
-                firebase.database().ref(REG_KEY + '/' + room).set(Date.now()).catch(e => {});
-                dbRef = firebase.database().ref(DB_KEY + '/' + room);
-                const cConnect = el('cloud-connect-ui'); const cActive = el('cloud-active-ui');
-                if(cConnect) cConnect.style.display = 'none';
-                if(cActive) { cActive.style.display = 'flex'; cActive.className = 'space-y-4 text-center flex flex-col items-center'; }
-                safeText('cloud-status', "Prijungta"); safeText('cloud-room-name-display', room);
-                generateInlineQR(room);
-                dbRef.on('value', snap => { 
-                    try {
-                        const d = snap.val(); 
-                        if (d) {
-                            if (d.lastUpdate !== window.lastCloudUpdate) { 
-                                window.lastCloudUpdate = d.lastUpdate; 
-                                if(d.photoBank) { photoBank = d.photoBank; setStore('photos', photoBank); }
-                                players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings ? {...ds, ...d.settings} : {...ds}; 
-                                savedTournaments = safeArr(d.savedTournaments).filter(t => t && t.id); currentTid = d.currentTid || null; preGeneratedTournament = safeArr(d.preGeneratedTournament); 
-                                render(); 
-                            } 
-                        } else { autoSave(true); }
-                    } catch(e) {}
-                }); 
-            } catch (err) { alert("Klaida jungiantis: " + err.message); }
+                el('loading-overlay').style.display = 'flex'; safeText('loading-text', "Kuriama HD nuotrauka...");
+                const target = el('leaderboard-capture-target'); const title = el('tournament-name-field').value || "Turnyro Rezultatai";
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'absolute'; wrapper.style.left = '-9999px'; wrapper.style.top = '0';
+                wrapper.style.width = '800px'; wrapper.style.padding = '40px'; wrapper.style.background = '#ffffff'; 
+                const header = document.createElement('div');
+                header.style.textAlign = 'center'; header.style.marginBottom = '30px'; header.style.borderBottom = '4px solid #f1f5f9'; header.style.paddingBottom = '20px';
+                header.innerHTML = `<h1 style="font-size: 42px; font-weight: 900; color: #0f172a; margin-bottom: 8px;">superpadel.lt</h1><h2 style="font-size: 20px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 2px;">${title}</h2>`;
+                const content = target.cloneNode(true); content.style.boxShadow = 'none'; content.style.border = '1px solid #e2e8f0'; content.style.borderRadius = '16px';
+                const allText = content.querySelectorAll('div, span'); allText.forEach(t => { if(t.innerText.length > 0) t.style.fontSize = (parseFloat(window.getComputedStyle(t).fontSize) * 1.2) + 'px'; });
+                const footer = document.createElement('div');
+                footer.style.textAlign = 'center'; footer.style.fontSize = '16px'; footer.style.color = '#cbd5e1'; footer.style.fontWeight = 'bold'; footer.style.marginTop = '30px'; footer.innerText = "Sugeneruota su www.superpadel.lt";
+                wrapper.appendChild(header); wrapper.appendChild(content); wrapper.appendChild(footer); document.body.appendChild(wrapper);
+
+                setTimeout(() => {
+                    html2canvas(wrapper, { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false }).then(canvas => {
+                        document.body.removeChild(wrapper); el('loading-overlay').style.display = 'none'; safeText('loading-text', "Kraunama..."); 
+                        const imgData = canvas.toDataURL('image/png', 1.0); const link = document.createElement('a'); link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; link.href = imgData; link.click();
+                        if (navigator.share) { canvas.toBlob(blob => { const file = new File([blob], "rezultatai.png", { type: "image/png" }); navigator.share({ files: [file], title: title }).catch(e => console.log(e)); }); }
+                    }).catch(err => { if(document.body.contains(wrapper)) document.body.removeChild(wrapper); el('loading-overlay').style.display = 'none'; alert("Klaida generuojant vaizdą."); });
+                }, 200);
+            } catch(e) { console.error(e); el('loading-overlay').style.display = 'none'; }
         }
-        
-        function disconnectFirebase() { localStorage.removeItem('sp_active_room_master'); location.reload(); }
 
         // --- MULTI-MATRIX ENGINE ---
         function requestNextRound() {
@@ -1088,6 +1025,53 @@
                 matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
             } catch(e) { console.error(e); }
         }
+
+        // --- ADMIN & CLOUD ---
+        function adminClick() { adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); if (adminClickCount >= 5) { const pass = prompt("Slaptažodis:"); if (pass === "123") { switchView('admin'); } else if (pass === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); } adminClickCount = 0; } }
+        function loadSuperAdmin() { ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); firebase.database().ref(REG_KEY).once('value').then(snap => { const rooms = snap.val(); if(!rooms) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } let html = ''; Object.keys(rooms).forEach(r => { html += `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${r}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${r}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${r}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`; }); safeHTML('superadmin-rooms-list', html); }); }
+        function superAdminJoin(roomName) { safeVal('fb-room', roomName); initFirebaseConnection(); switchView('setup'); }
+        function superAdminDelete(r) { if(confirm(`Trinti kambarį ${r}?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+r).remove(); firebase.database().ref(REG_KEY+'/'+r).remove(); loadSuperAdmin(); } }
+        function renderAdmin() { let tHtml = ''; safeArr(savedTournaments).forEach(t => { if(t) tHtml += `<div class="flex justify-between items-center p-2 bg-slate-50 mb-1 rounded"><span>${t.name}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`; }); safeHTML('admin-tournaments-list', tHtml); let pHtml = '', uP = []; const seen = new Set(); safeArr(players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); safeArr(savedTournaments).forEach(t => { if(t) safeArr(t.players).forEach(p => { if(p && !seen.has(p.id)) { seen.add(p.id); uP.push(p); } }); }); uP.forEach(p => { pHtml += `<div class="flex justify-between p-2 text-xs border-b"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`; }); safeHTML('admin-players-list', pHtml); }
+        function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = safeArr(savedTournaments).filter(x => x && x.id !== id); autoSave(true); renderAdmin(); } }
+        function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = safeArr(players).filter(p => p && p.id !== id); autoSave(true); renderAdmin(); } }
+
+        function generateInlineQR(room) { try { const qrContainer = el('qrcode'); if(!qrContainer) return; qrContainer.innerHTML = ''; const baseUrl = window.location.origin + window.location.pathname; const shareUrl = `${baseUrl}?room=${encodeURIComponent(room)}`; qrCodeInstance = new QRCode(qrContainer, { text: shareUrl, width: 160, height: 160, colorDark : "#0f172a", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H }); } catch (err) {} }
+        function checkUrlForRoom() { const params = new URLSearchParams(window.location.search); const roomFromUrl = params.get('room'); if (roomFromUrl) { activeRoom = roomFromUrl; isCloud = true; localStorage.setItem('sp_active_room_master', activeRoom); window.history.replaceState({}, document.title, window.location.pathname); } }
+        
+        function initFirebaseConnection() { 
+            try {
+                const roomInput = el('fb-room');
+                const room = (roomInput ? roomInput.value.trim() : '') || activeRoom;
+                if (!room) { alert("Prašome įvesti kambario pavadinimą!"); return; }
+                if (typeof firebase === 'undefined') { alert("KLAIDA: Nepavyko užkrauti internetinės duomenų bazės."); return; }
+                if (firebase.apps.length === 0) { firebase.initializeApp({ apiKey: el('fb-apiKey') ? el('fb-apiKey').value : '', authDomain: el('fb-authDomain') ? el('fb-authDomain').value : '', databaseURL: el('fb-databaseURL') ? el('fb-databaseURL').value : '', projectId: el('fb-projectId') ? el('fb-projectId').value : '' }); }
+                activeRoom = room; isCloud = true;
+                try { localStorage.setItem('sp_active_room_master', room); } catch (e) { alert("⚠️ Telefono atmintis pilna!"); }
+                firebase.database().ref(REG_KEY + '/' + room).set(Date.now()).catch(e => {});
+                dbRef = firebase.database().ref(DB_KEY + '/' + room);
+                const cConnect = el('cloud-connect-ui'); const cActive = el('cloud-active-ui');
+                if(cConnect) cConnect.style.display = 'none';
+                if(cActive) { cActive.style.display = 'flex'; cActive.className = 'space-y-4 text-center flex flex-col items-center'; }
+                safeText('cloud-status', "Prijungta"); safeText('cloud-room-name-display', room);
+                generateInlineQR(room);
+                dbRef.on('value', snap => { 
+                    try {
+                        const d = snap.val(); 
+                        if (d) {
+                            if (d.lastUpdate !== window.lastCloudUpdate) { 
+                                window.lastCloudUpdate = d.lastUpdate; 
+                                if(d.photoBank) { photoBank = d.photoBank; setStore('photos', photoBank); }
+                                players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings ? {...ds, ...d.settings} : {...ds}; 
+                                savedTournaments = safeArr(d.savedTournaments).filter(t => t && t.id); currentTid = d.currentTid || null; preGeneratedTournament = safeArr(d.preGeneratedTournament); 
+                                render(); 
+                            } 
+                        } else { autoSave(true); }
+                    } catch(e) {}
+                }); 
+            } catch (err) { alert("Klaida jungiantis: " + err.message); }
+        }
+        
+        function disconnectFirebase() { localStorage.removeItem('sp_active_room_master'); location.reload(); }
 
         window.addEventListener('beforeunload', function (e) { if (safeArr(matches).some(m => !m.finished)) { e.preventDefault(); e.returnValue = ''; } });
         window.onload = () => { migrateOldData(); loadData(); checkUrlForRoom(); if (isCloud && activeRoom) { const r = el('fb-room'); if(r) r.value = activeRoom; initFirebaseConnection(); } render(); if (safeArr(matches).length > 0) switchView('matches'); else switchView('setup'); };
