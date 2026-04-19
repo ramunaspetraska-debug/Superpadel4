@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V159</title>
+    <title>superpadel.lt V160</title>
     
     <script>
         if ('serviceWorker' in navigator) {
@@ -12,8 +12,8 @@
             });
         }
         window.addEventListener('load', function() {
-            if(!localStorage.getItem('v159_cache_cleared')) {
-                localStorage.setItem('v159_cache_cleared', 'true');
+            if(!localStorage.getItem('v160_cache_cleared')) {
+                localStorage.setItem('v160_cache_cleared', 'true');
                 window.location.reload(true);
             }
         });
@@ -52,7 +52,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 bg-red-600 text-white text-[8px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-md">V159</div>
+    <div class="fixed top-0 left-0 bg-red-600 text-white text-[8px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-md">V160</div>
 
     <div id="loading-overlay"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -173,7 +173,10 @@
         <div id="view-matches" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
-                <button type="button" id="btn-generate-round" onclick="requestNextRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btn-generate-finals" onclick="generateFinals()" class="hidden px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase">🏆 Finalai</button>
+                    <button type="button" id="btn-generate-round" onclick="requestNextRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                </div>
             </div>
             <div id="matches-container"></div>
             <div id="finished-matches-container" class="mt-12 opacity-90"></div>
@@ -621,7 +624,7 @@
                 
                 // --- REITINGO SKAIČIAVIMO LOGIKA (Paskutiniai 20 mačų) ---
                 let playerMatches = cM.filter(m => m.finished && (safeArr(m.team1).some(p => p.name === name) || safeArr(m.team2).some(p => p.name === name)));
-                let recentMatches = playerMatches.slice(-20); // Paimame tik iki 20 paskutinių mačų
+                let recentMatches = playerMatches.slice(-20);
                 let rMp = recentMatches.length;
                 let rW = 0, rDif = 0;
                 
@@ -638,16 +641,17 @@
                     let winRatePts = (rW / rMp) * 60; // Max 60 taškų
                     let avgDif = rDif / rMp;
                     let difPts = Math.max(0, Math.min(30, ((avgDif + 5) / 10) * 30)); // Max 30 taškų (apribota tarp -5 ir +5 avgDif)
-                    let actPts = Math.min(stats.mp, 20) / 20 * 10; // Max 10 taškų už patirtį (karjeros mačai)
+                    let actPts = Math.min(stats.mp, 20) / 20 * 10; // Max 10 taškų už patirtį
                     rating = Math.round(winRatePts + difPts + actPts);
                 }
 
-                // Lygio ir spalvų nustatymas
+                // Lygio ir spalvų nustatymas (6 lygiai)
                 let tierName = "Naujokas"; let barColor = "bg-slate-400"; let textColor = "text-slate-500";
-                if (rating >= 80) { tierName = "Deimantas"; barColor = "bg-gradient-to-r from-indigo-500 to-purple-500"; textColor = "text-purple-600"; }
-                else if (rating >= 60) { tierName = "Auksas"; barColor = "bg-gradient-to-r from-yellow-400 to-yellow-500"; textColor = "text-yellow-600"; }
-                else if (rating >= 40) { tierName = "Sidabras"; barColor = "bg-gradient-to-r from-slate-400 to-slate-500"; textColor = "text-slate-600"; }
-                else if (rating >= 20) { tierName = "Bronza"; barColor = "bg-gradient-to-r from-orange-400 to-orange-500"; textColor = "text-orange-600"; }
+                if (rating >= 85) { tierName = "Profesionalas"; barColor = "bg-gradient-to-r from-purple-500 to-fuchsia-500"; textColor = "text-purple-600"; }
+                else if (rating >= 70) { tierName = "Ekspertas"; barColor = "bg-gradient-to-r from-yellow-400 to-amber-500"; textColor = "text-amber-600"; }
+                else if (rating >= 55) { tierName = "Pažengęs"; barColor = "bg-gradient-to-r from-blue-400 to-indigo-500"; textColor = "text-indigo-600"; }
+                else if (rating >= 40) { tierName = "Vidutiniokas"; barColor = "bg-gradient-to-r from-emerald-400 to-green-500"; textColor = "text-emerald-600"; }
+                else if (rating >= 20) { tierName = "Mėgėjas"; barColor = "bg-gradient-to-r from-orange-400 to-orange-500"; textColor = "text-orange-600"; }
                 // --------------------------------------------------------
                 
                 let pPhoto = photoBank[stats.id] || null;
@@ -747,6 +751,69 @@
                     });
                 }, 200);
             } catch(e) { console.error(e); el('loading-overlay').style.display = 'none'; }
+        }
+
+        // --- IŠMANIEJI FINALAI (PLAYOFFS) ---
+        function generateFinals() {
+            try {
+                ensureTournamentId();
+                const safeP = safeArr(players);
+                if (safeP.length < 4) { alert("Nepakanka žaidėjų finalams."); return; }
+
+                const isF = settings.format === 'fixed';
+                const ranked = calculateResults(matches, players, isF); 
+
+                let teams = [];
+                
+                if (settings.format === 'mix_americano') {
+                    const males = ranked.filter(p => p.gender === 'M');
+                    const females = ranked.filter(p => p.gender === 'F');
+                    const pairCount = Math.min(males.length, females.length);
+                    if(pairCount < 2) { alert("Trūksta vyrų arba moterų finalinėms poroms suformuoti."); return; }
+                    
+                    for(let i=0; i<pairCount; i++) {
+                        teams.push([males[i], females[i]]);
+                    }
+                } else {
+                    for(let i=0; i<ranked.length; i+=2) {
+                        if (i+1 < ranked.length) {
+                            teams.push([ranked[i], ranked[i+1]]);
+                        }
+                    }
+                }
+
+                let newM = [];
+                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+                let courtCounter = 1;
+
+                for(let i=0; i<teams.length; i+=2) {
+                    if (i+1 < teams.length) {
+                        let title = i === 0 ? "🏆 DIDYSIS FINALAS" : (i === 2 ? "🥉 MAŽASIS FINALAS" : `DĖL ${i+1}-${i+2} VIETOS`);
+                        let matchBg = i === 0 ? "bg-gradient-to-r from-yellow-500 to-amber-600" : (i === 2 ? "bg-gradient-to-r from-orange-400 to-orange-600" : "bg-slate-800");
+
+                        newM.push({
+                            id: uid(),
+                            round: roundNum,
+                            court: courtCounter++,
+                            finished: false,
+                            score1: 0,
+                            score2: 0,
+                            team1: teams[i],
+                            team2: teams[i+1],
+                            isFinal: true,
+                            finalTitle: title,
+                            finalBg: matchBg
+                        });
+                    }
+                }
+
+                if(newM.length === 0) { alert("Nepavyko suformuoti komandų finalams."); return; }
+
+                matches = [...safeArr(matches), ...newM];
+                autoSave(true);
+                switchView('matches');
+
+            } catch(e) { console.error(e); alert("Klaida formuojant finalus: " + e); }
         }
 
         // --- MULTI-MATRIX ENGINE ---
@@ -890,6 +957,16 @@
                 const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0'); 
                 safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts); safeText('player-count', "Viso: " + safeArr(players).length); safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
                 
+                // Finalų mygtuko rodymas, jei yra sužaistų mačų
+                const btnFinals = el('btn-generate-finals');
+                if(btnFinals) {
+                    if(safeArr(matches).filter(match => match && match.finished).length > 0) {
+                        btnFinals.className = "px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase";
+                    } else {
+                        btnFinals.className = "hidden";
+                    }
+                }
+
                 updateTimerUI(); renderMatches();
             } catch(e) { console.error("RenderErr:", e); }
         }
@@ -1067,7 +1144,11 @@
             active.forEach((m) => { 
                 let t1 = safeArr(m.team1).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
                 let t2 = safeArr(m.team2).filter(p=>p&&p.name).map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join(''); 
-                aHtml += `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="bg-slate-800 text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase"><span>AIKŠTELĖ ${m.court}</span><span>RAUNDAS ${m.round}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`; 
+                
+                let headerText = m.isFinal ? m.finalTitle : `RAUNDAS ${m.round}`;
+                let headerBgClass = m.isFinal ? (m.finalBg || 'bg-slate-800') : 'bg-slate-800';
+
+                aHtml += `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="${headerBgClass} text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase"><span>AIKŠTELĖ ${m.court}</span><span>${headerText}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`; 
             }); 
             safeHTML('matches-container', aHtml);
             
@@ -1076,7 +1157,9 @@
             fin.forEach((m) => { 
                 let n1 = safeArr(m.team1).filter(p=>p&&p.name).map(p=>p.name).join('/');
                 let n2 = safeArr(m.team2).filter(p=>p&&p.name).map(p=>p.name).join('/'); 
-                fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate"><span class="match-number-badge">R${m.round}</span><div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`; 
+                
+                let fBadge = m.isFinal ? `<span class="match-number-badge !bg-yellow-100 !text-yellow-700 border border-yellow-200">🏆</span>` : `<span class="match-number-badge">R${m.round}</span>`;
+                fHtml += `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate">${fBadge}<div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`; 
             }); 
             safeHTML('finished-matches-container', fHtml);
         }
@@ -1142,7 +1225,6 @@
         window.addEventListener('beforeunload', function (e) { if (safeArr(matches).some(m => !m.finished)) { e.preventDefault(); e.returnValue = ''; } });
         
         window.onload = () => { 
-            // Pašalinta senoji migrateOldData() funkcija, nes ji nebuvo pateikta originale, paliekam tik esamas funkcijas.
             loadData(); 
             checkUrlForRoom(); 
             
