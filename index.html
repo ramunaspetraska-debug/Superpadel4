@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V160</title>
+    <title>superpadel.lt V161</title>
     
     <script>
         if ('serviceWorker' in navigator) {
@@ -12,8 +12,8 @@
             });
         }
         window.addEventListener('load', function() {
-            if(!localStorage.getItem('v160_cache_cleared')) {
-                localStorage.setItem('v160_cache_cleared', 'true');
+            if(!localStorage.getItem('v161_cache_cleared')) {
+                localStorage.setItem('v161_cache_cleared', 'true');
                 window.location.reload(true);
             }
         });
@@ -52,7 +52,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 bg-red-600 text-white text-[8px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-md">V160</div>
+    <div class="fixed top-0 left-0 bg-red-600 text-white text-[8px] px-2 py-0.5 z-[999] font-black tracking-widest rounded-br-md">V161</div>
 
     <div id="loading-overlay"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -701,7 +701,7 @@
             } catch(e) { console.error(e); }
         }
 
-        // --- SHARE RESULTS AS IMAGE (HD) ---
+        // --- SHARE RESULTS AS IMAGE (HD - ATNAUJINTA VERSIJA) ---
         function shareResultsAsImage() {
             try {
                 el('loading-overlay').style.display = 'flex';
@@ -710,46 +710,61 @@
                 const target = el('leaderboard-capture-target');
                 const title = el('tournament-name-field').value || "Turnyro Rezultatai";
                 
+                // Sukuriame laikiną rėmą, kuris atitinka mobilaus telefono proporcijas
                 const wrapper = document.createElement('div');
                 wrapper.style.position = 'absolute'; wrapper.style.left = '-9999px'; wrapper.style.top = '0';
-                wrapper.style.width = '800px'; wrapper.style.padding = '40px'; wrapper.style.background = '#ffffff'; 
+                wrapper.style.width = '450px'; 
+                wrapper.style.padding = '20px'; 
+                wrapper.style.background = '#f8fafc'; 
                 
+                // Antraštės dizainas
                 const header = document.createElement('div');
-                header.style.textAlign = 'center'; header.style.marginBottom = '30px'; header.style.borderBottom = '4px solid #f1f5f9'; header.style.paddingBottom = '20px';
-                header.innerHTML = `<h1 style="font-size: 42px; font-weight: 900; color: #0f172a; margin-bottom: 8px;">superpadel.lt</h1><h2 style="font-size: 20px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 2px;">${title}</h2>`;
+                header.style.textAlign = 'center'; header.style.marginBottom = '20px'; 
+                header.innerHTML = `<h1 style="font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; line-height: 1; letter-spacing: -1px;">superpadel<span style="color: #16a34a;">.lt</span></h1><h2 style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">${title}</h2>`;
                 
+                // Klonuojame lentelę ir pridedame šešėlį
                 const content = target.cloneNode(true);
-                content.style.boxShadow = 'none'; content.style.border = '1px solid #e2e8f0'; content.style.borderRadius = '16px';
-                
-                const allText = content.querySelectorAll('div, span');
-                allText.forEach(t => { if(t.innerText.length > 0) t.style.fontSize = (parseFloat(window.getComputedStyle(t).fontSize) * 1.2) + 'px'; });
+                content.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'; 
+                content.style.border = '1px solid #e2e8f0'; 
+                content.style.borderRadius = '16px';
+                content.style.backgroundColor = '#ffffff';
+                content.style.overflow = 'hidden';
 
+                // Poraštė
                 const footer = document.createElement('div');
-                footer.style.textAlign = 'center'; footer.style.fontSize = '16px'; footer.style.color = '#cbd5e1'; footer.style.fontWeight = 'bold'; footer.style.marginTop = '30px';
+                footer.style.textAlign = 'center'; footer.style.fontSize = '10px'; footer.style.color = '#cbd5e1'; footer.style.fontWeight = '900'; footer.style.marginTop = '20px'; footer.style.textTransform = 'uppercase'; footer.style.letterSpacing = '1px';
                 footer.innerText = "Sugeneruota su www.superpadel.lt";
                 
                 wrapper.appendChild(header); wrapper.appendChild(content); wrapper.appendChild(footer);
                 document.body.appendChild(wrapper);
 
+                // Leidžiame naršyklei akimirką surenderinti klonuotus elementus
                 setTimeout(() => {
-                    html2canvas(wrapper, { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false }).then(canvas => {
+                    // scale: 3 padaro vaizdą 3 kartus aštresnį (HD kokybė)
+                    html2canvas(wrapper, { scale: 3, backgroundColor: "#f8fafc", useCORS: true, logging: false }).then(canvas => {
                         document.body.removeChild(wrapper);
                         el('loading-overlay').style.display = 'none'; safeText('loading-text', "Kraunama..."); 
                         
                         const imgData = canvas.toDataURL('image/png', 1.0);
-                        const link = document.createElement('a'); link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; link.href = imgData; link.click();
                         
-                        if (navigator.share) {
+                        // Jei įrenginys palaiko dalijimosi langą (telefonai)
+                        if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
                             canvas.toBlob(blob => {
-                                const file = new File([blob], "rezultatai.png", { type: "image/png" });
-                                navigator.share({ files: [file], title: title }).catch(e => console.log(e));
+                                const file = new File([blob], `${title.replace(/\s+/g, '_')}_rezultatai.png`, { type: "image/png" });
+                                navigator.share({ files: [file], title: title }).catch(e => console.log("Dalijimasis atšauktas", e));
                             });
+                        } else {
+                            // Kompiuteriams - automatinis atsisiuntimas
+                            const link = document.createElement('a'); 
+                            link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; 
+                            link.href = imgData; 
+                            link.click();
                         }
                     }).catch(err => {
                         if(document.body.contains(wrapper)) document.body.removeChild(wrapper);
-                        el('loading-overlay').style.display = 'none'; alert("Klaida generuojant vaizdą.");
+                        el('loading-overlay').style.display = 'none'; alert("Klaida generuojant vaizdą: " + err);
                     });
-                }, 200);
+                }, 250);
             } catch(e) { console.error(e); el('loading-overlay').style.display = 'none'; }
         }
 
