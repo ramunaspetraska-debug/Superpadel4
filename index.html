@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V167</title>
+    <title>superpadel.lt V168</title>
     
     <script>
-        const APP_VERSION = 'v167';
+        const APP_VERSION = 'v168';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V167</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V168</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -840,7 +840,7 @@
             } catch(e) { console.error("generateFinals Error:", e); }
         }
 
-        // FIX (IŠ V167): SUGRĄŽINTOS TOBULOS MATRICOS
+        // GRĄŽINTOS TOBULOS MATRICOS IR BAUDŲ LOGIKA IŠ V162
         function requestNextRound() {
             try {
                 ensureTournamentId(); 
@@ -882,33 +882,28 @@
         function generateLookaheadTournament(safePool, startRound, countToGenerate) {
             let M = [], F = []; if (settings.format === 'mix_americano') { M = safePool.filter(p => p.gender === 'M'); F = safePool.filter(p => p.gender === 'F'); } else { let shuffledPool = shuffle([...safePool]); let half = shuffledPool.length / 2; M = shuffledPool.slice(0, half); F = shuffledPool.slice(half); }
             let halfNum = M.length, courtsNeeded = halfNum / 2, partners = new Map(), opponents = new Map(), pastMatches = new Set();
-            const PLAYERS = [...M, ...F]; PLAYERS.forEach(p1 => { partners.set(p1.id, new Map()); opponents.set(p1.id, new Map()); PLAYERS.forEach(p2 => { partners.get(p1.id).set(p2.id, 0); opponents.get(p1.id).set(p2.id, 0); }); });
+            const PLAYERS = [...M, ...F], totalPlayers = PLAYERS.length; PLAYERS.forEach(p1 => { partners.set(p1.id, new Map()); opponents.set(p1.id, new Map()); PLAYERS.forEach(p2 => { partners.get(p1.id).set(p2.id, 0); opponents.get(p1.id).set(p2.id, 0); }); });
             const getP = (a, b) => partners.get(a.id)?.get(b.id) || 0; const getO = (a, b) => opponents.get(a.id)?.get(b.id) || 0;
-            const addStats = (m) => { 
-                const pairs = [[m.t1[0], m.t1[1]], [m.t2[0], m.t2[1]]];
-                pairs.forEach(p => { let c1 = partners.get(p[0].id); c1.set(p[1].id, (c1.get(p[1].id)||0)+1); let c2 = partners.get(p[1].id); c2.set(p[0].id, (c2.get(p[0].id)||0)+1); });
-                const addOpp = (a, b) => { let o1 = opponents.get(a.id); o1.set(b.id, (o1.get(b.id)||0)+1); let o2 = opponents.get(b.id); o2.set(a.id, (o2.get(a.id)||0)+1); };
-                m.t1.forEach(p1 => m.t2.forEach(p2 => addOpp(p1, p2)));
-                let mk = [ [m.t1[0].id, m.t1[1].id].sort().join('+'), [m.t2[0].id, m.t2[1].id].sort().join('+') ].sort().join('VS'); pastMatches.add(mk);
-            };
-            let lastRoundOpponents = new Set(); 
+            const addStats = (m) => { let m1c = partners.get(m.t1[0].id); m1c.set(m.t1[1].id, (m1c.get(m.t1[1].id)||0)+1); let m2c = partners.get(m.t1[1].id); m2c.set(m.t1[0].id, (m2c.get(m.t1[0].id)||0)+1); let m3c = partners.get(m.t2[0].id); m3c.set(m.t2[1].id, (m3c.get(m.t2[1].id)||0)+1); let m4c = partners.get(m.t2[1].id); m4c.set(m.t2[0].id, (m4c.get(m.t2[0].id)||0)+1); const addOpp = (a, b) => { let o1 = opponents.get(a.id); o1.set(b.id, (o1.get(b.id)||0)+1); let o2 = opponents.get(b.id); o2.set(a.id, (o2.get(a.id)||0)+1); }; addOpp(m.t1[0], m.t2[0]); addOpp(m.t1[0], m.t2[1]); addOpp(m.t1[1], m.t2[0]); addOpp(m.t1[1], m.t2[1]); let mk = [ [m.t1[0].id, m.t1[1].id].sort().join('+'), [m.t2[0].id, m.t2[1].id].sort().join('+') ].sort().join('VS'); pastMatches.add(mk); };
+            let lastRoundOpponents = new Set(); const updateLastRoundOpponents = (roundMatches) => { lastRoundOpponents.clear(); if(!roundMatches) return; roundMatches.forEach(m => { m.t1.forEach(p1 => m.t2.forEach(p2 => { lastRoundOpponents.add(p1.id + '_' + p2.id); lastRoundOpponents.add(p2.id + '_' + p1.id); })); }); };
+            let maxHistoricalRound = 0; safeArr(matches).forEach(m => { if(m && safeArr(m.team1).length > 0 && safeArr(m.team2).length > 0) { addStats({ t1: m.team1, t2: m.team2 }); if(m.round > maxHistoricalRound) maxHistoricalRound = m.round; } }); if (maxHistoricalRound > 0) { let lastHistRound = safeArr(matches).filter(m => m.round === maxHistoricalRound).map(m => ({t1: m.team1, t2: m.team2})); updateLastRoundOpponents(lastHistRound); }
             let newPreGen = [];
             for (let round = startRound; round < startRound + countToGenerate; round++) {
-                let bestSet = null, minPenalty = Infinity;
-                for (let iter = 0; iter < 5000; iter++) {
+                let bestSet = null, minPenalty = Infinity, iterations = 10000; 
+                for (let iter = 0; iter < iterations; iter++) {
                     let currentPenalty = 0, roundMatches = [];
                     if (settings.format === 'mix_americano') {
-                        let pairs = []; for(let i = 0; i < halfNum; i++) { pairs.push([M[i], F[(i + round - 1) % halfNum]]); } pairs = shuffle(pairs); 
-                        for(let c = 0; c < courtsNeeded; c++) { let t1 = pairs[c * 2], t2 = pairs[c * 2 + 1]; roundMatches.push({ t1: t1, t2: t2 }); }
+                        let roundShift = round - 1, pairs = []; for(let i = 0; i < halfNum; i++) { pairs.push([M[i], F[(i + roundShift) % halfNum]]); } pairs = shuffle(pairs); 
+                        for(let c = 0; c < courtsNeeded; c++) { let t1 = pairs[c * 2], t2 = pairs[c * 2 + 1], mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
                     } else {
-                        let tempAll = shuffle([...PLAYERS]);
-                        for(let c = 0; c < courtsNeeded; c++) { const t1 = [tempAll.pop(), tempAll.pop()], t2 = [tempAll.pop(), tempAll.pop()]; roundMatches.push({ t1: t1, t2: t2 }); }
+                        let tempAll = shuffle([...M, ...F]); let maxAllowedP = Math.ceil(round / (totalPlayers - 1));
+                        for(let c = 0; c < courtsNeeded; c++) { const t1 = [tempAll.pop(), tempAll.pop()], t2 = [tempAll.pop(), tempAll.pop()]; if (getP(t1[0], t1[1]) >= maxAllowedP) currentPenalty += 5000000; if (getP(t2[0], t2[1]) >= maxAllowedP) currentPenalty += 5000000; let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); if (getP(t1[0], t1[1]) === 0) currentPenalty -= 10000; if (getP(t2[0], t2[1]) === 0) currentPenalty -= 10000; let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getP(t1[0], t1[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getP(t2[0], t2[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
                     }
                     if (currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = roundMatches; }
                 }
-                bestSet.forEach(m => addStats(m)); newPreGen.push(bestSet);
+                bestSet.forEach(m => addStats(m)); newPreGen.push(bestSet); updateLastRoundOpponents(bestSet);
             }
-            preGeneratedTournament = new Array(startRound - 1).fill(null).concat(newPreGen); setStore('pregen', preGeneratedTournament);
+            let fullPreGen = new Array(startRound - 1).fill(null).concat(newPreGen); preGeneratedTournament = fullPreGen; setStore('pregen', preGeneratedTournament);
         }
 
         function dispatchRoundFromPreGen(roundNum) { 
@@ -1100,7 +1095,6 @@
                 isRunning = true; 
                 endTime = Date.now() + (timeLeft * 1000); 
                 
-                // Atrakiname iOS/Android garsą
                 if ('speechSynthesis' in window) {
                     let unlockAudio = new SpeechSynthesisUtterance('');
                     window.speechSynthesis.speak(unlockAudio);
