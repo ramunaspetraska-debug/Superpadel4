@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V169</title>
+    <title>superpadel.lt V170</title>
     
     <script>
-        const APP_VERSION = 'v169';
+        const APP_VERSION = 'v170';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V169</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V170</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -164,10 +164,9 @@
                     <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase">Pagal Laiką</button>
                     <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase">Pagal Taškus</button>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-2 gap-3">
                     <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button type="button" onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button type="button" onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
-                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Aikštelės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('courts', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-courts" class="flex-1 text-center font-black text-sm">2</span><button type="button" onclick="changeSetting('courts', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
                 </div>
                 <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mix_americano">Mix Americano</option></select></div>
@@ -199,7 +198,6 @@
             </div>
             
             <div id="leaderboard-capture-target" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full transition-all">
-                
                  <div id="podium-container" class="hidden flex-col items-center bg-white pt-4 pb-2 border-b border-slate-100"></div>
 
                  <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
@@ -456,7 +454,14 @@
                 } 
             } catch(e) { console.error("updateTournamentName Error:", e); }
         }
+        
+        function syncPhotoBank() {
+            if(isCloud && dbRef) {
+                dbRef.child('photoBank').set(photoBank).catch(e => console.error("Firebase Photo Sync Error:", e));
+            }
+        }
 
+        // FIX #10: Apsauga nuo localStorage limito perpildymo + atskirtas Cloud siuntimas
         function trimPhotoBankIfNeeded() {
             try {
                 let photoStr = JSON.stringify(photoBank);
@@ -469,6 +474,7 @@
                         if (!activeIds.has(id)) { delete photoBank[id]; deleted++; }
                     }
                     setStore('photos', photoBank);
+                    syncPhotoBank();
                 }
             } catch(e) { console.error("trimPhotoBankIfNeeded Error:", e); }
         }
@@ -552,6 +558,7 @@
                 if (curPh) { 
                     photoBank[newId] = curPh; 
                     setStore('photos', photoBank); 
+                    syncPhotoBank();
                     trimPhotoBankIfNeeded();
                 }
                 
@@ -623,6 +630,7 @@
                     if (tempEditPhoto) { 
                         photoBank[p.id] = tempEditPhoto; 
                         setStore('photos', photoBank); 
+                        syncPhotoBank();
                         trimPhotoBankIfNeeded();
                     }
                     
@@ -641,10 +649,23 @@
             catch(e) { console.error("removePlayer Error:", e); }
         }
 
+        // FIX #3: Dvigubas mačų skaičiavimas ištaisytas
         function openPlayerCard(name) {
             try {
-                let cM = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); }); cM.push(...safeArr(matches));
-                let cP = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.players)) cP.push(...safeArr(t.players)); }); cP.push(...safeArr(players));
+                let cM = []; 
+                safeArr(savedTournaments).forEach(t => { 
+                    if(currentTid && t.id === currentTid) return; // Praleidžiame aktyvų, kad nesidubliuotų
+                    if(Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); 
+                }); 
+                if(matches.length > 0) cM.push(...safeArr(matches));
+                
+                let cP = []; 
+                safeArr(savedTournaments).forEach(t => { 
+                    if(currentTid && t.id === currentTid) return;
+                    if(Array.isArray(t.players)) cP.push(...safeArr(t.players)); 
+                }); 
+                if(players.length > 0) cP.push(...safeArr(players));
+                
                 const uP = []; const seen = new Set(); cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
                 
                 const stats = calculateResults(cM, uP, false).find(x => x.name === name); if(!stats) return;
@@ -944,7 +965,6 @@
             const isF = settings.format === 'fixed'; 
             const table = calculateResults(matches, players, isF); 
             
-            // --- NAUJA: PODIUMO LOGIKA (Variant B) ---
             const podiumContainer = el('podium-container');
             const finishedFinals = safeArr(matches).filter(m => m.isFinal && m.finished);
             
@@ -965,7 +985,6 @@
                     else { thirdPlace = smallFinal.team2; }
                 }
 
-                // Apsauga, jei finalai būtų vadinami kažkaip kitaip
                 if (!firstPlace && finishedFinals.length > 0) {
                      const f = finishedFinals[0];
                      const s1 = f.score1 || 0, s2 = f.score2 || 0;
@@ -986,7 +1005,6 @@
             } else if (podiumContainer) {
                 safeDisplay('podium-container', 'none');
             }
-            // --- PODIUMO LOGIKOS PABAIGA ---
 
             let html = table.map((s, i) => {
                 let av = ''; 
@@ -1020,7 +1038,7 @@
             if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
             
             const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0'); 
-            safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('val-courts', settings.courts); safeText('player-count', "Viso: " + players.length); 
+            safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('player-count', "Viso: " + players.length); 
             safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
 
             const btnFinals = el('btn-generate-finals');
@@ -1049,6 +1067,7 @@
         }
 
         function setStatType(type) { statType = type; renderGlobalStats(); }
+        
         function renderGlobalStats() {
             try {
                 const tSel = el('stat-tournament'); if (tSel) {
@@ -1057,7 +1076,16 @@
                 }
                 const tF = el('stat-tournament')?.value || 'CURRENT', gF = el('stat-gender')?.value || 'ALL', pF = el('stat-player')?.value || 'ALL';
                 let cM = [], cP = [];
-                if(tF === 'ALL') { safeArr(savedTournaments).forEach(t => { cM.push(...safeArr(t.matches)); cP.push(...safeArr(t.players)); }); cM.push(...matches); cP.push(...players); }
+                
+                if(tF === 'ALL') { 
+                    safeArr(savedTournaments).forEach(t => { 
+                        if (currentTid && t.id === currentTid) return; // FIX #3
+                        cM.push(...safeArr(t.matches)); 
+                        cP.push(...safeArr(t.players)); 
+                    }); 
+                    if(matches.length > 0) cM.push(...matches); 
+                    if(players.length > 0) cP.push(...players); 
+                }
                 else if(tF === 'CURRENT') { cM = [...matches]; cP = [...players]; }
                 else { const t = savedTournaments.find(x => x.id === tF); if(t){ cM = [...t.matches]; cP = [...t.players]; } }
                 
@@ -1095,7 +1123,12 @@
                     } 
                 } 
                 setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); 
-                if(isCloud && dbRef && fullSync) { const p = { players, matches, settings, savedTournaments, currentTid, photoBank, lastUpdate: Date.now() }; window.lastCloudUpdate = p.lastUpdate; dbRef.set(p); } 
+                if(isCloud && dbRef && fullSync) { 
+                    // FIX #6: Nebesiunčiame viso photoBank masyvo į Firebase
+                    const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() }; 
+                    window.lastCloudUpdate = p.lastUpdate; 
+                    dbRef.update(p); // Naudojamas .update(), kad neperrašytų photoBank debesyje
+                } 
                 render(); 
             } catch(e) { console.error("autoSave Error:", e); } 
         }
@@ -1114,7 +1147,21 @@
         function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; liveUpdateMatches(); } }
         function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
         function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); autoSave(true); switchView('setup'); } }
-        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderHistoryList(); } }
+        
+        // FIX #5: Saugiklis trinant aktyvų turnyrą iš Istorijos
+        function deleteHistory(id) { 
+            if(confirm("Trinti?")) { 
+                savedTournaments = savedTournaments.filter(x => x.id !== id); 
+                if (currentTid === id) {
+                    currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []);
+                    const tField = el('tournament-name-field'); if(tField) tField.value = '';
+                    ensureTournamentId();
+                    switchView('setup');
+                }
+                autoSave(true); 
+                renderHistoryList(); 
+            } 
+        }
 
         function speakAnnouncement(text) {
             try {
