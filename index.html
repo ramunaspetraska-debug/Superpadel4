@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V168</title>
+    <title>superpadel.lt V169</title>
     
     <script>
-        const APP_VERSION = 'v168';
+        const APP_VERSION = 'v169';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V168</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V169</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -199,6 +199,9 @@
             </div>
             
             <div id="leaderboard-capture-target" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full transition-all">
+                
+                 <div id="podium-container" class="hidden flex-col items-center bg-white pt-4 pb-2 border-b border-slate-100"></div>
+
                  <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
                     <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
                  </div>
@@ -840,7 +843,6 @@
             } catch(e) { console.error("generateFinals Error:", e); }
         }
 
-        // GRĄŽINTOS TOBULOS MATRICOS IR BAUDŲ LOGIKA IŠ V162
         function requestNextRound() {
             try {
                 ensureTournamentId(); 
@@ -941,6 +943,51 @@
         function renderLeaderboard() {
             const isF = settings.format === 'fixed'; 
             const table = calculateResults(matches, players, isF); 
+            
+            // --- NAUJA: PODIUMO LOGIKA (Variant B) ---
+            const podiumContainer = el('podium-container');
+            const finishedFinals = safeArr(matches).filter(m => m.isFinal && m.finished);
+            
+            if (finishedFinals.length > 0 && podiumContainer) {
+                let firstPlace = null, secondPlace = null, thirdPlace = null;
+                
+                const grandFinal = finishedFinals.find(m => m.finalTitle === "🏆 DIDYSIS FINALAS");
+                if (grandFinal) {
+                    const s1 = grandFinal.score1 || 0, s2 = grandFinal.score2 || 0;
+                    if (s1 >= s2) { firstPlace = grandFinal.team1; secondPlace = grandFinal.team2; }
+                    else { firstPlace = grandFinal.team2; secondPlace = grandFinal.team1; }
+                }
+                
+                const smallFinal = finishedFinals.find(m => m.finalTitle === "🥉 MAŽASIS FINALAS");
+                if (smallFinal) {
+                    const s1 = smallFinal.score1 || 0, s2 = smallFinal.score2 || 0;
+                    if (s1 >= s2) { thirdPlace = smallFinal.team1; }
+                    else { thirdPlace = smallFinal.team2; }
+                }
+
+                // Apsauga, jei finalai būtų vadinami kažkaip kitaip
+                if (!firstPlace && finishedFinals.length > 0) {
+                     const f = finishedFinals[0];
+                     const s1 = f.score1 || 0, s2 = f.score2 || 0;
+                     firstPlace = s1 >= s2 ? f.team1 : f.team2;
+                     secondPlace = s1 >= s2 ? f.team2 : f.team1;
+                }
+                
+                let pHTML = `<div class="w-full px-4 space-y-2 mb-2"><h3 class="text-center font-black text-[10px] text-slate-400 uppercase tracking-widest mb-3">Turnyro Čempionai</h3>`;
+                const getName = (team) => safeArr(team).map(p => p.name).join(' / ');
+                
+                if (firstPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥇</div><div class="font-black text-yellow-700 text-sm truncate">${getName(firstPlace)}</div></div>`;
+                if (secondPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥈</div><div class="font-black text-slate-600 text-sm truncate">${getName(secondPlace)}</div></div>`;
+                if (thirdPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-orange-100 to-orange-50 border border-orange-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥉</div><div class="font-black text-orange-700 text-sm truncate">${getName(thirdPlace)}</div></div>`;
+                
+                pHTML += `</div>`;
+                safeHTML('podium-container', pHTML);
+                safeDisplay('podium-container', 'flex');
+            } else if (podiumContainer) {
+                safeDisplay('podium-container', 'none');
+            }
+            // --- PODIUMO LOGIKOS PABAIGA ---
+
             let html = table.map((s, i) => {
                 let av = ''; 
                 if (!isF) { 
@@ -1001,7 +1048,6 @@
             safeHTML('finished-matches-container', fHtml);
         }
 
-        // --- GLOBAL LOGIC ---
         function setStatType(type) { statType = type; renderGlobalStats(); }
         function renderGlobalStats() {
             try {
@@ -1070,7 +1116,6 @@
         function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); autoSave(true); switchView('setup'); } }
         function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderHistoryList(); } }
 
-        // --- BALSINIAI PRANEŠIMAI ---
         function speakAnnouncement(text) {
             try {
                 if ('speechSynthesis' in window) {
