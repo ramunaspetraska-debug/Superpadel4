@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V166</title>
+    <title>superpadel.lt V165</title>
     
     <script>
-        // FIX #8: Tobulas Cache valymas su keysToDelete masyvu
-        const APP_VERSION = 'v166';
+        // FIX #8 (Patobulintas): Automatinė ir išmani Cache valymo logika (ciklas atbulomis)
+        const APP_VERSION = 'v165';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -16,14 +16,13 @@
         window.addEventListener('load', function() {
             const currentKey = APP_VERSION + '_cache_cleared';
             if(!localStorage.getItem(currentKey)) {
-                const keysToDelete = [];
-                for(let i = 0; i < localStorage.length; i++) {
+                // Ciklas sukamas atbulomis, kad neišmuštų indeksų trinant elementus
+                for(let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
                     if(key && key.includes('_cache_cleared') && key !== currentKey) {
-                        keysToDelete.push(key);
+                        localStorage.removeItem(key);
                     }
                 }
-                keysToDelete.forEach(k => localStorage.removeItem(k));
                 localStorage.setItem(currentKey, 'true');
                 window.location.reload(true);
             }
@@ -63,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V166</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V165</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -319,6 +318,7 @@
     </nav>
 
     <script>
+        // FIX #6: Visos pagalbinės funkcijos dabar rodo klaidas, o ne jas nuryja
         window.onerror = function(msg, url, line) { console.error("Global Error: ", msg, "at line", line); return true; };
 
         function el(id) { return document.getElementById(id); }
@@ -455,18 +455,30 @@
             } catch(e) { console.error("updateTournamentName Error:", e); }
         }
 
+        // FIX #10: Apsauga nuo localStorage limito perpildymo
         function trimPhotoBankIfNeeded() {
             try {
                 let photoStr = JSON.stringify(photoBank);
+                // Jei užima daugiau nei ~3 MB (1 simbolis ~ 1 baitas)
                 if (photoStr.length > 3 * 1024 * 1024) {
                     console.log("Nuotraukų bazė viršija 3MB. Išvalomos senų žaidėjų nuotraukos...");
                     let activeIds = new Set();
+                    
+                    // Surenkame visus aktyvius žaidėjus
                     players.forEach(p => activeIds.add(p.id));
-                    savedTournaments.forEach(t => { if(t && t.players) t.players.forEach(p => activeIds.add(p.id)); });
+                    savedTournaments.forEach(t => {
+                        if(t && t.players) t.players.forEach(p => activeIds.add(p.id));
+                    });
+
+                    // Trinamos nenaudojamos nuotraukos
                     let deleted = 0;
                     for (let id in photoBank) {
-                        if (!activeIds.has(id)) { delete photoBank[id]; deleted++; }
+                        if (!activeIds.has(id)) {
+                            delete photoBank[id];
+                            deleted++;
+                        }
                     }
+                    console.log(`Išvalyta nuotraukų: ${deleted}`);
                     setStore('photos', photoBank);
                 }
             } catch(e) { console.error("trimPhotoBankIfNeeded Error:", e); }
@@ -551,7 +563,7 @@
                 if (curPh) { 
                     photoBank[newId] = curPh; 
                     setStore('photos', photoBank); 
-                    trimPhotoBankIfNeeded();
+                    trimPhotoBankIfNeeded(); // FIX #10 Check limit
                 }
                 
                 players.push({ id: newId, name: n, gender: tempGender }); 
@@ -622,7 +634,7 @@
                     if (tempEditPhoto) { 
                         photoBank[p.id] = tempEditPhoto; 
                         setStore('photos', photoBank); 
-                        trimPhotoBankIfNeeded();
+                        trimPhotoBankIfNeeded(); // FIX #10
                     }
                     
                     matches.forEach(m => {
@@ -924,6 +936,7 @@
         function calculatePairsResults(mArr, pArr) { const pairs = new Map(); try { safeArr(mArr).filter(m => m && m.finished).forEach(m => { const proc = (team, myS, enS) => { let safeTeam = safeArr(team); if (safeTeam.length >= 2) { const names = [safeTeam[0].name, safeTeam[1].name].sort(), key = names.join('_'); if (!pairs.has(key)) { pairs.set(key, { name: `${names[0]}/${names[1]}`, p1: safeTeam[0], p2: safeTeam[1], mp:0, w:0, t:0, l:0, sw:0 }); } const s = pairs.get(key); s.mp++; s.sw += myS; if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++; } }; proc(m.team1, m.score1, m.score2); proc(m.team2, m.score2, m.score1); }); } catch(e) { console.error("calculatePairsResults Error:", e); } return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp)); }
         function calculateResults(mArr, pArr, isF = false) { let res = []; try { let safeP = safeArr(pArr); if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, photo:null, gender:'M' }); } else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); } safeArr(mArr).filter(m => m && m.finished).forEach(m => { const up = (team, myS, enS) => { let t = safeArr(team); if(t.length === 0) return; let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } }); }; up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); }); } catch(e) { console.error("calculateResults Error:", e); } return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); }
 
+        // --- RENDER FUNCTIONS (Skaidymas pagal V163 architektūrą) ---
         function render() {
             try {
                 renderLeaderboard();
@@ -996,6 +1009,7 @@
             safeHTML('finished-matches-container', fHtml);
         }
 
+        // --- GLOBAL LOGIC ---
         function setStatType(type) { statType = type; renderGlobalStats(); }
         function renderGlobalStats() {
             try {
@@ -1064,57 +1078,13 @@
         function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); autoSave(true); switchView('setup'); } }
         function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderHistoryList(); } }
 
-        // --- BALSINIAI ANNOUNCEMENTAI ---
-        function speakAnnouncement(text) {
-            try {
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'en-US'; // Angliškas tarimas
-                    utterance.rate = 1.0; 
-                    utterance.pitch = 1.0;
-                    window.speechSynthesis.speak(utterance);
-                }
-            } catch(e) { console.error("Speech Error:", e); }
-        }
-
         function toggleTimer() { 
             if(settings.winCondition==='score') return; 
             if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; resetTimer(); return; } 
-            
-            if(isRunning) { 
-                clearInterval(timerInterval); 
-                isRunning=false; 
-            } else { 
-                if(timeLeft <= 0) return; 
-                isRunning = true; 
-                endTime = Date.now() + (timeLeft * 1000); 
-                
-                // Nematomas garsiakalbio "atrakinimas" mobiliuosiuose įrenginiuose paspaudimo metu
-                if ('speechSynthesis' in window) {
-                    let unlockAudio = new SpeechSynthesisUtterance('');
-                    window.speechSynthesis.speak(unlockAudio);
-                }
-
-                timerInterval = setInterval(() => { 
-                    const d = Math.ceil((endTime - Date.now())/1000); 
-                    if(d > 0) { 
-                        // Balsiniai pranešimai tiksliai ant nurodytų sekundžių
-                        if (d === 300 && timeLeft !== 300) speakAnnouncement("Five minutes left");
-                        if (d === 60 && timeLeft !== 60) speakAnnouncement("One minute left");
-                        
-                        timeLeft = d; 
-                        updateTimerUI(); 
-                    } else { 
-                        timeLeft = 0; 
-                        clearInterval(timerInterval); 
-                        isRunning = false; 
-                        triggerAlarm(); 
-                    } 
-                }, 1000); 
-            } 
+            if(isRunning) { clearInterval(timerInterval); isRunning=false; } 
+            else { if(timeLeft <= 0) return; isRunning = true; endTime = Date.now() + (timeLeft * 1000); timerInterval = setInterval(() => { const d = Math.ceil((endTime - Date.now())/1000); if(d > 0) { timeLeft = d; updateTimerUI(); } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } }, 1000); } 
             updateTimerUI(); 
         }
-
         function updateTimerUI() { 
             const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), s = (timeLeft%60).toString().padStart(2,'0'); 
             safeText('timer-display', `${m}:${s}`); 
@@ -1159,6 +1129,7 @@
         function initFirebaseConnection() { 
             const room = el('fb-room')?.value.trim() || activeRoom; if(!room) return; 
             
+            // FIX #9: Pašalinamas atminties nutekėjimas prieš pridedant naują klausytoją
             if(dbRef) { dbRef.off(); } 
             
             ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
@@ -1177,6 +1148,7 @@
             }); 
         }
 
+        // FIX #9: Patikimas atjungimas nuo Firebase, kad neliktų kabančių klausytojų fone
         function disconnectFirebase() { 
             if(dbRef) { 
                 dbRef.off(); 
