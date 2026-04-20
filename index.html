@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V170</title>
+    <title>superpadel.lt V171</title>
     
     <script>
-        const APP_VERSION = 'v170';
+        const APP_VERSION = 'v171';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V170</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V171</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -118,6 +118,11 @@
         </div>
         
         <div class="flex items-center gap-2">
+            <button type="button" id="btn-mute" onclick="toggleMute()" class="w-11 h-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95 transition-transform" aria-label="Įjungti/Išjungti garsą">
+                <svg id="icon-sound-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                <svg id="icon-sound-off" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="1" x2="1" y2="23"></line></svg>
+            </button>
+
             <button type="button" id="btn-play" onclick="toggleTimer()" class="w-11 h-11 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform" aria-label="Paleisti arba Pauzuoti laikmatį">
                 <svg id="icon-play" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <svg id="icon-pause" class="hidden" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -353,6 +358,7 @@
         let qrCodeInstance = null;
         let photoBank = {}; 
         let nameUpdateTimer = null;
+        let isMuted = localStorage.getItem('sp_is_muted') === 'true'; // Skaitome iš atminties
 
         const DB_KEY = "padelio_pro_master"; 
         const REG_KEY = "padelio_pro_master_rooms"; 
@@ -454,14 +460,7 @@
                 } 
             } catch(e) { console.error("updateTournamentName Error:", e); }
         }
-        
-        function syncPhotoBank() {
-            if(isCloud && dbRef) {
-                dbRef.child('photoBank').set(photoBank).catch(e => console.error("Firebase Photo Sync Error:", e));
-            }
-        }
 
-        // FIX #10: Apsauga nuo localStorage limito perpildymo + atskirtas Cloud siuntimas
         function trimPhotoBankIfNeeded() {
             try {
                 let photoStr = JSON.stringify(photoBank);
@@ -474,7 +473,6 @@
                         if (!activeIds.has(id)) { delete photoBank[id]; deleted++; }
                     }
                     setStore('photos', photoBank);
-                    syncPhotoBank();
                 }
             } catch(e) { console.error("trimPhotoBankIfNeeded Error:", e); }
         }
@@ -558,7 +556,6 @@
                 if (curPh) { 
                     photoBank[newId] = curPh; 
                     setStore('photos', photoBank); 
-                    syncPhotoBank();
                     trimPhotoBankIfNeeded();
                 }
                 
@@ -630,7 +627,6 @@
                     if (tempEditPhoto) { 
                         photoBank[p.id] = tempEditPhoto; 
                         setStore('photos', photoBank); 
-                        syncPhotoBank();
                         trimPhotoBankIfNeeded();
                     }
                     
@@ -649,12 +645,11 @@
             catch(e) { console.error("removePlayer Error:", e); }
         }
 
-        // FIX #3: Dvigubas mačų skaičiavimas ištaisytas
         function openPlayerCard(name) {
             try {
                 let cM = []; 
                 safeArr(savedTournaments).forEach(t => { 
-                    if(currentTid && t.id === currentTid) return; // Praleidžiame aktyvų, kad nesidubliuotų
+                    if(currentTid && t.id === currentTid) return;
                     if(Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); 
                 }); 
                 if(matches.length > 0) cM.push(...safeArr(matches));
@@ -954,10 +949,26 @@
 
         function render() {
             try {
+                // UPDATE NAME BUG FIX: Kai pasikeičia vaizdas, visada nustatome teisingą pavadinimą
+                const curT = savedTournaments.find(x => x.id === currentTid);
+                const tField = el('tournament-name-field');
+                if(tField && document.activeElement !== tField) {
+                    tField.value = curT ? curT.name : (new Date().toLocaleDateString('lt-LT') + ' Turnyras');
+                }
+
                 renderLeaderboard();
                 renderPlayersList();
                 renderTimerAndSettings();
                 renderMatches();
+                
+                // Mute ikonų atnaujinimas
+                if(isMuted) {
+                    el('icon-sound-on')?.classList.add('hidden');
+                    el('icon-sound-off')?.classList.remove('hidden');
+                } else {
+                    el('icon-sound-on')?.classList.remove('hidden');
+                    el('icon-sound-off')?.classList.add('hidden');
+                }
             } catch(e) { console.error("RenderErr:", e); }
         }
 
@@ -1067,7 +1078,6 @@
         }
 
         function setStatType(type) { statType = type; renderGlobalStats(); }
-        
         function renderGlobalStats() {
             try {
                 const tSel = el('stat-tournament'); if (tSel) {
@@ -1076,10 +1086,9 @@
                 }
                 const tF = el('stat-tournament')?.value || 'CURRENT', gF = el('stat-gender')?.value || 'ALL', pF = el('stat-player')?.value || 'ALL';
                 let cM = [], cP = [];
-                
                 if(tF === 'ALL') { 
                     safeArr(savedTournaments).forEach(t => { 
-                        if (currentTid && t.id === currentTid) return; // FIX #3
+                        if (currentTid && t.id === currentTid) return;
                         cM.push(...safeArr(t.matches)); 
                         cP.push(...safeArr(t.players)); 
                     }); 
@@ -1124,10 +1133,9 @@
                 } 
                 setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); 
                 if(isCloud && dbRef && fullSync) { 
-                    // FIX #6: Nebesiunčiame viso photoBank masyvo į Firebase
                     const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() }; 
                     window.lastCloudUpdate = p.lastUpdate; 
-                    dbRef.update(p); // Naudojamas .update(), kad neperrašytų photoBank debesyje
+                    dbRef.update(p); 
                 } 
                 render(); 
             } catch(e) { console.error("autoSave Error:", e); } 
@@ -1148,7 +1156,6 @@
         function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
         function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); ensureTournamentId(); autoSave(true); switchView('setup'); } }
         
-        // FIX #5: Saugiklis trinant aktyvų turnyrą iš Istorijos
         function deleteHistory(id) { 
             if(confirm("Trinti?")) { 
                 savedTournaments = savedTournaments.filter(x => x.id !== id); 
@@ -1163,7 +1170,14 @@
             } 
         }
 
+        function toggleMute() {
+            isMuted = !isMuted;
+            localStorage.setItem('sp_is_muted', isMuted.toString());
+            render();
+        }
+
         function speakAnnouncement(text) {
+            if(isMuted) return;
             try {
                 if ('speechSynthesis' in window) {
                     const utterance = new SpeechSynthesisUtterance(text);
@@ -1173,6 +1187,16 @@
                     window.speechSynthesis.speak(utterance);
                 }
             } catch(e) { console.error("Speech Error:", e); }
+        }
+
+        function playBuzzer() { 
+            if(isMuted) return;
+            try { 
+                const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                const o = ctx.createOscillator(); 
+                o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); 
+                o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); 
+            } catch(e){ console.error("Buzzer Error:", e); } 
         }
 
         function toggleTimer() { 
@@ -1187,7 +1211,7 @@
                 isRunning = true; 
                 endTime = Date.now() + (timeLeft * 1000); 
                 
-                if ('speechSynthesis' in window) {
+                if (!isMuted && 'speechSynthesis' in window) {
                     let unlockAudio = new SpeechSynthesisUtterance('');
                     window.speechSynthesis.speak(unlockAudio);
                 }
@@ -1223,7 +1247,6 @@
             } 
         }
         function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); }
-        function playBuzzer() { try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); } catch(e){ console.error("Buzzer Error:", e); } }
         function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); }
         function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
 
