@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V175</title>
+    <title>superpadel.lt V176</title>
     
     <script>
-        const APP_VERSION = 'v175';
+        const APP_VERSION = 'v176';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V175</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V176</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -464,6 +464,7 @@
             } catch(e) { console.error("updateTournamentName Error:", e); }
         }
         
+        // FIX #1: Sugrąžinta dingusi nuotraukų Firebase sinchronizacijos funkcija
         function syncPhotoBank() {
             if(isCloud && dbPhotosRef) {
                 dbPhotosRef.set(photoBank).catch(e => console.error("Firebase Photo Sync Error:", e));
@@ -891,7 +892,6 @@
         }
 
         function setStatType(type) { statType = type; renderGlobalStats(); }
-        
         function renderGlobalStats() {
             try {
                 const tSel = el('stat-tournament'); if (tSel) {
@@ -900,7 +900,6 @@
                 }
                 const tF = el('stat-tournament')?.value || 'CURRENT', gF = el('stat-gender')?.value || 'ALL', pF = el('stat-player')?.value || 'ALL';
                 let cM = [], cP = [];
-                
                 if(tF === 'ALL') { 
                     safeArr(savedTournaments).forEach(t => { 
                         if (currentTid && t.id === currentTid) return;
@@ -936,7 +935,7 @@
         function changeFormat(v) { settings.format = v; preGeneratedTournament = []; setStore('pregen', []); autoSave(true); }
         function changeRanking(v) { settings.rankingMode = v; autoSave(true); }
         
-        // FIX: Nauja valymo funkcija. Trina tuščius turnyrus iš atminties.
+        // FIX #5: Ištrina tuščius turnyrus iš istorijos (kad nesikauptų šiukšlės)
         function cleanEmptyTournaments() {
             let initialLength = savedTournaments.length;
             savedTournaments = savedTournaments.filter(t => {
@@ -961,7 +960,7 @@
                     } 
                 } 
                 
-                cleanEmptyTournaments(); // Išvalome šiukšles
+                cleanEmptyTournaments(); 
                 
                 setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); 
                 
@@ -1109,11 +1108,10 @@
             safeHTML('history-list', h); 
         }
         
-        // FIX: Deep Copy + Teisinga eiliškumo seka krovimo metu
+        // FIX: Deep Copy
         function loadHistory(id) { 
             const t = savedTournaments.find(x => x.id === id); 
             if(t && confirm("Užkrauti?")) { 
-                // Atkabiname objektus per Deep Copy
                 players = JSON.parse(JSON.stringify(safeArr(t.players))); 
                 matches = JSON.parse(JSON.stringify(safeArr(t.matches))); 
                 settings = JSON.parse(JSON.stringify({...ds, ...t.settings})); 
