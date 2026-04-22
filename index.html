@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V185</title>
+    <title>superpadel.lt V186</title>
     
     <script>
-        const APP_VERSION = 'v185';
+        const APP_VERSION = 'v186';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V185</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V186</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -867,356 +867,6 @@
             safeHTML('finished-matches-container', fHtml);
         }
 
-        function shareResultsAsImage() {
-            try {
-                el('loading-overlay').style.display = 'flex';
-                safeText('loading-text', "Kuriama HD nuotrauka...");
-                
-                const target = el('leaderboard-capture-target');
-                const title = el('tournament-name-field').value || "Turnyro Rezultatai";
-                
-                const wrapper = document.createElement('div');
-                wrapper.style.position = 'absolute'; wrapper.style.left = '-9999px'; wrapper.style.top = '0';
-                wrapper.style.width = '450px'; 
-                wrapper.style.padding = '20px'; 
-                wrapper.style.background = '#f8fafc'; 
-                
-                const header = document.createElement('div');
-                header.style.textAlign = 'center'; header.style.marginBottom = '20px'; 
-                header.innerHTML = `<h1 style="font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; line-height: 1; letter-spacing: -1px;">superpadel<span style="color: #16a34a;">.lt</span></h1><h2 style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">${title}</h2>`;
-                
-                const content = target.cloneNode(true);
-                content.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'; 
-                content.style.border = '1px solid #e2e8f0'; 
-                content.style.borderRadius = '16px';
-                content.style.backgroundColor = '#ffffff';
-                content.style.overflow = 'hidden';
-
-                const footer = document.createElement('div');
-                footer.style.textAlign = 'center'; footer.style.fontSize = '10px'; footer.style.color = '#cbd5e1'; footer.style.fontWeight = '900'; footer.style.marginTop = '20px'; footer.style.textTransform = 'uppercase'; footer.style.letterSpacing = '1px';
-                footer.innerText = "Sugeneruota su www.superpadel.lt";
-                
-                wrapper.appendChild(header); wrapper.appendChild(content); wrapper.appendChild(footer);
-                document.body.appendChild(wrapper);
-
-                setTimeout(() => {
-                    html2canvas(wrapper, { scale: 3, backgroundColor: "#f8fafc", useCORS: true, logging: false }).then(canvas => {
-                        document.body.removeChild(wrapper);
-                        el('loading-overlay').style.display = 'none'; safeText('loading-text', "Kraunama..."); 
-                        
-                        const imgData = canvas.toDataURL('image/png', 1.0);
-                        
-                        if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
-                            canvas.toBlob(blob => {
-                                const file = new File([blob], `${title.replace(/\s+/g, '_')}_rezultatai.png`, { type: "image/png" });
-                                navigator.share({ files: [file], title: title }).catch(e => console.error("Share error:", e));
-                            });
-                        } else {
-                            const link = document.createElement('a'); 
-                            link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; 
-                            link.href = imgData; 
-                            link.click();
-                        }
-                    }).catch(err => {
-                        if(document.body.contains(wrapper)) document.body.removeChild(wrapper);
-                        el('loading-overlay').style.display = 'none'; alert("Klaida generuojant vaizdą: " + err);
-                    });
-                }, 250);
-            } catch(e) { console.error("shareResultsAsImage Error:", e); el('loading-overlay').style.display = 'none'; }
-        }
-
-        function generateFinals() {
-            try {
-                ensureTournamentId();
-                const safeP = safeArr(players);
-                if (safeP.length < 4) { alert("Nepakanka žaidėjų finalams."); return; }
-
-                const isF = settings.format === 'fixed';
-                const ranked = calculateResults(matches, players, isF); 
-
-                let teams = [];
-                
-                if (settings.format === 'mix_americano') {
-                    const males = ranked.filter(p => p.gender === 'M');
-                    const females = ranked.filter(p => p.gender === 'F');
-                    const pairCount = Math.min(males.length, females.length);
-                    if(pairCount < 2) { alert("Trūksta vyrų arba moterų finalinėms poroms suformuoti."); return; }
-                    
-                    for(let i=0; i<pairCount; i++) {
-                        teams.push([males[i], females[i]]);
-                    }
-                } else {
-                    for(let i=0; i<ranked.length; i+=2) {
-                        if (i+1 < ranked.length) {
-                            teams.push([ranked[i], ranked[i+1]]);
-                        }
-                    }
-                }
-
-                let newM = [];
-                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-                let courtCounter = 1;
-
-                for(let i=0; i<teams.length; i+=2) {
-                    if (i+1 < teams.length) {
-                        let title = i === 0 ? "🏆 DIDYSIS FINALAS" : (i === 2 ? "🥉 MAŽASIS FINALAS" : `DĖL ${i+1}-${i+2} VIETOS`);
-                        let matchBg = i === 0 ? "bg-gradient-to-r from-yellow-500 to-amber-600" : (i === 2 ? "bg-gradient-to-r from-orange-400 to-orange-600" : "bg-slate-800");
-
-                        newM.push({
-                            id: uid(), round: roundNum, court: courtCounter++, finished: false, score1: 0, score2: 0,
-                            team1: teams[i], team2: teams[i+1], isFinal: true, finalTitle: title, finalBg: matchBg
-                        });
-                    }
-                }
-
-                if(newM.length === 0) { alert("Nepavyko suformuoti komandų finalams."); return; }
-                matches = [...safeArr(matches), ...newM];
-                autoSave(true);
-                switchView('matches');
-            } catch(e) { console.error("generateFinals Error:", e); }
-        }
-
-        // TIKRŲJŲ MATRICŲ KODAS, IŠIMTAS IŠ V179
-        function requestNextRound() {
-            try {
-                ensureTournamentId(); 
-                const safeP = safeArr(players); 
-                if (settings.format === 'fixed') { return generateFixedRound(safeP); }
-                if (safeP.length < 4 || safeP.length % 4 !== 0) { 
-                    alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4! (Dabar yra ${safeP.length})`);
-                    return; 
-                }
-                if (settings.format === 'mix_americano') { 
-                    const mC = safeP.filter(p => p.gender === 'M').length, fC = safeP.filter(p => p.gender === 'F').length; 
-                    if (mC !== fC) { alert("KLAIDA: Mix formatui reikia vienodo vyrų ir moterų skaičiaus!"); return; } 
-                }
-                
-                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-                
-                if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]) {
-                    el('loading-overlay').style.display = 'flex';
-                    setTimeout(() => {
-                        try {
-                            if (settings.format === 'mix_americano') {
-                                if (safeP.length === 8) { preGeneratedTournament = generateInterleavedMix8Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
-                                else if (safeP.length === 16) { preGeneratedTournament = generatePerfectMix16Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
-                                else { generateLookaheadTournament(safeP, roundNum, 30); }
-                            } else { generateLookaheadTournament(safeP, roundNum, 30); }
-                            el('loading-overlay').style.display = 'none'; dispatchRoundFromPreGen(roundNum);
-                        } catch (e) {
-                            console.error("Matrix generation error:", e);
-                            el('loading-overlay').style.display = 'none';
-                        }
-                    }, 50);
-                } else { dispatchRoundFromPreGen(roundNum); }
-            } catch(e) { console.error("requestNextRound Error:", e); el('loading-overlay').style.display = 'none'; }
-        }
-
-        function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 3; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
-        
-        function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const perfectMatrix16 = [ [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 3; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
-        
-        function generateLookaheadTournament(safePool, startRound, countToGenerate) {
-            let M = [], F = []; if (settings.format === 'mix_americano') { M = safePool.filter(p => p.gender === 'M'); F = safePool.filter(p => p.gender === 'F'); } else { let shuffledPool = shuffle([...safePool]); let half = shuffledPool.length / 2; M = shuffledPool.slice(0, half); F = shuffledPool.slice(half); }
-            let halfNum = M.length, courtsNeeded = halfNum / 2, partners = new Map(), opponents = new Map(), pastMatches = new Set();
-            const PLAYERS = [...M, ...F], totalPlayers = PLAYERS.length; PLAYERS.forEach(p1 => { partners.set(p1.id, new Map()); opponents.set(p1.id, new Map()); PLAYERS.forEach(p2 => { partners.get(p1.id).set(p2.id, 0); opponents.get(p1.id).set(p2.id, 0); }); });
-            const getP = (a, b) => partners.get(a.id)?.get(b.id) || 0; const getO = (a, b) => opponents.get(a.id)?.get(b.id) || 0;
-            const addStats = (m) => { let m1c = partners.get(m.t1[0].id); m1c.set(m.t1[1].id, (m1c.get(m.t1[1].id)||0)+1); let m2c = partners.get(m.t1[1].id); m2c.set(m.t1[0].id, (m2c.get(m.t1[0].id)||0)+1); let m3c = partners.get(m.t2[0].id); m3c.set(m.t2[1].id, (m3c.get(m.t2[1].id)||0)+1); let m4c = partners.get(m.t2[1].id); m4c.set(m.t2[0].id, (m4c.get(m.t2[0].id)||0)+1); const addOpp = (a, b) => { let o1 = opponents.get(a.id); o1.set(b.id, (o1.get(b.id)||0)+1); let o2 = opponents.get(b.id); o2.set(a.id, (o2.get(a.id)||0)+1); }; addOpp(m.t1[0], m.t2[0]); addOpp(m.t1[0], m.t2[1]); addOpp(m.t1[1], m.t2[0]); addOpp(m.t1[1], m.t2[1]); let mk = [ [m.t1[0].id, m.t1[1].id].sort().join('+'), [m.t2[0].id, m.t2[1].id].sort().join('+') ].sort().join('VS'); pastMatches.add(mk); };
-            let lastRoundOpponents = new Set(); const updateLastRoundOpponents = (roundMatches) => { lastRoundOpponents.clear(); if(!roundMatches) return; roundMatches.forEach(m => { m.t1.forEach(p1 => m.t2.forEach(p2 => { lastRoundOpponents.add(p1.id + '_' + p2.id); lastRoundOpponents.add(p2.id + '_' + p1.id); })); }); };
-            let maxHistoricalRound = 0; safeArr(matches).forEach(m => { if(m && safeArr(m.team1).length > 0 && safeArr(m.team2).length > 0) { addStats({ t1: m.team1, t2: m.team2 }); if(m.round > maxHistoricalRound) maxHistoricalRound = m.round; } }); if (maxHistoricalRound > 0) { let lastHistRound = safeArr(matches).filter(m => m.round === maxHistoricalRound).map(m => ({t1: m.team1, t2: m.team2})); updateLastRoundOpponents(lastHistRound); }
-            let newPreGen = [];
-            for (let round = startRound; round < startRound + countToGenerate; round++) {
-                let bestSet = null, minPenalty = Infinity, iterations = 10000; 
-                for (let iter = 0; iter < iterations; iter++) {
-                    let currentPenalty = 0, roundMatches = [];
-                    if (settings.format === 'mix_americano') {
-                        let roundShift = round - 1, pairs = []; for(let i = 0; i < halfNum; i++) { pairs.push([M[i], F[(i + roundShift) % halfNum]]); } pairs = shuffle(pairs); 
-                        for(let c = 0; c < courtsNeeded; c++) { let t1 = pairs[c * 2], t2 = pairs[c * 2 + 1], mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
-                    } else {
-                        let tempAll = shuffle([...M, ...F]); let maxAllowedP = Math.ceil(round / (totalPlayers - 1));
-                        for(let c = 0; c < courtsNeeded; c++) { const t1 = [tempAll.pop(), tempAll.pop()], t2 = [tempAll.pop(), tempAll.pop()]; if (getP(t1[0], t1[1]) >= maxAllowedP) currentPenalty += 5000000; if (getP(t2[0], t2[1]) >= maxAllowedP) currentPenalty += 5000000; let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); if (getP(t1[0], t1[1]) === 0) currentPenalty -= 10000; if (getP(t2[0], t2[1]) === 0) currentPenalty -= 10000; let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getP(t1[0], t1[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getP(t2[0], t2[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
-                    }
-                    if (currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = roundMatches; }
-                }
-                bestSet.forEach(m => addStats(m)); newPreGen.push(bestSet); updateLastRoundOpponents(bestSet);
-            }
-            let fullPreGen = new Array(startRound - 1).fill(null).concat(newPreGen); preGeneratedTournament = fullPreGen; setStore('pregen', preGeneratedTournament);
-        }
-
-        function dispatchRoundFromPreGen(roundNum) { 
-            try {
-                let roundData = preGeneratedTournament[roundNum - 1]; 
-                if (roundData) { 
-                    let newM = roundData.map((m, idx) => ({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }));
-                    matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
-                }
-            } catch(e) { console.error("dispatchRoundFromPreGen Error:", e); }
-        }
-
-        function generateFixedRound(safePool) { 
-            try {
-                let teams = []; for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); } 
-                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-                
-                let K_even = teams.length;
-                let cycleRounds = K_even - 1;
-                let shift = (roundNum - 1) % cycleRounds;
-                
-                let rotatedIndices = [0];
-                let others = [];
-                for (let i = 1; i < K_even; i++) others.push(i);
-                for (let i = 0; i < shift; i++) others.unshift(others.pop());
-                rotatedIndices.push(...others);
-                
-                let roundMatches = [];
-                for (let i = 0; i < K_even / 2; i++) {
-                    let t1Idx = rotatedIndices[i];
-                    let t2Idx = rotatedIndices[K_even - 1 - i];
-                    if (t1Idx < teams.length && t2Idx < teams.length) {
-                        roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
-                    }
-                }
-                
-                let newM = [];
-                roundMatches.forEach((m, idx) => {
-                    newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
-                });
-                
-                matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
-            } catch(e) { console.error("generateFixedRound Error:", e); }
-        }
-
-        function calculatePairsResults(mArr, pArr) { const pairs = new Map(); try { safeArr(mArr).filter(m => m && m.finished).forEach(m => { const proc = (team, myS, enS) => { let safeTeam = safeArr(team); if (safeTeam.length >= 2) { const names = [safeTeam[0].name, safeTeam[1].name].sort(), key = names.join('_'); if (!pairs.has(key)) { pairs.set(key, { name: `${names[0]}/${names[1]}`, p1: safeTeam[0], p2: safeTeam[1], mp:0, w:0, t:0, l:0, sw:0 }); } const s = pairs.get(key); s.mp++; s.sw += myS; if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++; } }; proc(m.team1, m.score1, m.score2); proc(m.team2, m.score2, m.score1); }); } catch(e) { console.error("calculatePairsResults Error:", e); } return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp)); }
-        function calculateResults(mArr, pArr, isF = false) { let res = []; try { let safeP = safeArr(pArr); if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, photo:null, gender:'M' }); } else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); } safeArr(mArr).filter(m => m && m.finished).forEach(m => { const up = (team, myS, enS) => { let t = safeArr(team); if(t.length === 0) return; let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } }); }; up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); }); } catch(e) { console.error("calculateResults Error:", e); } return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); }
-
-        function render() {
-            try {
-                const curT = savedTournaments.find(x => x.id === currentTid);
-                const tField = el('tournament-name-field');
-                if(tField && document.activeElement !== tField) {
-                    tField.value = curT ? curT.name : (new Date().toLocaleDateString('lt-LT') + ' Turnyras');
-                }
-
-                renderLeaderboard();
-                renderPlayersList();
-                renderTimerAndSettings();
-                renderMatches();
-                
-                if(isMuted) {
-                    el('icon-sound-on')?.classList.add('hidden');
-                    el('icon-sound-off')?.classList.remove('hidden');
-                } else {
-                    el('icon-sound-on')?.classList.remove('hidden');
-                    el('icon-sound-off')?.classList.add('hidden');
-                }
-            } catch(e) { console.error("RenderErr:", e); }
-        }
-
-        function renderLeaderboard() {
-            const isF = settings.format === 'fixed'; 
-            const table = calculateResults(matches, players, isF); 
-            
-            const podiumContainer = el('podium-container');
-            const finishedFinals = safeArr(matches).filter(m => m.isFinal && m.finished);
-            
-            if (finishedFinals.length > 0 && podiumContainer) {
-                let firstPlace = null, secondPlace = null, thirdPlace = null;
-                
-                const grandFinal = finishedFinals.find(m => m.finalTitle === "🏆 DIDYSIS FINALAS");
-                if (grandFinal) {
-                    const s1 = grandFinal.score1 || 0, s2 = grandFinal.score2 || 0;
-                    if (s1 >= s2) { firstPlace = grandFinal.team1; secondPlace = grandFinal.team2; }
-                    else { firstPlace = grandFinal.team2; secondPlace = grandFinal.team1; }
-                }
-                
-                const smallFinal = finishedFinals.find(m => m.finalTitle === "🥉 MAŽASIS FINALAS");
-                if (smallFinal) {
-                    const s1 = smallFinal.score1 || 0, s2 = smallFinal.score2 || 0;
-                    if (s1 >= s2) { thirdPlace = smallFinal.team1; }
-                    else { thirdPlace = smallFinal.team2; }
-                }
-
-                if (!firstPlace && finishedFinals.length > 0) {
-                     const f = finishedFinals[0];
-                     const s1 = f.score1 || 0, s2 = f.score2 || 0;
-                     firstPlace = s1 >= s2 ? f.team1 : f.team2;
-                     secondPlace = s1 >= s2 ? f.team2 : f.team1;
-                }
-                
-                let pHTML = `<div class="w-full px-4 space-y-2 mb-2"><h3 class="text-center font-black text-[10px] text-slate-400 uppercase tracking-widest mb-3">Turnyro Čempionai</h3>`;
-                const getName = (team) => safeArr(team).map(p => p.name).join(' / ');
-                
-                if (firstPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥇</div><div class="font-black text-yellow-700 text-sm truncate">${getName(firstPlace)}</div></div>`;
-                if (secondPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥈</div><div class="font-black text-slate-600 text-sm truncate">${getName(secondPlace)}</div></div>`;
-                if (thirdPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-orange-100 to-orange-50 border border-orange-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥉</div><div class="font-black text-orange-700 text-sm truncate">${getName(thirdPlace)}</div></div>`;
-                
-                pHTML += `</div>`;
-                safeHTML('podium-container', pHTML);
-                safeDisplay('podium-container', 'flex');
-            } else if (podiumContainer) {
-                safeDisplay('podium-container', 'none');
-            }
-
-            let html = table.map((s, i) => {
-                let av = ''; 
-                if (!isF) { 
-                    let pPhoto = photoBank[s.id];
-                    let bg = s.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = s.gender === 'M' ? 'V' : 'M'; 
-                    av = pPhoto ? `<div class="relative w-7 h-7 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${s.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
-                                : `<div class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${s.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
-                }
-                return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div onclick="${isF ? '' : `openPlayerCard('${s.name}')`}" class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
-            }).join('');
-            safeHTML('leaderboard-body', html);
-        }
-
-        function renderPlayersList() {
-            let html = safeArr(players).map((p, idx) => {
-                let pPhoto = photoBank[p.id];
-                let bg = p.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = p.gender === 'M' ? 'V' : 'M'; 
-                let av = pPhoto ? `<div class="relative w-9 h-9 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${p.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${bg}">${bt}</div></div>`
-                                : `<div class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
-                return `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3 flex-1 cursor-pointer active:opacity-50 transition-opacity" onclick="openEditModal('${p.id}')"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${idx + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-red-300 text-xl font-bold px-2 active:scale-90" aria-label="Pašalinti žaidėją">&times;</button></div>`;
-            }).join('');
-            safeHTML('players-list', html);
-        }
-
-        function renderTimerAndSettings() {
-            const isSc = settings.winCondition === 'score'; 
-            safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
-            safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
-            safeDisplay('control-duration', !isSc ? 'block' : 'none'); safeDisplay('control-points', !isSc ? 'none' : 'block'); safeDisplay('score-mode-text', isSc ? 'block' : 'none'); safeDisplay('timer-controls', isSc ? 'none' : 'flex');
-            if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
-            
-            const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0'); 
-            safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('player-count', "Viso: " + players.length); 
-            safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
-
-            const btnFinals = el('btn-generate-finals');
-            if(btnFinals) btnFinals.className = (safeArr(matches).some(m => m.finished)) ? "px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase" : "hidden";
-        }
-
-        function renderMatches() {
-            const active = safeArr(matches).filter(m => !m.finished);
-            let aHtml = active.map(m => {
-                let t1 = m.team1.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
-                let t2 = m.team2.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join(''); 
-                let headT = m.isFinal ? m.finalTitle : `RAUNDAS ${m.round}`;
-                let headC = m.isFinal ? (m.finalBg || 'bg-slate-800') : 'bg-slate-800';
-                return `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="${headC} text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase"><span>AIKŠTELĖ ${m.court}</span><span>${headT}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
-            }).join('');
-            safeHTML('matches-container', aHtml);
-            
-            const fin = safeArr(matches).filter(m => m.finished).reverse(); 
-            let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : ''; 
-            fHtml += fin.map(m => {
-                let n1 = m.team1.map(p=>p.name).join('/'), n2 = m.team2.map(p=>p.name).join('/'); 
-                let badge = m.isFinal ? `<span class="match-number-badge !bg-yellow-100 !text-yellow-700 border border-yellow-200">🏆</span>` : `<span class="match-number-badge">R${m.round}</span>`;
-                return `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate">${badge}<div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
-            }).join('');
-            safeHTML('finished-matches-container', fHtml);
-        }
-
         function setStatType(type) { statType = type; renderGlobalStats(); }
         function renderGlobalStats() {
             try {
@@ -1311,35 +961,8 @@
         function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
         function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; liveUpdateMatches(); } }
         function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
-        
-        function resetScores() { 
-            if(confirm("Pradėti NAUJĄ turnyrą?")) { 
-                currentTid = null; 
-                matches = []; 
-                players = []; 
-                preGeneratedTournament = []; 
-                setStore('pregen', []); 
-                const tF = el('tournament-name-field'); 
-                if(tF) tF.value = ''; 
-                ensureTournamentId(); 
-                autoSave(true); 
-                switchView('setup'); 
-            } 
-        }
-        
-        function deleteHistory(id) { 
-            if(confirm("Trinti?")) { 
-                savedTournaments = savedTournaments.filter(x => x.id !== id); 
-                if (currentTid === id) {
-                    currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []);
-                    const tField = el('tournament-name-field'); if(tField) tField.value = '';
-                    ensureTournamentId();
-                    switchView('setup');
-                }
-                autoSave(true); 
-                renderHistoryList(); 
-            } 
-        }
+        function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); autoSave(true); switchView('setup'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); switchView('setup'); } autoSave(true); renderHistoryList(); } }
 
         function toggleMute() {
             isMuted = !isMuted;
@@ -1360,13 +983,32 @@
             } catch(e) { console.error("Speech Error:", e); }
         }
 
+        // V186: Pataisyta sirena - pypsi 1.5 sek, išsijungia pati po 5 sek.
+        function triggerAlarm() { 
+            if(alarmInterval) return; 
+            playBuzzer(); 
+            alarmInterval = setInterval(playBuzzer, 2000); 
+            updateTimerUI(); 
+            
+            setTimeout(() => { 
+                if(alarmInterval) { 
+                    clearInterval(alarmInterval); 
+                    alarmInterval = null; 
+                    updateTimerUI(); 
+                } 
+            }, 5000); 
+        }
+
         function playBuzzer() { 
             if(isMuted) return;
             try { 
                 const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
                 const o = ctx.createOscillator(); 
-                o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); 
-                o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); 
+                o.type = 'sawtooth'; 
+                o.frequency.setValueAtTime(130, ctx.currentTime); 
+                o.connect(ctx.destination); 
+                o.start(); 
+                o.stop(ctx.currentTime + 1.5); 
             } catch(e){ console.error("Buzzer Error:", e); } 
         }
 
@@ -1412,12 +1054,11 @@
             const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop'); 
             if(i1 && i2 && i3 && b) { 
                 i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden'); 
-                if(alarmInterval) { b.className="w-8 h-8 rounded-full flex items-center justify-center bg-red-600"; i3.classList.remove('hidden'); } 
-                else if(isRunning) { b.className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); } 
+                if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-600"; i3.classList.remove('hidden'); } 
+                else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); } 
                 else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); } 
             } 
         }
-        function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); }
         function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); }
         function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
 
@@ -1432,25 +1073,7 @@
             let h = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border mb-2 ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs uppercase">Trinti</button></div></div>`).join(''); 
             safeHTML('history-list', h); 
         }
-        
-        function loadHistory(id) { 
-            const t = savedTournaments.find(x => x.id === id); 
-            if(t && confirm("Užkrauti?")) { 
-                players = [...safeArr(t.players)]; 
-                matches = [...safeArr(t.matches)]; 
-                settings = {...ds, ...t.settings}; 
-                currentTid = id; 
-                preGeneratedTournament = []; 
-                setStore('tid', id); 
-                
-                const tF = el('tournament-name-field');
-                if (tF) tF.value = t.name || '';
-
-                resetTimer(); 
-                autoSave(true); 
-                switchView('matches'); 
-            } 
-        }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; preGeneratedTournament = []; setStore('tid', id); resetTimer(); autoSave(true); switchView('matches'); } }
 
         function adminClick() { adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); if (adminClickCount >= 5) { const p = prompt("Slaptažodis:"); if (p === "123") switchView('admin'); else if (p === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); } adminClickCount = 0; } }
         function loadSuperAdmin() { ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); firebase.database().ref(REG_KEY).once('value').then(snap => { const r = snap.val(); if(!r) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${k}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${k}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${k}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`).join(''); safeHTML('superadmin-rooms-list', h); }); }
@@ -1472,20 +1095,9 @@
             ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
             firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
             dbRef = firebase.database().ref(DB_KEY + '/' + room); 
-            dbPhotosRef = firebase.database().ref(DB_KEY + '/' + room + '_photos');
             safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room); 
             
             const qrC = el('qrcode'); if(qrC) { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
-            
-            dbPhotosRef.once('value').then(snap => {
-                const cloudPhotos = snap.val();
-                if(cloudPhotos) {
-                    photoBank = { ...photoBank, ...cloudPhotos };
-                    setStore('photos', photoBank);
-                    render();
-                }
-            }).catch(e => console.error("Cloud Photo Load Error:", e));
-
             dbRef.on('value', snap => { 
                 const d = snap.val(); 
                 if(d && d.lastUpdate !== window.lastCloudUpdate) { 
@@ -1498,7 +1110,6 @@
 
         function disconnectFirebase() { 
             if(dbRef) { dbRef.off(); dbRef = null; } 
-            dbPhotosRef = null;
             localStorage.removeItem('sp_active_room_master'); 
             location.reload(); 
         }
