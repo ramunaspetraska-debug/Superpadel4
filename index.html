@@ -8,7 +8,6 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; background-color: #eef2f5; overflow: hidden; color: #333; }
         
-        /* Kairysis Meniu - Moduliai */
         #sidebar-left { width: 280px; background: #fff; border-right: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; flex-shrink: 0; }
         h2 { margin-top: 0; font-size: 15px; text-transform: uppercase; color: #555; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
         select { width: 100%; padding: 10px; margin-bottom: 15px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; font-weight: bold; background: #f9f9f9; outline: none; }
@@ -18,26 +17,21 @@
         .menu-item:hover { background: #f0f4f8; border-color: #007bff; color: #007bff; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .menu-price { font-weight: normal; color: #888; }
 
-        /* Centrinė darbo zona */
         #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
         
-        /* Viršutinė įrankių juosta */
         #toolbar { height: 50px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 0 15px; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 5; overflow-x: auto; white-space: nowrap; flex-shrink: 0; }
         .tool-btn { padding: 6px 10px; font-size: 13px; cursor: pointer; border: 1px solid #ccc; background: #fff; border-radius: 4px; transition: all 0.2s; font-weight: bold; color: #444; flex-shrink: 0; display: flex; align-items: center; gap: 5px; }
         .tool-btn:hover { background: #e9ecef; }
         .danger-btn { color: #d9534f; border-color: #d9534f; }
         .danger-btn:hover { background: #fdf0f0; }
 
-        /* Grupavimo varnelė */
         .toggle-label { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold; color: #007bff; cursor: pointer; padding: 6px 10px; background: #eef5ff; border: 1px solid #b8daff; border-radius: 4px; transition: all 0.2s; }
         .toggle-label:hover { background: #dceafb; }
         .toggle-label input { margin: 0; cursor: pointer; transform: scale(1.2); }
 
-        /* Darbo laukas */
         #workspace { flex-grow: 1; position: relative; background-image: radial-gradient(#d5d5d5 1px, transparent 1px); background-size: 20px 20px; cursor: crosshair; overflow: hidden; touch-action: none; }
         #canvas-area { width: 100%; height: 100%; position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 
-        /* Dešinysis Meniu - Sąmata */
         #sidebar-right { width: 300px; background: #fff; border-left: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: -2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; flex-shrink: 0; }
         #order-list { flex-grow: 1; overflow-y: auto; font-size: 13px; margin-bottom: 20px; }
         .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
@@ -45,7 +39,6 @@
         .action-btn { width: 100%; padding: 12px; font-size: 14px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 6px; font-weight: bold; transition: background 0.2s; margin-bottom: 10px; flex-shrink: 0; }
         .action-btn:hover { background: #0056b3; }
 
-        /* Modulių stilius drobėje */
         .canvas-module { position: absolute; background: transparent; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none; transition: transform 0.1s; filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.15)); }
         .canvas-module.dragging { cursor: grabbing; filter: drop-shadow(5px 8px 10px rgba(0,0,0,0.25)); z-index: 100 !important; transition: none; }
         .canvas-module.selected { outline: 3px dashed #007bff; outline-offset: 4px; filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4)); }
@@ -54,19 +47,16 @@
         .canvas-module span.label { position: relative; z-index: 5; background: rgba(255,255,255,0.9); padding: 3px 5px; border: 1px solid #ccc; border-radius: 4px; pointer-events: none; text-align: center; font-weight: bold; font-size: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .dim-text { font-size: 8px; font-weight: normal; color: #666; display: block; margin-top: 1px; }
 
-        /* Informaciniai ekranai */
         #dimension-display { position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.95); padding: 10px 15px; border: 2px solid #333; border-radius: 6px; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 200; pointer-events: none; line-height: 1.5; }
         #dimension-display b { color: #007bff; }
         
         #instructions { position: absolute; bottom: 20px; right: 20px; background: rgba(255,255,255,0.95); padding: 15px; border: 1px solid #ccc; border-radius: 6px; pointer-events: none; font-size: 13px; line-height: 1.5; z-index: 200; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
-        /* Mastelio (Zoom) valdymas */
         #zoom-controls { position: absolute; top: 20px; right: 20px; background: #fff; border: 2px solid #333; border-radius: 8px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 200; overflow: hidden; }
         #zoom-controls button { width: 35px; height: 35px; border: none; background: #f8f9fa; font-size: 20px; cursor: pointer; font-weight: bold; color: #333; transition: background 0.2s; }
         #zoom-controls button:hover { background: #e9ecef; }
         #zoom-controls span { padding: 0 10px; font-weight: bold; font-size: 14px; color: #007bff; min-width: 45px; text-align: center; }
 
-        /* MOBILUS PRITAIKYMAS */
         @media (max-width: 768px) {
             body { flex-direction: column; }
             #sidebar-left { width: 100%; height: auto; max-height: 40vh; padding: 10px; border-right: none; border-bottom: 2px solid #ccc; box-sizing: border-box; display: flex; flex-direction: column; }
@@ -163,6 +153,7 @@
             </svg>`;
         }
 
+        // Generuojame preliminarią kainą kitoms kolekcijoms
         function getPrice(w, h) { return Math.floor((w + h) * 1.8 / 5) * 5; }
 
         const rawModels = {
@@ -201,50 +192,51 @@
                 { id: 'cl', name: 'C L', w: 25, h: 100, svg: `<rect x="1" y="1" width="23" height="98" rx="6" fill="#f4f4f4" />`},
                 { id: 'cp', name: 'C P', w: 25, h: 100, svg: `<rect x="1" y="1" width="23" height="98" rx="6" fill="#f4f4f4" />`}
             ],
+            // CORE KOLEKCIJA SU TIKSLIOMIS KAINOMIS (Pufams ir porankiams kainų nebuvo, generuojama auto)
             core: [
-                { id: 'es1l', name: 'ES1 L', w: 124, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" />`},
-                { id: 'es1p', name: 'ES1 P', w: 124, h: 110, svg: `<rect x="99" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
-                { id: 'es1kl', name: 'ES1 K L', w: 105, h: 110, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
-                { id: 'es1kp', name: 'ES1 K P', w: 105, h: 110, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
-                { id: 'es1', name: 'ES1', w: 100, h: 110, svg: `<rect x="1" y="1" width="98" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
+                { id: 'es1l', name: 'ES1 L', price: 697, w: 124, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" />`},
+                { id: 'es1p', name: 'ES1 P', price: 697, w: 124, h: 110, svg: `<rect x="99" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
+                { id: 'es1kl', name: 'ES1 K L', price: 646, w: 105, h: 110, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
+                { id: 'es1kp', name: 'ES1 K P', price: 646, w: 105, h: 110, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
+                { id: 'es1', name: 'ES1', price: 625, w: 100, h: 110, svg: `<rect x="1" y="1" width="98" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
                 
-                { id: 'esf1l', name: 'ESF1 L', w: 124, h: 110, expandable: true, expW: 124, expH: 160, sleepW: 100, sleepH: 140,
+                { id: 'esf1l', name: 'ESF1 L', price: 841, w: 124, h: 110, expandable: true, expW: 124, expH: 160, sleepW: 100, sleepH: 140,
                   svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" /><rect x="29" y="85" width="90" height="20" rx="10" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
                   svgExpanded: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="25" y="1" width="98" height="78" rx="8" fill="#eaf0f6" /><rect x="25" y="80" width="98" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1p', name: 'ESF1 P', w: 124, h: 110, expandable: true, expW: 124, expH: 160, sleepW: 100, sleepH: 140,
+                { id: 'esf1p', name: 'ESF1 P', price: 841, w: 124, h: 110, expandable: true, expW: 124, expH: 160, sleepW: 100, sleepH: 140,
                   svg: `<rect x="99" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" /><rect x="5" y="85" width="90" height="20" rx="10" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
                   svgExpanded: `<rect x="99" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="98" height="78" rx="8" fill="#eaf0f6" /><rect x="1" y="80" width="98" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1kl', name: 'ESF1 K L', w: 105, h: 110, expandable: true, expW: 105, expH: 160, sleepW: 81, sleepH: 140,
+                { id: 'esf1kl', name: 'ESF1 K L', price: 792, w: 105, h: 110, expandable: true, expW: 105, expH: 160, sleepW: 81, sleepH: 140,
                   svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" /><rect x="32" y="85" width="66" height="20" rx="8" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
                   svgExpanded: `<rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="1" width="76" height="78" rx="8" fill="#eaf0f6" /><rect x="27" y="80" width="76" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1kp', name: 'ESF1 K P', w: 105, h: 110, expandable: true, expW: 105, expH: 160, sleepW: 81, sleepH: 140,
+                { id: 'esf1kp', name: 'ESF1 K P', price: 792, w: 105, h: 110, expandable: true, expW: 105, expH: 160, sleepW: 81, sleepH: 140,
                   svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" /><rect x="7" y="85" width="66" height="20" rx="8" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
                   svgExpanded: `<rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="1" width="76" height="78" rx="8" fill="#eaf0f6" /><rect x="2" y="80" width="76" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1', name: 'ESF1', w: 100, h: 110, expandable: true, expW: 100, expH: 160, sleepW: 100, sleepH: 140,
+                { id: 'esf1', name: 'ESF1', price: 736, w: 100, h: 110, expandable: true, expW: 100, expH: 160, sleepW: 100, sleepH: 140,
                   svg: `<rect x="1" y="1" width="98" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" /><rect x="8" y="85" width="84" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
                   svgExpanded: `<rect x="1" y="1" width="98" height="78" rx="8" fill="#eaf0f6" /><rect x="1" y="80" width="98" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2l', name: 'ESF2 L', w: 159, h: 110, expandable: true, expW: 159, expH: 160, sleepW: 135, sleepH: 140,
+                { id: 'esf2l', name: 'ESF2 L', price: 901, w: 159, h: 110, expandable: true, expW: 159, expH: 160, sleepW: 135, sleepH: 140,
                   svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="135" height="24" rx="12" /><rect x="27" y="27" width="129" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="119" height="26" rx="13" /><rect x="32" y="85" width="119" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
                   svgExpanded: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="25" y="1" width="133" height="78" rx="8" fill="#eaf0f6" /><rect x="25" y="80" width="133" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2p', name: 'ESF2 P', w: 159, h: 110, expandable: true, expW: 159, expH: 160, sleepW: 135, sleepH: 140,
+                { id: 'esf2p', name: 'ESF2 P', price: 901, w: 159, h: 110, expandable: true, expW: 159, expH: 160, sleepW: 135, sleepH: 140,
                   svg: `<rect x="134" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="135" height="24" rx="12" /><rect x="3" y="27" width="129" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="119" height="26" rx="13" /><rect x="8" y="85" width="119" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
                   svgExpanded: `<rect x="134" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="132" height="78" rx="8" fill="#eaf0f6" /><rect x="1" y="80" width="132" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2kl', name: 'ESF2 K L', w: 140, h: 110, expandable: true, expW: 140, expH: 160, sleepW: 116, sleepH: 140,
+                { id: 'esf2kl', name: 'ESF2 K L', price: 847, w: 140, h: 110, expandable: true, expW: 140, expH: 160, sleepW: 116, sleepH: 140,
                   svg: `<rect x="1" y="1" width="138" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="111" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="130" height="26" rx="13" /><rect x="32" y="85" width="101" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
                   svgExpanded: `<rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="1" width="111" height="78" rx="8" fill="#eaf0f6" /><rect x="27" y="80" width="111" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2kp', name: 'ESF2 K P', w: 140, h: 110, expandable: true, expW: 140, expH: 160, sleepW: 116, sleepH: 140,
+                { id: 'esf2kp', name: 'ESF2 K P', price: 847, w: 140, h: 110, expandable: true, expW: 140, expH: 160, sleepW: 116, sleepH: 140,
                   svg: `<rect x="1" y="1" width="138" height="24" rx="12" /><rect x="115" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="111" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="130" height="26" rx="13" /><rect x="4" y="85" width="107" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
                   svgExpanded: `<rect x="115" y="20" width="24" height="88" rx="12" /><rect x="2" y="1" width="111" height="78" rx="8" fill="#eaf0f6" /><rect x="2" y="80" width="111" height="78" rx="8" fill="#eaf0f6" />`},
 
-                { id: 'enl', name: 'EN L', w: 110, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="86" height="24" rx="12" /><rect x="27" y="27" width="81" height="81" rx="12" fill="#f8f9fa" /><rect x="12" y="32" width="26" height="74" rx="13" /><rect x="32" y="12" width="74" height="26" rx="13" />`},
-                { id: 'enp', name: 'EN P', w: 110, h: 110, svg: `<rect x="85" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="86" height="24" rx="12" /><rect x="2" y="27" width="81" height="81" rx="12" fill="#f8f9fa" /><rect x="72" y="32" width="26" height="74" rx="13" /><rect x="4" y="12" width="74" height="26" rx="13" />`},
-                { id: 'en2l', name: 'EN2 L', w: 129, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="105" height="24" rx="12" /><rect x="27" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="12" y="32" width="26" height="74" rx="13" /><rect x="32" y="12" width="93" height="26" rx="13" />`},
-                { id: 'en2p', name: 'EN2 P', w: 129, h: 110, svg: `<rect x="104" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="105" height="24" rx="12" /><rect x="2" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="91" y="32" width="26" height="74" rx="13" /><rect x="4" y="12" width="93" height="26" rx="13" />`},
+                { id: 'enl', name: 'EN L', price: 792, w: 110, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="86" height="24" rx="12" /><rect x="27" y="27" width="81" height="81" rx="12" fill="#f8f9fa" /><rect x="12" y="32" width="26" height="74" rx="13" /><rect x="32" y="12" width="74" height="26" rx="13" />`},
+                { id: 'enp', name: 'EN P', price: 792, w: 110, h: 110, svg: `<rect x="85" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="86" height="24" rx="12" /><rect x="2" y="27" width="81" height="81" rx="12" fill="#f8f9fa" /><rect x="72" y="32" width="26" height="74" rx="13" /><rect x="4" y="12" width="74" height="26" rx="13" />`},
+                { id: 'en2l', name: 'EN2 L', price: 847, w: 129, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="105" height="24" rx="12" /><rect x="27" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="12" y="32" width="26" height="74" rx="13" /><rect x="32" y="12" width="93" height="26" rx="13" />`},
+                { id: 'en2p', name: 'EN2 P', price: 847, w: 129, h: 110, svg: `<rect x="104" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="105" height="24" rx="12" /><rect x="2" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="91" y="32" width="26" height="74" rx="13" /><rect x="4" y="12" width="93" height="26" rx="13" />`},
                 
-                { id: 'ch1l', name: 'CH1 L', w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="1" y="1" width="24" height="110" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" />`},
-                { id: 'ch1p', name: 'CH1 P', w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="99" y="1" width="24" height="110" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
-                { id: 'ch1kl', name: 'CH1 K L', w: 105, h: 156, isChaise: true, sleepW: 81, sleepH: 140, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="127" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
-                { id: 'ch1kp', name: 'CH1 K P', w: 105, h: 156, isChaise: true, sleepW: 81, sleepH: 140, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="127" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`}
+                { id: 'ch1l', name: 'CH1 L', price: 888, w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="1" y="1" width="24" height="110" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" />`},
+                { id: 'ch1p', name: 'CH1 P', price: 888, w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="99" y="1" width="24" height="110" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
+                { id: 'ch1kl', name: 'CH1 K L', price: 724, w: 105, h: 156, isChaise: true, sleepW: 81, sleepH: 140, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="127" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
+                { id: 'ch1kp', name: 'CH1 K P', price: 724, w: 105, h: 156, isChaise: true, sleepW: 81, sleepH: 140, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="127" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`}
             ],
             cushy: [
                 { id: 'es15l', name: 'ES1,5 L', w: 116, h: 102, svg: `<rect x="1" y="1" width="22" height="100" rx="11" /><rect x="23" y="1" width="92" height="24" rx="12" /><rect x="27" y="27" width="87" height="73" rx="14" fill="#f8f9fa" />`},
@@ -284,7 +276,8 @@
         const furnitureModels = {};
         for(let key in rawModels) {
             furnitureModels[key] = rawModels[key].map(mod => {
-                let m = { ...mod, price: getPrice(mod.w, mod.h), svg: createSVG(mod.w, mod.h, mod.svg) };
+                let p = mod.price || getPrice(mod.w, mod.h); // Jei nėra kainos faile, generuojama
+                let m = { ...mod, price: p, svg: createSVG(mod.w, mod.h, mod.svg) };
                 if(mod.expandable) m.svgExpanded = createSVG(mod.expW, mod.expH, mod.svgExpanded);
                 return m;
             });
@@ -308,8 +301,10 @@
             if (scale < 0.4) scale = 0.4; if (scale > 2.5) scale = 2.5;
             let ratio = scale / oldScale;
             document.querySelectorAll('.canvas-module').forEach(m => {
-                m.style.width = (parseFloat(m.dataset.w) * scale) + 'px';
-                m.style.height = (parseFloat(m.dataset.h) * scale) + 'px';
+                let currentW = parseFloat(m.style.width) / oldScale;
+                let currentH = parseFloat(m.style.height) / oldScale;
+                m.style.width = (currentW * scale) + 'px';
+                m.style.height = (currentH * scale) + 'px';
                 m.style.left = (parseFloat(m.style.left) * ratio) + 'px';
                 m.style.top = (parseFloat(m.style.top) * ratio) + 'px';
             });
@@ -325,7 +320,8 @@
                     sleepw: m.dataset.sleepw, sleeph: m.dataset.sleeph,
                     w: m.dataset.w, h: m.dataset.h, svg: m.innerHTML,
                     leftCM: parseFloat(m.style.left) / scale, topCM: parseFloat(m.style.top) / scale,
-                    angle: m.dataset.angle, zIndex: m.style.zIndex
+                    angle: m.dataset.angle, zIndex: m.style.zIndex,
+                    currentW_CM: parseFloat(m.style.width) / scale, currentH_CM: parseFloat(m.style.height) / scale
                 });
             });
             historyStack.push(JSON.stringify(state));
@@ -352,7 +348,12 @@
                 if(data.sleepw) modEl.dataset.sleepw = data.sleepw;
                 if(data.sleeph) modEl.dataset.sleeph = data.sleeph;
                 modEl.dataset.w = data.w; modEl.dataset.h = data.h; modEl.dataset.angle = data.angle;
-                modEl.style.width = (data.w * scale) + 'px'; modEl.style.height = (data.h * scale) + 'px';
+                
+                let curW = data.currentW_CM ? data.currentW_CM : data.w;
+                let curH = data.currentH_CM ? data.currentH_CM : data.h;
+                modEl.style.width = (curW * scale) + 'px'; 
+                modEl.style.height = (curH * scale) + 'px';
+                
                 let l = data.leftCM !== undefined ? (data.leftCM * scale) + 'px' : data.left;
                 let t = data.topCM !== undefined ? (data.topCM * scale) + 'px' : data.top;
                 modEl.style.left = l; modEl.style.top = t;
@@ -390,12 +391,12 @@
             let sleepContributors = [];
 
             modules.forEach(mod => {
-                // NAUJIENA: Gabaritus skaičiuojame pagal ORIGINALŲ plotį ir aukštį (ignoruojame SVG išsiplėtimą)
+                // GABARITAI SKAIČIUOJAMI TIK PAGAL PRADINIUS (SUSKLEISTUS) MATMENIS!
                 let angle = (parseInt(mod.dataset.angle) || 0) * Math.PI / 180;
                 let baseW = parseFloat(mod.dataset.w) * scale;
                 let baseH = parseFloat(mod.dataset.h) * scale;
                 
-                // Randame tikrąjį centrą (nesvarbu ar išskleista ar ne)
+                // Nustatome vizualų centrą pagal dabartinį (galbūt išskleistą) plotį
                 let curW = parseFloat(mod.style.width);
                 let curH = parseFloat(mod.style.height);
                 let cx = parseFloat(mod.style.left) + curW / 2;
@@ -410,10 +411,8 @@
                 corners.forEach(c => {
                     let rx = cx + c.x * Math.cos(angle) - c.y * Math.sin(angle);
                     let ry = cy + c.x * Math.sin(angle) + c.y * Math.cos(angle);
-                    if (rx < minX) minX = rx;
-                    if (rx > maxX) maxX = rx;
-                    if (ry < minY) minY = ry;
-                    if (ry > maxY) maxY = ry;
+                    if (rx < minX) minX = rx; if (rx > maxX) maxX = rx;
+                    if (ry < minY) minY = ry; if (ry > maxY) maxY = ry;
                 });
 
                 if (mod.dataset.isExpanded === 'true' || mod.dataset.isChaise === 'true') {
@@ -525,11 +524,11 @@
             modEl.style.top = (parseFloat(modEl.style.top) - dh/2 + ry) + 'px';
             
             modEl.dataset.isExpanded = !isExp;
-            // Neliečiame modEl.dataset.w/h, kad Gabaritai nesikeistų!
             modEl.style.width = (targetW * scale) + 'px'; modEl.style.height = (targetH * scale) + 'px';
             
             let expIcon = modData.expandable ? ' <b style="color:#007bff; font-size:14px;">⇕</b>' : '';
-            let labelSvg = `<span class="label">${modData.name}${expIcon}<br><span class="dim-text">${targetW} x ${targetH}</span></span>`;
+            // Label paliekame standartinį suskleistą w ir h, kad nekllaidintų
+            let labelSvg = `<span class="label">${modData.name}${expIcon}<br><span class="dim-text">${modData.w} x ${modData.h}</span></span>`;
             modEl.innerHTML = targetSvg + labelSvg;
             
             const label = modEl.querySelector('.label');
