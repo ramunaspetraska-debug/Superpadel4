@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V186</title>
+    <title>superpadel.lt V187</title>
     
     <script>
-        const APP_VERSION = 'v186';
+        const APP_VERSION = 'v187';
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) { registration.unregister(); }
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V186</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V187</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -241,6 +241,23 @@
             <div id="history-list" class="space-y-4"></div>
         </div>
 
+        <div id="view-superadmin" class="view-section w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-purple-600 tracking-tight">Super Admin</h2>
+                <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
+            </div>
+            
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 mb-4 shadow-sm">
+                <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Globali Statistika</h3>
+                <div id="superadmin-stats"><div class="text-center text-xs text-slate-400 py-2">Kraunama statistika...</div></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Aktyvūs Kambariai</h3>
+                <div id="superadmin-rooms-list" class="space-y-2"><div class="text-center text-xs text-slate-400 py-4">Kraunama...</div></div>
+            </div>
+        </div>
+        
         <div id="view-admin" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-red-600 tracking-tight">Kambario Admin</h2>
@@ -255,16 +272,6 @@
                     <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Žaidėjai</h3>
                     <div id="admin-players-list" class="space-y-1 divide-y divide-slate-50"></div>
                 </div>
-            </div>
-        </div>
-
-        <div id="view-superadmin" class="view-section w-full">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-black text-purple-600 tracking-tight">Super Admin</h2>
-                <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
-            </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-200">
-                <div id="superadmin-rooms-list" class="space-y-2"><div class="text-center text-xs text-slate-400 py-4">Kraunama...</div></div>
             </div>
         </div>
         
@@ -383,6 +390,34 @@
                     firebase.initializeApp({ apiKey: el('fb-apiKey')?.value||'', authDomain: el('fb-authDomain')?.value||'', databaseURL: el('fb-databaseURL')?.value||'', projectId: el('fb-projectId')?.value||'' }); 
                 }
             } catch(e){ console.error("FirebaseInit Error:", e); } 
+        }
+
+        // NAUJA: Vizitų logavimo funkcija fone
+        function logVisit() {
+            try {
+                ensureFirebaseInit();
+                const statsRef = firebase.database().ref(DB_KEY + '_global_stats');
+                
+                statsRef.child('visits').transaction(curr => (curr || 0) + 1).catch(e => {});
+
+                let did = localStorage.getItem('sp_device_id');
+                if (!did) {
+                    did = uid() + uid();
+                    localStorage.setItem('sp_device_id', did);
+                }
+
+                const ua = navigator.userAgent;
+                let dType = 'Kitas';
+                if (/Android/i.test(ua)) dType = 'Android';
+                else if (/iPhone|iPad|iPod/i.test(ua)) dType = 'iOS';
+                else if (/Mac/i.test(ua)) dType = 'Mac';
+                else if (/Windows/i.test(ua)) dType = 'Windows';
+
+                statsRef.child('devices/' + did).set({
+                    type: dType,
+                    lastSeen: Date.now()
+                }).catch(e => {});
+            } catch (e) { console.error("logVisit Error:", e); }
         }
 
         function loadData() { 
@@ -983,32 +1018,13 @@
             } catch(e) { console.error("Speech Error:", e); }
         }
 
-        // V186: Pataisyta sirena - pypsi 1.5 sek, išsijungia pati po 5 sek.
-        function triggerAlarm() { 
-            if(alarmInterval) return; 
-            playBuzzer(); 
-            alarmInterval = setInterval(playBuzzer, 2000); 
-            updateTimerUI(); 
-            
-            setTimeout(() => { 
-                if(alarmInterval) { 
-                    clearInterval(alarmInterval); 
-                    alarmInterval = null; 
-                    updateTimerUI(); 
-                } 
-            }, 5000); 
-        }
-
         function playBuzzer() { 
             if(isMuted) return;
             try { 
                 const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
                 const o = ctx.createOscillator(); 
-                o.type = 'sawtooth'; 
-                o.frequency.setValueAtTime(130, ctx.currentTime); 
-                o.connect(ctx.destination); 
-                o.start(); 
-                o.stop(ctx.currentTime + 1.5); 
+                o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); 
+                o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+2); 
             } catch(e){ console.error("Buzzer Error:", e); } 
         }
 
@@ -1059,6 +1075,7 @@
                 else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); } 
             } 
         }
+        function triggerAlarm() { if(alarmInterval) return; playBuzzer(); alarmInterval = setInterval(playBuzzer, 3000); updateTimerUI(); setTimeout(() => { if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; updateTimerUI(); } }, 5000); }
         function resetTimer() { timeLeft = settings.matchDuration * 60; isRunning = false; clearInterval(timerInterval); updateTimerUI(); }
         function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
 
@@ -1073,10 +1090,51 @@
             let h = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border mb-2 ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs uppercase">Trinti</button></div></div>`).join(''); 
             safeHTML('history-list', h); 
         }
-        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; preGeneratedTournament = []; setStore('tid', id); resetTimer(); autoSave(true); switchView('matches'); } }
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; preGeneratedTournament = []; setStore('tid', id); const tF = el('tournament-name-field'); if (tF) tF.value = t.name || ''; resetTimer(); autoSave(true); switchView('matches'); } }
 
         function adminClick() { adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); if (adminClickCount >= 5) { const p = prompt("Slaptažodis:"); if (p === "123") switchView('admin'); else if (p === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); } adminClickCount = 0; } }
-        function loadSuperAdmin() { ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); firebase.database().ref(REG_KEY).once('value').then(snap => { const r = snap.val(); if(!r) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${k}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${k}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${k}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`).join(''); safeHTML('superadmin-rooms-list', h); }); }
+        
+        function loadSuperAdmin() { 
+            ensureFirebaseInit(); 
+            safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); 
+            
+            firebase.database().ref(REG_KEY).once('value').then(snap => { 
+                const r = snap.val(); 
+                if(!r) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } 
+                let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${k}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${k}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${k}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`).join(''); 
+                safeHTML('superadmin-rooms-list', h); 
+            }); 
+            
+            firebase.database().ref(DB_KEY + '_global_stats').once('value').then(snap => {
+                const stats = snap.val();
+                if (!stats) {
+                    safeHTML('superadmin-stats', '<div class="text-xs text-slate-500">Nėra duomenų.</div>');
+                    return;
+                }
+                const visits = stats.visits || 0;
+                const devices = stats.devices || {};
+                const uniqueCount = Object.keys(devices).length;
+
+                const types = { 'iOS': 0, 'Android': 0, 'Mac': 0, 'Windows': 0, 'Kitas': 0 };
+                Object.values(devices).forEach(d => {
+                    if (d.type && types[d.type] !== undefined) types[d.type]++;
+                    else types['Kitas']++;
+                });
+
+                let typesHtml = Object.keys(types).filter(k => types[k] > 0).map(k => `<span class="text-[10px] bg-slate-100 px-2 py-1 rounded mr-1 mb-1 border border-slate-200 text-slate-600 font-bold">${k}: ${types[k]}</span>`).join('');
+
+                let html = `
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500">Puslapio atvertimai:</span> <span class="text-green-600 text-xl font-black">${visits}</span></div>
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500">Unikalūs įrenginiai:</span> <span class="text-blue-600 text-xl font-black">${uniqueCount}</span></div>
+                    <div class="text-[10px] text-slate-400 mt-2 uppercase font-black tracking-widest mb-1">Įrenginių sistemos:</div>
+                    <div class="flex flex-wrap">${typesHtml}</div>
+                `;
+                safeHTML('superadmin-stats', html);
+            }).catch(e => {
+                safeHTML('superadmin-stats', '<div class="text-xs text-red-500">Klaida gaunant duomenis.</div>');
+            });
+        }
+        
         function superAdminJoin(rn) { safeVal('fb-room', rn); initFirebaseConnection(); switchView('setup'); }
         function superAdminDelete(rn) { if(confirm(`Trinti ${rn}?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+rn).remove(); firebase.database().ref(REG_KEY+'/'+rn).remove(); loadSuperAdmin(); } }
         function renderAdmin() { 
@@ -1094,15 +1152,27 @@
             
             ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
             firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
+            
             dbRef = firebase.database().ref(DB_KEY + '/' + room); 
+            dbPhotosRef = firebase.database().ref(DB_KEY + '/' + room + '_photos');
+
             safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room); 
             
             const qrC = el('qrcode'); if(qrC) { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
+            
+            dbPhotosRef.once('value').then(snap => {
+                const cloudPhotos = snap.val();
+                if(cloudPhotos) {
+                    photoBank = { ...photoBank, ...cloudPhotos };
+                    setStore('photos', photoBank);
+                    render();
+                }
+            }).catch(e => console.error("Cloud Photo Load Error:", e));
+
             dbRef.on('value', snap => { 
                 const d = snap.val(); 
                 if(d && d.lastUpdate !== window.lastCloudUpdate) { 
                     window.lastCloudUpdate = d.lastUpdate; 
-                    if(d.photoBank) { photoBank = d.photoBank; setStore('photos', photoBank); }
                     players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings || {...ds}; savedTournaments = safeArr(d.savedTournaments); currentTid = d.currentTid; render(); 
                 } 
             }); 
@@ -1110,16 +1180,21 @@
 
         function disconnectFirebase() { 
             if(dbRef) { dbRef.off(); dbRef = null; } 
+            dbPhotosRef = null;
             localStorage.removeItem('sp_active_room_master'); 
             location.reload(); 
         }
 
         window.addEventListener('beforeunload', (e) => { if (matches.some(m => !m.finished)) { e.preventDefault(); e.returnValue = ''; } });
+        
         window.onload = () => { 
             loadData(); 
             const p = new URLSearchParams(window.location.search); const r = p.get('room');
             if (r) { activeRoom = r; isCloud = true; localStorage.setItem('sp_active_room_master', r); window.history.replaceState({}, document.title, window.location.pathname); }
             if (activeRoom) { safeVal('fb-room', activeRoom); initFirebaseConnection(); } 
+            
+            logVisit();
+            
             render(); 
             if (matches.length > 0) switchView('matches'); else switchView('setup'); 
         };
