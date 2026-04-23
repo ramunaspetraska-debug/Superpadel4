@@ -8,6 +8,7 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; background-color: #eef2f5; overflow: hidden; color: #333; }
         
+        /* Kairysis Meniu - Moduliai */
         #sidebar-left { width: 280px; background: #fff; border-right: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; flex-shrink: 0; }
         h2 { margin-top: 0; font-size: 15px; text-transform: uppercase; color: #555; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
         select { width: 100%; padding: 10px; margin-bottom: 15px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; font-weight: bold; background: #f9f9f9; outline: none; }
@@ -17,21 +18,26 @@
         .menu-item:hover { background: #f0f4f8; border-color: #007bff; color: #007bff; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .menu-price { font-weight: normal; color: #888; }
 
+        /* Centrinė darbo zona */
         #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
         
+        /* Viršutinė įrankių juosta */
         #toolbar { height: 50px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 0 15px; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 5; overflow-x: auto; white-space: nowrap; flex-shrink: 0; }
         .tool-btn { padding: 6px 10px; font-size: 13px; cursor: pointer; border: 1px solid #ccc; background: #fff; border-radius: 4px; transition: all 0.2s; font-weight: bold; color: #444; flex-shrink: 0; display: flex; align-items: center; gap: 5px; }
         .tool-btn:hover { background: #e9ecef; }
         .danger-btn { color: #d9534f; border-color: #d9534f; }
         .danger-btn:hover { background: #fdf0f0; }
 
+        /* Grupavimo varnelė */
         .toggle-label { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold; color: #007bff; cursor: pointer; padding: 6px 10px; background: #eef5ff; border: 1px solid #b8daff; border-radius: 4px; transition: all 0.2s; }
         .toggle-label:hover { background: #dceafb; }
         .toggle-label input { margin: 0; cursor: pointer; transform: scale(1.2); }
 
+        /* Darbo laukas */
         #workspace { flex-grow: 1; position: relative; background-image: radial-gradient(#d5d5d5 1px, transparent 1px); background-size: 20px 20px; cursor: crosshair; overflow: hidden; touch-action: none; }
         #canvas-area { width: 100%; height: 100%; position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 
+        /* Dešinysis Meniu - Sąmata */
         #sidebar-right { width: 300px; background: #fff; border-left: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: -2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; flex-shrink: 0; }
         #order-list { flex-grow: 1; overflow-y: auto; font-size: 13px; margin-bottom: 20px; }
         .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
@@ -39,6 +45,7 @@
         .action-btn { width: 100%; padding: 12px; font-size: 14px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 6px; font-weight: bold; transition: background 0.2s; margin-bottom: 10px; flex-shrink: 0; }
         .action-btn:hover { background: #0056b3; }
 
+        /* Modulių stilius drobėje */
         .canvas-module { position: absolute; background: transparent; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none; transition: transform 0.1s; filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.15)); }
         .canvas-module.dragging { cursor: grabbing; filter: drop-shadow(5px 8px 10px rgba(0,0,0,0.25)); z-index: 100 !important; transition: none; }
         .canvas-module.selected { outline: 3px dashed #007bff; outline-offset: 4px; filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4)); }
@@ -47,17 +54,19 @@
         .canvas-module span.label { position: relative; z-index: 5; background: rgba(255,255,255,0.9); padding: 3px 5px; border: 1px solid #ccc; border-radius: 4px; pointer-events: none; text-align: center; font-weight: bold; font-size: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .dim-text { font-size: 8px; font-weight: normal; color: #666; display: block; margin-top: 1px; }
 
-        /* PATOBULINTAS MATMENŲ EKRANAS (Dviem eilutėm) */
+        /* Informaciniai ekranai */
         #dimension-display { position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.95); padding: 10px 15px; border: 2px solid #333; border-radius: 6px; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 200; pointer-events: none; line-height: 1.5; }
         #dimension-display b { color: #007bff; }
         
         #instructions { position: absolute; bottom: 20px; right: 20px; background: rgba(255,255,255,0.95); padding: 15px; border: 1px solid #ccc; border-radius: 6px; pointer-events: none; font-size: 13px; line-height: 1.5; z-index: 200; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 
+        /* Mastelio (Zoom) valdymas */
         #zoom-controls { position: absolute; top: 20px; right: 20px; background: #fff; border: 2px solid #333; border-radius: 8px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 200; overflow: hidden; }
         #zoom-controls button { width: 35px; height: 35px; border: none; background: #f8f9fa; font-size: 20px; cursor: pointer; font-weight: bold; color: #333; transition: background 0.2s; }
         #zoom-controls button:hover { background: #e9ecef; }
         #zoom-controls span { padding: 0 10px; font-weight: bold; font-size: 14px; color: #007bff; min-width: 45px; text-align: center; }
 
+        /* MOBILUS PRITAIKYMAS */
         @media (max-width: 768px) {
             body { flex-direction: column; }
             #sidebar-left { width: 100%; height: auto; max-height: 40vh; padding: 10px; border-right: none; border-bottom: 2px solid #ccc; box-sizing: border-box; display: flex; flex-direction: column; }
@@ -156,7 +165,6 @@
 
         function getPrice(w, h) { return Math.floor((w + h) * 1.8 / 5) * 5; }
 
-        // Duomenų bazėje pridėti sleepW ir sleepH miegamiesiems moduliams
         const rawModels = {
             dizy: [
                 { id: 'es15l', name: 'ES1,5 L', w: 115, h: 110, svg: `<rect x="1" y="1" width="113" height="108" rx="4" /><rect x="1" y="1" width="24" height="108" rx="4" /><rect x="25" y="1" width="89" height="24" rx="4" /><rect x="30" y="30" width="80" height="76" rx="6" fill="#f8f9fa" /><rect x="36" y="14" width="67" height="24" rx="10" />`},
@@ -200,7 +208,6 @@
                 { id: 'es1kp', name: 'ES1 K P', w: 105, h: 110, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
                 { id: 'es1', name: 'ES1', w: 100, h: 110, svg: `<rect x="1" y="1" width="98" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
                 
-                // MIEGAMIEJI MODULIAI SU sleepW IR sleepH
                 { id: 'esf1l', name: 'ESF1 L', w: 124, h: 110, expandable: true, expW: 124, expH: 160, sleepW: 100, sleepH: 140,
                   svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" /><rect x="29" y="85" width="90" height="20" rx="10" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
                   svgExpanded: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="25" y="1" width="98" height="78" rx="8" fill="#eaf0f6" /><rect x="25" y="80" width="98" height="78" rx="8" fill="#eaf0f6" />`},
@@ -234,7 +241,6 @@
                 { id: 'en2l', name: 'EN2 L', w: 129, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="105" height="24" rx="12" /><rect x="27" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="12" y="32" width="26" height="74" rx="13" /><rect x="32" y="12" width="93" height="26" rx="13" />`},
                 { id: 'en2p', name: 'EN2 P', w: 129, h: 110, svg: `<rect x="104" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="105" height="24" rx="12" /><rect x="2" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="91" y="32" width="26" height="74" rx="13" /><rect x="4" y="12" width="93" height="26" rx="13" />`},
                 
-                // ŠEZLONGAI SKAIČIUOJAMI KARTU SU MIEGAMĄJA DALIMI
                 { id: 'ch1l', name: 'CH1 L', w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="1" y="1" width="24" height="110" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" />`},
                 { id: 'ch1p', name: 'CH1 P', w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="99" y="1" width="24" height="110" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
                 { id: 'ch1kl', name: 'CH1 K L', w: 105, h: 156, isChaise: true, sleepW: 81, sleepH: 140, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="127" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
@@ -242,7 +248,14 @@
             ],
             cushy: [
                 { id: 'es15l', name: 'ES1,5 L', w: 116, h: 102, svg: `<rect x="1" y="1" width="22" height="100" rx="11" /><rect x="23" y="1" width="92" height="24" rx="12" /><rect x="27" y="27" width="87" height="73" rx="14" fill="#f8f9fa" />`},
-                { id: 'en', name: 'EN', w: 102, h: 102, svg: `<rect x="1" y="1" width="100" height="100" rx="14" fill="#f8f9fa" /><path d="M 1,27 L 27,27 L 27,101 L 1,101 Z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round" /><path d="M 27,1 L 101,1 L 101,27 L 27,27 Z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round" /><path d="M 1,1 L 27,27" stroke="#111" stroke-width="1.5" />`}
+                { id: 'es15p', name: 'ES1,5 P', w: 116, h: 102, svg: `<rect x="93" y="1" width="22" height="100" rx="11" /><rect x="1" y="1" width="92" height="24" rx="12" /><rect x="2" y="27" width="87" height="73" rx="14" fill="#f8f9fa" />`},
+                { id: 'es15', name: 'ES1,5', w: 96, h: 102, svg: `<rect x="1" y="1" width="94" height="24" rx="12" /><rect x="2" y="27" width="92" height="73" rx="14" fill="#f8f9fa" />`},
+                { id: 'ch15l', name: 'CH1,5 L', w: 116, h: 155, svg: `<rect x="1" y="1" width="22" height="100" rx="11" /><rect x="23" y="1" width="92" height="24" rx="12" /><rect x="27" y="27" width="87" height="126" rx="14" fill="#f8f9fa" /><line x1="27" y1="90" x2="114" y2="90" stroke-dasharray="5,5" stroke="#999" />`},
+                { id: 'ch15p', name: 'CH1,5 P', w: 116, h: 155, svg: `<rect x="93" y="1" width="22" height="100" rx="11" /><rect x="1" y="1" width="92" height="24" rx="12" /><rect x="2" y="27" width="87" height="126" rx="14" fill="#f8f9fa" /><line x1="2" y1="90" x2="89" y2="90" stroke-dasharray="5,5" stroke="#999" />`},
+                { id: 'en', name: 'EN', w: 102, h: 102, svg: `<rect x="1" y="1" width="100" height="100" rx="14" fill="#f8f9fa" /><path d="M 1,27 L 27,27 L 27,101 L 1,101 Z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round" /><path d="M 27,1 L 101,1 L 101,27 L 27,27 Z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round" /><path d="M 1,1 L 27,27" stroke="#111" stroke-width="1.5" />`},
+                { id: 'pf1', name: 'PF1', w: 96, h: 72, svg: `<rect x="1" y="1" width="94" height="70" rx="12" fill="#f8f9fa" />`},
+                { id: 'pf2', name: 'PF2', w: 69, h: 91, svg: `<rect x="1" y="1" width="67" height="89" rx="12" fill="#f8f9fa" />`},
+                { id: 'pf3', name: 'PF3', w: 96, h: 91, svg: `<rect x="1" y="1" width="94" height="89" rx="12" fill="#f8f9fa" />`},
             ],
             dream: [
                 { id: 'ch3', name: 'CH3', w: 93, h: 158, isChaise: true, sleepW: 93, sleepH: 140, svg: `<rect x="1" y="1" width="91" height="156" rx="6" fill="#f8f9fa" /><rect x="1" y="1" width="91" height="24" rx="6" /><rect x="8" y="28" width="75" height="24" rx="12" />`},
@@ -369,7 +382,6 @@
             orderList.innerHTML = html; totalPriceEl.innerText = total; updateDimensions();
         }
 
-        // ATSKIRAS GABARITŲ IR MIEGAMOSIOS DALIES SKAIČIAVIMAS
         function updateDimensions() {
             const modules = document.querySelectorAll('.canvas-module');
             if (modules.length === 0) { dimensionDisplay.innerHTML = 'Gabaritai: <b>0 x 0 cm</b>'; return; }
@@ -378,11 +390,32 @@
             let sleepContributors = [];
 
             modules.forEach(mod => {
-                const rect = mod.getBoundingClientRect();
-                if (rect.left < minX) minX = rect.left; if (rect.top < minY) minY = rect.top;
-                if (rect.right > maxX) maxX = rect.right; if (rect.bottom > maxY) maxY = rect.bottom;
+                // NAUJIENA: Gabaritus skaičiuojame pagal ORIGINALŲ plotį ir aukštį (ignoruojame SVG išsiplėtimą)
+                let angle = (parseInt(mod.dataset.angle) || 0) * Math.PI / 180;
+                let baseW = parseFloat(mod.dataset.w) * scale;
+                let baseH = parseFloat(mod.dataset.h) * scale;
+                
+                // Randame tikrąjį centrą (nesvarbu ar išskleista ar ne)
+                let curW = parseFloat(mod.style.width);
+                let curH = parseFloat(mod.style.height);
+                let cx = parseFloat(mod.style.left) + curW / 2;
+                let cy = parseFloat(mod.style.top) + curH / 2;
 
-                // Renkame viską, kas gali būti lovos dalis
+                let dx = baseW / 2, dy = baseH / 2;
+                let corners = [
+                    {x: -dx, y: -dy}, {x: dx, y: -dy},
+                    {x: dx, y: dy}, {x: -dx, y: dy}
+                ];
+                
+                corners.forEach(c => {
+                    let rx = cx + c.x * Math.cos(angle) - c.y * Math.sin(angle);
+                    let ry = cy + c.x * Math.sin(angle) + c.y * Math.cos(angle);
+                    if (rx < minX) minX = rx;
+                    if (rx > maxX) maxX = rx;
+                    if (ry < minY) minY = ry;
+                    if (ry > maxY) maxY = ry;
+                });
+
                 if (mod.dataset.isExpanded === 'true' || mod.dataset.isChaise === 'true') {
                     sleepContributors.push(mod);
                 }
@@ -392,7 +425,7 @@
             const totalHeightCm = Math.round((maxY - minY) / scale);
             let text = `Gabaritai: <b style="color:#007bff">${totalWidthCm} x ${totalHeightCm} cm</b>`;
 
-            // Miegamosios dalies logika
+            // Miegamosios dalies skaičiavimas
             if (sleepContributors.length > 0) {
                 let groups = [];
                 let unvisited = new Set(sleepContributors);
@@ -415,7 +448,7 @@
                     group.forEach(m => unvisited.delete(m));
                 }
 
-                // Rūšiuojame: rodome tik tas grupes, kurios turi bent vieną išskleistą ESF/ES mechanizmą
+                // Rodome tik grupes, kur yra bent viena IŠSKLEISTA dalis
                 let validSleepGroups = groups.filter(g => g.some(m => m.dataset.isExpanded === 'true'));
 
                 if (validSleepGroups.length > 0) {
@@ -472,7 +505,6 @@
             return Array.from(group);
         }
 
-        // IŠSKLEIDIMO MECHANIZMAS
         function toggleExpand(modEl) {
             let coll = modEl.dataset.collection; let id = modEl.dataset.id;
             let modData = furnitureModels[coll]?.find(m => m.id === id);
@@ -493,7 +525,7 @@
             modEl.style.top = (parseFloat(modEl.style.top) - dh/2 + ry) + 'px';
             
             modEl.dataset.isExpanded = !isExp;
-            modEl.dataset.w = targetW; modEl.dataset.h = targetH;
+            // Neliečiame modEl.dataset.w/h, kad Gabaritai nesikeistų!
             modEl.style.width = (targetW * scale) + 'px'; modEl.style.height = (targetH * scale) + 'px';
             
             let expIcon = modData.expandable ? ' <b style="color:#007bff; font-size:14px;">⇕</b>' : '';
@@ -513,7 +545,6 @@
             modEl.dataset.collection = collectionKey || 'core'; modEl.dataset.isExpanded = 'false';
             modEl.dataset.w = modData.w; modEl.dataset.h = modData.h; modEl.dataset.angle = 0;
             
-            // Išsaugome specifinius duomenis miegamajai daliai
             if(modData.expandable) { modEl.dataset.sleepw = modData.sleepW; modEl.dataset.sleeph = modData.sleepH; }
             if(modData.isChaise) { modEl.dataset.isChaise = 'true'; modEl.dataset.sleepw = modData.sleepW; modEl.dataset.sleeph = modData.sleepH; }
 
