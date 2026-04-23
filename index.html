@@ -2,709 +2,1455 @@
 <html lang="lt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Baldų Konfigūratorius ULTRA PRO MAX</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: row; height: 100vh; background-color: #eef2f5; overflow: hidden; color: #333; }
-        
-        #sidebar-left { width: 280px; background: #fff; border-right: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: 2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; flex-shrink: 0; }
-        h2 { margin-top: 0; font-size: 15px; text-transform: uppercase; color: #555; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 15px; }
-        select { width: 100%; padding: 10px; margin-bottom: 15px; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; font-weight: bold; background: #f9f9f9; outline: none; }
-        
-        #module-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; overflow-y: auto; }
-        .menu-item { border: 1px solid #ccc; background: white; padding: 10px; text-align: center; cursor: pointer; font-weight: bold; font-size: 12px; transition: all 0.2s; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
-        .menu-item:hover { background: #f0f4f8; border-color: #007bff; color: #007bff; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .menu-price { font-weight: normal; color: #888; }
-
-        #main-area { flex-grow: 1; display: flex; flex-direction: column; position: relative; min-width: 0; }
-        
-        #toolbar { height: 50px; background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; padding: 0 15px; gap: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 5; overflow-x: auto; white-space: nowrap; flex-shrink: 0; }
-        .tool-btn { padding: 6px 10px; font-size: 13px; cursor: pointer; border: 1px solid #ccc; background: #fff; border-radius: 4px; transition: all 0.2s; font-weight: bold; color: #444; flex-shrink: 0; display: flex; align-items: center; gap: 5px; }
-        .tool-btn:hover { background: #e9ecef; }
-        .danger-btn { color: #d9534f; border-color: #d9534f; }
-        .danger-btn:hover { background: #fdf0f0; }
-
-        .toggle-label { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold; color: #007bff; cursor: pointer; padding: 6px 10px; background: #eef5ff; border: 1px solid #b8daff; border-radius: 4px; transition: all 0.2s; }
-        .toggle-label:hover { background: #dceafb; }
-        .toggle-label input { margin: 0; cursor: pointer; transform: scale(1.2); }
-
-        #workspace { flex-grow: 1; position: relative; background-image: radial-gradient(#d5d5d5 1px, transparent 1px); background-size: 20px 20px; cursor: crosshair; overflow: hidden; touch-action: none; }
-        #canvas-area { width: 100%; height: 100%; position: absolute; top: 0; left: 0; transform-origin: 0 0; }
-
-        #sidebar-right { width: 300px; background: #fff; border-left: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; z-index: 10; box-shadow: -2px 0 10px rgba(0,0,0,0.05); overflow-y: auto; flex-shrink: 0; }
-        #order-list { flex-grow: 1; overflow-y: auto; font-size: 13px; margin-bottom: 20px; }
-        .order-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; }
-        .order-total { font-size: 18px; font-weight: bold; color: #28a745; text-align: right; padding-top: 15px; border-top: 2px solid #333; margin-bottom: 20px; }
-        .action-btn { width: 100%; padding: 12px; font-size: 14px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 6px; font-weight: bold; transition: background 0.2s; margin-bottom: 10px; flex-shrink: 0; }
-        .action-btn:hover { background: #0056b3; }
-
-        .canvas-module { position: absolute; background: transparent; display: flex; align-items: center; justify-content: center; cursor: grab; user-select: none; transition: transform 0.1s; filter: drop-shadow(2px 3px 4px rgba(0,0,0,0.15)); }
-        .canvas-module.dragging { cursor: grabbing; filter: drop-shadow(5px 8px 10px rgba(0,0,0,0.25)); z-index: 100 !important; transition: none; }
-        .canvas-module.selected { outline: 3px dashed #007bff; outline-offset: 4px; filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.4)); }
-        .canvas-module.error { outline: 3px solid #dc3545; background: rgba(220, 53, 69, 0.2); filter: none; }
-
-        .canvas-module span.label { position: relative; z-index: 5; background: rgba(255,255,255,0.9); padding: 3px 5px; border: 1px solid #ccc; border-radius: 4px; pointer-events: none; text-align: center; font-weight: bold; font-size: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .dim-text { font-size: 8px; font-weight: normal; color: #666; display: block; margin-top: 1px; }
-
-        #dimension-display { position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.95); padding: 10px 15px; border: 2px solid #333; border-radius: 6px; font-size: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 200; pointer-events: none; line-height: 1.5; }
-        #dimension-display b { color: #007bff; }
-        
-        #instructions { position: absolute; bottom: 20px; right: 20px; background: rgba(255,255,255,0.95); padding: 15px; border: 1px solid #ccc; border-radius: 6px; pointer-events: none; font-size: 13px; line-height: 1.5; z-index: 200; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-
-        #zoom-controls { position: absolute; top: 20px; right: 20px; background: #fff; border: 2px solid #333; border-radius: 8px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); z-index: 200; overflow: hidden; }
-        #zoom-controls button { width: 35px; height: 35px; border: none; background: #f8f9fa; font-size: 20px; cursor: pointer; font-weight: bold; color: #333; transition: background 0.2s; }
-        #zoom-controls button:hover { background: #e9ecef; }
-        #zoom-controls span { padding: 0 10px; font-weight: bold; font-size: 14px; color: #007bff; min-width: 45px; text-align: center; }
-
-        @media (max-width: 768px) {
-            body { flex-direction: column; }
-            #sidebar-left { width: 100%; height: auto; max-height: 40vh; padding: 10px; border-right: none; border-bottom: 2px solid #ccc; box-sizing: border-box; display: flex; flex-direction: column; }
-            h2 { margin-bottom: 5px; font-size: 13px; padding-bottom: 4px; }
-            select { padding: 6px; margin-bottom: 8px; font-size: 13px; flex-shrink: 0; }
-            
-            #module-list { display: flex; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding-bottom: 8px; margin-bottom: 0; gap: 8px; align-items: center; width: 100%; min-height: 75px; -webkit-overflow-scrolling: touch; }
-            .menu-item { min-width: 130px; height: auto; min-height: 50px; flex-shrink: 0; padding: 8px; font-size: 11px; display: flex; flex-direction: column; justify-content: center; }
-            
-            #toolbar { padding: 5px 10px; height: 45px; gap: 5px; }
-            .tool-btn { font-size: 11px; padding: 5px 8px; }
-            .toggle-label { font-size: 11px; padding: 5px 8px; }
-            
-            #sidebar-right { width: 100%; height: auto; max-height: 30vh; padding: 10px; border-left: none; border-top: 2px solid #ccc; box-sizing: border-box; }
-            #order-list { margin-bottom: 5px; max-height: 100px; }
-            .order-item { padding: 4px 0; font-size: 12px; }
-            .order-total { font-size: 15px; padding-top: 8px; margin-bottom: 10px; border-top: 1px solid #333; }
-            .action-btn { padding: 8px; font-size: 13px; }
-
-            #instructions { display: none; }
-            #dimension-display { bottom: auto; top: 10px; left: 10px; font-size: 12px; padding: 6px 10px; border-width: 1px; }
-            
-            #zoom-controls { top: 10px; right: 10px; border-radius: 6px; border-width: 1px; }
-            #zoom-controls button { width: 28px; height: 28px; font-size: 16px; }
-            #zoom-controls span { padding: 0 5px; font-size: 12px; min-width: 35px; }
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>superpadel.lt V188</title>
+    
+    <script>
+        const APP_VERSION = 'v188';
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) { registration.unregister(); }
+            });
         }
+        window.addEventListener('load', function() {
+            const currentKey = APP_VERSION + '_cache_cleared';
+            if(!localStorage.getItem(currentKey)) {
+                const keysToDelete = [];
+                for(let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if(key && key.includes('_cache_cleared') && key !== currentKey) {
+                        keysToDelete.push(key);
+                    }
+                }
+                keysToDelete.forEach(k => localStorage.removeItem(k));
+                localStorage.setItem(currentKey, 'true');
+                window.location.reload(true);
+            }
+        });
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        html, body { overscroll-behavior-y: none; overscroll-behavior-x: none; background-color: #f8fafc; font-family: -apple-system, system-ui, sans-serif; -webkit-tap-highlight-color: transparent; padding-bottom: 80px; font-size: 14px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .nav-btn.active { color: #16a34a; }
+        .nav-btn.active svg { stroke: #16a34a; }
+        .nav-btn { color: #94a3b8; transition: all 0.2s; }
+        .view-section { display: none; }
+        .view-section.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .avatar-frame-m { border: 2px solid #3b82f6; }
+        .avatar-frame-f { border: 2px solid #ec4899; }
+        input, select { font-size: 16px !important; }
+        .stat-col { text-align: center; font-weight: bold; font-size: 10px; width: 22px; flex-shrink: 0; }
+        .stat-col-wide { text-align: right; font-weight: 900; font-size: 12px; width: 42px; flex-shrink: 0; }
+        .pair-badge { font-size: 9px; padding: 1px 4px; border-radius: 4px; background: #f1f5f9; color: #64748b; font-weight: bold; }
+        #loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); z-index: 100; justify-content: center; align-items: center; flex-direction: column; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #16a34a; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .match-number-badge { display: flex; align-items: center; justify-content: center; padding: 0 6px; height: 20px; background-color: #e2e8f0; color: #475569; border-radius: 10px; font-size: 9px; font-weight: 900; margin-right: 8px; flex-shrink: 0; letter-spacing: 0.5px; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 200; justify-content: center; align-items: center; padding: 15px; backdrop-filter: blur(2px); }
+        .modal-content { background: white; width: 100%; max-width: 400px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); padding: 20px; max-height: 90vh; overflow-y: auto; }
+        .clickable-name { color: #0ea5e9; cursor: pointer; transition: color 0.2s; }
+        .clickable-name:active { color: #0284c7; }
+        #qrcode img { margin: 0 auto; border-radius: 10px; border: 5px solid white; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar-left">
-        <h2>1. Kolekcija</h2>
-        <select id="model-select">
-            <option value="dizy">DIZY (Ultra Pro)</option>
-            <option value="cloud">CLOUD (Ultra Pro)</option>
-            <option value="core" selected>CORE (Ultra Pro)</option>
-            <option value="cushy">CUSHY (Ultra Pro)</option>
-            <option value="dream">DREAM (Ultra Pro)</option>
-            <option value="hola">HOLA (Ultra Pro)</option>
-            <option value="lazy">LAZY (Ultra Pro)</option>
-        </select>
-        <h2>2. Moduliai (Slinkti ➔)</h2>
-        <div id="module-list"></div>
-    </div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V188</div>
 
-    <div id="main-area">
-        <div id="toolbar">
-            <label class="toggle-label" title="Įjungus, susijungę moduliai judės, suksis ir trinsis kaip vienas objektas">
-                <input type="checkbox" id="group-toggle" checked>
-                <span>🔗 Grupuoti susilietusius</span>
-            </label>
-            <div style="border-left: 1px solid #ddd; height: 30px; margin: 0 5px;"></div>
-            <button class="tool-btn" onclick="undo()" title="Ctrl+Z">↩ Atšaukti</button>
-            <button class="tool-btn" onclick="rotateSelected(-90)">↺ Pasukti</button>
-            <button class="tool-btn" onclick="rotateSelected(90)">Pasukti ↻</button>
-            <button class="tool-btn danger-btn" onclick="deleteSelected()">Ištrinti</button>
-            <div style="flex-grow:1; min-width: 10px;"></div>
-            <button class="tool-btn danger-btn" onclick="clearWorkspace()">Išvalyti viską</button>
-        </div>
+    <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
-        <div id="workspace">
-            <div id="zoom-controls">
-                <button onclick="changeZoom(-0.15)">-</button>
-                <span id="zoom-level">100%</span>
-                <button onclick="changeZoom(0.15)">+</button>
+    <div id="modal-bank" class="modal-overlay" role="dialog" aria-labelledby="bank-title">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="bank-title" class="font-black text-lg text-slate-800">Žaidėjų DB</h3>
+                <button onclick="closeModals()" class="text-slate-400 text-2xl font-bold px-2" aria-label="Uždaryti langą">&times;</button>
             </div>
-            <div id="canvas-area"></div>
-            <div id="dimension-display">Gabaritai: <b>0 x 0 cm</b></div>
-            <div id="instructions">
-                <b>Valdymas:</b><br>
-                • Pele / Pirštu : Tempiame<br>
-                • <b>2x Paspaudimas</b> : Išskleisti (jei yra ⇕)<br>
-                • <b>Q</b> / <b>E</b> : Pasukti<br>
-                • <b>Del</b> : Ištrinti<br>
+            <p class="text-xs text-slate-500 mb-4">Pridėkite žaidėjus iš istorijos.</p>
+            <div id="bank-list" class="space-y-2 max-h-[60vh] overflow-y-auto no-scrollbar pb-4"></div>
+        </div>
+    </div>
+
+    <div id="modal-edit" class="modal-overlay" role="dialog" aria-labelledby="edit-title">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="edit-title" class="font-black text-lg text-slate-800">Redaguoti Žaidėją</h3>
+                <button onclick="closeModals()" class="text-slate-400 text-2xl font-bold px-2" aria-label="Uždaryti langą">&times;</button>
+            </div>
+            <div class="flex gap-2 w-full items-center mb-4">
+                <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-10 border border-slate-200">
+                    <button type="button" id="edit-gender-m" onclick="setEditGender('M')" class="w-10 font-bold bg-blue-600 text-white text-[10px]">V</button>
+                    <button type="button" id="edit-gender-f" onclick="setEditGender('F')" class="w-10 font-bold text-slate-400 text-[10px]">M</button>
+                </div>
+                <div class="relative shrink-0">
+                    <input type="file" id="edit-photo-input" accept="image/*" class="hidden" onchange="handleEditPhotoUpload(event)">
+                    <button type="button" onclick="document.getElementById('edit-photo-input').click()" class="w-10 h-10 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95" aria-label="Kelti nuotrauką">
+                        <span id="edit-photo-placeholder" class="text-lg">📷</span>
+                        <img id="edit-photo-preview" class="hidden w-full h-full object-cover">
+                    </button>
+                </div>
+                <input type="text" id="edit-player-name" class="flex-1 min-w-0 px-3 rounded-lg border-2 border-slate-200 h-10 font-bold text-sm" placeholder="Vardas" />
+            </div>
+            <button onclick="savePlayerEdit()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl uppercase tracking-widest text-xs">Išsaugoti pakeitimus</button>
+        </div>
+    </div>
+
+    <div id="modal-card" class="modal-overlay" role="dialog" aria-labelledby="card-title">
+        <div class="modal-content" id="card-content"></div>
+    </div>
+
+    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-2 w-full shadow-sm overflow-hidden">
+        <div class="flex items-center gap-1 shrink-0" id="timer-controls">
+            <button type="button" onclick="adjustTime(-60)" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-lg font-bold" aria-label="Sumažinti laiką">-</button>
+            <span id="timer-display" class="text-2xl font-black font-mono tracking-tighter tabular-nums w-[56px] text-center" aria-label="Liko laiko">12:00</span>
+            <button type="button" onclick="adjustTime(60)" class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-lg font-bold" aria-label="Padidinti laiką">+</button>
+        </div>
+        <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
+        
+        <div onclick="adminClick()" class="cursor-pointer select-none flex items-center justify-center flex-1 px-1 min-w-0" id="app-logo" aria-label="Atidaryti administratoriaus meniu">
+            <span class="text-base sm:text-lg font-black text-slate-800 tracking-tighter block text-center leading-none truncate">superpadel<span class="text-green-500">.lt</span></span>
+        </div>
+        
+        <div class="flex items-center gap-1 shrink-0">
+            <button type="button" id="btn-mute" onclick="toggleMute()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95 transition-transform" aria-label="Įjungti/Išjungti garsą">
+                <svg id="icon-sound-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                <svg id="icon-sound-off" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="1" x2="1" y2="23"></line></svg>
+            </button>
+
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-10 h-10 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform" aria-label="Paleisti arba Pauzuoti laikmatį">
+                <svg id="icon-play" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <svg id="icon-pause" class="hidden" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                <svg id="icon-stop" class="hidden" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
+            </button>
+            
+            <button type="button" onclick="resetTimer()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95" aria-label="Išjungti laikmatį">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto p-4 w-full">
+        
+        <div id="view-setup" class="view-section active w-full">
+            <div class="bg-white p-3 rounded-2xl shadow-lg border border-slate-200 mb-4">
+                <input type="text" id="tournament-name-field" oninput="updateTournamentName(this.value)" placeholder="Turnyro pavadinimas..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-green-500 font-bold text-slate-700 mb-4 text-sm" />
+                
+                <div class="flex justify-between items-center mb-2 px-1">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjai</span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="openPlayerBank()" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">+ DB</button>
+                        <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold">Viso: 0</span>
+                    </div>
+                </div>
+                <form onsubmit="addPlayer(event); return false;" class="flex gap-2 w-full items-center">
+                    <div class="flex bg-slate-100 rounded-lg overflow-hidden shrink-0 h-10 border border-slate-200">
+                        <button type="button" id="gender-m" onclick="setGender('M')" class="w-9 font-bold transition-colors bg-blue-600 text-white text-[10px]">V</button>
+                        <button type="button" id="gender-f" onclick="setGender('F')" class="w-9 font-bold transition-colors text-slate-400 text-[10px]">M</button>
+                    </div>
+                    <div class="relative shrink-0">
+                        <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handleNewPhotoUpload(event)">
+                        <button type="button" onclick="document.getElementById('photo-input').click()" class="w-10 h-10 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95" aria-label="Ikelti nuotrauką">
+                            <span id="photo-placeholder" class="text-lg">📷</span>
+                            <img id="photo-preview" class="hidden w-full h-full object-cover">
+                        </button>
+                    </div>
+                    <input type="text" id="player-input-field" placeholder="Vardas..." autocomplete="off" class="flex-1 min-w-0 px-3 rounded-lg border-2 border-slate-100 focus:outline-none focus:border-green-500 h-10 text-slate-900 font-bold text-sm" />
+                    <button type="submit" class="bg-slate-900 text-white w-10 h-10 shrink-0 rounded-lg font-bold text-xl shadow-md">+</button>
+                </form>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-6 space-y-4">
+                <div class="flex bg-slate-100 p-1 rounded-lg">
+                    <button type="button" id="mode-time" onclick="setMode('time')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase">Pagal Laiką</button>
+                    <button type="button" id="mode-score" onclick="setMode('score')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase">Pagal Taškus</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div id="control-duration"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Minutės</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('matchDuration', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-duration" class="flex-1 text-center font-black text-sm">12</span><button type="button" onclick="changeSetting('matchDuration', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div id="control-points" style="display:none;"><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Iki taškų</label><div class="flex items-center gap-1 h-8"><button type="button" onclick="changeSetting('maxPoints', -1)" class="w-7 h-full bg-slate-100 rounded font-bold">-</button><span id="val-points" class="flex-1 text-center font-black text-sm">21</span><button type="button" onclick="changeSetting('maxPoints', 1)" class="w-7 h-full bg-slate-100 rounded font-bold">+</button></div></div>
+                    <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Reitingas</label><select id="select-ranking" onchange="changeRanking(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded p-1.5 font-bold text-[9px] h-8"><option value="points">Taškai</option><option value="wins">Pergalės</option></select></div>
+                </div>
+                <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-xs"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mix_americano">Mix Americano</option></select></div>
+            </div>
+
+            <div id="players-list" class="space-y-2 mb-10"></div>
+            
+            <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
+                <button type="button" onclick="resetScores()" class="w-full py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 shadow-sm">NAUJAS TURNYRAS (Išsaugoti Esamą)</button>
+            </div>
+        </div>
+
+        <div id="view-matches" class="view-section w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btn-generate-finals" onclick="generateFinals()" class="hidden px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase">🏆 Finalai</button>
+                    <button type="button" id="btn-generate-round" onclick="requestNextRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                </div>
+            </div>
+            <div id="matches-container"></div>
+            <div id="finished-matches-container" class="mt-12 opacity-90"></div>
+        </div>
+
+        <div id="view-leader" class="view-section w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black tracking-tight">Rezultatai</h2>
+                <button onclick="shareResultsAsImage()" class="px-4 py-2 bg-blue-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-transform">Dalintis 📤</button>
+            </div>
+            
+            <div id="leaderboard-capture-target" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full transition-all">
+                 <div id="podium-container" class="hidden flex-col items-center bg-white pt-4 pb-2 border-b border-slate-100"></div>
+
+                 <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col">DIF</div><div class="stat-col-wide">TŠK</div>
+                 </div>
+                <div id="leaderboard-body" class="divide-y divide-slate-100"></div>
+            </div>
+        </div>
+
+        <div id="view-stats" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-4 tracking-tight">Statistika</h2>
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"></select></div>
+                    <div class="col-span-2">
+                        <div class="flex bg-slate-100 p-1 rounded-lg">
+                            <button type="button" id="stat-type-indiv" onclick="setStatType('indiv')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase">Žaidėjai</button>
+                            <button type="button" id="stat-type-pairs" onclick="setStatType('pairs')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase">Poros</button>
+                        </div>
+                    </div>
+                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
+                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
+                <div class="flex items-center bg-slate-50 border-b border-slate-200 px-3 py-2 text-[9px] font-black text-slate-400 uppercase text-center">
+                    <div class="w-6">#</div><div class="flex-1 text-left pl-1">Vardas</div><div class="stat-col">MP</div><div class="stat-col">W</div><div class="stat-col">T</div><div class="stat-col">L</div><div class="stat-col-wide">WIN%</div>
+                </div>
+                <div id="global-stats-body" class="divide-y divide-slate-100"></div>
+            </div>
+        </div>
+
+        <div id="view-history" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-6 tracking-tight">Istorija</h2>
+            <div id="history-list" class="space-y-4"></div>
+        </div>
+
+        <div id="view-superadmin" class="view-section w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-purple-600 tracking-tight">Super Admin</h2>
+                <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
+            </div>
+            
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 mb-4 shadow-sm">
+                <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Globali Statistika</h3>
+                <div id="superadmin-stats"><div class="text-center text-xs text-slate-400 py-2">Kraunama statistika...</div></div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Aktyvūs Kambariai</h3>
+                <div id="superadmin-rooms-list" class="space-y-2"><div class="text-center text-xs text-slate-400 py-4">Kraunama...</div></div>
+            </div>
+        </div>
+
+        <div id="view-admin" class="view-section w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-red-600 tracking-tight">Kambario Admin</h2>
+                <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
+            </div>
+            <div class="space-y-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Turnyrai</h3>
+                    <div id="admin-tournaments-list" class="space-y-2"></div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl border border-slate-200">
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Žaidėjai</h3>
+                    <div id="admin-players-list" class="space-y-1 divide-y divide-slate-50"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="view-cloud" class="view-section w-full">
+            <h2 class="text-2xl font-black mb-6">Debesis</h2>
+            <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
+                    <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
+                </div>
+                <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
+                <input type="text" id="fb-authDomain" value="padelio-turnyrai.firebaseapp.com" class="hidden">
+                <input type="text" id="fb-databaseURL" value="https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app" class="hidden">
+                <input type="text" id="fb-projectId" value="padelio-turnyrai" class="hidden">
+                
+                <div id="cloud-connect-ui" class="space-y-4 text-center">
+                    <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
+                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
+                </div>
+                
+                <div id="cloud-active-ui" class="hidden space-y-4 text-center flex flex-col items-center">
+                    <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest mb-2">---</p>
+                    <p class="text-xs text-slate-400 mb-4">Nuskenuokite kodą, kad matytumėte rezultatus gyvai:</p>
+                    <div id="qrcode" class="flex justify-center bg-white p-3 rounded-xl shadow-inner mb-4 mx-auto w-max"></div>
+                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white mt-4">Atsijungti</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="sidebar-right">
-        <h2>3. Sąmata</h2>
-        <div id="order-list">
-            <div style="color:#888; text-align:center; padding: 20px 0;">Pridėkite modulių</div>
+    <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+        <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
+            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]" aria-label="Nustatymai">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43-.25a2 2 0 0 1-1-1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="text-[8px] font-bold mt-1 uppercase">Setup</span>
+            </button>
+            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Žaidimai">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
+                <span class="text-[8px] font-bold mt-1 uppercase">Game</span>
+            </button>
+            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Rezultatų lentelė">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                <span class="text-[8px] font-bold mt-1 uppercase">Board</span>
+            </button>
+            <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Statistika">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                <span class="text-[8px] font-bold mt-1 uppercase">Stats</span>
+            </button>
+            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Istorija">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="text-[8px] font-bold mt-1 uppercase">Hist.</span>
+            </button>
+            <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Debesies nustatymai">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg>
+                <span class="text-[8px] font-bold mt-1 uppercase">Cloud</span>
+            </button>
         </div>
-        <div class="order-total">Suma: <span id="total-price">0</span> €</div>
-        <button class="action-btn" onclick="exportToImage()">📸 Išsaugoti nuotrauką</button>
-    </div>
+    </nav>
 
     <script>
-        let scale = window.innerWidth < 768 ? 0.8 : 1.5; 
+        window.onerror = function(msg, url, line) { console.error("Global Error: ", msg, "at line", line); return true; };
 
-        function createSVG(w, h, content) {
-            return `<svg width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="position:absolute; top:0; left:0; z-index:1; overflow:visible;">
-                <g stroke="#222" stroke-width="1.5" fill="#fff" stroke-linejoin="round">${content}</g>
-            </svg>`;
-        }
-
-        function getPrice(w, h) { return Math.floor((w + h) * 1.8 / 5) * 5; }
-
-        const rawModels = {
-            dizy: [
-                { id: 'es15l', name: 'ES1,5 L', price: 916, w: 115, h: 110, svg: `<rect x="1" y="1" width="113" height="108" rx="4" /><rect x="1" y="1" width="24" height="108" rx="4" /><rect x="25" y="1" width="89" height="24" rx="4" /><rect x="30" y="30" width="80" height="76" rx="6" fill="#f8f9fa" /><rect x="36" y="14" width="67" height="24" rx="10" />`},
-                { id: 'es15p', name: 'ES1,5 P', price: 916, w: 115, h: 110, svg: `<rect x="1" y="1" width="113" height="108" rx="4" /><rect x="90" y="1" width="24" height="108" rx="4" /><rect x="1" y="1" width="89" height="24" rx="4" /><rect x="5" y="30" width="80" height="76" rx="6" fill="#f8f9fa" /><rect x="12" y="14" width="67" height="24" rx="10" />`},
-                { id: 'es15', name: 'ES1,5', price: 756, w: 91, h: 110, svg: `<rect x="1" y="1" width="89" height="108" rx="4" /><rect x="1" y="1" width="89" height="24" rx="4" /><rect x="5" y="30" width="81" height="76" rx="6" fill="#f8f9fa" /><rect x="12" y="14" width="67" height="24" rx="10" />`},
-                { id: 'ch15l', name: 'CH1,5 L', price: 1136, w: 115, h: 165, svg: `<rect x="25" y="1" width="89" height="163" rx="4" /><rect x="1" y="1" width="24" height="110" rx="4" /><rect x="25" y="1" width="89" height="24" rx="4" /><rect x="30" y="30" width="80" height="130" rx="6" fill="#f8f9fa" /><rect x="36" y="14" width="67" height="24" rx="10" />`},
-                { id: 'ch15p', name: 'CH1,5 P', price: 1136, w: 115, h: 165, svg: `<rect x="1" y="1" width="89" height="163" rx="4" /><rect x="90" y="1" width="24" height="110" rx="4" /><rect x="1" y="1" width="89" height="24" rx="4" /><rect x="5" y="30" width="80" height="130" rx="6" fill="#f8f9fa" /><rect x="12" y="14" width="67" height="24" rx="10" />`},
-                { id: 'ch15', name: 'CH1,5', price: 1009, w: 91, h: 165, svg: `<rect x="1" y="1" width="89" height="163" rx="4" /><rect x="1" y="1" width="89" height="24" rx="4" /><rect x="5" y="30" width="81" height="130" rx="6" fill="#f8f9fa" /><rect x="12" y="14" width="67" height="24" rx="10" />`},
-                { id: 'en', name: 'EN', price: 979, w: 110, h: 110, svg: `<rect x="1" y="1" width="108" height="108" rx="4" /><polygon points="1,1 109,1 109,25 25,25 25,109 1,109" /><rect x="30" y="30" width="75" height="75" rx="6" fill="#f8f9fa" /><rect x="38" y="38" width="45" height="20" rx="10" transform="rotate(45 60 48)" />`},
-                { id: 'ensl', name: 'ENS L', price: 1262, w: 136, h: 120, svg: `<polygon points="1,1 135,1 135,105 115,119 1,119" /><polygon points="1,1 135,1 135,25 25,25 25,119 1,119" /><path d="M 31,31 L 130,31 L 130,103 L 112,114 L 31,114 Z" fill="#f8f9fa" /><rect x="31" y="33" width="20" height="78" rx="10" /><rect x="55" y="47" width="16" height="55" rx="8" /><rect x="75" y="31" width="55" height="20" rx="10" /><rect x="75" y="55" width="45" height="16" rx="8" />`},
-                { id: 'ensp', name: 'ENS P', price: 1262, w: 136, h: 120, svg: `<polygon points="1,1 135,1 135,119 21,119 1,105" /><polygon points="1,1 135,1 135,119 111,119 111,25 1,25" /><path d="M 6,31 L 105,31 L 105,114 L 24,114 L 6,103 Z" fill="#f8f9fa" /><rect x="85" y="33" width="20" height="78" rx="10" /><rect x="65" y="47" width="16" height="55" rx="8" /><rect x="6" y="31" width="55" height="20" rx="10" /><rect x="16" y="55" width="45" height="16" rx="8" />`},
-                { id: 'pf1', name: 'PF1', price: 443, w: 91, h: 110, svg: `<rect x="1" y="1" width="89" height="108" rx="6" /><rect x="6" y="6" width="79" height="98" rx="4" stroke="#aaa" stroke-dasharray="5,3" fill="none" />`},
-                { id: 'pf2', name: 'PF2', price: 410, w: 91, h: 91, svg: `<rect x="1" y="1" width="89" height="89" rx="6" /><rect x="6" y="6" width="79" height="79" rx="4" stroke="#aaa" stroke-dasharray="5,3" fill="none" />`}
-            ],
-            cloud: [
-                { id: 'e1', name: 'E1', price: 630, w: 80, h: 100, svg: `<rect x="1" y="1" width="78" height="98" rx="8" /><rect x="1" y="1" width="78" height="24" rx="8" /><rect x="8" y="28" width="64" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'e15', name: 'E1,5', price: 706, w: 90, h: 100, svg: `<rect x="1" y="1" width="88" height="98" rx="8" /><rect x="1" y="1" width="88" height="24" rx="8" /><rect x="8" y="28" width="74" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'e2', name: 'E2', price: 778, w: 100, h: 100, svg: `<rect x="1" y="1" width="98" height="98" rx="8" /><rect x="1" y="1" width="98" height="24" rx="8" /><rect x="12" y="28" width="76" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'es25', name: 'ES2,5', w: 120, h: 100, svg: `<rect x="1" y="1" width="118" height="98" rx="8" /><rect x="1" y="1" width="118" height="24" rx="8" /><rect x="15" y="28" width="90" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'es3', name: 'ES3', price: 966, w: 160, h: 100, svg: `<rect x="1" y="1" width="158" height="98" rx="8" /><rect x="1" y="1" width="158" height="24" rx="8" /><rect x="8" y="28" width="68" height="24" rx="12" fill="#f8f9fa" /><rect x="84" y="28" width="68" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'es4', name: 'ES4', price: 1038, w: 180, h: 100, svg: `<rect x="1" y="1" width="178" height="98" rx="8" /><rect x="1" y="1" width="178" height="24" rx="8" /><rect x="12" y="28" width="74" height="24" rx="12" fill="#f8f9fa" /><rect x="94" y="28" width="74" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'ch3', name: 'CH3', price: 818, w: 80, h: 150, svg: `<rect x="1" y="1" width="78" height="148" rx="8" /><rect x="1" y="1" width="78" height="24" rx="8" /><rect x="8" y="28" width="64" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'ch4', name: 'CH4', price: 852, w: 90, h: 150, svg: `<rect x="1" y="1" width="88" height="148" rx="8" /><rect x="1" y="1" width="88" height="24" rx="8" /><rect x="8" y="28" width="74" height="24" rx="12" fill="#f8f9fa" />`},
-                { id: 'en', name: 'EN', price: 888, w: 100, h: 100, svg: `<rect x="1" y="1" width="98" height="98" rx="8" /><rect x="1" y="1" width="24" height="98" rx="8" /><rect x="25" y="1" width="74" height="24" rx="8" /><rect x="29" y="30" width="22" height="60" rx="10" fill="#f8f9fa" /><rect x="54" y="30" width="38" height="22" rx="10" fill="#f8f9fa" />`},
-                { id: 'pf80', name: 'PF80', price: 446, w: 80, h: 80, svg: `<circle cx="40" cy="40" r="39" fill="#fcfcfc" />`},
-                { id: 'pf100', name: 'PF100', price: 558, w: 100, h: 100, svg: `<circle cx="50" cy="50" r="49" fill="#fcfcfc" />`},
-                { id: 'pf3', name: 'PF3', price: 446, w: 80, h: 100, svg: `<rect x="1" y="1" width="78" height="98" rx="8" />`},
-                { id: 'pf4', name: 'PF4', price: 486, w: 90, h: 100, svg: `<rect x="1" y="1" width="88" height="98" rx="8" />`},
-                { id: 'pf5', name: 'PF5', price: 558, w: 100, h: 100, svg: `<rect x="1" y="1" width="98" height="98" rx="8" />`},
-                { id: 'al', name: 'A L', price: 150, w: 25, h: 100, svg: `<rect x="1" y="1" width="23" height="98" rx="6" fill="#f4f4f4" />`},
-                { id: 'ap', name: 'A P', price: 150, w: 25, h: 100, svg: `<rect x="1" y="1" width="23" height="98" rx="6" fill="#f4f4f4" />`},
-                { id: 'bl', name: 'B L', price: 170, w: 35, h: 100, svg: `<rect x="1" y="1" width="33" height="98" rx="6" fill="#f4f4f4" />`},
-                { id: 'bp', name: 'B P', price: 170, w: 35, h: 100, svg: `<rect x="1" y="1" width="33" height="98" rx="6" fill="#f4f4f4" />`},
-                { id: 'cl', name: 'C L', price: 170, w: 25, h: 100, svg: `<rect x="1" y="1" width="23" height="98" rx="6" fill="#f4f4f4" />`},
-                { id: 'cp', name: 'C P', price: 170, w: 25, h: 100, svg: `<rect x="1" y="1" width="23" height="98" rx="6" fill="#f4f4f4" />`}
-            ],
-            core: [
-                { id: 'es1l', name: 'ES1 L', price: 697, w: 124, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" />`},
-                { id: 'es1p', name: 'ES1 P', price: 697, w: 124, h: 110, svg: `<rect x="99" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
-                { id: 'es1kl', name: 'ES1 K L', price: 646, w: 105, h: 110, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
-                { id: 'es1kp', name: 'ES1 K P', price: 646, w: 105, h: 110, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
-                { id: 'es1', name: 'ES1', price: 625, w: 100, h: 110, svg: `<rect x="1" y="1" width="98" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
-                
-                { id: 'esf1l', name: 'ESF1 L', price: 841, w: 124, h: 110, expandable: true, expW: 124, expH: 160, sleepW: 100, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" /><rect x="29" y="85" width="90" height="20" rx="10" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
-                  svgExpanded: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="25" y="1" width="98" height="78" rx="8" fill="#eaf0f6" /><rect x="25" y="80" width="98" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1p', name: 'ESF1 P', price: 841, w: 124, h: 110, expandable: true, expW: 124, expH: 160, sleepW: 100, sleepH: 140,
-                  svg: `<rect x="99" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" /><rect x="5" y="85" width="90" height="20" rx="10" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
-                  svgExpanded: `<rect x="99" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="98" height="78" rx="8" fill="#eaf0f6" /><rect x="1" y="80" width="98" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1kl', name: 'ESF1 K L', price: 792, w: 105, h: 110, expandable: true, expW: 105, expH: 160, sleepW: 81, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" /><rect x="32" y="85" width="66" height="20" rx="8" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
-                  svgExpanded: `<rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="1" width="76" height="78" rx="8" fill="#eaf0f6" /><rect x="27" y="80" width="76" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1kp', name: 'ESF1 K P', price: 792, w: 105, h: 110, expandable: true, expW: 105, expH: 160, sleepW: 81, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" /><rect x="7" y="85" width="66" height="20" rx="8" stroke-dasharray="4,4" fill="none" stroke="#888" />`,
-                  svgExpanded: `<rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="1" width="76" height="78" rx="8" fill="#eaf0f6" /><rect x="2" y="80" width="76" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf1', name: 'ESF1', price: 736, w: 100, h: 110, expandable: true, expW: 100, expH: 160, sleepW: 100, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="98" height="24" rx="12" /><rect x="3" y="27" width="94" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" /><rect x="8" y="85" width="84" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
-                  svgExpanded: `<rect x="1" y="1" width="98" height="78" rx="8" fill="#eaf0f6" /><rect x="1" y="80" width="98" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2l', name: 'ESF2 L', price: 901, w: 159, h: 110, expandable: true, expW: 159, expH: 160, sleepW: 135, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="135" height="24" rx="12" /><rect x="27" y="27" width="129" height="80" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="119" height="26" rx="13" /><rect x="32" y="85" width="119" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
-                  svgExpanded: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="25" y="1" width="133" height="78" rx="8" fill="#eaf0f6" /><rect x="25" y="80" width="133" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2p', name: 'ESF2 P', price: 901, w: 159, h: 110, expandable: true, expW: 159, expH: 160, sleepW: 135, sleepH: 140,
-                  svg: `<rect x="134" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="135" height="24" rx="12" /><rect x="3" y="27" width="129" height="80" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="119" height="26" rx="13" /><rect x="8" y="85" width="119" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
-                  svgExpanded: `<rect x="134" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="132" height="78" rx="8" fill="#eaf0f6" /><rect x="1" y="80" width="132" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2kl', name: 'ESF2 K L', price: 847, w: 140, h: 110, expandable: true, expW: 140, expH: 160, sleepW: 116, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="138" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="111" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="130" height="26" rx="13" /><rect x="32" y="85" width="101" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
-                  svgExpanded: `<rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="1" width="111" height="78" rx="8" fill="#eaf0f6" /><rect x="27" y="80" width="111" height="78" rx="8" fill="#eaf0f6" />`},
-                { id: 'esf2kp', name: 'ESF2 K P', price: 847, w: 140, h: 110, expandable: true, expW: 140, expH: 160, sleepW: 116, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="138" height="24" rx="12" /><rect x="115" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="111" height="80" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="130" height="26" rx="13" /><rect x="4" y="85" width="107" height="20" rx="8" stroke-dasharray="5,4" fill="none" stroke="#777" />`,
-                  svgExpanded: `<rect x="115" y="20" width="24" height="88" rx="12" /><rect x="2" y="1" width="111" height="78" rx="8" fill="#eaf0f6" /><rect x="2" y="80" width="111" height="78" rx="8" fill="#eaf0f6" />`},
-
-                { id: 'enl', name: 'EN L', price: 792, w: 110, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="86" height="24" rx="12" /><rect x="27" y="27" width="81" height="81" rx="12" fill="#f8f9fa" /><rect x="12" y="32" width="26" height="74" rx="13" /><rect x="32" y="12" width="74" height="26" rx="13" />`},
-                { id: 'enp', name: 'EN P', price: 792, w: 110, h: 110, svg: `<rect x="85" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="86" height="24" rx="12" /><rect x="2" y="27" width="81" height="81" rx="12" fill="#f8f9fa" /><rect x="72" y="32" width="26" height="74" rx="13" /><rect x="4" y="12" width="74" height="26" rx="13" />`},
-                { id: 'en2l', name: 'EN2 L', price: 847, w: 129, h: 110, svg: `<rect x="1" y="1" width="24" height="108" rx="12" /><rect x="23" y="1" width="105" height="24" rx="12" /><rect x="27" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="12" y="32" width="26" height="74" rx="13" /><rect x="32" y="12" width="93" height="26" rx="13" />`},
-                { id: 'en2p', name: 'EN2 P', price: 847, w: 129, h: 110, svg: `<rect x="104" y="1" width="24" height="108" rx="12" /><rect x="1" y="1" width="105" height="24" rx="12" /><rect x="2" y="27" width="100" height="81" rx="12" fill="#f8f9fa" /><rect x="91" y="32" width="26" height="74" rx="13" /><rect x="4" y="12" width="93" height="26" rx="13" />`},
-                
-                { id: 'ch1l', name: 'CH1 L', price: 888, w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="1" y="1" width="24" height="110" rx="12" /><rect x="23" y="1" width="100" height="24" rx="12" /><rect x="27" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="32" y="12" width="84" height="26" rx="13" />`},
-                { id: 'ch1p', name: 'CH1 P', price: 888, w: 124, h: 156, isChaise: true, sleepW: 100, sleepH: 140, svg: `<rect x="99" y="1" width="24" height="110" rx="12" /><rect x="1" y="1" width="100" height="24" rx="12" /><rect x="3" y="27" width="94" height="127" rx="12" fill="#f8f9fa" /><rect x="8" y="12" width="84" height="26" rx="13" />`},
-                { id: 'ch1kl', name: 'CH1 K L', price: 724, w: 105, h: 156, isChaise: true, sleepW: 81, sleepH: 140, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="1" y="20" width="24" height="88" rx="12" /><rect x="27" y="27" width="76" height="127" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`},
-                { id: 'ch1kp', name: 'CH1 K P', price: 724, w: 105, h: 156, isChaise: true, sleepW: 81, sleepH: 140, svg: `<rect x="1" y="1" width="103" height="24" rx="12" /><rect x="80" y="20" width="24" height="88" rx="12" /><rect x="2" y="27" width="76" height="127" rx="12" fill="#f8f9fa" /><rect x="5" y="12" width="95" height="26" rx="13" />`}
-            ],
-            cushy: [
-                { id: 'es15l', name: 'ES1,5 L', price: 758, w: 116, h: 102, svg: `<rect x="1" y="1" width="22" height="100" rx="11" /><rect x="23" y="1" width="92" height="24" rx="12" /><rect x="27" y="27" width="87" height="73" rx="14" fill="#f8f9fa" />`},
-                { id: 'es15p', name: 'ES1,5 P', price: 758, w: 116, h: 102, svg: `<rect x="93" y="1" width="22" height="100" rx="11" /><rect x="1" y="1" width="92" height="24" rx="12" /><rect x="2" y="27" width="87" height="73" rx="14" fill="#f8f9fa" />`},
-                { id: 'es15', name: 'ES1,5', price: 568, w: 96, h: 102, svg: `<rect x="1" y="1" width="94" height="24" rx="12" /><rect x="2" y="27" width="92" height="73" rx="14" fill="#f8f9fa" />`},
-                { id: 'ch15l', name: 'CH1,5 L', price: 1071, w: 116, h: 155, svg: `<rect x="1" y="1" width="22" height="100" rx="11" /><rect x="23" y="1" width="92" height="24" rx="12" /><rect x="27" y="27" width="87" height="126" rx="14" fill="#f8f9fa" /><line x1="27" y1="90" x2="114" y2="90" stroke-dasharray="5,5" stroke="#999" />`},
-                { id: 'ch15p', name: 'CH1,5 P', price: 1071, w: 116, h: 155, svg: `<rect x="93" y="1" width="22" height="100" rx="11" /><rect x="1" y="1" width="92" height="24" rx="12" /><rect x="2" y="27" width="87" height="126" rx="14" fill="#f8f9fa" /><line x1="2" y1="90" x2="89" y2="90" stroke-dasharray="5,5" stroke="#999" />`},
-                { id: 'en', name: 'EN', price: 758, w: 102, h: 102, svg: `<rect x="1" y="1" width="100" height="100" rx="14" fill="#f8f9fa" /><path d="M 1,27 L 27,27 L 27,101 L 1,101 Z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round" /><path d="M 27,1 L 101,1 L 101,27 L 27,27 Z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round" /><path d="M 1,1 L 27,27" stroke="#111" stroke-width="1.5" />`},
-                { id: 'pf1', name: 'PF1', price: 315, w: 96, h: 72, svg: `<rect x="1" y="1" width="94" height="70" rx="12" fill="#f8f9fa" />`},
-                { id: 'pf2', name: 'PF2', price: 347, w: 69, h: 91, svg: `<rect x="1" y="1" width="67" height="89" rx="12" fill="#f8f9fa" />`},
-                { id: 'pf3', name: 'PF3', price: 379, w: 96, h: 91, svg: `<rect x="1" y="1" width="94" height="89" rx="12" fill="#f8f9fa" />`},
-            ],
-            dream: [
-                { id: 'ch3', name: 'CH3', price: 740, w: 93, h: 158, isChaise: true, sleepW: 93, sleepH: 140, svg: `<rect x="1" y="1" width="91" height="156" rx="6" fill="#f8f9fa" /><rect x="1" y="1" width="91" height="24" rx="6" /><rect x="8" y="28" width="75" height="24" rx="12" />`},
-                { id: 'es3', name: 'ES3', price: 872, w: 136, h: 110, expandable: true, expW: 136, expH: 154, sleepW: 136, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="134" height="108" rx="6" fill="#f8f9fa" /><rect x="1" y="1" width="134" height="24" rx="6" /><rect x="10" y="28" width="54" height="24" rx="12" /><rect x="72" y="28" width="54" height="24" rx="12" /><rect x="5" y="112" width="126" height="40" rx="4" stroke-dasharray="6,4" fill="none" stroke="#777" />`,
-                  svgExpanded: `<rect x="1" y="1" width="134" height="75" rx="6" fill="#eaf0f6" /><rect x="1" y="77" width="134" height="75" rx="6" fill="#eaf0f6" />`},
-                { id: 'es4', name: 'ES4', price: 1255, w: 202, h: 110, expandable: true, expW: 202, expH: 154, sleepW: 202, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="200" height="108" rx="6" fill="#f8f9fa" /><rect x="1" y="1" width="200" height="24" rx="6" /><rect x="15" y="28" width="80" height="24" rx="12" /><rect x="107" y="28" width="80" height="24" rx="12" /><rect x="5" y="112" width="192" height="40" rx="4" stroke-dasharray="6,4" fill="none" stroke="#777" /><line x1="101" y1="26" x2="101" y2="108" />`,
-                  svgExpanded: `<rect x="1" y="1" width="200" height="75" rx="6" fill="#eaf0f6" /><rect x="1" y="77" width="200" height="75" rx="6" fill="#eaf0f6" /><line x1="101" y1="1" x2="101" y2="152" stroke="#222" stroke-width="1.5" />`},
-                { id: 'al', name: 'A L', price: 118, w: 23, h: 106, svg: `<rect x="1" y="1" width="21" height="104" rx="6" fill="#eee" />`},
-                { id: 'ap', name: 'A P', price: 118, w: 23, h: 106, svg: `<rect x="1" y="1" width="21" height="104" rx="6" fill="#eee" />`},
-                { id: 'bl', name: 'B L', price: 118, w: 32, h: 106, svg: `<rect x="1" y="1" width="30" height="104" rx="6" fill="#eee" />`},
-                { id: 'bp', name: 'B P', price: 118, w: 32, h: 106, svg: `<rect x="1" y="1" width="30" height="104" rx="6" fill="#eee" />`}
-            ],
-            hola: [
-                { id: 'ch3', name: 'CH3', price: 740, w: 93, h: 158, isChaise: true, sleepW: 93, sleepH: 140, svg: `<rect x="1" y="1" width="91" height="156" rx="6" fill="#f8f9fa" /><rect x="1" y="1" width="91" height="24" rx="6" /><rect x="8" y="28" width="75" height="24" rx="12" />`},
-                { id: 'es3', name: 'ES3', price: 872, w: 136, h: 110, expandable: true, expW: 136, expH: 154, sleepW: 136, sleepH: 140,
-                  svg: `<rect x="1" y="1" width="134" height="108" rx="6" fill="#f8f9fa" /><rect x="1" y="1" width="134" height="24" rx="6" /><rect x="10" y="28" width="54" height="24" rx="12" /><rect x="72" y="28" width="54" height="24" rx="12" /><rect x="5" y="112" width="126" height="40" rx="4" stroke-dasharray="6,4" fill="none" stroke="#777" />`,
-                  svgExpanded: `<rect x="1" y="1" width="134" height="75" rx="6" fill="#eaf0f6" /><rect x="1" y="77" width="134" height="75" rx="6" fill="#eaf0f6" />`},
-                { id: 'al', name: 'A L', price: 118, w: 18, h: 106, svg: `<rect x="1" y="1" width="16" height="104" rx="6" fill="#eee" />`},
-                { id: 'ap', name: 'A P', price: 118, w: 18, h: 106, svg: `<rect x="1" y="1" width="16" height="104" rx="6" fill="#eee" />`}
-            ],
-            lazy: [
-                { id: 'a', name: 'A', price: 500, w: 100, h: 100, svg: `<rect x="1" y="1" width="98" height="98" rx="8" fill="#f8f9fa" /><line x1="50" y1="1" x2="50" y2="99" stroke-dasharray="6,4" stroke="#888" /><line x1="1" y1="50" x2="99" y2="50" stroke-dasharray="6,4" stroke="#888" />`},
-                { id: 'b', name: 'B', price: 618, w: 100, h: 125, svg: `<rect x="1" y="1" width="98" height="123" rx="8" fill="#f8f9fa" /><line x1="50" y1="1" x2="50" y2="124" stroke-dasharray="6,4" stroke="#888" /><line x1="1" y1="62.5" x2="99" y2="62.5" stroke-dasharray="6,4" stroke="#888" />`},
-                { id: 'c', name: 'C', price: 735, w: 100, h: 150, svg: `<rect x="1" y="1" width="98" height="148" rx="8" fill="#f8f9fa" /><line x1="50" y1="1" x2="50" y2="149" stroke-dasharray="6,4" stroke="#888" /><line x1="1" y1="50" x2="99" y2="50" stroke-dasharray="6,4" stroke="#888" /><line x1="1" y1="100" x2="99" y2="100" stroke-dasharray="6,4" stroke="#888" />`},
-                { id: 'd', name: 'D', price: 686, w: 125, h: 125, svg: `<rect x="1" y="1" width="123" height="123" rx="8" fill="#f8f9fa" /><line x1="41.6" y1="1" x2="41.6" y2="124" stroke-dasharray="6,4" stroke="#888" /><line x1="83.3" y1="1" x2="83.3" y2="124" stroke-dasharray="6,4" stroke="#888" /><line x1="1" y1="41.6" x2="124" y2="41.6" stroke-dasharray="6,4" stroke="#888" /><line x1="1" y1="83.3" x2="124" y2="83.3" stroke-dasharray="6,4" stroke="#888" />`},
-                { id: 'op1', name: 'OP-1', price: 266, w: 100, h: 36, svg: `<rect x="1" y="1" width="98" height="34" rx="17" fill="#fff" />`},
-                { id: 'op2', name: 'OP-2', price: 353, w: 100, h: 36, svg: `<rect x="1" y="1" width="98" height="34" rx="17" fill="#fff" />`},
-                { id: 'bok1l', name: 'BOK-1 L', price: 179, w: 36, h: 100, svg: `<rect x="1" y="1" width="34" height="98" rx="17" fill="#fff" />`},
-                { id: 'bok1p', name: 'BOK-1 P', price: 179, w: 36, h: 100, svg: `<rect x="1" y="1" width="34" height="98" rx="17" fill="#fff" />`},
-                { id: 'bok2l', name: 'BOK-2 L', price: 236, w: 36, h: 135, svg: `<rect x="1" y="1" width="34" height="133" rx="17" fill="#fff" />`},
-                { id: 'bok2p', name: 'BOK-2 P', price: 236, w: 36, h: 135, svg: `<rect x="1" y="1" width="34" height="133" rx="17" fill="#fff" />`},
-                { id: 'p1', name: 'P1', price: 53, w: 55, h: 55, svg: `<rect x="1" y="1" width="53" height="53" rx="14" fill="#fff" />`},
-                { id: 'p2', name: 'P2', price: 74, w: 67, h: 52, svg: `<rect x="1" y="1" width="65" height="50" rx="14" fill="#fff" />`},
-                { id: 'p3', name: 'P3', price: 116, w: 80, h: 80, svg: `<rect x="1" y="1" width="78" height="78" rx="14" fill="#fff" />`},
-                { id: 'p4', name: 'P4', price: 171, w: 85, h: 63, svg: `<rect x="1" y="1" width="83" height="61" rx="14" fill="#fff" /><line x1="1" y1="45" x2="84" y2="45" />`},
-                { id: 'walek', name: 'WAŁEK', price: 44, w: 66, h: 20, svg: `<rect x="1" y="1" width="64" height="18" rx="9" fill="#fff" />`}
-            ]
-        };
-
-        const furnitureModels = {};
-        for(let key in rawModels) {
-            furnitureModels[key] = rawModels[key].map(mod => {
-                let p = mod.price || getPrice(mod.w, mod.h);
-                let m = { ...mod, price: p, svg: createSVG(mod.w, mod.h, mod.svg) };
-                if(mod.expandable) m.svgExpanded = createSVG(mod.expW, mod.expH, mod.svgExpanded);
-                return m;
-            });
-        }
-
-        const moduleList = document.getElementById('module-list');
-        const canvasArea = document.getElementById('canvas-area');
-        const dimensionDisplay = document.getElementById('dimension-display');
-        const orderList = document.getElementById('order-list');
-        const totalPriceEl = document.getElementById('total-price');
-        const groupToggle = document.getElementById('group-toggle');
-        const modelSelect = document.getElementById('model-select');
+        function el(id) { return document.getElementById(id); }
+        function safeText(id, t) { try { const e = el(id); if(e) e.innerText = t; } catch(e){ console.error("safeText Error:", e); } }
+        function safeHTML(id, h) { try { const e = el(id); if(e) e.innerHTML = h; } catch(e){ console.error("safeHTML Error:", e); } }
+        function safeVal(id, v) { try { const e = el(id); if(e) e.value = v; } catch(e){ console.error("safeVal Error:", e); } }
+        function safeClass(id, c) { try { const e = el(id); if(e) e.className = c; } catch(e){ console.error("safeClass Error:", e); } }
+        function safeDisplay(id, d) { try { const e = el(id); if(e) e.style.display = d; } catch(e){ console.error("safeDisplay Error:", e); } }
+        function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
         
-        let zIndexCounter = 1;
-        let selectedModule = null;
-        let historyStack = [];
-
-        function updateZoomText() { document.getElementById('zoom-level').innerText = Math.round((scale / 1.5) * 100) + '%'; }
-        function changeZoom(factor) {
-            let oldScale = scale; scale += factor;
-            if (scale < 0.4) scale = 0.4; if (scale > 2.5) scale = 2.5;
-            let ratio = scale / oldScale;
-            document.querySelectorAll('.canvas-module').forEach(m => {
-                let currentW = parseFloat(m.style.width) / oldScale;
-                let currentH = parseFloat(m.style.height) / oldScale;
-                m.style.width = (currentW * scale) + 'px';
-                m.style.height = (currentH * scale) + 'px';
-                m.style.left = (parseFloat(m.style.left) * ratio) + 'px';
-                m.style.top = (parseFloat(m.style.top) * ratio) + 'px';
-            });
-            updateZoomText(); updateDimensions();
+        function safeArr(val) { 
+            if (!val) return []; 
+            if (Array.isArray(val)) return val; 
+            if (typeof val === 'object') return Object.values(val); 
+            return []; 
+        }
+        
+        function shuffle(array) { 
+            let arr = [...array]; 
+            for (let i = arr.length - 1; i > 0; i--) { 
+                const j = Math.floor(Math.random() * (i + 1)); 
+                [arr[i], arr[j]] = [arr[j], arr[i]]; 
+            } 
+            return arr; 
         }
 
-        function saveStateToHistory() {
-            const state = [];
-            document.querySelectorAll('.canvas-module').forEach(m => {
-                state.push({
-                    id: m.dataset.id, name: m.dataset.name, price: m.dataset.price, collection: m.dataset.collection,
-                    isExpanded: m.dataset.isExpanded || 'false', isChaise: m.dataset.isChaise || 'false',
-                    sleepw: m.dataset.sleepw, sleeph: m.dataset.sleeph,
-                    w: m.dataset.w, h: m.dataset.h, svg: m.innerHTML,
-                    leftCM: parseFloat(m.style.left) / scale, topCM: parseFloat(m.style.top) / scale,
-                    angle: m.dataset.angle, zIndex: m.style.zIndex,
-                    currentW_CM: parseFloat(m.style.width) / scale, currentH_CM: parseFloat(m.style.height) / scale
-                });
-            });
-            historyStack.push(JSON.stringify(state));
-            if(historyStack.length > 20) historyStack.shift();
-            localStorage.setItem('sofaState', JSON.stringify(state));
-            updateOrderSummary();
+        const ds = { matchDuration: 12, maxPoints: 21, winCondition: 'time', format: 'americano', rankingMode: 'points' };
+        let players = [], matches = [], savedTournaments = [], settings = {...ds}, currentTid = null, curPh = null;
+        let tempGender = 'M', timeLeft = 0, timerInterval, alarmInterval, alarmTimeout, isRunning = false, endTime = 0, dbRef = null, isCloud = false;
+        let statType = 'indiv', adminClickCount = 0, adminTimer = null, preGeneratedTournament = [];
+        let editingPlayerId = null, tempEditGender = 'M', tempEditPhoto = null;
+        let qrCodeInstance = null;
+        let photoBank = {}; 
+        let nameUpdateTimer = null;
+        let isMuted = localStorage.getItem('sp_is_muted') === 'true';
+
+        const DB_KEY = "padelio_pro_master"; 
+        const REG_KEY = "padelio_pro_master_rooms"; 
+
+        function getStore(key) { 
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; 
+            try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { console.error("getStore Error:", e); return null; } 
         }
 
-        function undo() {
-            if(historyStack.length <= 1) return;
-            historyStack.pop();
-            const previousState = JSON.parse(historyStack[historyStack.length - 1]);
-            restoreState(previousState);
+        function setStore(key, val) { 
+            const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; 
+            try { if (val === null) localStorage.removeItem(prefix + key); else localStorage.setItem(prefix + key, JSON.stringify(val)); } catch(e) { console.error("setStore Error:", e); } 
         }
 
-        function restoreState(stateArray) {
-            canvasArea.innerHTML = '';
-            stateArray.forEach(data => {
-                const modEl = document.createElement('div');
-                modEl.className = 'canvas-module';
-                modEl.dataset.id = data.id; modEl.dataset.name = data.name; modEl.dataset.price = data.price;
-                modEl.dataset.collection = data.collection || 'core'; modEl.dataset.isExpanded = data.isExpanded || 'false';
-                modEl.dataset.isChaise = data.isChaise || 'false';
-                if(data.sleepw) modEl.dataset.sleepw = data.sleepw;
-                if(data.sleeph) modEl.dataset.sleeph = data.sleeph;
-                modEl.dataset.w = data.w; modEl.dataset.h = data.h; modEl.dataset.angle = data.angle;
-                
-                let curW = data.currentW_CM ? data.currentW_CM : data.w;
-                let curH = data.currentH_CM ? data.currentH_CM : data.h;
-                modEl.style.width = (curW * scale) + 'px'; 
-                modEl.style.height = (curH * scale) + 'px';
-                
-                let l = data.leftCM !== undefined ? (data.leftCM * scale) + 'px' : data.left;
-                let t = data.topCM !== undefined ? (data.topCM * scale) + 'px' : data.top;
-                modEl.style.left = l; modEl.style.top = t;
-                modEl.style.zIndex = data.zIndex; modEl.style.transform = `rotate(${data.angle}deg)`;
-                modEl.innerHTML = data.svg;
-                attachEvents(modEl); canvasArea.appendChild(modEl);
-            });
-            selectModule(null); updateOrderSummary();
-        }
+        let activeRoom = localStorage.getItem('sp_active_room_master') || '';
+        if(activeRoom) isCloud = true;
 
-        function clearWorkspace() { if(confirm("Ar tikrai norite išvalyti visą ekraną?")) { canvasArea.innerHTML = ''; saveStateToHistory(); } }
-
-        function updateOrderSummary() {
-            const modules = document.querySelectorAll('.canvas-module');
-            let counts = {}; let total = 0;
-            modules.forEach(m => {
-                let name = m.dataset.name; let price = parseInt(m.dataset.price);
-                if(!counts[name]) counts[name] = { qty: 0, price: price };
-                counts[name].qty++; total += price;
-            });
-            if(Object.keys(counts).length === 0) {
-                orderList.innerHTML = '<div style="color:#888; text-align:center; padding: 20px 0;">Sofa tuščia</div>';
-                totalPriceEl.innerText = '0'; updateDimensions(); return;
-            }
-            let html = '';
-            for(let name in counts) { html += `<div class="order-item"><span><b>${counts[name].qty}x</b> ${name}</span><span>${counts[name].price * counts[name].qty} €</span></div>`; }
-            orderList.innerHTML = html; totalPriceEl.innerText = total; updateDimensions();
-        }
-
-        function updateDimensions() {
-            const modules = document.querySelectorAll('.canvas-module');
-            if (modules.length === 0) { dimensionDisplay.innerHTML = 'Gabaritai: <b>0 x 0 cm</b>'; return; }
-            
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            let sleepContributors = [];
-
-            modules.forEach(mod => {
-                let angle = (parseInt(mod.dataset.angle) || 0) * Math.PI / 180;
-                let baseW = parseFloat(mod.dataset.w) * scale;
-                let baseH = parseFloat(mod.dataset.h) * scale;
-                
-                let curW = parseFloat(mod.style.width);
-                let curH = parseFloat(mod.style.height);
-                let cx = parseFloat(mod.style.left) + curW / 2;
-                let cy = parseFloat(mod.style.top) + curH / 2;
-
-                let dx = baseW / 2, dy = baseH / 2;
-                let corners = [
-                    {x: -dx, y: -dy}, {x: dx, y: -dy},
-                    {x: dx, y: dy}, {x: -dx, y: dy}
-                ];
-                
-                corners.forEach(c => {
-                    let rx = cx + c.x * Math.cos(angle) - c.y * Math.sin(angle);
-                    let ry = cy + c.x * Math.sin(angle) + c.y * Math.cos(angle);
-                    if (rx < minX) minX = rx; if (rx > maxX) maxX = rx;
-                    if (ry < minY) minY = ry; if (ry > maxY) maxY = ry;
-                });
-
-                if (mod.dataset.isExpanded === 'true' || mod.dataset.isChaise === 'true') {
-                    sleepContributors.push(mod);
+        function ensureFirebaseInit() { 
+            try { 
+                if(typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp({ apiKey: el('fb-apiKey')?.value||'', authDomain: el('fb-authDomain')?.value||'', databaseURL: el('fb-databaseURL')?.value||'', projectId: el('fb-projectId')?.value||'' }); 
                 }
-            });
+            } catch(e){ console.error("FirebaseInit Error:", e); } 
+        }
 
-            const totalWidthCm = Math.round((maxX - minX) / scale);
-            const totalHeightCm = Math.round((maxY - minY) / scale);
-            let text = `Gabaritai: <b style="color:#007bff">${totalWidthCm} x ${totalHeightCm} cm</b>`;
-
-            if (sleepContributors.length > 0) {
-                let groups = [];
-                let unvisited = new Set(sleepContributors);
+        // V187: Fono analitika (puslapio vizitai ir įrenginiai)
+        function logVisit() {
+            try {
+                ensureFirebaseInit();
+                const statsRef = firebase.database().ref(DB_KEY + '_global_stats');
                 
-                while(unvisited.size > 0) {
-                    let startMod = unvisited.values().next().value;
-                    let group = new Set([startMod]);
-                    let added = true;
-                    while(added) {
-                        added = false;
-                        for(let other of unvisited) {
-                            if(!group.has(other)) {
-                                for(let m of group) {
-                                    if(isTouching(m, other)) { group.add(other); added = true; break; }
-                                }
-                            }
+                statsRef.child('visits').transaction(curr => (curr || 0) + 1).catch(e => {});
+
+                let did = localStorage.getItem('sp_device_id');
+                if (!did) {
+                    did = uid() + uid();
+                    localStorage.setItem('sp_device_id', did);
+                }
+
+                const ua = navigator.userAgent;
+                let dType = 'Kitas';
+                if (/Android/i.test(ua)) dType = 'Android';
+                else if (/iPhone|iPad|iPod/i.test(ua)) dType = 'iOS';
+                else if (/Mac/i.test(ua)) dType = 'Mac';
+                else if (/Windows/i.test(ua)) dType = 'Windows';
+
+                statsRef.child('devices/' + did).set({
+                    type: dType,
+                    lastSeen: Date.now()
+                }).catch(e => {});
+            } catch (e) { console.error("logVisit Error:", e); }
+        }
+
+        function loadData() { 
+            try {
+                photoBank = getStore('photos') || {};
+                let pData = getStore('p'); 
+                players = safeArr(pData).filter(p => p && p.id); 
+                matches = safeArr(getStore('m')); 
+                settings = getStore('s') ? {...ds, ...getStore('s')} : {...ds}; 
+                savedTournaments = safeArr(getStore('h')).filter(t => t && t.id); 
+                preGeneratedTournament = safeArr(getStore('pregen')); 
+                currentTid = getStore('tid'); 
+                timeLeft = settings.matchDuration * 60; 
+                
+                let needsClean = false;
+                const cleanP = (p) => { 
+                    if (p && p.photo) { 
+                        if (!photoBank[p.id]) photoBank[p.id] = p.photo; 
+                        delete p.photo; 
+                        needsClean = true; 
+                    } 
+                };
+                
+                players.forEach(cleanP);
+                savedTournaments.forEach(t => {
+                    if(t.players) t.players.forEach(cleanP);
+                    if(t.matches) t.matches.forEach(m => {
+                        if(m.team1) m.team1.forEach(cleanP);
+                        if(m.team2) m.team2.forEach(cleanP);
+                    });
+                });
+                
+                if(needsClean) {
+                    setStore('photos', photoBank);
+                    setStore('p', players);
+                    setStore('h', savedTournaments);
+                }
+            } catch(e) { console.error("loadData error:", e); }
+        }
+
+        function ensureTournamentId() { 
+            try {
+                if(!currentTid) { 
+                    currentTid = uid(); 
+                    let defaultName = new Date().toLocaleDateString('lt-LT') + ' Turnyras';
+                    const tField = el('tournament-name-field');
+                    if (tField && tField.value.trim() !== '') {
+                        defaultName = tField.value.trim();
+                    }
+                    
+                    savedTournaments.unshift({ id: currentTid, name: defaultName, date: new Date().toISOString(), players: [...safeArr(players)], matches: [...safeArr(matches)], settings: {...settings} }); 
+                    setStore('tid', currentTid); 
+                    
+                    if (tField && document.activeElement !== tField) {
+                        tField.value = defaultName;
+                    }
+                    
+                    preGeneratedTournament = []; setStore('pregen', preGeneratedTournament); 
+                    autoSave(true); 
+                } 
+            } catch(e) { console.error("ensureTournamentId Error:", e); }
+        }
+
+        function updateTournamentName(val) {
+            try {
+                if(!currentTid) ensureTournamentId(); 
+                const idx = safeArr(savedTournaments).findIndex(x => x && x.id === currentTid); 
+                if(idx > -1) { 
+                    savedTournaments[idx].name = val || "Turnyras";
+                    setStore('h', savedTournaments);
+                    
+                    clearTimeout(nameUpdateTimer);
+                    nameUpdateTimer = setTimeout(() => {
+                        autoSave(true);
+                    }, 800);
+                } 
+            } catch(e) { console.error("updateTournamentName Error:", e); }
+        }
+
+        function trimPhotoBankIfNeeded() {
+            try {
+                let photoStr = JSON.stringify(photoBank);
+                if (photoStr.length > 3 * 1024 * 1024) {
+                    let activeIds = new Set();
+                    players.forEach(p => activeIds.add(p.id));
+                    savedTournaments.forEach(t => { if(t && t.players) t.players.forEach(p => activeIds.add(p.id)); });
+                    let deleted = 0;
+                    for (let id in photoBank) {
+                        if (!activeIds.has(id)) { delete photoBank[id]; deleted++; }
+                    }
+                    setStore('photos', photoBank);
+                }
+            } catch(e) { console.error("trimPhotoBankIfNeeded Error:", e); }
+        }
+
+        function setGender(g) {
+            tempGender = g;
+            let btnM = el('gender-m'); let btnF = el('gender-f');
+            if(btnM && btnF) {
+                if(g === 'M') {
+                    btnM.className = 'w-9 font-bold transition-colors bg-blue-600 text-white text-[10px]';
+                    btnF.className = 'w-9 font-bold transition-colors text-slate-400 text-[10px]';
+                } else {
+                    btnM.className = 'w-9 font-bold transition-colors text-slate-400 text-[10px]';
+                    btnF.className = 'w-9 font-bold transition-colors bg-pink-500 text-white text-[10px]';
+                }
+            }
+        }
+
+        function setEditGender(g) {
+            tempEditGender = g;
+            let btnM = el('edit-gender-m'); let btnF = el('edit-gender-f');
+            if(btnM && btnF) {
+                if(g === 'M') {
+                    btnM.className = 'w-10 font-bold bg-blue-600 text-white text-[10px]';
+                    btnF.className = 'w-10 font-bold text-slate-400 text-[10px]';
+                } else {
+                    btnM.className = 'w-10 font-bold text-slate-400 text-[10px]';
+                    btnF.className = 'w-10 font-bold bg-pink-500 text-white text-[10px]';
+                }
+            }
+        }
+
+        function handleNewPhotoUpload(e) {
+            try {
+                const file = e.target.files[0]; if(!file) return; const r = new FileReader(); 
+                r.onload = (ev) => { 
+                    const img = new Image(); 
+                    img.onload = function() { 
+                        const c = document.createElement('canvas'); const MAX = 256; let w = img.width, h = img.height; 
+                        if(w > h) { if(w > MAX){ h *= MAX/w; w = MAX; } } else { if(h > MAX){ w *= MAX/h; h = MAX; } } 
+                        c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); 
+                        curPh = c.toDataURL('image/jpeg', 0.85); 
+                        const pr = el('photo-preview'); if(pr) { pr.src = curPh; pr.classList.remove('hidden'); } 
+                        const pl = el('photo-placeholder'); if(pl) pl.classList.add('hidden'); 
+                    }; 
+                    img.src = ev.target.result; 
+                }; 
+                r.readAsDataURL(file);
+            } catch(err) { console.error("handleNewPhotoUpload Error:", err); }
+        }
+
+        function handleEditPhotoUpload(e) {
+            try {
+                const file = e.target.files[0]; if(!file) return; const r = new FileReader(); 
+                r.onload = (ev) => { 
+                    const img = new Image(); 
+                    img.onload = function() { 
+                        const c = document.createElement('canvas'); const MAX = 256; let w = img.width, h = img.height; 
+                        if(w > h) { if(w > MAX){ h *= MAX/w; w = MAX; } } else { if(h > MAX){ w *= MAX/h; h = MAX; } } 
+                        c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); 
+                        tempEditPhoto = c.toDataURL('image/jpeg', 0.85); 
+                        const pr = el('edit-photo-preview'); if(pr) { pr.src = tempEditPhoto; pr.classList.remove('hidden'); } 
+                        const pl = el('edit-photo-placeholder'); if(pl) pl.classList.add('hidden'); 
+                    }; 
+                    img.src = ev.target.result; 
+                }; 
+                r.readAsDataURL(file);
+            } catch(err) { console.error("handleEditPhotoUpload Error:", err); }
+        }
+
+        function addPlayer(e) { 
+            try {
+                if (e) e.preventDefault(); 
+                ensureTournamentId(); 
+                
+                const f = el('player-input-field'); 
+                const n = f ? f.value.trim() : ''; 
+                if(!n) return false; 
+                
+                const newId = uid();
+                if (curPh) { 
+                    photoBank[newId] = curPh; 
+                    setStore('photos', photoBank); 
+                    trimPhotoBankIfNeeded(); 
+                }
+                
+                players.push({ id: newId, name: n, gender: tempGender }); 
+                
+                if(f) f.value = ''; curPh = null; 
+                const pr = el('photo-preview'); if(pr) { pr.classList.add('hidden'); pr.src = ''; } 
+                const pl = el('photo-placeholder'); if(pl) pl.classList.remove('hidden'); 
+                const pi = el('photo-input'); if(pi) pi.value = ''; 
+                
+                preGeneratedTournament = []; setStore('pregen', []); setGender('M'); 
+                
+                autoSave(true); 
+                render(); 
+            } catch(err) { console.error("addPlayer Error:", err); }
+            return false;
+        }
+
+        function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
+
+        function openPlayerBank() {
+            try {
+                let u = new Map();
+                safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if (p && p.name) { let key = p.name.trim().toLowerCase(); if (!u.has(key)) u.set(key, p); } }); });
+                const currNames = safeArr(players).map(p => p.name.trim().toLowerCase());
+                let available = Array.from(u.values()).filter(p => !currNames.includes(p.name.trim().toLowerCase()));
+                
+                let html = '';
+                if (available.length === 0) { html = '<p class="text-xs text-slate-400">Istorijoje nėra senų žaidėjų.</p>'; } 
+                else { 
+                    available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
+                        let pPhoto = photoBank[p.id];
+                        let av = pPhoto ? `<img src="${pPhoto}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">${p.gender==='M'?'V':'M'}</div>`;
+                        html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${p.name}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`;
+                    });
+                }
+                safeHTML('bank-list', html); el('modal-bank').style.display = 'flex';
+            } catch (e) { console.error("openPlayerBank Error:", e); }
+        }
+
+        function addFromBank(id) {
+            try {
+                let pToAdd = null; safeArr(savedTournaments).forEach(t => { safeArr(t.players).forEach(p => { if(p.id === id) pToAdd = p; }); });
+                if (pToAdd && !players.find(x => x.name.trim().toLowerCase() === pToAdd.name.trim().toLowerCase())) {
+                    players.push({ id: pToAdd.id, name: pToAdd.name, gender: pToAdd.gender });
+                    preGeneratedTournament = []; setStore('pregen', []); autoSave(true); closeModals(); openPlayerBank();
+                }
+            } catch (e) { console.error("addFromBank Error:", e); }
+        }
+
+        function openEditModal(id) {
+            try {
+                const p = players.find(x => x.id === id); if(!p) return;
+                editingPlayerId = id; tempEditGender = p.gender; tempEditPhoto = photoBank[id] || null; 
+                safeVal('edit-player-name', p.name); setEditGender(p.gender);
+                
+                const pr = el('edit-photo-preview'), pl = el('edit-photo-placeholder');
+                if(tempEditPhoto) { pr.src = tempEditPhoto; pr.classList.remove('hidden'); pl.classList.add('hidden'); } 
+                else { pr.classList.add('hidden'); pr.src = ''; pl.classList.remove('hidden'); }
+                el('modal-edit').style.display = 'flex';
+            } catch(e) { console.error("openEditModal Error:", e); }
+        }
+
+        function savePlayerEdit() {
+            try {
+                const p = players.find(x => x.id === editingPlayerId);
+                if(p) { 
+                    p.name = el('edit-player-name').value.trim() || p.name; p.gender = tempEditGender; 
+                    if (tempEditPhoto) { 
+                        photoBank[p.id] = tempEditPhoto; 
+                        setStore('photos', photoBank); 
+                        trimPhotoBankIfNeeded();
+                    }
+                    
+                    matches.forEach(m => {
+                        if(m.team1) m.team1.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
+                        if(m.team2) m.team2.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
+                    });
+                    autoSave(true); 
+                }
+                const epi = el('edit-photo-input'); if(epi) epi.value = ''; closeModals();
+            } catch(e) { console.error("savePlayerEdit Error:", e); }
+        }
+
+        function removePlayer(id) { 
+            try { if(confirm("Trinti žaidėją?")) { players = safeArr(players).filter(p => p && p.id !== id); preGeneratedTournament = []; setStore('pregen', []); autoSave(true); } } 
+            catch(e) { console.error("removePlayer Error:", e); }
+        }
+
+        function openPlayerCard(name) {
+            try {
+                let cM = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); }); cM.push(...safeArr(matches));
+                let cP = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.players)) cP.push(...safeArr(t.players)); }); cP.push(...safeArr(players));
+                const uP = []; const seen = new Set(); cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
+                
+                const stats = calculateResults(cM, uP, false).find(x => x.name === name); if(!stats) return;
+                
+                const pairsList = calculatePairsResults(cM, uP).filter(x => x.p1?.name === name || x.p2?.name === name);
+                let bestPartner = "Nėra", maxText = "";
+                if (pairsList.length > 0) {
+                    pairsList.sort((a,b) => b.w - a.w || b.mp - a.mp);
+                    let bestPair = pairsList[0];
+                    bestPartner = (bestPair.p1.name === name) ? bestPair.p2.name : bestPair.p1.name;
+                    maxText = `(${bestPair.w} pergalės iš ${bestPair.mp})`;
+                }
+                
+                let playerMatches = cM.filter(m => m.finished && (safeArr(m.team1).some(p => p.name === name) || safeArr(m.team2).some(p => p.name === name)));
+                let recentMatches = playerMatches.slice(-20);
+                let rMp = recentMatches.length;
+                let rW = 0, rDif = 0;
+                
+                recentMatches.forEach(m => {
+                    let isTeam1 = safeArr(m.team1).some(p => p.name === name);
+                    let myS = isTeam1 ? (m.score1||0) : (m.score2||0);
+                    let enS = isTeam1 ? (m.score2||0) : (m.score1||0);
+                    if (myS > enS) rW++;
+                    rDif += (myS - enS);
+                });
+
+                let rating = 0;
+                if (rMp > 0) {
+                    let winRatePts = (rW / rMp) * 60;
+                    let avgDif = rDif / rMp;
+                    let difPts = Math.max(0, Math.min(30, ((avgDif + 5) / 10) * 30));
+                    let actPts = Math.min(stats.mp, 20) / 20 * 10;
+                    rating = Math.round(winRatePts + difPts + actPts);
+                }
+
+                let tierName = "Naujokas"; let barColor = "bg-slate-400"; let textColor = "text-slate-500";
+                if (rating >= 85) { tierName = "Profesionalas"; barColor = "bg-gradient-to-r from-purple-500 to-fuchsia-500"; textColor = "text-purple-600"; }
+                else if (rating >= 70) { tierName = "Ekspertas"; barColor = "bg-gradient-to-r from-yellow-400 to-amber-500"; textColor = "text-amber-600"; }
+                else if (rating >= 55) { tierName = "Pažengęs"; barColor = "bg-gradient-to-r from-blue-400 to-indigo-500"; textColor = "text-indigo-600"; }
+                else if (rating >= 40) { tierName = "Vidutiniokas"; barColor = "bg-gradient-to-r from-emerald-400 to-green-500"; textColor = "text-emerald-600"; }
+                else if (rating >= 20) { tierName = "Mėgėjas"; barColor = "bg-gradient-to-r from-orange-400 to-orange-500"; textColor = "text-orange-600"; }
+                
+                let pPhoto = photoBank[stats.id] || null;
+                let av = pPhoto ? `<img src="${pPhoto}" class="w-24 h-24 rounded-full object-cover border-4 ${stats.gender==='M'?'border-blue-500':'border-pink-500'} mx-auto mb-4 shadow-lg">` : `<div class="w-24 h-24 rounded-full ${stats.gender==='M'?'bg-blue-500':'bg-pink-500'} mx-auto mb-4 flex items-center justify-center text-3xl font-black text-white shadow-lg">${stats.gender==='M'?'V':'M'}</div>`;
+                let winPerc = stats.mp > 0 ? Math.round((stats.w / stats.mp) * 100) : 0;
+                
+                let html = `
+                    <div class="relative text-center pb-4">
+                        <button onclick="closeModals()" class="absolute -top-2 -right-2 text-slate-400 text-2xl font-bold hover:text-slate-600 active:scale-90 transition-transform" aria-label="Uždaryti kortelę">&times;</button>
+                        ${av}
+                        <h2 class="text-2xl font-black text-slate-800 mb-1">${stats.name}</h2>
+                        
+                        <div class="mb-6 px-2">
+                            <div class="flex justify-between items-end mb-1">
+                                <span class="text-[10px] font-black uppercase tracking-widest ${textColor}">${tierName}</span>
+                                <span class="text-xs font-black text-slate-700">${rating} <span class="text-[9px] font-bold text-slate-400">/ 100</span></span>
+                            </div>
+                            <div class="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/50 relative">
+                                <div class="h-full ${barColor} transition-all duration-1000 ease-out rounded-full shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="width: ${rating}%"></div>
+                            </div>
+                            <div class="text-[8px] text-slate-400 text-right mt-1 uppercase font-bold tracking-widest">Sportinė forma: paskutiniai ${rMp} mačai</div>
+                        </div>
+
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-t border-slate-100 pt-4">Bendra Karjeros Statistika</p>
+                        <div class="grid grid-cols-2 gap-4 mb-5">
+                            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <div class="text-3xl font-black text-slate-800">${stats.mp}</div>
+                                <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mačai</div>
+                            </div>
+                            <div class="bg-green-50 p-4 rounded-2xl border border-green-100">
+                                <div class="text-3xl font-black text-green-600">${winPerc}%</div>
+                                <div class="text-[9px] font-black text-green-600 uppercase tracking-widest">Pergalės</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-center gap-6 mb-6 font-bold text-sm">
+                            <div class="text-center"><span class="block text-green-600 text-xl">${stats.w}</span><span class="text-[9px] text-slate-400 uppercase">Laimėta</span></div>
+                            <div class="text-center"><span class="block text-slate-400 text-xl">${stats.t}</span><span class="text-[9px] text-slate-400 uppercase">Lygios</span></div>
+                            <div class="text-center"><span class="block text-red-500 text-xl">${stats.l}</span><span class="text-[9px] text-slate-400 uppercase">Pralaimėta</span></div>
+                        </div>
+                        <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                            <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Geriausias Partneris</div>
+                            <div class="font-bold text-indigo-900">${bestPartner} <span class="text-xs text-indigo-500 font-normal">${maxText}</span></div>
+                        </div>
+                    </div>
+                `;
+                safeHTML('card-content', html); el('modal-card').style.display = 'flex';
+            } catch(e) { console.error("openPlayerCard Error:", e); }
+        }
+
+        function render() {
+            try {
+                const curT = savedTournaments.find(x => x.id === currentTid);
+                const tField = el('tournament-name-field');
+                if(tField && document.activeElement !== tField) {
+                    tField.value = curT ? curT.name : (new Date().toLocaleDateString('lt-LT') + ' Turnyras');
+                }
+
+                renderLeaderboard();
+                renderPlayersList();
+                renderTimerAndSettings();
+                renderMatches();
+                
+                if(isMuted) {
+                    el('icon-sound-on')?.classList.add('hidden');
+                    el('icon-sound-off')?.classList.remove('hidden');
+                } else {
+                    el('icon-sound-on')?.classList.remove('hidden');
+                    el('icon-sound-off')?.classList.add('hidden');
+                }
+            } catch(e) { console.error("RenderErr:", e); }
+        }
+
+        function renderLeaderboard() {
+            const isF = settings.format === 'fixed'; 
+            const table = calculateResults(matches, players, isF); 
+            
+            const podiumContainer = el('podium-container');
+            const finishedFinals = safeArr(matches).filter(m => m.isFinal && m.finished);
+            
+            if (finishedFinals.length > 0 && podiumContainer) {
+                let firstPlace = null, secondPlace = null, thirdPlace = null;
+                
+                const grandFinal = finishedFinals.find(m => m.finalTitle === "🏆 DIDYSIS FINALAS");
+                if (grandFinal) {
+                    const s1 = grandFinal.score1 || 0, s2 = grandFinal.score2 || 0;
+                    if (s1 >= s2) { firstPlace = grandFinal.team1; secondPlace = grandFinal.team2; }
+                    else { firstPlace = grandFinal.team2; secondPlace = grandFinal.team1; }
+                }
+                
+                const smallFinal = finishedFinals.find(m => m.finalTitle === "🥉 MAŽASIS FINALAS");
+                if (smallFinal) {
+                    const s1 = smallFinal.score1 || 0, s2 = smallFinal.score2 || 0;
+                    if (s1 >= s2) { thirdPlace = smallFinal.team1; }
+                    else { thirdPlace = smallFinal.team2; }
+                }
+
+                if (!firstPlace && finishedFinals.length > 0) {
+                     const f = finishedFinals[0];
+                     const s1 = f.score1 || 0, s2 = f.score2 || 0;
+                     firstPlace = s1 >= s2 ? f.team1 : f.team2;
+                     secondPlace = s1 >= s2 ? f.team2 : f.team1;
+                }
+                
+                let pHTML = `<div class="w-full px-4 space-y-2 mb-2"><h3 class="text-center font-black text-[10px] text-slate-400 uppercase tracking-widest mb-3">Turnyro Čempionai</h3>`;
+                const getName = (team) => safeArr(team).map(p => p.name).join(' / ');
+                
+                if (firstPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥇</div><div class="font-black text-yellow-700 text-sm truncate">${getName(firstPlace)}</div></div>`;
+                if (secondPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥈</div><div class="font-black text-slate-600 text-sm truncate">${getName(secondPlace)}</div></div>`;
+                if (thirdPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-orange-100 to-orange-50 border border-orange-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥉</div><div class="font-black text-orange-700 text-sm truncate">${getName(thirdPlace)}</div></div>`;
+                
+                pHTML += `</div>`;
+                safeHTML('podium-container', pHTML);
+                safeDisplay('podium-container', 'flex');
+            } else if (podiumContainer) {
+                safeDisplay('podium-container', 'none');
+            }
+
+            let html = table.map((s, i) => {
+                let av = ''; 
+                if (!isF) { 
+                    let pPhoto = photoBank[s.id];
+                    let bg = s.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = s.gender === 'M' ? 'V' : 'M'; 
+                    av = pPhoto ? `<div class="relative w-7 h-7 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${s.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
+                                : `<div class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${s.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
+                }
+                return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div onclick="${isF ? '' : `openPlayerCard('${s.name}')`}" class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
+            }).join('');
+            safeHTML('leaderboard-body', html);
+        }
+
+        function renderPlayersList() {
+            let html = safeArr(players).map((p, idx) => {
+                let pPhoto = photoBank[p.id];
+                let bg = p.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = p.gender === 'M' ? 'V' : 'M'; 
+                let av = pPhoto ? `<div class="relative w-9 h-9 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${p.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${bg}">${bt}</div></div>`
+                                : `<div class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
+                return `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3 flex-1 cursor-pointer active:opacity-50 transition-opacity" onclick="openEditModal('${p.id}')"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${idx + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-red-300 text-xl font-bold px-2 active:scale-90" aria-label="Pašalinti žaidėją">&times;</button></div>`;
+            }).join('');
+            safeHTML('players-list', html);
+        }
+
+        function renderTimerAndSettings() {
+            const isSc = settings.winCondition === 'score'; 
+            safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
+            safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
+            safeDisplay('control-duration', !isSc ? 'block' : 'none'); safeDisplay('control-points', !isSc ? 'none' : 'block'); safeDisplay('score-mode-text', isSc ? 'block' : 'none'); safeDisplay('timer-controls', isSc ? 'none' : 'flex');
+            if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
+            
+            const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0'); 
+            safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('player-count', "Viso: " + players.length); 
+            safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
+
+            const btnFinals = el('btn-generate-finals');
+            if(btnFinals) btnFinals.className = (safeArr(matches).some(m => m.finished)) ? "px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase" : "hidden";
+        }
+
+        function renderMatches() {
+            const active = safeArr(matches).filter(m => !m.finished);
+            let aHtml = active.map(m => {
+                let t1 = m.team1.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
+                let t2 = m.team2.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join(''); 
+                let headT = m.isFinal ? m.finalTitle : `RAUNDAS ${m.round}`;
+                let headC = m.isFinal ? (m.finalBg || 'bg-slate-800') : 'bg-slate-800';
+                return `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="${headC} text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase"><span>AIKŠTELĖ ${m.court}</span><span>${headT}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
+            }).join('');
+            safeHTML('matches-container', aHtml);
+            
+            const fin = safeArr(matches).filter(m => m.finished).reverse(); 
+            let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : ''; 
+            fHtml += fin.map(m => {
+                let n1 = m.team1.map(p=>p.name).join('/'), n2 = m.team2.map(p=>p.name).join('/'); 
+                let badge = m.isFinal ? `<span class="match-number-badge !bg-yellow-100 !text-yellow-700 border border-yellow-200">🏆</span>` : `<span class="match-number-badge">R${m.round}</span>`;
+                return `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate">${badge}<div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
+            }).join('');
+            safeHTML('finished-matches-container', fHtml);
+        }
+
+        function shareResultsAsImage() {
+            try {
+                el('loading-overlay').style.display = 'flex';
+                safeText('loading-text', "Kuriama HD nuotrauka...");
+                
+                const target = el('leaderboard-capture-target');
+                const title = el('tournament-name-field').value || "Turnyro Rezultatai";
+                
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'absolute'; wrapper.style.left = '-9999px'; wrapper.style.top = '0';
+                wrapper.style.width = '450px'; 
+                wrapper.style.padding = '20px'; 
+                wrapper.style.background = '#f8fafc'; 
+                
+                const header = document.createElement('div');
+                header.style.textAlign = 'center'; header.style.marginBottom = '20px'; 
+                header.innerHTML = `<h1 style="font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; line-height: 1; letter-spacing: -1px;">superpadel<span style="color: #16a34a;">.lt</span></h1><h2 style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">${title}</h2>`;
+                
+                const content = target.cloneNode(true);
+                content.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'; 
+                content.style.border = '1px solid #e2e8f0'; 
+                content.style.borderRadius = '16px';
+                content.style.backgroundColor = '#ffffff';
+                content.style.overflow = 'hidden';
+
+                const footer = document.createElement('div');
+                footer.style.textAlign = 'center'; footer.style.fontSize = '10px'; footer.style.color = '#cbd5e1'; footer.style.fontWeight = '900'; footer.style.marginTop = '20px'; footer.style.textTransform = 'uppercase'; footer.style.letterSpacing = '1px';
+                footer.innerText = "Sugeneruota su www.superpadel.lt";
+                
+                wrapper.appendChild(header); wrapper.appendChild(content); wrapper.appendChild(footer);
+                document.body.appendChild(wrapper);
+
+                setTimeout(() => {
+                    html2canvas(wrapper, { scale: 3, backgroundColor: "#f8fafc", useCORS: true, logging: false }).then(canvas => {
+                        document.body.removeChild(wrapper);
+                        el('loading-overlay').style.display = 'none'; safeText('loading-text', "Kraunama..."); 
+                        
+                        const imgData = canvas.toDataURL('image/png', 1.0);
+                        
+                        if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+                            canvas.toBlob(blob => {
+                                const file = new File([blob], `${title.replace(/\s+/g, '_')}_rezultatai.png`, { type: "image/png" });
+                                navigator.share({ files: [file], title: title }).catch(e => console.error("Share error:", e));
+                            });
+                        } else {
+                            const link = document.createElement('a'); 
+                            link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; 
+                            link.href = imgData; 
+                            link.click();
+                        }
+                    }).catch(err => {
+                        if(document.body.contains(wrapper)) document.body.removeChild(wrapper);
+                        el('loading-overlay').style.display = 'none'; alert("Klaida generuojant vaizdą: " + err);
+                    });
+                }, 250);
+            } catch(e) { console.error("shareResultsAsImage Error:", e); el('loading-overlay').style.display = 'none'; }
+        }
+
+        function generateFinals() {
+            try {
+                ensureTournamentId();
+                const safeP = safeArr(players);
+                if (safeP.length < 4) { alert("Nepakanka žaidėjų finalams."); return; }
+
+                const isF = settings.format === 'fixed';
+                const ranked = calculateResults(matches, players, isF); 
+
+                let teams = [];
+                
+                if (settings.format === 'mix_americano') {
+                    const males = ranked.filter(p => p.gender === 'M');
+                    const females = ranked.filter(p => p.gender === 'F');
+                    const pairCount = Math.min(males.length, females.length);
+                    if(pairCount < 2) { alert("Trūksta vyrų arba moterų finalinėms poroms suformuoti."); return; }
+                    
+                    for(let i=0; i<pairCount; i++) {
+                        teams.push([males[i], females[i]]);
+                    }
+                } else {
+                    for(let i=0; i<ranked.length; i+=2) {
+                        if (i+1 < ranked.length) {
+                            teams.push([ranked[i], ranked[i+1]]);
                         }
                     }
-                    groups.push(Array.from(group));
-                    group.forEach(m => unvisited.delete(m));
                 }
 
-                let validSleepGroups = groups.filter(g => g.some(m => m.dataset.isExpanded === 'true'));
+                let newM = [];
+                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+                let courtCounter = 1;
 
-                if (validSleepGroups.length > 0) {
-                    let sleepTexts = validSleepGroups.map(g => {
-                        let totalW = 0; let maxH = 0;
-                        g.forEach(m => {
-                            totalW += parseInt(m.dataset.sleepw) || 0;
-                            let sh = parseInt(m.dataset.sleeph) || 0;
-                            if (sh > maxH) maxH = sh;
+                for(let i=0; i<teams.length; i+=2) {
+                    if (i+1 < teams.length) {
+                        let title = i === 0 ? "🏆 DIDYSIS FINALAS" : (i === 2 ? "🥉 MAŽASIS FINALAS" : `DĖL ${i+1}-${i+2} VIETOS`);
+                        let matchBg = i === 0 ? "bg-gradient-to-r from-yellow-500 to-amber-600" : (i === 2 ? "bg-gradient-to-r from-orange-400 to-orange-600" : "bg-slate-800");
+
+                        newM.push({
+                            id: uid(), round: roundNum, court: courtCounter++, finished: false, score1: 0, score2: 0,
+                            team1: teams[i], team2: teams[i+1], isFinal: true, finalTitle: title, finalBg: matchBg
                         });
-                        return `<b style="color:#28a745">${totalW} x ${maxH} cm</b>`;
-                    });
-                    text += `<br><span style="font-size:13px; color:#555;">Miegamoji dalis: ${sleepTexts.join(' / ')}</span>`;
+                    }
                 }
-            }
 
-            dimensionDisplay.innerHTML = text;
+                if(newM.length === 0) { alert("Nepavyko suformuoti komandų finalams."); return; }
+                matches = [...safeArr(matches), ...newM];
+                autoSave(true);
+                switchView('matches');
+            } catch(e) { console.error("generateFinals Error:", e); }
         }
 
-        function loadModel(modelKey) {
-            moduleList.innerHTML = '';
-            furnitureModels[modelKey].forEach(mod => {
-                const btn = document.createElement('div');
-                btn.className = 'menu-item';
-                let expIcon = mod.expandable ? ' <b style="color:#007bff; font-size:14px;">⇕</b>' : '';
-                btn.innerHTML = `<span>${mod.name}${expIcon}<br><small style="color:#666">${mod.w}x${mod.h} cm</small></span> <span class="menu-price">${mod.price}€</span>`;
-                btn.onclick = () => addModuleToWorkspace(mod, modelKey);
-                moduleList.appendChild(btn);
-            });
+        function requestNextRound() {
+            try {
+                ensureTournamentId(); 
+                const safeP = safeArr(players); 
+                if (settings.format === 'fixed') { return generateFixedRound(safeP); }
+                if (safeP.length < 4 || safeP.length % 4 !== 0) { 
+                    alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4! (Dabar yra ${safeP.length})`);
+                    return; 
+                }
+                if (settings.format === 'mix_americano') { 
+                    const mC = safeP.filter(p => p.gender === 'M').length, fC = safeP.filter(p => p.gender === 'F').length; 
+                    if (mC !== fC) { alert("KLAIDA: Mix formatui reikia vienodo vyrų ir moterų skaičiaus!"); return; } 
+                }
+                
+                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+                
+                if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]) {
+                    el('loading-overlay').style.display = 'flex';
+                    setTimeout(() => {
+                        try {
+                            if (settings.format === 'mix_americano') {
+                                if (safeP.length === 8) { preGeneratedTournament = generateInterleavedMix8Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
+                                else if (safeP.length === 16) { preGeneratedTournament = generatePerfectMix16Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
+                                else { generateLookaheadTournament(safeP, roundNum, 30); }
+                            } else { generateLookaheadTournament(safeP, roundNum, 30); }
+                            el('loading-overlay').style.display = 'none'; dispatchRoundFromPreGen(roundNum);
+                        } catch (e) {
+                            console.error("Matrix generation error:", e);
+                            el('loading-overlay').style.display = 'none';
+                        }
+                    }, 50);
+                } else { dispatchRoundFromPreGen(roundNum); }
+            } catch(e) { console.error("requestNextRound Error:", e); el('loading-overlay').style.display = 'none'; }
         }
 
-        modelSelect.addEventListener('change', (e) => {
-            loadModel(e.target.value); workspace.querySelectorAll('.canvas-module').forEach(m => m.remove()); updateDimensions();
-        });
-
-        function selectModule(modEl) {
-            if (selectedModule) selectedModule.classList.remove('selected');
-            selectedModule = modEl;
-            if (selectedModule) selectedModule.classList.add('selected');
-        }
-
-        const workspaceArea = document.getElementById('workspace');
-        workspaceArea.addEventListener('mousedown', (e) => { if (e.target.id === 'workspace' || e.target.id === 'canvas-area') selectModule(null); });
-        workspaceArea.addEventListener('touchstart', (e) => { if (e.target.id === 'workspace' || e.target.id === 'canvas-area') selectModule(null); }, {passive: true});
-
-        function getEventX(e) { return e.type.includes('touch') ? e.touches[0].clientX : e.clientX; }
-        function getEventY(e) { return e.type.includes('touch') ? e.touches[0].clientY : e.clientY; }
-        function isTouching(a, b) { let r1 = a.getBoundingClientRect(), r2 = b.getBoundingClientRect(); return !(r1.right < r2.left - 2 || r1.left > r2.right + 2 || r1.bottom < r2.top - 2 || r1.top > r2.bottom + 2); }
-        function isOverlapping(a, b) { let r1 = a.getBoundingClientRect(), r2 = b.getBoundingClientRect(); return !(r1.right <= r2.left + 5 || r1.left >= r2.right - 5 || r1.bottom <= r2.top + 5 || r1.top >= r2.bottom - 5); }
+        function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 3; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
+        function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const perfectMatrix16 = [ [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 3; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
         
-        function getConnectedGroup(startModule) {
-            let group = new Set([startModule]); let added = true;
-            while(added) { added = false; document.querySelectorAll('.canvas-module').forEach(other => { if(!group.has(other)) { for(let m of group) { if(isTouching(m, other)) { group.add(other); added = true; break; } } } }); }
-            return Array.from(group);
-        }
-
-        function toggleExpand(modEl) {
-            let coll = modEl.dataset.collection; let id = modEl.dataset.id;
-            let modData = furnitureModels[coll]?.find(m => m.id === id);
-            if (!modData || !modData.expandable) return;
-            
-            let isExp = modEl.dataset.isExpanded === 'true';
-            let currentW = !isExp ? modData.w : modData.expW; let currentH = !isExp ? modData.h : modData.expH;
-            let targetW = !isExp ? modData.expW : modData.w; let targetH = !isExp ? modData.expH : modData.h;
-            let targetSvg = !isExp ? modData.svgExpanded : modData.svg;
-            
-            let currentAngle = parseInt(modEl.dataset.angle) || 0;
-            let rad = currentAngle * Math.PI / 180;
-            let dw = (targetW - currentW) * scale; let dh = (targetH - currentH) * scale;
-            let rx = (dw/2) * Math.cos(rad) - (dh/2) * Math.sin(rad);
-            let ry = (dw/2) * Math.sin(rad) + (dh/2) * Math.cos(rad);
-            
-            modEl.style.left = (parseFloat(modEl.style.left) - dw/2 + rx) + 'px';
-            modEl.style.top = (parseFloat(modEl.style.top) - dh/2 + ry) + 'px';
-            
-            modEl.dataset.isExpanded = !isExp;
-            modEl.style.width = (targetW * scale) + 'px'; modEl.style.height = (targetH * scale) + 'px';
-            
-            let expIcon = modData.expandable ? ' <b style="color:#007bff; font-size:14px;">⇕</b>' : '';
-            let labelSvg = `<span class="label">${modData.name}${expIcon}<br><span class="dim-text">${modData.w} x ${modData.h}</span></span>`;
-            modEl.innerHTML = targetSvg + labelSvg;
-            
-            const label = modEl.querySelector('.label');
-            if(label) label.style.transform = `rotate(${-currentAngle}deg)`;
-            
-            updateDimensions(); saveStateToHistory();
-        }
-
-        function addModuleToWorkspace(modData, collectionKey) {
-            const modEl = document.createElement('div');
-            modEl.className = 'canvas-module';
-            modEl.dataset.id = modData.id; modEl.dataset.name = modData.name; modEl.dataset.price = modData.price;
-            modEl.dataset.collection = collectionKey || 'core'; modEl.dataset.isExpanded = 'false';
-            modEl.dataset.w = modData.w; modEl.dataset.h = modData.h; modEl.dataset.angle = 0;
-            
-            if(modData.expandable) { modEl.dataset.sleepw = modData.sleepW; modEl.dataset.sleeph = modData.sleepH; }
-            if(modData.isChaise) { modEl.dataset.isChaise = 'true'; modEl.dataset.sleepw = modData.sleepW; modEl.dataset.sleeph = modData.sleepH; }
-
-            modEl.style.width = (modData.w * scale) + 'px'; modEl.style.height = (modData.h * scale) + 'px';
-            modEl.style.top = window.innerWidth < 768 ? '50px' : '150px';
-            modEl.style.left = window.innerWidth < 768 ? '50px' : '350px'; 
-            modEl.style.zIndex = zIndexCounter++;
-            
-            let expIcon = modData.expandable ? ' <b style="color:#007bff; font-size:14px;">⇕</b>' : '';
-            let labelSvg = `<span class="label">${modData.name}${expIcon}<br><span class="dim-text">${modData.w} x ${modData.h}</span></span>`;
-            modEl.innerHTML = modData.svg + labelSvg;
-
-            attachEvents(modEl);
-            canvasArea.appendChild(modEl);
-            selectModule(modEl);
-            saveStateToHistory();
-        }
-
-        function attachEvents(modEl) {
-            let isDragging = false, startX, startY, group = [], initials = [];
-            
-            function startDrag(e) {
-                isDragging = true; selectModule(modEl); 
-                group = groupToggle.checked ? getConnectedGroup(modEl) : [modEl];
-                let topZ = zIndexCounter++; 
-                group.forEach(m => { m.style.zIndex = topZ; m.classList.add('dragging'); });
-                startX = getEventX(e); startY = getEventY(e);
-                initials = group.map(m => ({ left: parseInt(m.style.left)||0, top: parseInt(m.style.top)||0 }));
-                if(e.cancelable && !e.type.includes('touch')) e.preventDefault(); 
+        function generateLookaheadTournament(safePool, startRound, countToGenerate) {
+            let M = [], F = []; if (settings.format === 'mix_americano') { M = safePool.filter(p => p.gender === 'M'); F = safePool.filter(p => p.gender === 'F'); } else { let shuffledPool = shuffle([...safePool]); let half = shuffledPool.length / 2; M = shuffledPool.slice(0, half); F = shuffledPool.slice(half); }
+            let halfNum = M.length, courtsNeeded = halfNum / 2, partners = new Map(), opponents = new Map(), pastMatches = new Set();
+            const PLAYERS = [...M, ...F], totalPlayers = PLAYERS.length; PLAYERS.forEach(p1 => { partners.set(p1.id, new Map()); opponents.set(p1.id, new Map()); PLAYERS.forEach(p2 => { partners.get(p1.id).set(p2.id, 0); opponents.get(p1.id).set(p2.id, 0); }); });
+            const getP = (a, b) => partners.get(a.id)?.get(b.id) || 0; const getO = (a, b) => opponents.get(a.id)?.get(b.id) || 0;
+            const addStats = (m) => { let m1c = partners.get(m.t1[0].id); m1c.set(m.t1[1].id, (m1c.get(m.t1[1].id)||0)+1); let m2c = partners.get(m.t1[1].id); m2c.set(m.t1[0].id, (m2c.get(m.t1[0].id)||0)+1); let m3c = partners.get(m.t2[0].id); m3c.set(m.t2[1].id, (m3c.get(m.t2[1].id)||0)+1); let m4c = partners.get(m.t2[1].id); m4c.set(m.t2[0].id, (m4c.get(m.t2[0].id)||0)+1); const addOpp = (a, b) => { let o1 = opponents.get(a.id); o1.set(b.id, (o1.get(b.id)||0)+1); let o2 = opponents.get(b.id); o2.set(a.id, (o2.get(a.id)||0)+1); }; addOpp(m.t1[0], m.t2[0]); addOpp(m.t1[0], m.t2[1]); addOpp(m.t1[1], m.t2[0]); addOpp(m.t1[1], m.t2[1]); let mk = [ [m.t1[0].id, m.t1[1].id].sort().join('+'), [m.t2[0].id, m.t2[1].id].sort().join('+') ].sort().join('VS'); pastMatches.add(mk); };
+            let lastRoundOpponents = new Set(); const updateLastRoundOpponents = (roundMatches) => { lastRoundOpponents.clear(); if(!roundMatches) return; roundMatches.forEach(m => { m.t1.forEach(p1 => m.t2.forEach(p2 => { lastRoundOpponents.add(p1.id + '_' + p2.id); lastRoundOpponents.add(p2.id + '_' + p1.id); })); }); };
+            let maxHistoricalRound = 0; safeArr(matches).forEach(m => { if(m && safeArr(m.team1).length > 0 && safeArr(m.team2).length > 0) { addStats({ t1: m.team1, t2: m.team2 }); if(m.round > maxHistoricalRound) maxHistoricalRound = m.round; } }); if (maxHistoricalRound > 0) { let lastHistRound = safeArr(matches).filter(m => m.round === maxHistoricalRound).map(m => ({t1: m.team1, t2: m.team2})); updateLastRoundOpponents(lastHistRound); }
+            let newPreGen = [];
+            for (let round = startRound; round < startRound + countToGenerate; round++) {
+                let bestSet = null, minPenalty = Infinity, iterations = 10000; 
+                for (let iter = 0; iter < iterations; iter++) {
+                    let currentPenalty = 0, roundMatches = [];
+                    if (settings.format === 'mix_americano') {
+                        let roundShift = round - 1, pairs = []; for(let i = 0; i < halfNum; i++) { pairs.push([M[i], F[(i + roundShift) % halfNum]]); } pairs = shuffle(pairs); 
+                        for(let c = 0; c < courtsNeeded; c++) { let t1 = pairs[c * 2], t2 = pairs[c * 2 + 1], mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
+                    } else {
+                        let tempAll = shuffle([...M, ...F]); let maxAllowedP = Math.ceil(round / (totalPlayers - 1));
+                        for(let c = 0; c < courtsNeeded; c++) { const t1 = [tempAll.pop(), tempAll.pop()], t2 = [tempAll.pop(), tempAll.pop()]; if (getP(t1[0], t1[1]) >= maxAllowedP) currentPenalty += 5000000; if (getP(t2[0], t2[1]) >= maxAllowedP) currentPenalty += 5000000; let mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); if (pastMatches.has(mk)) currentPenalty += 50000; t1.forEach(p1 => t2.forEach(p2 => { if (lastRoundOpponents.has(p1.id + '_' + p2.id)) currentPenalty += 500000; })); if (getP(t1[0], t1[1]) === 0) currentPenalty -= 10000; if (getP(t2[0], t2[1]) === 0) currentPenalty -= 10000; let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; currentPenalty += Math.pow(getP(t1[0], t1[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getP(t2[0], t2[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; roundMatches.push({ t1: t1, t2: t2 }); }
+                    }
+                    if (currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = roundMatches; }
+                }
+                bestSet.forEach(m => addStats(m)); newPreGen.push(bestSet); updateLastRoundOpponents(bestSet);
             }
-            modEl.addEventListener('mousedown', startDrag); modEl.addEventListener('touchstart', startDrag, {passive: false});
+            let fullPreGen = new Array(startRound - 1).fill(null).concat(newPreGen); preGeneratedTournament = fullPreGen; setStore('pregen', preGeneratedTournament);
+        }
 
-            function drag(e) {
-                if (!isDragging) return;
-                const dx = getEventX(e) - startX, dy = getEventY(e) - startY;
-                group.forEach((m, i) => { m.style.left = (initials[i].left + dx) + 'px'; m.style.top = (initials[i].top + dy) + 'px'; });
+        function dispatchRoundFromPreGen(roundNum) { 
+            try {
+                let roundData = preGeneratedTournament[roundNum - 1]; 
+                if (roundData) { 
+                    let newM = roundData.map((m, idx) => ({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }));
+                    matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
+                }
+            } catch(e) { console.error("dispatchRoundFromPreGen Error:", e); }
+        }
 
-                const snapThreshold = 15; let snapDx = 0, snapDy = 0, snappedX = false, snappedY = false; 
-                const dRect = modEl.getBoundingClientRect();
+        function generateFixedRound(safePool) { 
+            try {
+                let teams = []; for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); } 
+                let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
                 
-                document.querySelectorAll('.canvas-module').forEach(other => {
-                    if (group.includes(other)) return;
-                    const oRect = other.getBoundingClientRect();
-                    if (!snappedX) {
-                        if (Math.abs(dRect.right - oRect.left) < snapThreshold) { snapDx = oRect.left - dRect.right; snappedX = true; }
-                        else if (Math.abs(dRect.left - oRect.right) < snapThreshold) { snapDx = oRect.right - dRect.left; snappedX = true; }
-                        else if (Math.abs(dRect.left - oRect.left) < snapThreshold) { snapDx = oRect.left - dRect.left; snappedX = true; }
-                        else if (Math.abs(dRect.right - oRect.right) < snapThreshold) { snapDx = oRect.right - dRect.right; snappedX = true; }
+                let K_even = teams.length;
+                let cycleRounds = K_even - 1;
+                let shift = (roundNum - 1) % cycleRounds;
+                
+                let rotatedIndices = [0];
+                let others = [];
+                for (let i = 1; i < K_even; i++) others.push(i);
+                for (let i = 0; i < shift; i++) others.unshift(others.pop());
+                rotatedIndices.push(...others);
+                
+                let roundMatches = [];
+                for (let i = 0; i < K_even / 2; i++) {
+                    let t1Idx = rotatedIndices[i];
+                    let t2Idx = rotatedIndices[K_even - 1 - i];
+                    if (t1Idx < teams.length && t2Idx < teams.length) {
+                        roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
                     }
-                    if (!snappedY) {
-                        if (Math.abs(dRect.bottom - oRect.top) < snapThreshold) { snapDy = oRect.top - dRect.bottom; snappedY = true; }
-                        else if (Math.abs(dRect.top - oRect.bottom) < snapThreshold) { snapDy = oRect.bottom - dRect.top; snappedY = true; }
-                        else if (Math.abs(dRect.top - oRect.top) < snapThreshold) { snapDy = oRect.top - dRect.top; snappedY = true; }
-                        else if (Math.abs(dRect.bottom - oRect.bottom) < snapThreshold) { snapDy = oRect.bottom - dRect.bottom; snappedY = true; }
-                    }
+                }
+                
+                let newM = [];
+                roundMatches.forEach((m, idx) => {
+                    newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
                 });
                 
-                if (snappedX || snappedY) { group.forEach((m, i) => { m.style.left = (initials[i].left + dx + snapDx) + 'px'; m.style.top = (initials[i].top + dy + snapDy) + 'px'; }); }
-
-                group.forEach(m => m.classList.remove('error'));
-                document.querySelectorAll('.canvas-module').forEach(staticMod => {
-                    if(group.includes(staticMod)) return;
-                    group.forEach(m => { if(isOverlapping(m, staticMod)) { m.classList.add('error'); staticMod.classList.add('error'); } else { staticMod.classList.remove('error'); } });
-                });
-                updateDimensions();
-                if(e.cancelable) e.preventDefault();
-            }
-            document.addEventListener('mousemove', drag); document.addEventListener('touchmove', drag, {passive: false});
-
-            function stopDrag() { 
-                if(!isDragging) return;
-                isDragging = false; 
-                group.forEach(m => { m.classList.remove('dragging'); m.classList.remove('error'); });
-                document.querySelectorAll('.canvas-module').forEach(m => m.classList.remove('error'));
-                saveStateToHistory();
-            }
-            document.addEventListener('mouseup', stopDrag); document.addEventListener('touchend', stopDrag);
-
-            modEl.addEventListener('dblclick', () => toggleExpand(modEl));
-            let lastTap = 0;
-            modEl.addEventListener('touchend', (e) => {
-                let currentTime = new Date().getTime();
-                let tapLength = currentTime - lastTap;
-                if (tapLength < 300 && tapLength > 0) { toggleExpand(modEl); e.preventDefault(); }
-                lastTap = currentTime;
-            });
+                matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
+            } catch(e) { console.error("generateFixedRound Error:", e); }
         }
 
-        function rotateSelected(degrees) {
-            if (!selectedModule) return;
-            let targetGroup = groupToggle.checked ? getConnectedGroup(selectedModule) : [selectedModule];
+        function calculatePairsResults(mArr, pArr) { const pairs = new Map(); try { safeArr(mArr).filter(m => m && m.finished).forEach(m => { const proc = (team, myS, enS) => { let safeTeam = safeArr(team); if (safeTeam.length >= 2) { const names = [safeTeam[0].name, safeTeam[1].name].sort(), key = names.join('_'); if (!pairs.has(key)) { pairs.set(key, { name: `${names[0]}/${names[1]}`, p1: safeTeam[0], p2: safeTeam[1], mp:0, w:0, t:0, l:0, sw:0 }); } const s = pairs.get(key); s.mp++; s.sw += myS; if (myS > enS) s.w++; else if (myS < enS) s.l++; else s.t++; } }; proc(m.team1, m.score1, m.score2); proc(m.team2, m.score2, m.score1); }); } catch(e) { console.error("calculatePairsResults Error:", e); } return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp)); }
+        function calculateResults(mArr, pArr, isF = false) { let res = []; try { let safeP = safeArr(pArr); if(isF) { for(let i=0; i<safeP.length; i+=2) if(i+1 < safeP.length) res.push({ id: safeP[i].id+'_'+safeP[i+1].id, name: safeP[i].name+' / '+safeP[i+1].name, p1: safeP[i], p2: safeP[i+1], mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0, photo:null, gender:'M' }); } else { res = safeP.map(p => ({ ...p, mp:0, w:0, t:0, l:0, sw:0, sl:0, dif:0, lp:0 })); } safeArr(mArr).filter(m => m && m.finished).forEach(m => { const up = (team, myS, enS) => { let t = safeArr(team); if(t.length === 0) return; let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); safeArr(targets).forEach(s => { if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } }); }; up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); }); } catch(e) { console.error("calculateResults Error:", e); } return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); }
+
+        function renderGlobalStats() {
+            try {
+                const tSel = el('stat-tournament'); 
+                let tVal = tSel ? tSel.value : 'CURRENT';
+                
+                if (tSel) {
+                    let opts = `<option value="CURRENT">Dabartinis turnyras</option><option value="ALL">Visi turnyrai (Bendra)</option>` + safeArr(savedTournaments).map(t => `<option value="${t.id}">${t.name} (${new Date(t.date).toLocaleDateString('lt-LT')})</option>`).join('');
+                    tSel.innerHTML = opts;
+                    if(tSel.querySelector(`option[value="${tVal}"]`)) tSel.value = tVal;
+                }
+                
+                const tF = el('stat-tournament')?.value || 'CURRENT';
+                const gF = el('stat-gender')?.value || 'ALL';
+                
+                let cM = [], cP = [];
+                if(tF === 'ALL') { 
+                    safeArr(savedTournaments).forEach(t => { 
+                        if (currentTid && t.id === currentTid) return;
+                        cM.push(...safeArr(t.matches)); 
+                        cP.push(...safeArr(t.players)); 
+                    }); 
+                    if(matches.length > 0) cM.push(...matches); 
+                    if(players.length > 0) cP.push(...players); 
+                }
+                else if(tF === 'CURRENT') { cM = [...matches]; cP = [...players]; }
+                else { const t = savedTournaments.find(x => x.id === tF); if(t){ cM = [...t.matches]; cP = [...t.players]; } }
+                
+                const uP = Array.from(new Map(cP.filter(p => p && p.name).map(p => [p.name, p])).values());
+                
+                const pSel = el('stat-player'); 
+                let pVal = pSel ? pSel.value : 'ALL';
+                
+                if(pSel) {
+                    pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + uP.sort((a,b)=>a.name.localeCompare(b.name)).map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+                    if(pSel.querySelector(`option[value="${pVal}"]`)) pSel.value = pVal;
+                }
+                
+                const pF = el('stat-player')?.value || 'ALL';
+                
+                safeClass('stat-type-indiv', statType === 'indiv' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
+                safeClass('stat-type-pairs', statType === 'pairs' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+                
+                let html = '';
+                if (statType === 'indiv') {
+                    const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
+                    html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div onclick="openPlayerCard('${s.name}')" class="flex-1 truncate font-bold text-slate-800 clickable-name">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+                } else {
+                    const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
+                    html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+                }
+                safeHTML('global-stats-body', html);
+            } catch(e) { console.error("renderGlobalStats Error:", e); }
+        }
+
+        function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(true); }
+        function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(true); }
+        function changeFormat(v) { settings.format = v; preGeneratedTournament = []; setStore('pregen', []); autoSave(true); }
+        function changeRanking(v) { settings.rankingMode = v; autoSave(true); }
+        
+        function autoSave(fullSync = false) { 
+            try { 
+                if(currentTid) { 
+                    const idx = savedTournaments.findIndex(x => x.id === currentTid); 
+                    if(idx > -1) { 
+                        const tF = el('tournament-name-field');
+                        if (tF && el('view-setup').classList.contains('active')) savedTournaments[idx].name = tF.value || "Turnyras";
+                        savedTournaments[idx].players = players; savedTournaments[idx].matches = matches; savedTournaments[idx].settings = settings; savedTournaments[idx].lastUpdate = Date.now(); 
+                    } 
+                } 
+                setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); 
+                
+                if(isCloud && dbRef && fullSync) { 
+                    const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() }; 
+                    window.lastCloudUpdate = p.lastUpdate; 
+                    dbRef.update(p); 
+                } 
+                render(); 
+            } catch(e) { console.error("autoSave Error:", e); } 
+        }
+
+        function liveUpdateMatches() {
+            try {
+                setStore('m', matches);
+                let upd = { matches: matches, lastUpdate: Date.now() };
+                if (currentTid) { const idx = savedTournaments.findIndex(x => x.id === currentTid); if (idx > -1) { savedTournaments[idx].matches = matches; setStore('h', savedTournaments); } }
+                if (isCloud && dbRef) { window.lastCloudUpdate = upd.lastUpdate; dbRef.update(upd); }
+                render();
+            } catch (e) { console.error("liveUpdateMatches Error:", e); }
+        }
+
+        function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
+        function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; liveUpdateMatches(); } }
+        function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
+        function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); autoSave(true); switchView('setup'); } }
+        function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); switchView('setup'); } autoSave(true); renderHistoryList(); } }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            localStorage.setItem('sp_is_muted', isMuted.toString());
+            render();
+        }
+
+        function speakAnnouncement(text) {
+            if(isMuted) return;
+            try {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US'; 
+                    utterance.rate = 1.0; 
+                    utterance.pitch = 1.0;
+                    window.speechSynthesis.speak(utterance);
+                }
+            } catch(e) { console.error("Speech Error:", e); }
+        }
+
+        // V188: Saugiai perrašyta 5 sekundžių sirena
+        function triggerAlarm() { 
+            if(alarmInterval) return; 
+            playBuzzer(); 
+            alarmInterval = setInterval(playBuzzer, 2000); 
+            updateTimerUI(); 
             
-            if (targetGroup.length === 1) {
-                let m = targetGroup[0];
-                let currentAngle = parseInt(m.dataset.angle) || 0;
-                currentAngle += degrees; m.dataset.angle = currentAngle; m.style.transform = `rotate(${currentAngle}deg)`;
-                const label = m.querySelector('.label'); if(label) label.style.transform = `rotate(${-currentAngle}deg)`;
-            } else {
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                targetGroup.forEach(m => {
-                    let w = parseFloat(m.style.width); let h = parseFloat(m.style.height);
-                    let cx = parseFloat(m.style.left) + w/2; let cy = parseFloat(m.style.top) + h/2;
-                    let angle = parseInt(m.dataset.angle) || 0; let isRotated = (angle % 180 !== 0);
-                    let visualW = isRotated ? h : w; let visualH = isRotated ? w : h;
-                    if (cx - visualW/2 < minX) minX = cx - visualW/2; if (cy - visualH/2 < minY) minY = cy - visualH/2;
-                    if (cx + visualW/2 > maxX) maxX = cx + visualW/2; if (cy + visualH/2 > maxY) maxY = cy + visualH/2;
-                });
-                let groupCX = (minX + maxX) / 2; let groupCY = (minY + maxY) / 2;
-                targetGroup.forEach(m => {
-                    let w = parseFloat(m.style.width); let h = parseFloat(m.style.height);
-                    let cx = parseFloat(m.style.left) + w/2; let cy = parseFloat(m.style.top) + h/2;
-                    let nx, ny;
-                    if (degrees === 90 || degrees === -270) { nx = groupCX - (cy - groupCY); ny = groupCY + (cx - groupCX); } 
-                    else if (degrees === -90 || degrees === 270) { nx = groupCX + (cy - groupCY); ny = groupCY - (cx - groupCX); } 
-                    else if (degrees === 180 || degrees === -180) { nx = groupCX - (cx - groupCX); ny = groupCY - (cy - groupCY); }
-                    m.style.left = (nx - w/2) + 'px'; m.style.top = (ny - h/2) + 'px';
-                    let newAngle = (parseInt(m.dataset.angle) || 0) + degrees;
-                    m.dataset.angle = newAngle; m.style.transform = `rotate(${newAngle}deg)`;
-                    const label = m.querySelector('.label'); if(label) label.style.transform = `rotate(${-newAngle}deg)`;
-                });
-            }
-            setTimeout(() => { updateDimensions(); saveStateToHistory(); }, 50); 
+            alarmTimeout = setTimeout(() => { 
+                if(alarmInterval) { 
+                    clearInterval(alarmInterval); 
+                    alarmInterval = null; 
+                    updateTimerUI(); 
+                } 
+            }, 5500); 
         }
 
-        function deleteSelected() { 
-            if (!selectedModule) return; 
-            let targetGroup = groupToggle.checked ? getConnectedGroup(selectedModule) : [selectedModule];
-            targetGroup.forEach(m => m.remove()); selectModule(null); saveStateToHistory(); 
+        function playBuzzer() { 
+            if(isMuted) return;
+            try { 
+                const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
+                const o = ctx.createOscillator(); 
+                o.type = 'sawtooth'; 
+                o.frequency.setValueAtTime(130, ctx.currentTime); 
+                o.connect(ctx.destination); 
+                o.start(); 
+                o.stop(ctx.currentTime + 1.5); 
+            } catch(e){ console.error("Buzzer Error:", e); } 
         }
 
-        document.addEventListener('keydown', (e) => {
-            if(e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { undo(); return; }
-            if (!selectedModule) return;
-            if (e.key === 'q' || e.key === 'Q') rotateSelected(-90);
-            else if (e.key === 'e' || e.key === 'E') rotateSelected(90);
-            else if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
-        });
+        function toggleTimer() { 
+            if(settings.winCondition==='score') return; 
+            if(alarmInterval) { 
+                clearInterval(alarmInterval); 
+                alarmInterval=null; 
+                if(alarmTimeout) { clearTimeout(alarmTimeout); alarmTimeout = null; }
+                resetTimer(); 
+                return; 
+            } 
+            
+            if(isRunning) { 
+                clearInterval(timerInterval); 
+                isRunning=false; 
+            } else { 
+                if(timeLeft <= 0) return; 
+                isRunning = true; 
+                endTime = Date.now() + (timeLeft * 1000); 
+                
+                if (!isMuted && 'speechSynthesis' in window) {
+                    let unlockAudio = new SpeechSynthesisUtterance('');
+                    window.speechSynthesis.speak(unlockAudio);
+                }
 
-        function exportToImage() {
-            const workspace = document.getElementById('workspace'); selectModule(null);
-            html2canvas(workspace, { backgroundColor: "#f4f4f4", scale: 2 }).then(canvas => {
-                let link = document.createElement('a'); link.download = 'Mano_Sofa_Konfiguracija.png'; link.href = canvas.toDataURL('image/png'); link.click();
+                timerInterval = setInterval(() => { 
+                    const d = Math.ceil((endTime - Date.now())/1000); 
+                    if(d > 0) { 
+                        if (d === 300 && timeLeft !== 300) speakAnnouncement("Five minutes left");
+                        if (d === 60 && timeLeft !== 60) speakAnnouncement("One minute left");
+                        
+                        timeLeft = d; 
+                        updateTimerUI(); 
+                    } else { 
+                        timeLeft = 0; 
+                        clearInterval(timerInterval); 
+                        isRunning = false; 
+                        triggerAlarm(); 
+                    } 
+                }, 1000); 
+            } 
+            updateTimerUI(); 
+        }
+
+        function updateTimerUI() { 
+            const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), s = (timeLeft%60).toString().padStart(2,'0'); 
+            safeText('timer-display', `${m}:${s}`); 
+            const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop'); 
+            if(i1 && i2 && i3 && b) { 
+                i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden'); 
+                if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-600"; i3.classList.remove('hidden'); } 
+                else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); } 
+                else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); } 
+            } 
+        }
+
+        function resetTimer() { 
+            timeLeft = settings.matchDuration * 60; 
+            isRunning = false; 
+            if(timerInterval) clearInterval(timerInterval); 
+            if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
+            if(alarmTimeout) { clearTimeout(alarmTimeout); alarmTimeout = null; }
+            updateTimerUI(); 
+        }
+
+        function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
+
+        function switchView(n) { 
+            document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
+            document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active')); 
+            el('view-' + n)?.classList.add('active'); el('nav-' + n)?.classList.add('active'); 
+            if(n==='stats') renderGlobalStats(); else if(n==='history') renderHistoryList(); else if(n==='admin') renderAdmin(); else if(n==='superadmin') loadSuperAdmin(); else render(); 
+        }
+
+        function renderHistoryList() { 
+            let h = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border mb-2 ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs uppercase">Trinti</button></div></div>`).join(''); 
+            safeHTML('history-list', h); 
+        }
+        
+        function loadHistory(id) { const t = savedTournaments.find(x => x.id === id); if(t && confirm("Užkrauti?")) { players = JSON.parse(JSON.stringify(safeArr(t.players))); matches = JSON.parse(JSON.stringify(safeArr(t.matches))); settings = JSON.parse(JSON.stringify({...ds, ...t.settings})); currentTid = id; preGeneratedTournament = []; setStore('tid', id); const tF = el('tournament-name-field'); if (tF) tF.value = t.name || ''; resetTimer(); autoSave(true); switchView('matches'); } }
+
+        function adminClick() { adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); if (adminClickCount >= 5) { const p = prompt("Slaptažodis:"); if (p === "123") switchView('admin'); else if (p === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); } adminClickCount = 0; } }
+        
+        // V187: Super Admin analitikos atvaizdavimas
+        function loadSuperAdmin() { 
+            ensureFirebaseInit(); 
+            safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); 
+            
+            firebase.database().ref(REG_KEY).once('value').then(snap => { 
+                const r = snap.val(); 
+                if(!r) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } 
+                let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${k}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${k}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${k}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`).join(''); 
+                safeHTML('superadmin-rooms-list', h); 
+            }); 
+            
+            firebase.database().ref(DB_KEY + '_global_stats').once('value').then(snap => {
+                const stats = snap.val();
+                if (!stats) {
+                    safeHTML('superadmin-stats', '<div class="text-xs text-slate-500">Nėra duomenų.</div>');
+                    return;
+                }
+                const visits = stats.visits || 0;
+                const devices = stats.devices || {};
+                const uniqueCount = Object.keys(devices).length;
+
+                const types = { 'iOS': 0, 'Android': 0, 'Mac': 0, 'Windows': 0, 'Kitas': 0 };
+                Object.values(devices).forEach(d => {
+                    if (d.type && types[d.type] !== undefined) types[d.type]++;
+                    else types['Kitas']++;
+                });
+
+                let typesHtml = Object.keys(types).filter(k => types[k] > 0).map(k => `<span class="text-[10px] bg-slate-100 px-2 py-1 rounded mr-1 mb-1 border border-slate-200 text-slate-600 font-bold">${k}: ${types[k]}</span>`).join('');
+
+                let html = `
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500">Puslapio atvertimai:</span> <span class="text-green-600 text-xl font-black">${visits}</span></div>
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500">Unikalūs įrenginiai:</span> <span class="text-blue-600 text-xl font-black">${uniqueCount}</span></div>
+                    <div class="text-[10px] text-slate-400 mt-2 uppercase font-black tracking-widest mb-1">Įrenginių sistemos:</div>
+                    <div class="flex flex-wrap">${typesHtml}</div>
+                `;
+                safeHTML('superadmin-stats', html);
+            }).catch(e => {
+                safeHTML('superadmin-stats', '<div class="text-xs text-red-500">Klaida gaunant duomenis.</div>');
             });
         }
+        
+        function superAdminJoin(rn) { safeVal('fb-room', rn); initFirebaseConnection(); switchView('setup'); }
+        function superAdminDelete(rn) { if(confirm(`Trinti ${rn}?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+rn).remove(); firebase.database().ref(REG_KEY+'/'+rn).remove(); loadSuperAdmin(); } }
+        function renderAdmin() { 
+            let tHtml = savedTournaments.map(t => `<div class="flex justify-between items-center p-2 bg-slate-50 mb-1 rounded"><span>${t.name}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`).join(''); safeHTML('admin-tournaments-list', tHtml); 
+            const uP = Array.from(new Map(players.map(p => [p.id, p])).values());
+            let pHtml = uP.map(p => `<div class="flex justify-between p-2 text-xs border-b"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`).join(''); safeHTML('admin-players-list', pHtml); 
+        }
+        function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderAdmin(); } }
+        function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = players.filter(p => p.id !== id); autoSave(true); renderAdmin(); } }
 
-        updateZoomText();
-        loadModel(modelSelect.value);
-        const savedState = localStorage.getItem('sofaState');
-        if(savedState) {
-            const parsed = JSON.parse(savedState);
-            if(parsed.length > 0) { historyStack.push(savedState); restoreState(parsed); } else { saveStateToHistory(); }
-        } else { saveStateToHistory(); }
+        function initFirebaseConnection() { 
+            const room = el('fb-room')?.value.trim() || activeRoom; if(!room) return; 
+            
+            if(dbRef) { dbRef.off(); } 
+            
+            ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
+            firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
+            dbRef = firebase.database().ref(DB_KEY + '/' + room); 
+            dbPhotosRef = firebase.database().ref(DB_KEY + '/' + room + '_photos');
+            safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room); 
+            
+            const qrC = el('qrcode'); if(qrC) { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
+            
+            dbPhotosRef.once('value').then(snap => {
+                const cloudPhotos = snap.val();
+                if(cloudPhotos) {
+                    photoBank = { ...photoBank, ...cloudPhotos };
+                    setStore('photos', photoBank);
+                    render();
+                }
+            }).catch(e => console.error("Cloud Photo Load Error:", e));
+
+            dbRef.on('value', snap => { 
+                const d = snap.val(); 
+                if(d && d.lastUpdate !== window.lastCloudUpdate) { 
+                    window.lastCloudUpdate = d.lastUpdate; 
+                    if(d.photoBank) { photoBank = d.photoBank; setStore('photos', photoBank); }
+                    players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings || {...ds}; savedTournaments = safeArr(d.savedTournaments); currentTid = d.currentTid; render(); 
+                } 
+            }); 
+        }
+
+        function disconnectFirebase() { 
+            if(dbRef) { dbRef.off(); dbRef = null; } 
+            dbPhotosRef = null;
+            localStorage.removeItem('sp_active_room_master'); 
+            location.reload(); 
+        }
+
+        window.addEventListener('beforeunload', (e) => { if (matches.some(m => !m.finished)) { e.preventDefault(); e.returnValue = ''; } });
+        
+        window.onload = () => { 
+            loadData(); 
+            const p = new URLSearchParams(window.location.search); const r = p.get('room');
+            if (r) { activeRoom = r; isCloud = true; localStorage.setItem('sp_active_room_master', r); window.history.replaceState({}, document.title, window.location.pathname); }
+            if (activeRoom) { safeVal('fb-room', activeRoom); initFirebaseConnection(); } 
+            
+            logVisit();
+            
+            render(); 
+            if (matches.length > 0) switchView('matches'); else switchView('setup'); 
+        };
     </script>
 </body>
 </html>
