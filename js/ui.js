@@ -1,5 +1,16 @@
 window.onerror = function(msg, url, line) { console.error("Global Error: ", msg, "at line", line); return true; };
 
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
+}
+
+// Globalus paspaudimų klausytojas (XSS apsaugai)
+document.addEventListener('click', e => {
+    const el = e.target.closest('[data-player]');
+    if (el) openPlayerCard(el.dataset.player);
+});
+
 function el(id) { return document.getElementById(id); }
 function safeText(id, t) { try { const e = el(id); if(e) e.innerText = t; } catch(e){} }
 function safeHTML(id, h) { try { const e = el(id); if(e) e.innerHTML = h; } catch(e){} }
@@ -113,7 +124,7 @@ function openPlayerBank() {
             available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
                 let pPhoto = photoBank[p.id];
                 let av = pPhoto ? `<img src="${pPhoto}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">${p.gender==='M'?'V':'M'}</div>`;
-                html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${p.name}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`;
+                html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`;
             });
         }
         safeHTML('bank-list', html); el('modal-bank').style.display = 'flex';
@@ -178,7 +189,7 @@ function openPlayerCard(name) {
         if (pairsList.length > 0) {
             pairsList.sort((a,b) => b.w - a.w || b.mp - a.mp);
             let bestPair = pairsList[0];
-            bestPartner = (bestPair.p1.name === name) ? bestPair.p2.name : bestPair.p1.name;
+            bestPartner = esc((bestPair.p1.name === name) ? bestPair.p2.name : bestPair.p1.name);
             maxText = `(${bestPair.w} pergalės iš ${bestPair.mp})`;
         }
         
@@ -219,7 +230,7 @@ function openPlayerCard(name) {
             <div class="relative text-center pb-4">
                 <button onclick="closeModals()" class="absolute -top-2 -right-2 text-slate-400 text-2xl font-bold hover:text-slate-600 active:scale-90 transition-transform" aria-label="Uždaryti kortelę">&times;</button>
                 ${av}
-                <h2 class="text-2xl font-black text-slate-800 mb-1">${stats.name}</h2>
+                <h2 class="text-2xl font-black text-slate-800 mb-1">${esc(stats.name)}</h2>
                 <div class="mb-6 px-2">
                     <div class="flex justify-between items-end mb-1"><span class="text-[10px] font-black uppercase tracking-widest ${textColor}">${tierName}</span><span class="text-xs font-black text-slate-700">${rating} <span class="text-[9px] font-bold text-slate-400">/ 100</span></span></div>
                     <div class="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/50 relative"><div class="h-full ${barColor} transition-all duration-1000 ease-out rounded-full shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="width: ${rating}%"></div></div>
@@ -235,17 +246,22 @@ function openPlayerCard(name) {
     } catch(e) { console.error("openPlayerCard Error:", e); }
 }
 
+// Pridėtas debounce apsaugai nuo dvigubo perrenderiavimo
+let renderTimeout = null;
 function render() {
-    try {
-        const curT = savedTournaments.find(x => x.id === currentTid);
-        const tField = el('tournament-name-field');
-        if(tField && document.activeElement !== tField) tField.value = curT ? curT.name : (new Date().toLocaleDateString('lt-LT') + ' Turnyras');
+    if (renderTimeout) clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(() => {
+        try {
+            const curT = savedTournaments.find(x => x.id === currentTid);
+            const tField = el('tournament-name-field');
+            if(tField && document.activeElement !== tField) tField.value = curT ? curT.name : (new Date().toLocaleDateString('lt-LT') + ' Turnyras');
 
-        renderLeaderboard(); renderPlayersList(); renderTimerAndSettings(); renderMatches();
-        
-        if(isMuted) { el('icon-sound-on')?.classList.add('hidden'); el('icon-sound-off')?.classList.remove('hidden'); } 
-        else { el('icon-sound-on')?.classList.remove('hidden'); el('icon-sound-off')?.classList.add('hidden'); }
-    } catch(e) { console.error("RenderErr:", e); }
+            renderLeaderboard(); renderPlayersList(); renderTimerAndSettings(); renderMatches();
+            
+            if(isMuted) { el('icon-sound-on')?.classList.add('hidden'); el('icon-sound-off')?.classList.remove('hidden'); } 
+            else { el('icon-sound-on')?.classList.remove('hidden'); el('icon-sound-off')?.classList.add('hidden'); }
+        } catch(e) { console.error("RenderErr:", e); }
+    }, 16);
 }
 
 function renderLeaderboard() {
@@ -275,7 +291,7 @@ function renderLeaderboard() {
         }
         
         let pHTML = `<div class="w-full px-4 space-y-2 mb-2"><h3 class="text-center font-black text-[10px] text-slate-400 uppercase tracking-widest mb-3">Turnyro Čempionai</h3>`;
-        const getName = (team) => safeArr(team).map(p => p.name).join(' / ');
+        const getName = (team) => safeArr(team).map(p => esc(p.name)).join(' / ');
         
         if (firstPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥇</div><div class="font-black text-yellow-700 text-sm truncate">${getName(firstPlace)}</div></div>`;
         if (secondPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥈</div><div class="font-black text-slate-600 text-sm truncate">${getName(secondPlace)}</div></div>`;
@@ -292,7 +308,7 @@ function renderLeaderboard() {
             av = pPhoto ? `<div class="relative w-7 h-7 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${s.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
                         : `<div class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${s.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
         }
-        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div onclick="${isF ? '' : `openPlayerCard('${s.name}')`}" class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${s.name}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
+        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div ${isF ? '' : `data-player="${esc(s.name)}"`} class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${esc(s.name)}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
     }).join('');
     safeHTML('leaderboard-body', html);
 }
@@ -303,7 +319,7 @@ function renderPlayersList() {
         let bg = p.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = p.gender === 'M' ? 'V' : 'M'; 
         let av = pPhoto ? `<div class="relative w-9 h-9 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${p.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${bg}">${bt}</div></div>`
                         : `<div class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
-        return `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3 flex-1 cursor-pointer active:opacity-50 transition-opacity" onclick="openEditModal('${p.id}')"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${idx + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${p.name}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-red-300 text-xl font-bold px-2 active:scale-90" aria-label="Pašalinti žaidėją">&times;</button></div>`;
+        return `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3 flex-1 cursor-pointer active:opacity-50 transition-opacity" onclick="openEditModal('${p.id}')"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${idx + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${esc(p.name)}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-red-300 text-xl font-bold px-2 active:scale-90" aria-label="Pašalinti žaidėją">&times;</button></div>`;
     }).join('');
     safeHTML('players-list', html);
 }
@@ -326,9 +342,9 @@ function renderTimerAndSettings() {
 function renderMatches() {
     const active = safeArr(matches).filter(m => !m.finished);
     let aHtml = active.map(m => {
-        let t1 = m.team1.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join('');
-        let t2 = m.team2.map(p => `<span class="font-bold text-sm text-slate-700">${p.name}</span>`).join(''); 
-        let headT = m.isFinal ? m.finalTitle : `RAUNDAS ${m.round}`;
+        let t1 = m.team1.map(p => `<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span>`).join('');
+        let t2 = m.team2.map(p => `<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span>`).join(''); 
+        let headT = m.isFinal ? esc(m.finalTitle) : `RAUNDAS ${m.round}`;
         let headC = m.isFinal ? (m.finalBg || 'bg-slate-800') : 'bg-slate-800';
         return `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="${headC} text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase"><span>AIKŠTELĖ ${m.court}</span><span>${headT}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
     }).join('');
@@ -337,7 +353,7 @@ function renderMatches() {
     const fin = safeArr(matches).filter(m => m.finished).reverse(); 
     let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : ''; 
     fHtml += fin.map(m => {
-        let n1 = m.team1.map(p=>p.name).join('/'), n2 = m.team2.map(p=>p.name).join('/'); 
+        let n1 = m.team1.map(p=>esc(p.name)).join('/'), n2 = m.team2.map(p=>esc(p.name)).join('/'); 
         let badge = m.isFinal ? `<span class="match-number-badge !bg-yellow-100 !text-yellow-700 border border-yellow-200">🏆</span>` : `<span class="match-number-badge">R${m.round}</span>`;
         return `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate">${badge}<div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
     }).join('');
@@ -352,7 +368,7 @@ function shareResultsAsImage() {
         wrapper.style.position = 'absolute'; wrapper.style.left = '-9999px'; wrapper.style.top = '0'; wrapper.style.width = '450px'; wrapper.style.padding = '20px'; wrapper.style.background = '#f8fafc'; 
         
         const header = document.createElement('div'); header.style.textAlign = 'center'; header.style.marginBottom = '20px'; 
-        header.innerHTML = `<h1 style="font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; line-height: 1; letter-spacing: -1px;">superpadel<span style="color: #16a34a;">.lt</span></h1><h2 style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">${title}</h2>`;
+        header.innerHTML = `<h1 style="font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; line-height: 1; letter-spacing: -1px;">superpadel<span style="color: #16a34a;">.lt</span></h1><h2 style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">${esc(title)}</h2>`;
         
         const content = target.cloneNode(true); content.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'; content.style.border = '1px solid #e2e8f0'; content.style.borderRadius = '16px'; content.style.backgroundColor = '#ffffff'; content.style.overflow = 'hidden';
 
@@ -378,7 +394,7 @@ function renderGlobalStats() {
     try {
         const tSel = el('stat-tournament'); let tVal = tSel ? tSel.value : 'CURRENT';
         if (tSel) {
-            let opts = `<option value="CURRENT">Dabartinis turnyras</option><option value="ALL">Visi turnyrai (Bendra)</option>` + safeArr(savedTournaments).map(t => `<option value="${t.id}">${t.name} (${new Date(t.date).toLocaleDateString('lt-LT')})</option>`).join('');
+            let opts = `<option value="CURRENT">Dabartinis turnyras</option><option value="ALL">Visi turnyrai (Bendra)</option>` + safeArr(savedTournaments).map(t => `<option value="${t.id}">${esc(t.name)} (${new Date(t.date).toLocaleDateString('lt-LT')})</option>`).join('');
             tSel.innerHTML = opts; if(tSel.querySelector(`option[value="${tVal}"]`)) tSel.value = tVal;
         }
         
@@ -393,7 +409,7 @@ function renderGlobalStats() {
         const pSel = el('stat-player'); let pVal = pSel ? pSel.value : 'ALL';
         
         if(pSel) {
-            pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + uP.sort((a,b)=>a.name.localeCompare(b.name)).map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + uP.sort((a,b)=>a.name.localeCompare(b.name)).map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
             if(pSel.querySelector(`option[value="${pVal}"]`)) pSel.value = pVal;
         }
         
@@ -404,10 +420,10 @@ function renderGlobalStats() {
         let html = '';
         if (statType === 'indiv') {
             const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div onclick="openPlayerCard('${s.name}')" class="flex-1 truncate font-bold text-slate-800 clickable-name">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
         } else {
             const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
-            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${s.name}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
         }
         safeHTML('global-stats-body', html);
     } catch(e) { console.error("renderGlobalStats Error:", e); }
@@ -426,15 +442,58 @@ function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTo
 
 function toggleMute() { isMuted = !isMuted; localStorage.setItem('sp_is_muted', isMuted.toString()); render(); }
 
-function speakAnnouncement(text) {
+let globalAudioCtx = null;
+function getAudioCtx() {
+    if (!globalAudioCtx) {
+        globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return globalAudioCtx;
+}
+
+function play5MinWarning() {
     if(isMuted) return;
     try {
-        if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US'; utterance.rate = 1.0; utterance.pitch = 1.0;
-            window.speechSynthesis.speak(utterance);
-        }
-    } catch(e) { console.error("Speech Error:", e); }
+        const ctx = getAudioCtx();
+        const playBeep = (freq, time, dur) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'square'; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.05, ctx.currentTime + time);
+            osc.start(ctx.currentTime + time); osc.stop(ctx.currentTime + time + dur);
+        };
+        playBeep(600, 0, 0.15);
+        playBeep(800, 0.25, 0.2);
+    } catch(e) { console.error("Audio Error:", e); }
+}
+
+function play1MinWarning() {
+    if(isMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        const playTick = (time) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sine'; osc.frequency.value = 1000;
+            gain.gain.setValueAtTime(0.1, ctx.currentTime + time);
+            osc.start(ctx.currentTime + time); osc.stop(ctx.currentTime + time + 0.05);
+        };
+        for(let i=0; i<5; i++) playTick(i * 0.15);
+    } catch(e) { console.error("Audio Error:", e); }
+}
+
+function playBuzzer() {
+    if(isMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 1.5); 
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+        osc.start(); osc.stop(ctx.currentTime + 1.5);
+    } catch(e) { console.error("Audio Error:", e); }
 }
 
 function triggerAlarm() { 
@@ -443,30 +502,30 @@ function triggerAlarm() {
     alarmTimeout = setTimeout(() => { if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; updateTimerUI(); } }, 5500); 
 }
 
-function playBuzzer() { 
-    if(isMuted) return;
-    try { 
-        const ctx = new (window.AudioContext || window.webkitAudioContext)(); 
-        const o = ctx.createOscillator(); 
-        o.type = 'sawtooth'; o.frequency.setValueAtTime(130, ctx.currentTime); o.connect(ctx.destination); o.start(); o.stop(ctx.currentTime + 1.5); 
-    } catch(e){ console.error("Buzzer Error:", e); } 
-}
-
 function toggleTimer() { 
     if(settings.winCondition==='score') return; 
-    if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; if(alarmTimeout) { clearTimeout(alarmTimeout); alarmTimeout = null; } resetTimer(); return; } 
+    if(alarmInterval) { 
+        clearInterval(alarmInterval); alarmInterval=null; 
+        if(alarmTimeout) { clearTimeout(alarmTimeout); alarmTimeout = null; } 
+        resetTimer(); return; 
+    } 
     
-    if(isRunning) { clearInterval(timerInterval); isRunning=false; } 
-    else { 
+    if(isRunning) { 
+        clearInterval(timerInterval); isRunning=false; 
+    } else { 
         if(timeLeft <= 0) return; 
         isRunning = true; endTime = Date.now() + (timeLeft * 1000); 
-        if (!isMuted && 'speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+        
+        if (!isMuted) {
+            const ctx = getAudioCtx();
+            if (ctx.state === 'suspended') ctx.resume();
+        }
 
         timerInterval = setInterval(() => { 
             const d = Math.ceil((endTime - Date.now())/1000); 
             if(d > 0) { 
-                if (d === 300 && timeLeft !== 300) speakAnnouncement("Five minutes left");
-                if (d === 60 && timeLeft !== 60) speakAnnouncement("One minute left");
+                if (d === 300 && timeLeft !== 300) play5MinWarning();
+                if (d === 60 && timeLeft !== 60) play1MinWarning();
                 timeLeft = d; updateTimerUI(); 
             } else { 
                 timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); 
@@ -506,7 +565,7 @@ function switchView(n) {
 }
 
 function renderHistoryList() { 
-    let h = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border mb-2 ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${t.name}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs uppercase">Trinti</button></div></div>`).join(''); 
+    let h = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border mb-2 ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${esc(t.name)}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs uppercase">Trinti</button></div></div>`).join(''); 
     safeHTML('history-list', h); 
 }
 
@@ -519,13 +578,41 @@ function loadHistory(id) {
     } 
 }
 
-function adminClick() { adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); if (adminClickCount >= 5) { const p = prompt("Slaptažodis:"); if (p === "123") switchView('admin'); else if (p === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); } adminClickCount = 0; } }
+async function adminClick() { 
+    adminClickCount++; 
+    clearTimeout(adminTimer); 
+    adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); 
+    
+    if (adminClickCount >= 5) { 
+        const p = prompt("Slaptažodis:"); 
+        if (!p) return;
+        
+        try {
+            const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
+            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+            
+            if (hashHex === "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3") {
+                switchView('admin'); 
+            } 
+            else if (hashHex === "17462c76e27b8782ee20fb26fb66bf0c3b0632cd286958ab453deca95bb8e469") { 
+                switchView('superadmin'); 
+                loadSuperAdmin(); 
+            } else {
+                alert("Neteisingas slaptažodis!");
+            }
+        } catch(e) {
+            console.error("Hash error:", e);
+            alert("Klaida tikrinant slaptažodį.");
+        }
+        adminClickCount = 0; 
+    } 
+}
 
 function loadSuperAdmin() { 
     ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); 
     firebase.database().ref(REG_KEY).once('value').then(snap => { 
         const r = snap.val(); if(!r) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } 
-        let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${k}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${k}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${k}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`).join(''); safeHTML('superadmin-rooms-list', h); 
+        let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${esc(k)}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${esc(k)}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${esc(k)}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`).join(''); safeHTML('superadmin-rooms-list', h); 
     }); 
     firebase.database().ref(DB_KEY + '_global_stats').once('value').then(snap => {
         const stats = snap.val(); if (!stats) { safeHTML('superadmin-stats', '<div class="text-xs text-slate-500">Nėra duomenų.</div>'); return; }
@@ -539,7 +626,7 @@ function loadSuperAdmin() {
 
 function superAdminJoin(rn) { safeVal('fb-room', rn); initFirebaseConnection(); switchView('setup'); }
 function superAdminDelete(rn) { if(confirm(`Trinti ${rn}?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+rn).remove(); firebase.database().ref(REG_KEY+'/'+rn).remove(); loadSuperAdmin(); } }
-function renderAdmin() { let tHtml = savedTournaments.map(t => `<div class="flex justify-between items-center p-2 bg-slate-50 mb-1 rounded"><span>${t.name}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`).join(''); safeHTML('admin-tournaments-list', tHtml); const uP = Array.from(new Map(players.map(p => [p.id, p])).values()); let pHtml = uP.map(p => `<div class="flex justify-between p-2 text-xs border-b"><span>${p.name}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`).join(''); safeHTML('admin-players-list', pHtml); }
+function renderAdmin() { let tHtml = savedTournaments.map(t => `<div class="flex justify-between items-center p-2 bg-slate-50 mb-1 rounded"><span>${esc(t.name)}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`).join(''); safeHTML('admin-tournaments-list', tHtml); const uP = Array.from(new Map(players.map(p => [p.id, p])).values()); let pHtml = uP.map(p => `<div class="flex justify-between p-2 text-xs border-b"><span>${esc(p.name)}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`).join(''); safeHTML('admin-players-list', pHtml); }
 function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderAdmin(); } }
 function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = players.filter(p => p.id !== id); autoSave(true); renderAdmin(); } }
 function setStatType(t) { statType = t; renderGlobalStats(); }
