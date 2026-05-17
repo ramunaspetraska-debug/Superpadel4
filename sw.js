@@ -1,13 +1,14 @@
 const CACHE_NAME = 'superpadel-cache-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/favicon.png',
-  '/icons/apple-touch-icon.png',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-512-maskable.png'
+    '/',
+    '/index.html',
+    '/css/styles.css',
+    '/js/config.js',
+    '/js/storage.js',
+    '/js/logic.js',
+    '/js/ui.js',
+    '/js/app.js',
+    '/manifest.json'
 ];
 
 // Install: cache core assets
