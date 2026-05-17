@@ -1,3 +1,8 @@
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
+}
+
 window.onerror = function(msg, url, line) { console.error("Global Error: ", msg, "at line", line); return true; };
 function esc(str) {
     if (!str) return '';
