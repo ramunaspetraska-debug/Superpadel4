@@ -1,3 +1,7 @@
+const GLOBAL_PLAYERS_KEY = "padelio_global_players";
+let globalPlayersRef = null;
+let globalPlayersData = {};
+
 function getStore(key) { 
     const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; 
     try { const val = localStorage.getItem(prefix + key); return val ? JSON.parse(val) : null; } catch(e) { console.error("getStore Error:", e); return null; } 
@@ -138,6 +142,9 @@ function autoSave(fullSync = false) {
             const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() }; 
             window.lastCloudUpdate = p.lastUpdate; 
             dbRef.update(p); 
+            
+            // NAUJA: Sinchronizuojame žaidėjus į globalią bazę
+            syncPlayersToGlobalDB();
         } 
         render(); 
     } catch(e) { console.error("autoSave Error:", e); } 
@@ -148,20 +155,36 @@ function liveUpdateMatches() {
         setStore('m', matches);
         let upd = { matches: matches, lastUpdate: Date.now() };
         if (currentTid) { const idx = savedTournaments.findIndex(x => x.id === currentTid); if (idx > -1) { savedTournaments[idx].matches = matches; setStore('h', savedTournaments); } }
-        if (isCloud && dbRef) { window.lastCloudUpdate = upd.lastUpdate; dbRef.update(upd); }
+        if (isCloud && dbRef) { 
+            window.lastCloudUpdate = upd.lastUpdate; 
+            dbRef.update(upd); 
+            
+            // NAUJA: Atnaujiname globalius reitingus pagal naujai baigtus mačus
+            updateGlobalRatingsFromMatches();
+        }
         render();
     } catch (e) { console.error("liveUpdateMatches Error:", e); }
 }
 
 function initFirebaseConnection() { 
-let room = el('fb-room')?.value.trim() || activeRoom; if(!room) return; 
-room = room.toUpperCase(); // Priverstinai paverčiame į didžiąsias raides
+    let room = el('fb-room')?.value.trim() || activeRoom; if(!room) return; 
+    room = room.toUpperCase(); // Priverstinai paverčiame į didžiąsias raides
     
     if(dbRef) { dbRef.off(); } 
+    if(globalPlayersRef) { globalPlayersRef.off(); }
+    
     ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
+    
     firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
     dbRef = firebase.database().ref(DB_KEY + '/' + room); 
     dbPhotosRef = firebase.database().ref(DB_KEY + '/' + room + '_photos');
+    
+    // NAUJA: Prisijungiame prie globalios žaidėjų bazės
+    globalPlayersRef = firebase.database().ref(GLOBAL_PLAYERS_KEY);
+    globalPlayersRef.on('value', snap => {
+        globalPlayersData = snap.val() || {};
+    });
+
     safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room); 
     
     const qrC = el('qrcode'); if(qrC) { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
@@ -183,7 +206,57 @@ room = room.toUpperCase(); // Priverstinai paverčiame į didžiąsias raides
 
 function disconnectFirebase() { 
     if(dbRef) { dbRef.off(); dbRef = null; } 
+    if(globalPlayersRef) { globalPlayersRef.off(); globalPlayersRef = null; }
     dbPhotosRef = null;
     localStorage.removeItem('sp_active_room_master'); 
     location.reload(); 
+}
+
+// ==========================================
+// GLOBAL BASE SYNC LOGIC (NAUJA)
+// ==========================================
+
+function syncPlayersToGlobalDB() {
+    if (!isCloud || !globalPlayersRef) return;
+    
+    players.forEach(p => {
+        const globalP = globalPlayersData[p.id];
+        
+        if (!globalP) {
+            globalPlayersRef.child(p.id).set({
+                id: p.id,
+                name: p.name,
+                gender: p.gender,
+                rating: 300, 
+                tier: "D",
+                total_matches: 0,
+                last_played: Date.now()
+            });
+        } else {
+            if (globalP.name !== p.name || globalP.gender !== p.gender) {
+                globalPlayersRef.child(p.id).update({
+                    name: p.name,
+                    gender: p.gender
+                });
+            }
+        }
+        
+        if (photoBank[p.id] && (!globalP || !globalP.hasPhoto)) {
+            firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + p.id).set(photoBank[p.id]);
+            globalPlayersRef.child(p.id).update({ hasPhoto: true });
+        }
+    });
+}
+
+function updateGlobalRatingsFromMatches() {
+    if (!isCloud || !globalPlayersRef) return;
+    
+    matches.filter(m => m.finished && !m.globalSyncDone).forEach(m => {
+        if (typeof processGlobalEloForMatch === 'function') {
+            processGlobalEloForMatch(m, globalPlayersData, globalPlayersRef);
+        }
+        m.globalSyncDone = true;
+    });
+    
+    setStore('m', matches);
 }
