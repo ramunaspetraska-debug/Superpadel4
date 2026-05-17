@@ -246,3 +246,77 @@ function generateFixedRound(safePool) {
         matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
     } catch(e) { console.error("generateFixedRound Error:", e); }
 }
+
+// ==========================================
+// GLOBALI ELO REITINGŲ SISTEMA (1000 BALŲ)
+// ==========================================
+function processGlobalEloForMatch(match, globalData, globalRef) {
+    if (!match || !match.team1 || !match.team2) return;
+    
+    let s1 = parseInt(match.score1 || 0);
+    let s2 = parseInt(match.score2 || 0);
+    if (s1 === 0 && s2 === 0 && !match.finished) return; 
+    
+    // Gauname žaidėjo reitingą (jei naujokas - 300)
+    const getP = (p) => globalData[p.id] || { rating: 300, total_matches: 0 };
+    
+    let t1Players = safeArr(match.team1);
+    let t2Players = safeArr(match.team2);
+    if (t1Players.length === 0 || t2Players.length === 0) return;
+    
+    // Skaičiuojame komandų vidurkius
+    let t1R = t1Players.reduce((sum, p) => sum + getP(p).rating, 0) / t1Players.length;
+    let t2R = t2Players.reduce((sum, p) => sum + getP(p).rating, 0) / t2Players.length;
+    
+    // ELO pergalės tikimybė (nuo 0 iki 1)
+    let e1 = 1 / (1 + Math.pow(10, (t2R - t1R) / 400));
+    let e2 = 1 / (1 + Math.pow(10, (t1R - t2R) / 400));
+    
+    // Kas laimėjo?
+    let out1 = s1 > s2 ? 1 : (s1 === s2 ? 0.5 : 0);
+    let out2 = s2 > s1 ? 1 : (s1 === s2 ? 0.5 : 0);
+    
+    // Pergalės maržos daugiklis (Kuo didesniu skirtumu laimi, tuo daugiau taškų gauni)
+    let diff = Math.abs(s1 - s2);
+    let mov = Math.log(diff + 2); 
+    
+    let K = 32; // Standartinis ELO poslinkio greitis
+    let delta1 = K * mov * (out1 - e1);
+    let delta2 = K * mov * (out2 - e2);
+    
+    const updatePlayer = (p, delta) => {
+        let g = getP(p);
+        let oldR = g.rating;
+        let newR = Math.round(oldR + delta);
+        
+        // Ribos: ne mažiau 0 ir ne daugiau 1000
+        if (newR < 0) newR = 0;
+        if (newR > 1000) newR = 1000;
+        
+        let newMatches = (g.total_matches || 0) + 1;
+        
+        // Atnaujinamas oficialios lygos (Tier) statusas
+        let tier = "D";
+        if (newR >= 851) tier = "A";
+        else if (newR >= 671) tier = "B";
+        else if (newR >= 501) tier = "C";
+        else if (newR >= 351) tier = "D-C";
+        
+        globalRef.child(p.id).update({
+            rating: newR,
+            tier: tier,
+            total_matches: newMatches,
+            last_played: Date.now()
+        });
+        
+        // Vietinis atnaujinimas fone, kad išvengtume vėlavimų
+        if(globalData[p.id]) {
+            globalData[p.id].rating = newR;
+            globalData[p.id].total_matches = newMatches;
+            globalData[p.id].tier = tier;
+        }
+    };
+    
+    t1Players.forEach(p => updatePlayer(p, delta1));
+    t2Players.forEach(p => updatePlayer(p, delta2));
+}
