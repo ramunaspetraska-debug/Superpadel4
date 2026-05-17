@@ -5,6 +5,12 @@ function esc(str) {
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
 }
 
+// Globalus paspaudimų klausytojas (XSS apsaugai)
+document.addEventListener('click', e => {
+    const el = e.target.closest('[data-player]');
+    if (el) openPlayerCard(el.dataset.player);
+});
+
 function el(id) { return document.getElementById(id); }
 function safeText(id, t) { try { const e = el(id); if(e) e.innerText = t; } catch(e){} }
 function safeHTML(id, h) { try { const e = el(id); if(e) e.innerHTML = h; } catch(e){} }
@@ -240,17 +246,22 @@ function openPlayerCard(name) {
     } catch(e) { console.error("openPlayerCard Error:", e); }
 }
 
+// Pridėtas debounce apsaugai nuo dvigubo perrenderiavimo
+let renderTimeout = null;
 function render() {
-    try {
-        const curT = savedTournaments.find(x => x.id === currentTid);
-        const tField = el('tournament-name-field');
-        if(tField && document.activeElement !== tField) tField.value = curT ? curT.name : (new Date().toLocaleDateString('lt-LT') + ' Turnyras');
+    if (renderTimeout) clearTimeout(renderTimeout);
+    renderTimeout = setTimeout(() => {
+        try {
+            const curT = savedTournaments.find(x => x.id === currentTid);
+            const tField = el('tournament-name-field');
+            if(tField && document.activeElement !== tField) tField.value = curT ? curT.name : (new Date().toLocaleDateString('lt-LT') + ' Turnyras');
 
-        renderLeaderboard(); renderPlayersList(); renderTimerAndSettings(); renderMatches();
-        
-        if(isMuted) { el('icon-sound-on')?.classList.add('hidden'); el('icon-sound-off')?.classList.remove('hidden'); } 
-        else { el('icon-sound-on')?.classList.remove('hidden'); el('icon-sound-off')?.classList.add('hidden'); }
-    } catch(e) { console.error("RenderErr:", e); }
+            renderLeaderboard(); renderPlayersList(); renderTimerAndSettings(); renderMatches();
+            
+            if(isMuted) { el('icon-sound-on')?.classList.add('hidden'); el('icon-sound-off')?.classList.remove('hidden'); } 
+            else { el('icon-sound-on')?.classList.remove('hidden'); el('icon-sound-off')?.classList.add('hidden'); }
+        } catch(e) { console.error("RenderErr:", e); }
+    }, 16);
 }
 
 function renderLeaderboard() {
@@ -297,7 +308,7 @@ function renderLeaderboard() {
             av = pPhoto ? `<div class="relative w-7 h-7 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${s.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
                         : `<div class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${s.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
         }
-        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div onclick="${isF ? '' : `openPlayerCard('${esc(s.name)}')`}" class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${esc(s.name)}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
+        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div ${isF ? '' : `data-player="${esc(s.name)}"`} class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${esc(s.name)}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
     }).join('');
     safeHTML('leaderboard-body', html);
 }
@@ -409,7 +420,7 @@ function renderGlobalStats() {
         let html = '';
         if (statType === 'indiv') {
             const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div onclick="openPlayerCard('${esc(s.name)}')" class="flex-1 truncate font-bold text-slate-800 clickable-name">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
         } else {
             const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
             html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
@@ -591,8 +602,7 @@ async function adminClick() {
             }
         } catch(e) {
             console.error("Hash error:", e);
-            if (p === "123") switchView('admin');
-            else if (p === "superadmin123") { switchView('superadmin'); loadSuperAdmin(); }
+            alert("Klaida tikrinant slaptažodį.");
         }
         adminClickCount = 0; 
     } 
