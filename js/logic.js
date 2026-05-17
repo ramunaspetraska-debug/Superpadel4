@@ -58,7 +58,7 @@ function calculateResults(mArr, pArr, isF = false) {
         safeArr(mArr).filter(m => m && m.finished).forEach(m => { 
             const up = (team, myS, enS) => { 
                 let t = safeArr(team); if(t.length === 0) return; 
-                let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.name === p?.name))); 
+                let targets = isF ? [res.find(r => r && (r.p1.id === t[0].id || r.p2.id === t[0].id))] : t.map(p => res.find(r => r && (r.id === p?.id || r.name === p?.name))); 
                 safeArr(targets).forEach(s => { 
                     if(!s) return; s.mp++; s.sw += myS; s.sl += enS; s.dif = s.sw - s.sl; 
                     if(myS > enS) { s.w++; s.lp += 2; } else if(myS < enS) s.l++; else { s.t++; s.lp += 1; } 
