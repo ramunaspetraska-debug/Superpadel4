@@ -38,7 +38,7 @@
         .filter-group { flex: 1; min-width: 45%; }
         .filter-group.full-width { flex: 0 0 100%; margin-top: 5px; }
         .filter-group select, .filter-group input { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 15px; font-weight: 600; color: var(--text-dark); background-color: #fff; appearance: none; outline: none; transition: 0.2s;}
-        .filter-group select { background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23000000%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 15px top 50%; background-size: 10px auto; }
+        
         .search-wrapper { position: relative; width: 100%; }
         .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-grey); font-size: 14px;}
         .search-wrapper input { padding-left: 40px; }
@@ -56,11 +56,15 @@
         .schedule-card:active { transform: scale(0.98); background-color: #edf2f7; }
         .card-past { opacity: 0.55; filter: grayscale(80%); }
         .card-past:active { transform: none; background-color: var(--card-bg); cursor: default;}
+        
+        /* LYGIŲ SPALVOS (SU NAUJAISIAIS) */
         .schedule-card.level-d { border-left-color: var(--lvl-d); }
         .schedule-card.level-d-c { border-left-color: var(--lvl-d-c); }
         .schedule-card.level-c { border-left-color: var(--lvl-c); }
         .schedule-card.level-b { border-left-color: var(--lvl-b); }
         .schedule-card.level-a { border-left-color: var(--lvl-a); }
+        .schedule-card.level-atviras { border-left-color: #94a3b8; }
+        .schedule-card.level-privatus { border-left-color: #cbd5e1; }
         
         .card-date-square { width: 65px; height: 80px; background: white; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0; border-radius: 4px; }
         .card-date-square .num { font-size: 24px; font-weight: 800; color: var(--text-dark);}
@@ -69,12 +73,16 @@
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
         .card-title-group { display: flex; flex-direction: column; gap: 4px; }
         .card-title { font-size: 16px; font-weight: 800; text-transform: uppercase; }
+        
         .level-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; width: max-content; }
         .level-d .level-badge { background-color: var(--lvl-d); }
         .level-d-c .level-badge { background-color: var(--lvl-d-c); }
         .level-c .level-badge { background-color: var(--lvl-c); }
         .level-b .level-badge { background-color: var(--lvl-b); }
         .level-a .level-badge { background-color: var(--lvl-a); }
+        .level-atviras .level-badge { background-color: #94a3b8; }
+        .level-privatus .level-badge { background-color: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; }
+        
         .status-badge-time { font-size: 10px; font-weight: 900; padding: 3px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; width: max-content;}
         .badge-past { background: #e2e8f0; color: #718096; }
         .badge-live { background: #fed7d7; color: #e53e3e; animation: pulseLive 2s infinite; }
@@ -287,7 +295,20 @@
         <div id="page-calendar" class="page-view active">
             <div class="filters">
                 <div class="filter-group"><select id="filterFormat" onchange="renderTournaments()"><option value="all">Visi formatai</option><option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option></select></div>
-                <div class="filter-group"><select id="filterLevel" onchange="renderTournaments()"><option value="all">Visi lygiai</option><option value="D">D (Naujokai)</option><option value="D-C">D/C- (Pradedantieji)</option><option value="C">C/C+ (Pažengę)</option><option value="B">B-/B (Patyrę)</option><option value="A">A (Ekspertai)</option></select></div>
+                
+                <div class="filter-group">
+                    <select id="filterLevel" onchange="renderTournaments()">
+                        <option value="all">Visi lygiai</option>
+                        <option value="Atviras">Atviras (Visi lygiai)</option>
+                        <option value="A">A (Ekspertai)</option>
+                        <option value="B">B-/B (Patyrę)</option>
+                        <option value="C">C/C+ (Pažengę)</option>
+                        <option value="D-C">D/C- (Pradedantieji)</option>
+                        <option value="D">D (Naujokai)</option>
+                        <option value="Privatus">Privatus (Nereitinguojamas)</option>
+                    </select>
+                </div>
+                
                 <div class="filter-group full-width"><div class="search-wrapper"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="filterPlayer" placeholder="Ieškoti žaidėjo (pvz. Marius)" onkeyup="renderTournaments()"></div></div>
             </div>
             <div class="date-carousel" id="dateCarousel"></div>
@@ -376,16 +397,24 @@
                                     <option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option>
                                 </select>
                             </div>
+                            
                             <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                                 <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Lygis</label>
                                     <select id="newLevel" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                        <option value="D">D (Naujokai)</option><option value="D-C">D/C- (Pradedantieji)</option><option value="C">C/C+ (Pažengę)</option><option value="B">B-/B (Patyrę)</option><option value="A">A (Ekspertai)</option>
+                                        <option value="Atviras">Atviras (Visi lygiai)</option>
+                                        <option value="A">A (Ekspertai)</option>
+                                        <option value="B">B-/B (Patyrę)</option>
+                                        <option value="C">C/C+ (Pažengę)</option>
+                                        <option value="D-C">D/C- (Pradedantieji)</option>
+                                        <option value="D">D (Naujokai)</option>
+                                        <option value="Privatus">Privatus (Nereitinguojamas)</option>
                                     </select>
                                 </div>
                                 <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Vietų sk.</label>
                                     <input type="number" id="newMax" value="16" min="2" max="32" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
                                 </div>
                             </div>
+                            
                             <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                                 <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Diena</label>
                                     <select id="newDate" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;"></select>
@@ -412,9 +441,8 @@
         let liveDbRef = null; let currentLiveMatches = []; let activeLiveCourt = 1;
         let eRefAuthenticated = false; let currentFirebaseData = null;
         let currentUser = JSON.parse(localStorage.getItem('sp_current_user')) || null;
-        let isAppMode = true; // Admin zonos valdymui
+        let isAppMode = true; 
 
-        // ADMIN REŽIMO VALDYMAS
         function promptAdmin() {
             if (!isAppMode) { toggleMode(); return; }
             const code = prompt("Įveskite administratoriaus kodą:");
@@ -436,7 +464,6 @@
             tournaments.push(newT); saveData(); showToast("Turnyras sėkmingai sugeneruotas!"); document.getElementById('adminForm').reset(); renderTournaments(); 
         }
 
-        // AUTH LOGIKA
         function openAuthModal() {
             document.getElementById('authInput').value = '';
             document.getElementById('authName').value = '';
@@ -497,7 +524,6 @@
             }
         }
 
-        // TIESIOGINIAI REZULTATAI
         function connectLiveRoom() {
             const roomInput = document.getElementById('liveRoomInput').value.trim();
             if (!roomInput) { showToast("Įveskite kambario pavadinimą!"); return; }
@@ -585,7 +611,6 @@
             try { eRefAuthenticated = false; currentFirebaseData = null; const modal = document.getElementById('liveModal'); if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; } setTimeout(() => { try { if(liveDbRef) { liveDbRef.off(); liveDbRef = null; } document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span>`; document.getElementById('liveRoomInput').value = ''; document.getElementById('liveCourtsContainer').innerHTML = '<div class="live-filter-btn">Laukiama prisijungimo...</div>'; document.getElementById('liveScoreBoxContainer').innerHTML = `<div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite V188 kambario pavadinimą...</div>`; } catch(err) {} }, 300); } catch(e) {}
         }
 
-        // DATŲ KALENDORIUS
         const now = new Date(); const daysArr = ['S', 'P', 'A', 'T', 'K', 'P', 'Š']; let dynamicDates = []; 
         for(let i = -3; i <= 13; i++) { 
             let d = new Date(now); d.setDate(now.getDate() + i); 
@@ -641,10 +666,18 @@
             let filtered = tournaments.filter(t => { let matchDate = (t.date === activeDate); let matchFormat = (formatFilter === 'all' || t.format === formatFilter); let matchLevel = (levelFilter === 'all' || t.level === levelFilter); let matchPlayer = true; if (playerFilter !== '') { if (t.players && Array.isArray(t.players)) { matchPlayer = t.players.some(p => p.toLowerCase().includes(playerFilter)); } else { matchPlayer = false; } } return matchDate && matchFormat && matchLevel && matchPlayer; });
             if(filtered.length === 0) { list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-grey);">Pagal šiuos filtrus turnyrų nerasta.</div>`; return; }
             filtered.forEach(t => {
-                let dayObj = dynamicDates.find(d => d.dateKey === t.date); let dayName = dayObj ? dayObj.dayNameStr : 'D'; let dayNum = dayObj ? dayObj.dayNumStr : t.date; let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level; t.timeState = getTimeState(t.date, t.time);
+                let dayObj = dynamicDates.find(d => d.dateKey === t.date); let dayName = dayObj ? dayObj.dayNameStr : 'D'; let dayNum = dayObj ? dayObj.dayNumStr : t.date; 
+                
+                // NAUJA: Lygio atvaizdavimo logika
+                let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level; 
+                if (t.level === 'Privatus') displayLevel = 'Draugų';
+                
+                t.timeState = getTimeState(t.date, t.time);
                 let statusHTML = ''; let timeStateBadge = ''; let cardClassModifier = '';
+                
                 if (t.timeState === 'past') { timeStateBadge = `<div class="status-badge-time badge-past">ĮVYKO</div>`; cardClassModifier = 'card-past'; statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><div class="edit-badge"><i class="fa-solid fa-list-ol"></i> Rezultatai</div>`; } else if (t.timeState === 'live') { timeStateBadge = `<div class="status-badge-time badge-live"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> VYKSTA DABAR</div>`; statusHTML = `<div class="status-indicator" style="color: var(--status-red);"><i class="fa-solid fa-tower-broadcast"></i> Tiesiogiai</div><button type="button" class="watch-badge" onclick="openLiveModal(event)"><i class="fa-solid fa-play"></i> Stebėti</button>`; } else { if (t.status === 'open') { statusHTML = `<div class="status-indicator status-open"><i class="fa-regular fa-circle-check"></i> Laisva (Registruotis)</div>`; } else if (t.status === 'registered') { statusHTML = `<div class="status-indicator status-in"><i class="fa-solid fa-check"></i> Dalyvaujate</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`; } else if (t.status === 'waitlist') { statusHTML = `<div class="status-indicator status-wait"><i class="fa-solid fa-hourglass-half"></i> Rezervas (Jūs ${t.waitlistCount}-as)</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`; } else if (t.status === 'full' && !t.isDemoWaitlist) { statusHTML = `<div class="status-indicator status-full">Vietų nėra</div>`; } else if (t.status === 'full' && t.isDemoWaitlist) { statusHTML = `<div class="status-indicator status-wait"><i class="fa-solid fa-plus"></i> Stoti į eilę (${t.waitlistCount})</div>`; } }
                 let demoBtn = (t.isDemoWaitlist && t.status === 'waitlist' && t.timeState === 'future') ? `<button type="button" class="test-trigger" onclick="simulateSpotOpening(event, ${t.id})">[Demo] Algoritmas perleidžia atšauktą vietą Jums (Push)</button>` : ''; let avatar1 = (t.players && t.players[0]) ? t.players[0].substring(0,2) : 'AŽ'; let avatar2 = (t.players && t.players[1]) ? t.players[1].substring(0,2) : 'MK';
+                
                 let cardHTML = `<div class="schedule-card level-${t.level.toLowerCase()} ${cardClassModifier}" onclick="handleCardClick(${t.id})"><div class="card-date-square"><div class="num">${dayNum}</div><div class="name">${dayName}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${t.format}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${displayLevel} Lygis</div>${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${t.time}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(t.status !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
                 list.innerHTML += cardHTML;
             });
@@ -658,7 +691,10 @@
         const modal = document.getElementById('actionModal'); const modalTitle = document.getElementById('modalTitle'); const modalBody = document.getElementById('modalBody'); const modalActions = document.getElementById('modalActions'); function closeModal() { modal.classList.remove('show'); }
         function openRegisterModal(id) { 
             if(!currentUser) { showToast("Norėdami registruotis, pirmiausia prisijunkite!"); openAuthModal(); return; }
-            let t = tournaments.find(x => x.id === id); let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level; modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.<br><br>Kaip norite registruotis?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
+            let t = tournaments.find(x => x.id === id); 
+            let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level; 
+            if (t.level === 'Privatus') displayLevel = 'Draugų';
+            modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.<br><br>Kaip norite registruotis?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
         }
         function confirmRegistration(id, withPartner) { let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += (withPartner ? 2 : 1); if(!t.players) t.players = []; t.players.push(currentUser ? currentUser.name : "Jūs"); saveData(); closeModal(); renderTournaments(); showToast("Jūs sėkmingai užregistruoti!"); }
         function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra.<br>Ar norite atsistoti į laukiančiųjų sąrašą? Jei kas nors atšauks dalyvavimą, sistema automatiškai perleis vietą jums.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip, stoti į eilę</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne, atšaukti</button>`; modal.classList.add('show'); }
@@ -677,7 +713,6 @@
             loadAutomatedRatings(league);
         }
 
-        // GYVŲ REITINGŲ UŽKROVIMAS IŠ FIREBASE GLOBAL BAZĖS
         function loadAutomatedRatings(leagueLevel = 'all') {
             document.getElementById('ratingsContent').style.display = 'none';
             document.getElementById('ratingsLoader').style.display = 'block';
@@ -700,7 +735,6 @@
                     dataPool = allPlayers.filter(p => p.tier === leagueLevel); 
                 }
 
-                // Rikiuojame pagal reitingą (mažėjančia tvarka)
                 dataPool.sort((a,b) => (b.rating || 0) - (a.rating || 0));
 
                 let mappedPool = dataPool.map(p => ({ name: p.name, points: p.rating || 0 }));
