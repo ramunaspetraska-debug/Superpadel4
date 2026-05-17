@@ -14,7 +14,9 @@ function shuffle(array) {
     return arr; 
 }
 
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function uid() { 
+    return typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)); 
+}
 
 function calculatePairsResults(mArr, pArr) { 
     const pairs = new Map(); 
