@@ -175,7 +175,7 @@ function generateLookaheadTournament(safePool, startRound, countToGenerate) {
     
     let newPreGen = [];
     for (let round = startRound; round < startRound + countToGenerate; round++) {
-        let bestSet = null, minPenalty = Infinity, iterations = 10000; 
+        let bestSet = null, minPenalty = Infinity, iterations = 2000; 
         for (let iter = 0; iter < iterations; iter++) {
             let currentPenalty = 0, roundMatches = [];
             if (settings.format === 'mix_americano') {
