@@ -1,4 +1,8 @@
 window.onerror = function(msg, url, line) { console.error("Global Error: ", msg, "at line", line); return true; };
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
+}
 
 function el(id) { return document.getElementById(id); }
 function safeText(id, t) { try { const e = el(id); if(e) e.innerText = t; } catch(e){} }
