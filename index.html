@@ -3,15 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>superpadel.lt V193</title>
+    <title>SuperPadel.lt | Generatorius</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <link rel="stylesheet" href="css/styles.css">
+    
+    <style>
+        :root { 
+            --primary-blue: #009fe3; --bg-light: #f8f9fb; --card-bg: #ffffff; 
+            --text-dark: #1a202c; --text-grey: #718096; --nav-bg: #1e1e1e; 
+        }
+        body { background-color: var(--bg-light); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        
+        .app-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #edf2f7; background: #fff; position: sticky; top: 0; z-index: 50; box-shadow: 0 2px 10px rgba(0,0,0,0.05);}
+        .logo { font-size: 20px; font-weight: 900; color: #1a202c; letter-spacing: -1px; display: flex; align-items: center; cursor: pointer; transition: 0.2s; }
+        .logo:active { transform: scale(0.95); }
+        .logo span { background-color: #1a202c; color: white; padding: 2px 6px; margin-right: 2px; border-radius: 4px; }
+        .logo .domain { font-size: 14px; color: var(--text-grey); font-weight: 700; margin-left: 2px;}
+        
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--nav-bg); display: flex; justify-content: space-around; padding: 12px 0 20px 0; z-index: 100; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); border-top-left-radius: 20px; border-top-right-radius: 20px;}
+        .nav-item { color: #718096; font-size: 20px; cursor: pointer; position: relative; transition: 0.2s; padding: 5px 15px; background: none; border: none; outline: none; display: flex; flex-direction: column; align-items: center;}
+        .nav-item:active { transform: scale(0.85); }
+        .nav-item.active { color: var(--primary-blue); }
+        .nav-item span { font-size: 9px; font-weight: bold; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px;}
+
+        .view-section { display: none; animation: slideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); padding-bottom: 100px; padding-top: 15px;}
+        .view-section.active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(15px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
 </head>
 <body>
 
@@ -58,32 +83,34 @@
         <div class="modal-content" id="card-content"></div>
     </div>
 
-    <div id="top-bar" class="sticky top-0 z-50 bg-white border-b border-slate-200 h-16 flex justify-between items-center px-2 w-full shadow-sm overflow-hidden">
-        <div class="flex items-center gap-1 shrink-0" id="timer-controls">
-            <button type="button" onclick="adjustTime(-60)" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:bg-slate-200 text-lg font-bold" aria-label="Sumažinti laiką">-</button>
-            <span id="timer-display" class="text-2xl font-black font-mono tracking-tighter tabular-nums w-[56px] text-center" aria-label="Liko laiko">12:00</span>
-            <button type="button" onclick="adjustTime(60)" class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center active:bg-slate-200 text-lg font-bold" aria-label="Padidinti laiką">+</button>
-        </div>
-        <div id="score-mode-text" class="hidden text-sm font-black text-slate-500 uppercase tracking-widest text-center w-full">IKI TAŠKŲ</div>
+    <div id="top-bar" class="app-header">
         
-        <div onclick="adminClick()" class="cursor-pointer select-none flex items-center justify-center flex-1 px-1 min-w-0" id="app-logo" aria-label="Atidaryti administratoriaus meniu">
-            <span class="text-base sm:text-lg font-black text-slate-800 tracking-tighter block text-center leading-none truncate">superpadel<span class="text-green-500">.lt</span></span>
+        <div class="logo" onclick="adminClick()" id="app-logo">
+            <span>SUPER</span>PADEL<span class="domain">.LT</span>
         </div>
         
-        <div class="flex items-center gap-1 shrink-0">
+        <div class="flex items-center gap-1.5 shrink-0">
+            <div id="score-mode-text" class="hidden text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">IKI TAŠKŲ</div>
+            
+            <div class="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-full border border-slate-200" id="timer-controls">
+                <button type="button" onclick="adjustTime(-60)" class="w-7 h-7 rounded-full flex items-center justify-center text-slate-500 font-bold active:bg-slate-200"><i class="fa-solid fa-minus text-xs"></i></button>
+                <span id="timer-display" class="text-xl font-black font-mono tracking-tighter tabular-nums text-slate-800 w-[50px] text-center">12:00</span>
+                <button type="button" onclick="adjustTime(60)" class="w-7 h-7 rounded-full flex items-center justify-center text-slate-600 font-bold active:bg-slate-200"><i class="fa-solid fa-plus text-xs"></i></button>
+            </div>
+            
             <button type="button" id="btn-mute" onclick="toggleMute()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95 transition-transform" aria-label="Įjungti/Išjungti garsą">
-                <svg id="icon-sound-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-                <svg id="icon-sound-off" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="1" x2="1" y2="23"></line></svg>
+                <i id="icon-sound-on" class="fa-solid fa-volume-high text-sm"></i>
+                <i id="icon-sound-off" class="fa-solid fa-volume-xmark text-sm hidden"></i>
             </button>
 
-            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-10 h-10 rounded-full bg-green-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform" aria-label="Paleisti arba Pauzuoti laikmatį">
-                <svg id="icon-play" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                <svg id="icon-pause" class="hidden" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-                <svg id="icon-stop" class="hidden" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" /></svg>
+            <button type="button" id="btn-play" onclick="toggleTimer()" class="w-10 h-10 rounded-full bg-green-500 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform" aria-label="Paleisti arba Pauzuoti laikmatį">
+                <i id="icon-play" class="fa-solid fa-play text-sm"></i>
+                <i id="icon-pause" class="fa-solid fa-pause text-sm hidden"></i>
+                <i id="icon-stop" class="fa-solid fa-stop text-sm hidden"></i>
             </button>
             
             <button type="button" onclick="resetTimer()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95" aria-label="Išjungti laikmatį">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <i class="fa-solid fa-rotate-left text-sm"></i>
             </button>
         </div>
     </div>
@@ -109,7 +136,7 @@
                     <div class="relative shrink-0">
                         <input type="file" id="photo-input" accept="image/*" class="hidden" onchange="handleNewPhotoUpload(event)">
                         <button type="button" onclick="document.getElementById('photo-input').click()" class="w-10 h-10 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-center overflow-hidden active:scale-95" aria-label="Ikelti nuotrauką">
-                            <span id="photo-placeholder" class="text-lg">📷</span>
+                            <span id="photo-placeholder" class="text-lg"><i class="fa-solid fa-camera"></i></span>
                             <img id="photo-preview" class="hidden w-full h-full object-cover">
                         </button>
                     </div>
@@ -152,12 +179,23 @@
                     </div>
                 </div>
 
+                <div id="ereferee-container" class="hidden">
+                    <div class="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="setting-ereferee" onchange="toggleERef()" class="w-4 h-4 accent-indigo-600 cursor-pointer">
+                            <label for="setting-ereferee" class="text-[10px] font-black text-indigo-900 uppercase tracking-widest cursor-pointer">E-Teisėjas (Žaidėjai veda taškus)</label>
+                        </div>
+                        <input type="text" id="setting-ereferee-pin" onchange="updateERefPin()" placeholder="PIN (pvz. 1234)" class="hidden w-24 text-[10px] p-1.5 border border-indigo-200 rounded text-center font-bold text-indigo-900 focus:outline-none">
+                    </div>
+                </div>
+
             </div>
 
             <div id="players-list" class="space-y-2 mb-10"></div>
             
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
-                <button type="button" onclick="resetScores()" class="w-full py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 shadow-sm">NAUJAS TURNYRAS (Išsaugoti Esamą)</button>
+                <a href="registras.html" target="_blank" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest"><i class="fa-solid fa-earth-europe"></i> Atidaryti Žaidėjų Portalą</a>
+                <button type="button" onclick="resetScores()" class="w-full py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 shadow-sm"><i class="fa-solid fa-folder-plus"></i> Naujas Turnyras</button>
             </div>
         </div>
 
@@ -165,8 +203,8 @@
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black text-slate-800 tracking-tight leading-none">Mačai</h2>
                 <div class="flex items-center gap-2">
-                    <button type="button" id="btn-generate-finals" onclick="generateFinals()" class="hidden px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase">🏆 Finalai</button>
-                    <button type="button" id="btn-generate-round" onclick="requestNextRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform">NAUJAS +</button>
+                    <button type="button" id="btn-generate-finals" onclick="generateFinals()" class="hidden px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase"><i class="fa-solid fa-trophy"></i> Finalai</button>
+                    <button type="button" id="btn-generate-round" onclick="requestNextRound()" class="px-6 py-3 rounded-full bg-green-600 text-white font-bold shadow-lg shadow-green-200 text-sm active:scale-95 transition-transform"><i class="fa-solid fa-plus"></i> NAUJAS</button>
                 </div>
             </div>
             <div id="matches-container"></div>
@@ -176,7 +214,7 @@
         <div id="view-leader" class="view-section w-full">
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-black tracking-tight">Rezultatai</h2>
-                <button onclick="shareResultsAsImage()" class="px-4 py-2 bg-blue-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-transform">Dalintis 📤</button>
+                <button onclick="shareResultsAsImage()" class="px-4 py-2 bg-blue-600 text-white rounded-full font-bold text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-transform"><i class="fa-solid fa-share-nodes"></i> Dalintis</button>
             </div>
             
             <div id="leaderboard-capture-target" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full transition-all">
@@ -193,15 +231,15 @@
             <h2 class="text-2xl font-black mb-4 tracking-tight">Statistika</h2>
             <div class="bg-white p-3 rounded-2xl border border-slate-200 mb-6 space-y-3">
                 <div class="grid grid-cols-2 gap-2">
-                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"></select></div>
+                    <div class="col-span-2"><select id="stat-tournament" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none"></select></div>
                     <div class="col-span-2">
                         <div class="flex bg-slate-100 p-1 rounded-lg">
                             <button type="button" id="stat-type-indiv" onclick="setStatType('indiv')" class="flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase">Žaidėjai</button>
                             <button type="button" id="stat-type-pairs" onclick="setStatType('pairs')" class="flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase">Poros</button>
                         </div>
                     </div>
-                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
-                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
+                    <div><select id="stat-gender" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none"><option value="ALL">Lytis (Visi)</option><option value="M">Vyrai</option><option value="F">Moterys</option></select></div>
+                    <div><select id="stat-player" onchange="renderGlobalStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none"><option value="ALL">Visi žaidėjai</option></select></div>
                 </div>
             </div>
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden w-full">
@@ -222,12 +260,10 @@
                 <h2 class="text-2xl font-black text-purple-600 tracking-tight">Super Admin</h2>
                 <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
             </div>
-            
             <div class="bg-white p-4 rounded-2xl border border-slate-200 mb-4 shadow-sm">
                 <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Globali Statistika</h3>
                 <div id="superadmin-stats"><div class="text-center text-xs text-slate-400 py-2">Kraunama statistika...</div></div>
             </div>
-
             <div class="bg-white p-4 rounded-2xl border border-slate-200">
                 <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Aktyvūs Kambariai</h3>
                 <div id="superadmin-rooms-list" class="space-y-2"><div class="text-center text-xs text-slate-400 py-4">Kraunama...</div></div>
@@ -255,7 +291,7 @@
             <h2 class="text-2xl font-black mb-6">Debesis</h2>
             <div class="bg-slate-900 p-6 rounded-3xl shadow-2xl text-white">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-sm uppercase tracking-widest">☁️ Prijungimas</h3>
+                    <h3 class="font-bold text-sm uppercase tracking-widest"><i class="fa-solid fa-cloud"></i> Prijungimas</h3>
                     <span id="cloud-status" class="text-[10px] bg-slate-700 px-2 py-1 rounded font-bold text-slate-300">Atsijungta</span>
                 </div>
                 <input type="text" id="fb-apiKey" value="AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc" class="hidden">
@@ -265,46 +301,38 @@
                 
                 <div id="cloud-connect-ui" class="space-y-4 text-center">
                     <input type="text" id="fb-room" placeholder="Kambario Vardas" autocomplete="off" class="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-4 text-white text-lg font-black text-yellow-400 text-center uppercase tracking-widest focus:outline-none focus:border-green-500">
-                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors">Prisijungti</button>
+                    <button type="button" onclick="initFirebaseConnection()" class="w-full bg-green-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-colors"><i class="fa-solid fa-wifi"></i> Prisijungti</button>
                 </div>
                 
                 <div id="cloud-active-ui" class="hidden space-y-4 text-center flex flex-col items-center">
                     <p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest mb-2">---</p>
                     <p class="text-xs text-slate-400 mb-4">Nuskenuokite kodą, kad matytumėte rezultatus gyvai:</p>
                     <div id="qrcode" class="flex justify-center bg-white p-3 rounded-xl shadow-inner mb-4 mx-auto w-max"></div>
-                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white mt-4">Atsijungti</button>
+                    <button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white mt-4"><i class="fa-solid fa-power-off"></i> Atsijungti</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 z-50 pb-safe shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-        <div class="flex justify-between items-center h-16 max-w-md mx-auto px-1">
-            <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-btn active flex flex-col items-center w-[16%]" aria-label="Nustatymai">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43-.25a2 2 0 0 1-1-1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                <span class="text-[8px] font-bold mt-1 uppercase">Setup</span>
-            </button>
-            <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Žaidimai">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 14.14 14.14"/></svg>
-                <span class="text-[8px] font-bold mt-1 uppercase">Game</span>
-            </button>
-            <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Rezultatų lentelė">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-                <span class="text-[8px] font-bold mt-1 uppercase">Board</span>
-            </button>
-            <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Statistika">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
-                <span class="text-[8px] font-bold mt-1 uppercase">Stats</span>
-            </button>
-            <button type="button" onclick="switchView('history')" id="nav-history" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Istorija">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span class="text-[8px] font-bold mt-1 uppercase">Hist.</span>
-            </button>
-            <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-btn flex flex-col items-center w-[16%]" aria-label="Debesies nustatymai">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19c0-1.7-1.3-3-3-3h-1.1c-.2-3.3-2.7-6-5.4-6-2.3 0-4.3 1.7-5.1 4.1C1.2 14.6 0 16.2 0 18c0 2.2 1.8 4 4 4h12c2.2 0 4-1.8 4-4 0-.4-.1-.7-.2-1"/></svg>
-                <span class="text-[8px] font-bold mt-1 uppercase">Cloud</span>
-            </button>
-        </div>
+    <nav class="bottom-nav">
+        <button type="button" onclick="switchView('setup')" id="nav-setup" class="nav-item nav-btn active">
+            <i class="fa-solid fa-gear"></i><span>Setup</span>
+        </button>
+        <button type="button" onclick="switchView('matches')" id="nav-matches" class="nav-item nav-btn">
+            <i class="fa-solid fa-table-tennis-paddle-ball"></i><span>Game</span>
+        </button>
+        <button type="button" onclick="switchView('leader')" id="nav-leader" class="nav-item nav-btn">
+            <i class="fa-solid fa-ranking-star"></i><span>Board</span>
+        </button>
+        <button type="button" onclick="switchView('stats')" id="nav-stats" class="nav-item nav-btn">
+            <i class="fa-solid fa-chart-simple"></i><span>Stats</span>
+        </button>
+        <button type="button" onclick="switchView('history')" id="nav-history" class="nav-item nav-btn">
+            <i class="fa-solid fa-clock-rotate-left"></i><span>Hist.</span>
+        </button>
+        <button type="button" onclick="switchView('cloud')" id="nav-cloud" class="nav-item nav-btn">
+            <i class="fa-solid fa-cloud"></i><span>Cloud</span>
+        </button>
     </nav>
 
     <script src="js/config.js"></script>
@@ -314,6 +342,26 @@
     <script src="js/app.js"></script>
 
     <script>
+        function toggleERef() {
+            const isChecked = document.getElementById('setting-ereferee').checked;
+            const pinInput = document.getElementById('setting-ereferee-pin');
+            if (isChecked) {
+                pinInput.classList.remove('hidden');
+                settings.eReferee = true;
+                settings.eRefereePin = pinInput.value || "1234";
+                if(!pinInput.value) pinInput.value = "1234";
+            } else {
+                pinInput.classList.add('hidden');
+                settings.eReferee = false;
+            }
+            if(typeof autoSave === 'function') autoSave(true);
+        }
+
+        function updateERefPin() {
+            settings.eRefereePin = document.getElementById('setting-ereferee-pin').value;
+            if(typeof autoSave === 'function') autoSave(true);
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
             setTimeout(function() {
                 if (typeof window.renderTimerAndSettings === 'function') {
@@ -323,6 +371,31 @@
                         const lvlSel = document.getElementById('select-level');
                         if (lvlSel && typeof settings !== 'undefined') {
                             lvlSel.value = settings.level || 'Atviras';
+                        }
+                        
+                        const eRefContainer = document.getElementById('ereferee-container');
+                        if (eRefContainer) {
+                            if (typeof isCloud !== 'undefined' && isCloud) {
+                                eRefContainer.classList.remove('hidden');
+                            } else {
+                                eRefContainer.classList.add('hidden');
+                                if (typeof settings !== 'undefined' && settings.eReferee) {
+                                    settings.eReferee = false;
+                                    if(typeof autoSave === 'function') autoSave(true);
+                                }
+                            }
+                        }
+
+                        const eRefCheck = document.getElementById('setting-ereferee');
+                        const eRefPin = document.getElementById('setting-ereferee-pin');
+                        if (eRefCheck && typeof settings !== 'undefined') {
+                            eRefCheck.checked = !!settings.eReferee;
+                            if (settings.eReferee) {
+                                eRefPin.classList.remove('hidden');
+                                eRefPin.value = settings.eRefereePin || "1234";
+                            } else {
+                                eRefPin.classList.add('hidden');
+                            }
                         }
                     };
                 }

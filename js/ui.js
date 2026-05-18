@@ -22,11 +22,11 @@ function setGender(g) {
     let btnM = el('gender-m'); let btnF = el('gender-f');
     if(btnM && btnF) {
         if(g === 'M') {
-            btnM.className = 'w-9 font-bold transition-colors bg-blue-600 text-white text-[10px]';
+            btnM.className = 'w-9 font-bold transition-colors bg-blue-600 text-white text-[10px] shadow-inner';
             btnF.className = 'w-9 font-bold transition-colors text-slate-400 text-[10px]';
         } else {
             btnM.className = 'w-9 font-bold transition-colors text-slate-400 text-[10px]';
-            btnF.className = 'w-9 font-bold transition-colors bg-pink-500 text-white text-[10px]';
+            btnF.className = 'w-9 font-bold transition-colors bg-pink-500 text-white text-[10px] shadow-inner';
         }
     }
 }
@@ -36,11 +36,11 @@ function setEditGender(g) {
     let btnM = el('edit-gender-m'); let btnF = el('edit-gender-f');
     if(btnM && btnF) {
         if(g === 'M') {
-            btnM.className = 'w-10 font-bold bg-blue-600 text-white text-[10px]';
+            btnM.className = 'w-10 font-bold bg-blue-600 text-white text-[10px] shadow-inner';
             btnF.className = 'w-10 font-bold text-slate-400 text-[10px]';
         } else {
             btnM.className = 'w-10 font-bold text-slate-400 text-[10px]';
-            btnF.className = 'w-10 font-bold bg-pink-500 text-white text-[10px]';
+            btnF.className = 'w-10 font-bold bg-pink-500 text-white text-[10px] shadow-inner';
         }
     }
 }
@@ -118,12 +118,12 @@ function openPlayerBank() {
         let available = Array.from(u.values()).filter(p => !currNames.includes(p.name.trim().toLowerCase()));
         
         let html = '';
-        if (available.length === 0) { html = '<p class="text-xs text-slate-400">Istorijoje nėra senų žaidėjų.</p>'; } 
+        if (available.length === 0) { html = '<p class="text-xs text-slate-400 text-center py-4">Istorijoje nėra senų žaidėjų.</p>'; } 
         else { 
             available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
                 let pPhoto = photoBank[p.id];
                 let av = pPhoto ? `<img src="${pPhoto}" class="w-8 h-8 rounded-full object-cover">` : `<div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">${p.gender==='M'?'V':'M'}</div>`;
-                html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span></div><button onclick="addFromBank('${p.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded font-bold text-[10px] uppercase">+ Pridėti</button></div>`;
+                html += `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 mb-1"><div class="flex items-center gap-3">${av}<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span></div><button onclick="addFromBank('${p.id}')" class="bg-blue-100 text-blue-600 hover:bg-blue-200 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"><i class="fa-solid fa-plus"></i></button></div>`;
             });
         }
         safeHTML('bank-list', html); el('modal-bank').style.display = 'flex';
@@ -171,7 +171,7 @@ function savePlayerEdit() {
 }
 
 function removePlayer(id) { 
-    try { if(confirm("Trinti žaidėją?")) { players = safeArr(players).filter(p => p && p.id !== id); preGeneratedTournament = []; setStore('pregen', []); autoSave(true); } } 
+    try { if(confirm("Trinti žaidėją iš šio turnyro?")) { players = safeArr(players).filter(p => p && p.id !== id); preGeneratedTournament = []; setStore('pregen', []); autoSave(true); } } 
     catch(e) { console.error("removePlayer Error:", e); }
 }
 
@@ -195,7 +195,7 @@ function openPlayerCard(name) {
         let globalRating = 300;
         let globalMatches = 0;
         let tierName = "D (Naujokas)";
-        let barColor = "bg-green-400";
+        let barColor = "bg-green-500";
         let textColor = "text-green-600";
 
         if (typeof globalPlayersData !== 'undefined' && globalPlayersData[stats.id]) {
@@ -215,13 +215,13 @@ function openPlayerCard(name) {
         
         let html = `
             <div class="relative text-center pb-4">
-                <button onclick="closeModals()" class="absolute -top-2 -right-2 text-slate-400 text-2xl font-bold hover:text-slate-600 active:scale-90 transition-transform" aria-label="Uždaryti kortelę">&times;</button>
+                <button onclick="closeModals()" class="absolute -top-2 -right-2 text-slate-400 hover:text-slate-600 active:scale-90 transition-transform p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
                 ${av}
                 <h2 class="text-2xl font-black text-slate-800 mb-1">${esc(stats.name)}</h2>
                 <div class="mb-6 px-2">
                     <div class="flex justify-between items-end mb-1"><span class="text-[10px] font-black uppercase tracking-widest ${textColor}">${tierName}</span><span class="text-xs font-black text-slate-700">${globalRating} <span class="text-[9px] font-bold text-slate-400">/ 1000 pts</span></span></div>
-                    <div class="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/50 relative"><div class="h-full ${barColor} transition-all duration-1000 ease-out rounded-full shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="width: ${(globalRating / 1000) * 100}%"></div></div>
-                    <div class="text-[8px] text-slate-400 text-right mt-1 uppercase font-bold tracking-widest">Globalūs mačai sistemoje: ${globalMatches}</div>
+                    <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner relative"><div class="h-full ${barColor} transition-all duration-1000 ease-out rounded-full" style="width: ${(globalRating / 1000) * 100}%"></div></div>
+                    <div class="text-[8px] text-slate-400 text-right mt-1.5 uppercase font-bold tracking-widest">Globalūs mačai sistemoje: ${globalMatches}</div>
                 </div>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-t border-slate-100 pt-4">Vietinė Karjeros Statistika</p>
                 <div class="grid grid-cols-2 gap-4 mb-5"><div class="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div class="text-3xl font-black text-slate-800">${stats.mp}</div><div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mačai</div></div><div class="bg-green-50 p-4 rounded-2xl border border-green-100"><div class="text-3xl font-black text-green-600">${winPerc}%</div><div class="text-[9px] font-black text-green-600 uppercase tracking-widest">Pergalės</div></div></div>
@@ -279,9 +279,9 @@ function renderLeaderboard() {
         let pHTML = `<div class="w-full px-4 space-y-2 mb-2"><h3 class="text-center font-black text-[10px] text-slate-400 uppercase tracking-widest mb-3">Turnyro Čempionai</h3>`;
         const getName = (team) => safeArr(team).map(p => esc(p.name)).join(' / ');
         
-        if (firstPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥇</div><div class="font-black text-yellow-700 text-sm truncate">${getName(firstPlace)}</div></div>`;
-        if (secondPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥈</div><div class="font-black text-slate-600 text-sm truncate">${getName(secondPlace)}</div></div>`;
-        if (thirdPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-orange-100 to-orange-50 border border-orange-200 rounded-xl p-3 shadow-sm"><div class="text-3xl mr-3 drop-shadow-sm">🥉</div><div class="font-black text-orange-700 text-sm truncate">${getName(thirdPlace)}</div></div>`;
+        if (firstPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200 rounded-2xl p-3 shadow-sm"><div class="text-2xl mr-3 drop-shadow-sm text-yellow-500"><i class="fa-solid fa-trophy"></i></div><div class="font-black text-yellow-700 text-sm truncate">${getName(firstPlace)}</div></div>`;
+        if (secondPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-slate-100 to-slate-50 border border-slate-200 rounded-2xl p-3 shadow-sm"><div class="text-2xl mr-3 drop-shadow-sm text-slate-400"><i class="fa-solid fa-medal"></i></div><div class="font-black text-slate-600 text-sm truncate">${getName(secondPlace)}</div></div>`;
+        if (thirdPlace) pHTML += `<div class="flex items-center bg-gradient-to-r from-orange-100 to-orange-50 border border-orange-200 rounded-2xl p-3 shadow-sm"><div class="text-2xl mr-3 drop-shadow-sm text-orange-500"><i class="fa-solid fa-medal"></i></div><div class="font-black text-orange-700 text-sm truncate">${getName(thirdPlace)}</div></div>`;
         
         pHTML += `</div>`; safeHTML('podium-container', pHTML); safeDisplay('podium-container', 'flex');
     } else if (podiumContainer) safeDisplay('podium-container', 'none');
@@ -291,10 +291,10 @@ function renderLeaderboard() {
         if (!isF) { 
             let pPhoto = photoBank[s.id];
             let bg = s.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = s.gender === 'M' ? 'V' : 'M'; 
-            av = pPhoto ? `<div class="relative w-7 h-7 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${s.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
-                        : `<div class="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${s.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
+            av = pPhoto ? `<div class="relative w-8 h-8 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover shadow-sm ${s.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
+                        : `<div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${s.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
         }
-        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-50"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div ${isF ? '' : `data-player="${esc(s.name)}"`} class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${esc(s.name)}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
+        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-100 last:border-0"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div ${isF ? '' : `data-player="${esc(s.name)}"`} class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${esc(s.name)}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
     }).join('');
     safeHTML('leaderboard-body', html);
 }
@@ -303,17 +303,17 @@ function renderPlayersList() {
     let html = safeArr(players).map((p, idx) => {
         let pPhoto = photoBank[p.id];
         let bg = p.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = p.gender === 'M' ? 'V' : 'M'; 
-        let av = pPhoto ? `<div class="relative w-9 h-9 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover ${p.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black ${bg}">${bt}</div></div>`
-                        : `<div class="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
-        return `<div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3 flex-1 cursor-pointer active:opacity-50 transition-opacity" onclick="openEditModal('${p.id}')"><span class="text-[10px] font-black text-slate-300 w-3 text-center">${idx + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${esc(p.name)}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-red-300 text-xl font-bold px-2 active:scale-90" aria-label="Pašalinti žaidėją">&times;</button></div>`;
+        let av = pPhoto ? `<div class="relative w-10 h-10 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover shadow-sm ${p.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black border border-white ${bg}">${bt}</div></div>`
+                        : `<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-sm ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
+        return `<div class="flex justify-between items-center bg-white p-2.5 rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3 flex-1 cursor-pointer hover:bg-slate-50 p-1 rounded-xl transition-colors" onclick="openEditModal('${p.id}')"><span class="text-[10px] font-black text-slate-300 w-4 text-center">${idx + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${esc(p.name)}</div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 hover:text-red-500 text-lg px-3 py-2 active:scale-90 transition-colors" aria-label="Pašalinti žaidėją"><i class="fa-solid fa-trash-can"></i></button></div>`;
     }).join('');
     safeHTML('players-list', html);
 }
 
 function renderTimerAndSettings() {
     const isSc = settings.winCondition === 'score'; 
-    safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
-    safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
+    safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase hover:text-slate-600"); 
+    safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase hover:text-slate-600"); 
     safeDisplay('control-duration', !isSc ? 'block' : 'none'); safeDisplay('control-points', !isSc ? 'none' : 'block'); safeDisplay('score-mode-text', isSc ? 'block' : 'none'); safeDisplay('timer-controls', isSc ? 'none' : 'flex');
     if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
     
@@ -332,16 +332,16 @@ function renderMatches() {
         let t2 = m.team2.map(p => `<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span>`).join(''); 
         let headT = m.isFinal ? esc(m.finalTitle) : `RAUNDAS ${m.round}`;
         let headC = m.isFinal ? (m.finalBg || 'bg-slate-800') : 'bg-slate-800';
-        return `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-4"><div class="${headC} text-white px-4 py-1.5 text-[9px] font-black tracking-widest flex justify-between items-center uppercase"><span>AIKŠTELĖ ${m.court}</span><span>${headT}</span></div><div class="p-4"><div class="flex justify-between items-center mb-3"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-2"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-8 h-8 bg-slate-50 border rounded font-bold" aria-label="Minus taškas">-</button><span class="text-2xl font-black w-8 text-center">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-8 h-8 bg-green-500 text-white rounded font-bold" aria-label="Plius taškas">+</button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest">Užbaigti Mačą</button></div></div>`;
+        return `<div class="bg-white rounded-2xl shadow-md border border-slate-100 overflow-hidden mb-5"><div class="${headC} text-white px-4 py-2 text-[10px] font-black tracking-widest flex justify-between items-center uppercase shadow-sm"><span>AIKŠTELĖ ${m.court}</span><span>${headT}</span></div><div class="p-4"><div class="flex justify-between items-center mb-4"><div class="flex flex-col gap-1">${t1}</div><div class="flex items-center gap-3"><button type="button" onclick="updSc('${m.id}',1,-1)" class="w-10 h-10 bg-slate-100 text-slate-500 rounded-full font-bold active:bg-slate-200 transition-colors shadow-inner" aria-label="Minus taškas"><i class="fa-solid fa-minus"></i></button><span class="text-3xl font-black w-10 text-center text-slate-800">${m.score1||0}</span><button type="button" onclick="updSc('${m.id}',1,1)" class="w-10 h-10 bg-green-500 text-white rounded-full font-bold active:scale-95 transition-transform shadow-md" aria-label="Plius taškas"><i class="fa-solid fa-plus"></i></button></div></div><div class="flex justify-between items-center mb-5"><div class="flex flex-col gap-1">${t2}</div><div class="flex items-center gap-3"><button type="button" onclick="updSc('${m.id}',2,-1)" class="w-10 h-10 bg-slate-100 text-slate-500 rounded-full font-bold active:bg-slate-200 transition-colors shadow-inner" aria-label="Minus taškas"><i class="fa-solid fa-minus"></i></button><span class="text-3xl font-black w-10 text-center text-slate-800">${m.score2||0}</span><button type="button" onclick="updSc('${m.id}',2,1)" class="w-10 h-10 bg-green-500 text-white rounded-full font-bold active:scale-95 transition-transform shadow-md" aria-label="Plius taškas"><i class="fa-solid fa-plus"></i></button></div></div><button type="button" onclick="finM('${m.id}')" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold text-[11px] uppercase tracking-widest active:scale-95 transition-transform shadow-md"><i class="fa-solid fa-flag-checkered mr-2"></i> Užbaigti Mačą</button></div></div>`;
     }).join('');
     safeHTML('matches-container', aHtml);
     
     const fin = safeArr(matches).filter(m => m.finished).reverse(); 
-    let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest">Paskutiniai mačai</h3>' : ''; 
+    let fHtml = fin.length ? '<h3 class="text-[9px] font-black text-slate-400 uppercase mb-3 tracking-widest pl-1">Paskutiniai mačai</h3>' : ''; 
     fHtml += fin.map(m => {
         let n1 = m.team1.map(p=>esc(p.name)).join('/'), n2 = m.team2.map(p=>esc(p.name)).join('/'); 
-        let badge = m.isFinal ? `<span class="match-number-badge !bg-yellow-100 !text-yellow-700 border border-yellow-200">🏆</span>` : `<span class="match-number-badge">R${m.round}</span>`;
-        return `<div class="bg-white p-3 rounded-xl border mb-2 flex justify-between items-center text-[11px]"><div class="flex items-center truncate">${badge}<div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0 pl-2"><div class="font-black bg-slate-100 px-2 py-1 rounded text-slate-800">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-red-400 font-bold uppercase text-[9px]">Taisyti</button></div></div>`;
+        let badge = m.isFinal ? `<span class="match-number-badge !bg-yellow-100 !text-yellow-700 border border-yellow-200"><i class="fa-solid fa-trophy"></i></span>` : `<span class="match-number-badge">R${m.round}</span>`;
+        return `<div class="bg-white p-3 rounded-xl border border-slate-100 mb-2 flex justify-between items-center text-[11px] shadow-sm"><div class="flex items-center truncate pr-2">${badge}<div class="truncate font-bold text-slate-600">${n1} vs ${n2}</div></div><div class="flex items-center gap-3 shrink-0"><div class="font-black bg-slate-100 border border-slate-200 px-2 py-1 rounded text-slate-800 text-xs">${m.score1||0}:${m.score2||0}</div><button type="button" onclick="undoM('${m.id}')" class="text-slate-400 hover:text-blue-500 px-2 py-1 transition-colors" title="Taisyti rezultatą"><i class="fa-solid fa-rotate-left"></i></button></div></div>`;
     }).join('');
     safeHTML('finished-matches-container', fHtml);
 }
@@ -354,11 +354,11 @@ function shareResultsAsImage() {
         wrapper.style.position = 'absolute'; wrapper.style.left = '-9999px'; wrapper.style.top = '0'; wrapper.style.width = '450px'; wrapper.style.padding = '20px'; wrapper.style.background = '#f8fafc'; 
         
         const header = document.createElement('div'); header.style.textAlign = 'center'; header.style.marginBottom = '20px'; 
-        header.innerHTML = `<h1 style="font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; line-height: 1; letter-spacing: -1px;">superpadel<span style="color: #16a34a;">.lt</span></h1><h2 style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">${esc(title)}</h2>`;
+        header.innerHTML = `<h1 style="font-size: 28px; font-weight: 900; color: #0f172a; margin-bottom: 4px; line-height: 1; letter-spacing: -1px;">SUPERPADEL<span style="color: #16a34a;">.LT</span></h1><h2 style="font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">${esc(title)}</h2>`;
         
         const content = target.cloneNode(true); content.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)'; content.style.border = '1px solid #e2e8f0'; content.style.borderRadius = '16px'; content.style.backgroundColor = '#ffffff'; content.style.overflow = 'hidden';
 
-        const footer = document.createElement('div'); footer.style.textAlign = 'center'; footer.style.fontSize = '10px'; footer.style.color = '#cbd5e1'; footer.style.fontWeight = '900'; footer.style.marginTop = '20px'; footer.style.textTransform = 'uppercase'; footer.style.letterSpacing = '1px'; footer.innerText = "Sugeneruota su www.superpadel.lt";
+        const footer = document.createElement('div'); footer.style.textAlign = 'center'; footer.style.fontSize = '10px'; footer.style.color = '#cbd5e1'; footer.style.fontWeight = '900'; footer.style.marginTop = '20px'; footer.style.textTransform = 'uppercase'; footer.style.letterSpacing = '1px'; footer.innerText = "Sukurta su www.superpadel.lt platforma";
         
         wrapper.appendChild(header); wrapper.appendChild(content); wrapper.appendChild(footer); document.body.appendChild(wrapper);
 
@@ -376,7 +376,6 @@ function shareResultsAsImage() {
     } catch(e) { console.error("shareResultsAsImage Error:", e); el('loading-overlay').style.display = 'none'; }
 }
 
-// NAUJA: ATNAUJINTA GLOBALINĖ STATISTIKA SU ELO BALAIS IR RIKIAVIMU
 function renderGlobalStats() {
     try {
         const tSel = el('stat-tournament'); let tVal = tSel ? tSel.value : 'CURRENT';
@@ -401,14 +400,13 @@ function renderGlobalStats() {
         }
         
         const pF = el('stat-player')?.value || 'ALL';
-        safeClass('stat-type-indiv', statType === 'indiv' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase"); 
-        safeClass('stat-type-pairs', statType === 'pairs' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase");
+        safeClass('stat-type-indiv', statType === 'indiv' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase hover:text-slate-600"); 
+        safeClass('stat-type-pairs', statType === 'pairs' ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase hover:text-slate-600");
         
         let html = '';
         if (statType === 'indiv') {
             let list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
             
-            // Jei žiūrime bendrą statistiką, rikiuojame žaidėjus pagal ELO reitingą
             if (tF === 'ALL') {
                 list.sort((a, b) => {
                     let rA = (typeof globalPlayersData !== 'undefined' && globalPlayersData[a.id]) ? (globalPlayersData[a.id].rating || 0) : 0;
@@ -424,17 +422,17 @@ function renderGlobalStats() {
                     glTier = globalPlayersData[s.id].tier || "D";
                 }
                 
-                let tColor = "text-green-600";
-                if(glTier === "A") tColor = "text-red-500"; 
-                else if(glTier.includes("B")) tColor = "text-purple-500"; 
-                else if(glTier.includes("C") && glTier !== "D-C") tColor = "text-blue-500"; 
-                else if(glTier === "D-C") tColor = "text-teal-500";
+                let tColor = "text-green-600 bg-green-50 border-green-200";
+                if(glTier === "A") tColor = "text-white bg-red-500 border-red-600"; 
+                else if(glTier.includes("B")) tColor = "text-white bg-purple-500 border-purple-600"; 
+                else if(glTier.includes("C") && glTier !== "D-C") tColor = "text-white bg-blue-500 border-blue-600"; 
+                else if(glTier === "D-C") tColor = "text-white bg-teal-500 border-teal-600";
 
-                return `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name flex items-center gap-1">${esc(s.name)} <span class="text-[8px] font-black ${tColor} bg-slate-50 border border-slate-100 px-1 rounded">${glTier} (${glRating})</span></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`;
+                return `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-100 last:border-0"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name flex items-center gap-1">${esc(s.name)} <span class="text-[8px] font-black ${tColor} border px-1.5 py-0.5 rounded ml-1 shadow-sm">${glTier} (${glRating})</span></div><div class="stat-col text-slate-500">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide font-black">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`;
             }).join('');
         } else {
             const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
-            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-100 last:border-0"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${esc(s.name)}</div><div class="stat-col text-slate-500">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide font-black">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
         }
         safeHTML('global-stats-body', html);
     } catch(e) { console.error("renderGlobalStats Error:", e); }
@@ -448,8 +446,8 @@ function changeRanking(v) { settings.rankingMode = v; autoSave(true); }
 function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
 function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; liveUpdateMatches(); } }
 function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
-function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); autoSave(true); switchView('setup'); } }
-function deleteHistory(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); switchView('setup'); } autoSave(true); renderHistoryList(); } }
+function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą ir išsaugoti šį į istoriją?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); autoSave(true); switchView('setup'); } }
+function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyrą iš istorijos?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); switchView('setup'); } autoSave(true); renderHistoryList(); } }
 
 function toggleMute() { isMuted = !isMuted; localStorage.setItem('sp_is_muted', isMuted.toString()); render(); }
 
@@ -552,9 +550,9 @@ function updateTimerUI() {
     const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop'); 
     if(i1 && i2 && i3 && b) { 
         i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden'); 
-        if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-600"; i3.classList.remove('hidden'); } 
-        else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600"; i2.classList.remove('hidden'); } 
-        else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-600 text-white shadow-lg"; i1.classList.remove('hidden'); } 
+        if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-500 text-white shadow-lg"; i3.classList.remove('hidden'); } 
+        else if(isRunning) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-100 text-orange-600 shadow-inner"; i2.classList.remove('hidden'); } 
+        else { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 text-white shadow-lg"; i1.classList.remove('hidden'); } 
     } 
 }
 
@@ -576,13 +574,13 @@ function switchView(n) {
 }
 
 function renderHistoryList() { 
-    let h = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border mb-2 ${t.id===currentTid?'border-green-400 shadow-md':'border-slate-200'}"><div class="flex justify-between mb-1"><div class="font-bold text-slate-800 text-sm">${esc(t.name)}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded font-black uppercase text-slate-500">${t.settings?.format || '---'}</div></div><div class="text-[10px] text-slate-400 mb-3">${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-xs uppercase">Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 text-red-600 rounded-lg font-bold text-xs uppercase">Trinti</button></div></div>`).join(''); 
+    let h = savedTournaments.map(t => `<div class="bg-white p-4 rounded-xl border mb-2 shadow-sm ${t.id===currentTid?'border-green-400 ring-1 ring-green-400':'border-slate-100'}"><div class="flex justify-between items-start mb-2"><div class="font-bold text-slate-800 text-sm max-w-[70%]">${esc(t.name)}</div><div class="text-[9px] bg-slate-100 px-2 py-1 rounded-lg font-black uppercase text-slate-500 whitespace-nowrap">${t.settings?.format || '---'}</div></div><div class="text-[10px] font-bold text-slate-400 mb-3"><i class="fa-regular fa-calendar mr-1"></i> ${new Date(t.date).toLocaleString('lt-LT')}</div><div class="flex gap-2"><button type="button" onclick="loadHistory('${t.id}')" class="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg font-bold text-[10px] uppercase transition-colors"><i class="fa-solid fa-folder-open mr-1"></i> Užkrauti</button><button type="button" onclick="deleteHistory('${t.id}')" class="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-bold text-[10px] uppercase transition-colors"><i class="fa-solid fa-trash-can mr-1"></i> Trinti</button></div></div>`).join(''); 
     safeHTML('history-list', h); 
 }
 
 function loadHistory(id) { 
     const t = savedTournaments.find(x => x.id === id); 
-    if(t && confirm("Užkrauti?")) { 
+    if(t && confirm("Ar norite užkrauti šį turnyrą? Jūsų dabartinis nebaigtas turnyras bus išsaugotas istorijoje.")) { 
         players = [...safeArr(t.players)]; matches = [...safeArr(t.matches)]; settings = {...ds, ...t.settings}; currentTid = id; preGeneratedTournament = []; setStore('tid', id); 
         const tF = el('tournament-name-field'); if (tF) tF.value = t.name || '';
         resetTimer(); autoSave(true); switchView('matches'); 
@@ -595,7 +593,7 @@ async function adminClick() {
     adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); 
     
     if (adminClickCount >= 5) { 
-        const p = prompt("Slaptažodis:"); 
+        const p = prompt("Administratoriaus kodas:"); 
         if (!p) return;
         
         try {
@@ -609,7 +607,7 @@ async function adminClick() {
                 switchView('superadmin'); 
                 loadSuperAdmin(); 
             } else {
-                alert("Neteisingas slaptažodis!");
+                alert("Neteisingas kodas!");
             }
         } catch(e) {
             console.error("Hash error:", e);
@@ -620,24 +618,24 @@ async function adminClick() {
 }
 
 function loadSuperAdmin() { 
-    ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4">Ieškoma...</div>'); 
+    ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-slate-400 text-2xl"></i></div>'); 
     firebase.database().ref(REG_KEY).once('value').then(snap => { 
-        const r = snap.val(); if(!r) { safeHTML('superadmin-rooms-list', 'Nerasta.'); return; } 
-        let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg border mb-2"><span class="font-bold">${esc(k)}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${esc(k)}')" class="bg-green-100 text-green-600 px-2 py-1 rounded text-[10px]">ĮEITI</button><button type="button" onclick="superAdminDelete('${esc(k)}')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px]">TRINTI</button></div></div>`).join(''); safeHTML('superadmin-rooms-list', h); 
+        const r = snap.val(); if(!r) { safeHTML('superadmin-rooms-list', '<p class="text-center text-xs text-slate-500 py-4">Kambarių nerasta.</p>'); return; } 
+        let h = Object.keys(r).map(k => `<div class="flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm mb-2"><span class="font-bold text-slate-800"><i class="fa-solid fa-tower-broadcast text-green-500 mr-2"></i> ${esc(k)}</span><div class="flex gap-2"><button type="button" onclick="superAdminJoin('${esc(k)}')" class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase hover:bg-blue-100 transition-colors">Įeiti</button><button type="button" onclick="superAdminDelete('${esc(k)}')" class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase hover:bg-red-100 transition-colors">Trinti</button></div></div>`).join(''); safeHTML('superadmin-rooms-list', h); 
     }); 
     firebase.database().ref(DB_KEY + '_global_stats').once('value').then(snap => {
         const stats = snap.val(); if (!stats) { safeHTML('superadmin-stats', '<div class="text-xs text-slate-500">Nėra duomenų.</div>'); return; }
         const visits = stats.visits || 0; const devices = stats.devices || {}; const uniqueCount = Object.keys(devices).length;
         const types = { 'iOS': 0, 'Android': 0, 'Mac': 0, 'Windows': 0, 'Kitas': 0 }; Object.values(devices).forEach(d => { if (d.type && types[d.type] !== undefined) types[d.type]++; else types['Kitas']++; });
         let typesHtml = Object.keys(types).filter(k => types[k] > 0).map(k => `<span class="text-[10px] bg-slate-100 px-2 py-1 rounded mr-1 mb-1 border border-slate-200 text-slate-600 font-bold">${k}: ${types[k]}</span>`).join('');
-        let html = `<div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500">Puslapio atvertimai:</span> <span class="text-green-600 text-xl font-black">${visits}</span></div><div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500">Unikalūs įrenginiai:</span> <span class="text-blue-600 text-xl font-black">${uniqueCount}</span></div><div class="text-[10px] text-slate-400 mt-2 uppercase font-black tracking-widest mb-1">Įrenginių sistemos:</div><div class="flex flex-wrap">${typesHtml}</div>`;
+        let html = `<div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500"><i class="fa-solid fa-eye mr-1"></i> Atvertimai:</span> <span class="text-green-600 text-xl font-black">${visits}</span></div><div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500"><i class="fa-solid fa-mobile-screen mr-1"></i> Įrenginiai:</span> <span class="text-blue-600 text-xl font-black">${uniqueCount}</span></div><div class="text-[10px] text-slate-400 mt-2 uppercase font-black tracking-widest mb-2">Operacinės sistemos:</div><div class="flex flex-wrap">${typesHtml}</div>`;
         safeHTML('superadmin-stats', html);
     }).catch(e => { safeHTML('superadmin-stats', '<div class="text-xs text-red-500">Klaida gaunant duomenis.</div>'); });
 }
 
 function superAdminJoin(rn) { safeVal('fb-room', rn); initFirebaseConnection(); switchView('setup'); }
-function superAdminDelete(rn) { if(confirm(`Trinti ${rn}?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+rn).remove(); firebase.database().ref(REG_KEY+'/'+rn).remove(); loadSuperAdmin(); } }
-function renderAdmin() { let tHtml = savedTournaments.map(t => `<div class="flex justify-between items-center p-2 bg-slate-50 mb-1 rounded"><span>${esc(t.name)}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-500">Trinti</button></div>`).join(''); safeHTML('admin-tournaments-list', tHtml); const uP = Array.from(new Map(players.map(p => [p.id, p])).values()); let pHtml = uP.map(p => `<div class="flex justify-between p-2 text-xs border-b"><span>${esc(p.name)}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400">Šalinti</button></div>`).join(''); safeHTML('admin-players-list', pHtml); }
-function adminDeleteTournament(id) { if(confirm("Trinti?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderAdmin(); } }
-function adminDeletePlayer(id) { if(confirm("Šalinti?")) { players = players.filter(p => p.id !== id); autoSave(true); renderAdmin(); } }
+function superAdminDelete(rn) { if(confirm(`Trinti kambarį "${rn}" iš debesies?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+rn).remove(); firebase.database().ref(REG_KEY+'/'+rn).remove(); loadSuperAdmin(); } }
+function renderAdmin() { let tHtml = savedTournaments.map(t => `<div class="flex justify-between items-center p-3 bg-white border border-slate-100 shadow-sm mb-2 rounded-xl"><span class="font-bold text-sm text-slate-800">${esc(t.name)}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-400 hover:text-red-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div>`).join(''); safeHTML('admin-tournaments-list', tHtml); const uP = Array.from(new Map(players.map(p => [p.id, p])).values()); let pHtml = uP.map(p => `<div class="flex justify-between items-center p-3 text-xs bg-white border-b border-slate-50 last:border-0"><span class="font-bold text-slate-700">${esc(p.name)}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400 hover:text-red-600 font-bold uppercase text-[9px]">Šalinti</button></div>`).join(''); safeHTML('admin-players-list', pHtml); }
+function adminDeleteTournament(id) { if(confirm("Trinti turnyrą?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderAdmin(); } }
+function adminDeletePlayer(id) { if(confirm("Šalinti žaidėją iš sistemos?")) { players = players.filter(p => p.id !== id); autoSave(true); renderAdmin(); } }
 function setStatType(t) { statType = t; renderGlobalStats(); }
