@@ -5,7 +5,6 @@ function esc(str) {
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
 }
 
-// Globalus paspaudimų klausytojas (XSS apsaugai)
 document.addEventListener('click', e => {
     const el = e.target.closest('[data-player]');
     if (el) openPlayerCard(el.dataset.player);
@@ -176,7 +175,6 @@ function removePlayer(id) {
     catch(e) { console.error("removePlayer Error:", e); }
 }
 
-// NAUJA: ATNAUJINTA ŽAIDĖJO KORTELĖ SU FIREBASE GLOBALIAIS REITINGAIS
 function openPlayerCard(name) {
     try {
         let cM = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); }); cM.push(...safeArr(matches));
@@ -200,13 +198,11 @@ function openPlayerCard(name) {
         let barColor = "bg-green-400";
         let textColor = "text-green-600";
 
-        // Jei turime globalius duomenis (iš storage.js), naudojame juos
         if (typeof globalPlayersData !== 'undefined' && globalPlayersData[stats.id]) {
             globalRating = globalPlayersData[stats.id].rating || 300;
             globalMatches = globalPlayersData[stats.id].total_matches || 0;
         }
 
-        // Lygos spalvos pritaikymas (1000 balų sistema)
         if (globalRating >= 851) { tierName = "A (Ekspertas)"; barColor = "bg-gradient-to-r from-red-500 to-red-600"; textColor = "text-red-600"; }
         else if (globalRating >= 671) { tierName = "B (Patyręs)"; barColor = "bg-gradient-to-r from-purple-500 to-purple-600"; textColor = "text-purple-600"; }
         else if (globalRating >= 501) { tierName = "C (Pažengęs)"; barColor = "bg-gradient-to-r from-blue-500 to-blue-600"; textColor = "text-blue-600"; }
@@ -380,6 +376,7 @@ function shareResultsAsImage() {
     } catch(e) { console.error("shareResultsAsImage Error:", e); el('loading-overlay').style.display = 'none'; }
 }
 
+// NAUJA: ATNAUJINTA GLOBALINĖ STATISTIKA SU ELO BALAIS IR RIKIAVIMU
 function renderGlobalStats() {
     try {
         const tSel = el('stat-tournament'); let tVal = tSel ? tSel.value : 'CURRENT';
@@ -409,8 +406,32 @@ function renderGlobalStats() {
         
         let html = '';
         if (statType === 'indiv') {
-            const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+            let list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
+            
+            // Jei žiūrime bendrą statistiką, rikiuojame žaidėjus pagal ELO reitingą
+            if (tF === 'ALL') {
+                list.sort((a, b) => {
+                    let rA = (typeof globalPlayersData !== 'undefined' && globalPlayersData[a.id]) ? (globalPlayersData[a.id].rating || 0) : 0;
+                    let rB = (typeof globalPlayersData !== 'undefined' && globalPlayersData[b.id]) ? (globalPlayersData[b.id].rating || 0) : 0;
+                    return rB - rA || b.w - a.w; 
+                });
+            }
+
+            html = list.map((s, i) => {
+                let glRating = 300; let glTier = "D";
+                if (typeof globalPlayersData !== 'undefined' && globalPlayersData[s.id]) {
+                    glRating = globalPlayersData[s.id].rating || 300;
+                    glTier = globalPlayersData[s.id].tier || "D";
+                }
+                
+                let tColor = "text-green-600";
+                if(glTier === "A") tColor = "text-red-500"; 
+                else if(glTier.includes("B")) tColor = "text-purple-500"; 
+                else if(glTier.includes("C") && glTier !== "D-C") tColor = "text-blue-500"; 
+                else if(glTier === "D-C") tColor = "text-teal-500";
+
+                return `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name flex items-center gap-1">${esc(s.name)} <span class="text-[8px] font-black ${tColor} bg-slate-50 border border-slate-100 px-1 rounded">${glTier} (${glRating})</span></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`;
+            }).join('');
         } else {
             const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
             html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
