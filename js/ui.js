@@ -5,7 +5,6 @@ function esc(str) {
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
 }
 
-// Globalus paspaudimų klausytojas (XSS apsaugai)
 document.addEventListener('click', e => {
     const el = e.target.closest('[data-player]');
     if (el) openPlayerCard(el.dataset.player);
@@ -193,35 +192,23 @@ function openPlayerCard(name) {
             maxText = `(${bestPair.w} pergalės iš ${bestPair.mp})`;
         }
         
-        let playerMatches = cM.filter(m => m.finished && (safeArr(m.team1).some(p => p.name === name) || safeArr(m.team2).some(p => p.name === name)));
-        let recentMatches = playerMatches.slice(-20);
-        let rMp = recentMatches.length;
-        let rW = 0, rDif = 0;
-        
-        recentMatches.forEach(m => {
-            let isTeam1 = safeArr(m.team1).some(p => p.name === name);
-            let myS = isTeam1 ? (m.score1||0) : (m.score2||0);
-            let enS = isTeam1 ? (m.score2||0) : (m.score1||0);
-            if (myS > enS) rW++;
-            rDif += (myS - enS);
-        });
+        let globalRating = 300;
+        let globalMatches = 0;
+        let tierName = "D (Naujokas)";
+        let barColor = "bg-green-400";
+        let textColor = "text-green-600";
 
-        let rating = 0;
-        if (rMp > 0) {
-            let winRatePts = (rW / rMp) * 60;
-            let avgDif = rDif / rMp;
-            let difPts = Math.max(0, Math.min(30, ((avgDif + 5) / 10) * 30));
-            let actPts = Math.min(stats.mp, 20) / 20 * 10;
-            rating = Math.round(winRatePts + difPts + actPts);
+        if (typeof globalPlayersData !== 'undefined' && globalPlayersData[stats.id]) {
+            globalRating = globalPlayersData[stats.id].rating || 300;
+            globalMatches = globalPlayersData[stats.id].total_matches || 0;
         }
 
-        let tierName = "Naujokas"; let barColor = "bg-slate-400"; let textColor = "text-slate-500";
-        if (rating >= 85) { tierName = "Profesionalas"; barColor = "bg-gradient-to-r from-purple-500 to-fuchsia-500"; textColor = "text-purple-600"; }
-        else if (rating >= 70) { tierName = "Ekspertas"; barColor = "bg-gradient-to-r from-yellow-400 to-amber-500"; textColor = "text-amber-600"; }
-        else if (rating >= 55) { tierName = "Pažengęs"; barColor = "bg-gradient-to-r from-blue-400 to-indigo-500"; textColor = "text-indigo-600"; }
-        else if (rating >= 40) { tierName = "Vidutiniokas"; barColor = "bg-gradient-to-r from-emerald-400 to-green-500"; textColor = "text-emerald-600"; }
-        else if (rating >= 20) { tierName = "Mėgėjas"; barColor = "bg-gradient-to-r from-orange-400 to-orange-500"; textColor = "text-orange-600"; }
-        
+        if (globalRating >= 851) { tierName = "A (Ekspertas)"; barColor = "bg-gradient-to-r from-red-500 to-red-600"; textColor = "text-red-600"; }
+        else if (globalRating >= 671) { tierName = "B (Patyręs)"; barColor = "bg-gradient-to-r from-purple-500 to-purple-600"; textColor = "text-purple-600"; }
+        else if (globalRating >= 501) { tierName = "C (Pažengęs)"; barColor = "bg-gradient-to-r from-blue-500 to-blue-600"; textColor = "text-blue-600"; }
+        else if (globalRating >= 351) { tierName = "D/C- (Pradedantysis)"; barColor = "bg-gradient-to-r from-teal-400 to-teal-500"; textColor = "text-teal-600"; }
+        else { tierName = "D (Naujokas)"; barColor = "bg-gradient-to-r from-green-400 to-green-500"; textColor = "text-green-600"; }
+
         let pPhoto = photoBank[stats.id] || null;
         let av = pPhoto ? `<img src="${pPhoto}" class="w-24 h-24 rounded-full object-cover border-4 ${stats.gender==='M'?'border-blue-500':'border-pink-500'} mx-auto mb-4 shadow-lg">` : `<div class="w-24 h-24 rounded-full ${stats.gender==='M'?'bg-blue-500':'bg-pink-500'} mx-auto mb-4 flex items-center justify-center text-3xl font-black text-white shadow-lg">${stats.gender==='M'?'V':'M'}</div>`;
         let winPerc = stats.mp > 0 ? Math.round((stats.w / stats.mp) * 100) : 0;
@@ -232,11 +219,11 @@ function openPlayerCard(name) {
                 ${av}
                 <h2 class="text-2xl font-black text-slate-800 mb-1">${esc(stats.name)}</h2>
                 <div class="mb-6 px-2">
-                    <div class="flex justify-between items-end mb-1"><span class="text-[10px] font-black uppercase tracking-widest ${textColor}">${tierName}</span><span class="text-xs font-black text-slate-700">${rating} <span class="text-[9px] font-bold text-slate-400">/ 100</span></span></div>
-                    <div class="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/50 relative"><div class="h-full ${barColor} transition-all duration-1000 ease-out rounded-full shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="width: ${rating}%"></div></div>
-                    <div class="text-[8px] text-slate-400 text-right mt-1 uppercase font-bold tracking-widest">Sportinė forma: paskutiniai ${rMp} mačai</div>
+                    <div class="flex justify-between items-end mb-1"><span class="text-[10px] font-black uppercase tracking-widest ${textColor}">${tierName}</span><span class="text-xs font-black text-slate-700">${globalRating} <span class="text-[9px] font-bold text-slate-400">/ 1000 pts</span></span></div>
+                    <div class="h-3.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-200/50 relative"><div class="h-full ${barColor} transition-all duration-1000 ease-out rounded-full shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="width: ${(globalRating / 1000) * 100}%"></div></div>
+                    <div class="text-[8px] text-slate-400 text-right mt-1 uppercase font-bold tracking-widest">Globalūs mačai sistemoje: ${globalMatches}</div>
                 </div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-t border-slate-100 pt-4">Bendra Karjeros Statistika</p>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-t border-slate-100 pt-4">Vietinė Karjeros Statistika</p>
                 <div class="grid grid-cols-2 gap-4 mb-5"><div class="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div class="text-3xl font-black text-slate-800">${stats.mp}</div><div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mačai</div></div><div class="bg-green-50 p-4 rounded-2xl border border-green-100"><div class="text-3xl font-black text-green-600">${winPerc}%</div><div class="text-[9px] font-black text-green-600 uppercase tracking-widest">Pergalės</div></div></div>
                 <div class="flex justify-center gap-6 mb-6 font-bold text-sm"><div class="text-center"><span class="block text-green-600 text-xl">${stats.w}</span><span class="text-[9px] text-slate-400 uppercase">Laimėta</span></div><div class="text-center"><span class="block text-slate-400 text-xl">${stats.t}</span><span class="text-[9px] text-slate-400 uppercase">Lygios</span></div><div class="text-center"><span class="block text-red-500 text-xl">${stats.l}</span><span class="text-[9px] text-slate-400 uppercase">Pralaimėta</span></div></div>
                 <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100"><div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Geriausias Partneris</div><div class="font-bold text-indigo-900">${bestPartner} <span class="text-xs text-indigo-500 font-normal">${maxText}</span></div></div>
@@ -246,7 +233,6 @@ function openPlayerCard(name) {
     } catch(e) { console.error("openPlayerCard Error:", e); }
 }
 
-// Pridėtas debounce apsaugai nuo dvigubo perrenderiavimo
 let renderTimeout = null;
 function render() {
     if (renderTimeout) clearTimeout(renderTimeout);
@@ -390,6 +376,7 @@ function shareResultsAsImage() {
     } catch(e) { console.error("shareResultsAsImage Error:", e); el('loading-overlay').style.display = 'none'; }
 }
 
+// NAUJA: ATNAUJINTA GLOBALINĖ STATISTIKA SU ELO BALAIS IR RIKIAVIMU
 function renderGlobalStats() {
     try {
         const tSel = el('stat-tournament'); let tVal = tSel ? tSel.value : 'CURRENT';
@@ -419,8 +406,32 @@ function renderGlobalStats() {
         
         let html = '';
         if (statType === 'indiv') {
-            const list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
-            html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');
+            let list = calculateResults(cM, uP, false).filter(x => (gF==='ALL' || x.gender===gF) && (pF==='ALL' || x.name===pF));
+            
+            // Jei žiūrime bendrą statistiką, rikiuojame žaidėjus pagal ELO reitingą
+            if (tF === 'ALL') {
+                list.sort((a, b) => {
+                    let rA = (typeof globalPlayersData !== 'undefined' && globalPlayersData[a.id]) ? (globalPlayersData[a.id].rating || 0) : 0;
+                    let rB = (typeof globalPlayersData !== 'undefined' && globalPlayersData[b.id]) ? (globalPlayersData[b.id].rating || 0) : 0;
+                    return rB - rA || b.w - a.w; 
+                });
+            }
+
+            html = list.map((s, i) => {
+                let glRating = 300; let glTier = "D";
+                if (typeof globalPlayersData !== 'undefined' && globalPlayersData[s.id]) {
+                    glRating = globalPlayersData[s.id].rating || 300;
+                    glTier = globalPlayersData[s.id].tier || "D";
+                }
+                
+                let tColor = "text-green-600";
+                if(glTier === "A") tColor = "text-red-500"; 
+                else if(glTier.includes("B")) tColor = "text-purple-500"; 
+                else if(glTier.includes("C") && glTier !== "D-C") tColor = "text-blue-500"; 
+                else if(glTier === "D-C") tColor = "text-teal-500";
+
+                return `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div data-player="${esc(s.name)}" class="flex-1 truncate font-bold text-slate-800 clickable-name flex items-center gap-1">${esc(s.name)} <span class="text-[8px] font-black ${tColor} bg-slate-50 border border-slate-100 px-1 rounded">${glTier} (${glRating})</span></div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`;
+            }).join('');
         } else {
             const list = calculatePairsResults(cM, uP).filter(x => (pF === 'ALL' || x.p1?.name === pF || x.p2?.name === pF));
             html = list.map((s, i) => `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-50"><div class="w-6 text-slate-400 font-bold">${i+1}</div><div class="flex-1 font-bold text-slate-800">${esc(s.name)}</div><div class="stat-col">${s.mp}</div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col-wide">${s.mp>0?Math.round((s.w/s.mp)*100):0}%</div></div>`).join('');

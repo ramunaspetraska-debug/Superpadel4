@@ -143,7 +143,6 @@ function autoSave(fullSync = false) {
             window.lastCloudUpdate = p.lastUpdate; 
             dbRef.update(p); 
             
-            // NAUJA: Sinchronizuojame žaidėjus į globalią bazę
             syncPlayersToGlobalDB();
         } 
         render(); 
@@ -159,7 +158,6 @@ function liveUpdateMatches() {
             window.lastCloudUpdate = upd.lastUpdate; 
             dbRef.update(upd); 
             
-            // NAUJA: Atnaujiname globalius reitingus pagal naujai baigtus mačus
             updateGlobalRatingsFromMatches();
         }
         render();
@@ -168,7 +166,7 @@ function liveUpdateMatches() {
 
 function initFirebaseConnection() { 
     let room = el('fb-room')?.value.trim() || activeRoom; if(!room) return; 
-    room = room.toUpperCase(); // Priverstinai paverčiame į didžiąsias raides
+    room = room.toUpperCase(); 
     
     if(dbRef) { dbRef.off(); } 
     if(globalPlayersRef) { globalPlayersRef.off(); }
@@ -179,7 +177,6 @@ function initFirebaseConnection() {
     dbRef = firebase.database().ref(DB_KEY + '/' + room); 
     dbPhotosRef = firebase.database().ref(DB_KEY + '/' + room + '_photos');
     
-    // NAUJA: Prisijungiame prie globalios žaidėjų bazės
     globalPlayersRef = firebase.database().ref(GLOBAL_PLAYERS_KEY);
     globalPlayersRef.on('value', snap => {
         globalPlayersData = snap.val() || {};
@@ -212,16 +209,11 @@ function disconnectFirebase() {
     location.reload(); 
 }
 
-// ==========================================
-// GLOBAL BASE SYNC LOGIC (NAUJA)
-// ==========================================
-
 function syncPlayersToGlobalDB() {
     if (!isCloud || !globalPlayersRef) return;
     
     players.forEach(p => {
         const globalP = globalPlayersData[p.id];
-        
         if (!globalP) {
             globalPlayersRef.child(p.id).set({
                 id: p.id,
@@ -234,10 +226,7 @@ function syncPlayersToGlobalDB() {
             });
         } else {
             if (globalP.name !== p.name || globalP.gender !== p.gender) {
-                globalPlayersRef.child(p.id).update({
-                    name: p.name,
-                    gender: p.gender
-                });
+                globalPlayersRef.child(p.id).update({ name: p.name, gender: p.gender });
             }
         }
         
@@ -252,8 +241,11 @@ function updateGlobalRatingsFromMatches() {
     if (!isCloud || !globalPlayersRef) return;
     
     matches.filter(m => m.finished && !m.globalSyncDone).forEach(m => {
-        if (typeof processGlobalEloForMatch === 'function') {
-            processGlobalEloForMatch(m, globalPlayersData, globalPlayersRef);
+        // BLOKUOJAME ELO SKAIČIAVIMĄ JEI TAI PRIVATUS TURNYRAS
+        if (settings && settings.level !== 'Privatus') {
+            if (typeof processGlobalEloForMatch === 'function') {
+                processGlobalEloForMatch(m, globalPlayersData, globalPlayersRef);
+            }
         }
         m.globalSyncDone = true;
     });
