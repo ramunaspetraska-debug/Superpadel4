@@ -1,275 +1,204 @@
-<!DOCTYPE html>
-<html lang="lt">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SuperPadel.lt | Išmanioji Platforma</title>
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+:root { --primary-blue: #009fe3; --bg-light: #ffffff; --card-bg: #f8f9fb; --text-dark: #1a202c; --text-grey: #718096; --status-green: #00b85c; --status-red: #e53e3e; --status-orange: #dd6b20; --nav-bg: #1e1e1e; --lvl-d: #48bb78; --lvl-d-c: #38b2ac; --lvl-c: #3182ce; --lvl-b: #805ad5; --lvl-a: #e53e3e; --admin-bg: #f4f7f6; --admin-sidebar: #1e1e1e; }
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-x: hidden; }
 
-    <link rel="stylesheet" href="css/registras.css">
-</head>
-<body>
+#appMode { background-color: var(--bg-light); color: var(--text-dark); padding-bottom: 70px; min-height: 100vh; position: relative;}
 
-    <div id="toastMsg" class="toast">Pranešimas</div>
+.app-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #edf2f7; background: #fff;}
+.logo { font-size: 22px; font-weight: 900; color: #1a202c; letter-spacing: -1px; display: flex; align-items: center; cursor: pointer; transition: 0.2s; }
+.logo:active { transform: scale(0.95); }
+.logo span { background-color: #1a202c; color: white; padding: 2px 6px; margin-right: 2px; border-radius: 4px; }
+.logo .domain { font-size: 16px; color: var(--text-grey); font-weight: 700; margin-left: 2px;}
 
-    <div id="authModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-title"><i class="fa-solid fa-user-shield"></i> Jūsų Padelio Profilis</div>
-            <div class="modal-body" style="margin-bottom: 10px;">
-                <p style="font-size: 12px; margin-bottom: 15px;">Įveskite savo unikalų Padel ID arba telefono numerį. Jei tokio nėra – mes jį sukursime!</p>
-                <input type="text" id="authInput" placeholder="Padel ID / Telefono nr." style="width: 100%; padding: 14px; border: 1px solid #cbd5e0; border-radius: 8px; margin-bottom: 10px; outline: none; font-weight: bold; font-size: 16px;">
-                
-                <div id="registerFields" style="display: none; background: #f8f9fb; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e0; margin-bottom: 10px;">
-                    <div style="font-size: 11px; font-weight: 900; color: var(--status-orange); margin-bottom: 10px; text-transform: uppercase;">Profilis nerastas. Sukurkime naują!</div>
-                    <input type="text" id="authName" placeholder="Vardas Pavardė" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; margin-bottom: 10px; outline: none; font-weight: bold;">
-                    <select id="authGender" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; color: var(--text-dark);">
-                        <option value="M">Vyras</option>
-                        <option value="F">Moteris</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="modal-btn primary" onclick="processAuth()">Patvirtinti</button>
-                <button type="button" class="modal-btn secondary" onclick="closeAuthModal()">Atšaukti</button>
-            </div>
-        </div>
-    </div>
+.header-actions { display: flex; align-items: center; gap: 15px; font-size: 18px; color: var(--text-dark); }
+#authBtn { font-size: 13px; font-weight: 800; color: var(--primary-blue); background: #ebf8ff; padding: 8px 14px; border-radius: 20px; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+#authBtn:active { transform: scale(0.95); }
+.bell-icon { position: relative; cursor: pointer; transition: 0.2s;}
+.bell-icon:active { transform: scale(0.9); }
+.notification-badge { position: absolute; top: -4px; right: -4px; background: var(--status-red); color: white; font-size: 10px; font-weight: bold; width: 14px; height: 14px; border-radius: 50%; display: none; justify-content: center; align-items: center; }
 
-    <div id="actionModal" class="modal-overlay">
-        <div class="modal-box">
-            <div id="modalTitle" class="modal-title"></div>
-            <div id="modalBody" class="modal-body"></div>
-            <div id="modalActions" class="modal-actions"></div>
-        </div>
-    </div>
+.page-view { display: none; animation: slideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 100%; }
+.page-view.active { display: block; }
+.page-view.empty-page.active { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; color: var(--text-grey); text-align: center; padding: 20px; }
+.page-view.empty-page i { font-size: 48px; margin-bottom: 15px; color: #cbd5e0; }
+@keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
 
-    <div id="liveModal" class="live-modal">
-        <div class="live-header">
-            <div style="font-weight: 800; font-size: 16px;"><i class="fa-solid fa-circle" style="color: #e53e3e; font-size: 10px; margin-right: 5px;"></i> SuperPadel.lt TV</div>
-            <button type="button" class="live-close" onclick="closeLiveModal()"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        
-        <div class="yt-container">
-            <iframe class="yt-iframe" src="https://www.youtube.com/embed/A6XUVjK9W4o?autoplay=0&mute=1&controls=0&modestbranding=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-        </div>
+.filters { padding: 15px 20px 5px 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+.filter-group { flex: 1; min-width: 45%; }
+.filter-group.full-width { flex: 0 0 100%; margin-top: 5px; }
+.filter-group select, .filter-group input { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; font-size: 15px; font-weight: 600; color: var(--text-dark); background-color: #fff; appearance: none; outline: none; transition: 0.2s;}
 
-        <div class="firebase-connector">
-            <input type="text" id="liveRoomInput" placeholder="Įveskite kambario ID (pvz. kaunas1)">
-            <button type="button" onclick="connectLiveRoom()"><i class="fa-solid fa-link"></i> Jungtis</button>
-        </div>
+.search-wrapper { position: relative; width: 100%; }
+.search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-grey); font-size: 14px;}
+.search-wrapper input { padding-left: 40px; }
 
-        <div class="live-filters" id="liveCourtsContainer">
-            <div class="live-filter-btn">Laukiama prisijungimo...</div>
-        </div>
+.date-carousel { display: flex; overflow-x: auto; padding: 10px 20px 15px 20px; gap: 10px; scrollbar-width: none; scroll-behavior: smooth; }
+.date-carousel::-webkit-scrollbar { display: none; }
+.date-box { min-width: 65px; height: 70px; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; background: #fff; flex-shrink: 0;}
+.date-box .day-num { font-size: 22px; font-weight: 800; }
+.date-box .day-name { font-size: 13px; color: var(--text-grey); font-weight: 600; margin-top: 2px;}
+.date-box.active { background-color: var(--lvl-c); border-color: var(--lvl-c); color: white; transform: scale(1.05); box-shadow: 0 4px 6px rgba(49, 130, 206, 0.3);}
+.date-box.active .day-name { color: rgba(255,255,255,0.9); }
 
-        <div class="live-score-area">
-            <div class="live-score-title" id="fbStatusTitleContainer">
-                <i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> 
-                <span id="fbStatusText">Neprisijungta prie Firebase</span>
-            </div>
-            <div id="liveScoreBoxContainer" style="width: 100%;">
-                <div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">
-                    Įveskite savo V188 programos kambario pavadinimą ir stebėkite taškus gyvai!
-                </div>
-            </div>
-        </div>
-    </div>
+.schedule-list { padding: 0 20px; }
+.schedule-card { background-color: var(--card-bg); border-left: 5px solid #ccc; margin-bottom: 15px; display: flex; padding: 15px; border-radius: 6px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer; transition: transform 0.1s ease, background-color 0.1s ease; -webkit-tap-highlight-color: transparent; }
+.schedule-card:active { transform: scale(0.98); background-color: #edf2f7; }
+.card-past { opacity: 0.55; filter: grayscale(80%); }
+.card-past:active { transform: none; background-color: var(--card-bg); cursor: default;}
 
-    <div id="appMode">
-        <div id="pushNotification" class="toast" style="background: rgba(26, 32, 44, 0.95); border-radius: 12px; bottom: auto; top: -100px; transition: 0.4s; z-index: 4000; padding: 15px; width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto;">
-            <div style="font-weight: bold; font-size: 13px; color: #a0aec0; display: flex; align-items: center; gap: 5px;"><i class="fa-solid fa-table-tennis-paddle-ball"></i> SuperPadel.lt</div>
-            <div><strong>Puikios naujienos! 🎉</strong><br>Atsilaisvino vieta <i id="pushFormatName">Turnyre</i>. Mes automatiškai jus užregistravome.</div>
-            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <button type="button" class="modal-btn secondary" style="flex: 1; padding: 8px; font-size: 12px;" onclick="closePush()">Slėpti</button>
-                <button type="button" class="modal-btn danger" style="flex: 1; padding: 8px; font-size: 12px;" onclick="manageReservation()">Atšaukti vietą</button>
-            </div>
-        </div>
+.schedule-card.level-d { border-left-color: var(--lvl-d); }
+.schedule-card.level-d-c { border-left-color: var(--lvl-d-c); }
+.schedule-card.level-c { border-left-color: var(--lvl-c); }
+.schedule-card.level-b { border-left-color: var(--lvl-b); }
+.schedule-card.level-a { border-left-color: var(--lvl-a); }
+.schedule-card.level-atviras { border-left-color: #94a3b8; }
+.schedule-card.level-privatus { border-left-color: #cbd5e1; }
 
-        <div class="app-header" id="mainHeader">
-            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span></div>
-            <div class="header-actions">
-                <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
-                <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
-                <span onclick="promptAdmin()" style="margin-left: 10px; cursor: pointer; color: var(--text-grey);"><i class="fa-solid fa-lock"></i></span>
-            </div>
-        </div>
+.card-date-square { width: 65px; height: 80px; background: white; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0; border-radius: 4px; }
+.card-date-square .num { font-size: 24px; font-weight: 800; color: var(--text-dark);}
+.card-date-square .name { font-size: 14px; color: var(--text-grey); }
+.card-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; width: calc(100% - 80px);}
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.card-title-group { display: flex; flex-direction: column; gap: 4px; }
+.card-title { font-size: 16px; font-weight: 800; text-transform: uppercase; }
 
-        <div id="page-home" class="page-view empty-page"><i class="fa-solid fa-newspaper"></i><h3>Klubo naujienos</h3><p style="font-size: 12px; margin-top: 5px;">Čia bus skelbiamos svarbiausios klubo naujienos.</p></div>
+.level-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; width: max-content; }
+.level-d .level-badge { background-color: var(--lvl-d); }
+.level-d-c .level-badge { background-color: var(--lvl-d-c); }
+.level-c .level-badge { background-color: var(--lvl-c); }
+.level-b .level-badge { background-color: var(--lvl-b); }
+.level-a .level-badge { background-color: var(--lvl-a); }
+.level-atviras .level-badge { background-color: #94a3b8; }
+.level-privatus .level-badge { background-color: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; }
 
-        <div id="page-calendar" class="page-view active">
-            <div class="filters">
-                <div class="filter-group"><select id="filterFormat" onchange="renderTournaments()"><option value="all">Visi formatai</option><option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option></select></div>
-                
-                <div class="filter-group">
-                    <select id="filterLevel" onchange="renderTournaments()">
-                        <option value="all">Visi lygiai</option>
-                        <option value="Atviras">Atviras (Visi lygiai)</option>
-                        <option value="A">A (Ekspertai)</option>
-                        <option value="B">B-/B (Patyrę)</option>
-                        <option value="C">C/C+ (Pažengę)</option>
-                        <option value="D-C">D/C- (Pradedantieji)</option>
-                        <option value="D">D (Naujokai)</option>
-                        <option value="Privatus">Privatus (Nereitinguojamas)</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group full-width"><div class="search-wrapper"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="filterPlayer" placeholder="Ieškoti žaidėjo (pvz. Marius)" onkeyup="renderTournaments()"></div></div>
-            </div>
-            <div class="date-carousel" id="dateCarousel"></div>
-            <div style="padding: 0 20px; text-align: right; margin-bottom: 5px;"><span style="font-size: 12px; color: var(--primary-blue); cursor: pointer; text-decoration: underline;" onclick="resetLocalStorage()">Atstatyti gamyklinius duomenis</span></div>
-            <div id="scheduleList" class="schedule-list"></div>
-        </div>
+.status-badge-time { font-size: 10px; font-weight: 900; padding: 3px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; width: max-content;}
+.badge-past { background: #e2e8f0; color: #718096; }
+.badge-live { background: #fed7d7; color: #e53e3e; animation: pulseLive 2s infinite; }
+@keyframes pulseLive { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        <div id="page-cam" class="page-view">
-            <div class="cam-header"><i class="fa-solid fa-bolt" style="font-size: 20px; cursor: pointer;"></i><div class="cam-title">SuperPadel Cam</div><i class="fa-solid fa-gear" style="font-size: 20px; cursor: pointer;"></i></div>
-            <div class="recording-indicator" id="recIndicator"><div class="dot"></div> <span id="recTimer">00:00:00</span></div>
-            <div class="cam-viewfinder" id="viewFinder">
-                <video id="cameraFeed" autoplay playsinline muted></video>
-                <div class="court-hint" id="cameraHintText">Sulygiuokite telefono kamerą<br>su padelio korto linijomis</div>
-            </div>
-            <div class="cam-controls" id="camControls">
-                <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 14px;">Pritvirtinkite telefoną prie stiklo.<br>Filmuokite visą mačą, o geriausius ralius išrinks dirbtinis intelektas.</div>
-                <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
-                <div class="ai-result-panel" id="aiPanel">
-                    <h3 style="margin-bottom: 10px; color: #fff;">Įrašas išsaugotas!</h3>
-                    <button type="button" class="ai-btn" id="startAiBtn" onclick="startAiProcessing()"><i class="fa-solid fa-wand-magic-sparkles"></i> Generuoti DI Highlights</button>
-                    <div class="ai-progress-bar" id="aiProgress"><div class="ai-progress-fill" id="aiFill"></div></div>
-                    <div id="aiStatusText" style="font-size: 12px; color: var(--primary-blue); margin-top: 10px; display: none;">Analizuojama...</div>
-                    <div class="video-card" id="generatedVideo">
-                        <div class="video-thumb"><i class="fa-solid fa-circle-play play-icon"></i></div>
-                        <div style="padding: 15px;"><div style="font-weight: bold; margin-bottom: 5px;">Mano Highlights (Šiandien)</div><div style="font-size: 12px; color: #a0aec0; margin-bottom: 15px;">Trukmė: 01:45 • Sukurta AI</div><button type="button" class="modal-btn primary" style="width: 100%; background: #ff0000; font-size: 14px;" onclick="uploadToYT()"><i class="fa-brands fa-youtube"></i> Įkelti į SuperPadel TV</button></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div id="page-trophy" class="page-view">
-            <div class="trophy-header">
-                <h2>Lygų Reitingai</h2>
-                <div class="league-tabs">
-                    <button type="button" class="league-tab active" data-league="all" onclick="changeLeague('all')">Visi</button>
-                    <button type="button" class="league-tab" data-league="D" onclick="changeLeague('D')">D (Naujokai)</button>
-                    <button type="button" class="league-tab" data-league="D-C" onclick="changeLeague('D-C')">D/C- (Pradedantieji)</button>
-                    <button type="button" class="league-tab" data-league="C" onclick="changeLeague('C')">C/C+ (Pažengę)</button>
-                    <button type="button" class="league-tab" data-league="B" onclick="changeLeague('B')">B-/B (Patyrę)</button>
-                    <button type="button" class="league-tab" data-league="A" onclick="changeLeague('A')">A (Ekspertai)</button>
-                </div>
-            </div>
-            <div class="ratings-wrapper">
-                <div id="ratingsLoader" style="text-align: center; padding: 40px 0; color: var(--text-grey);"><i class="fa-solid fa-spinner fa-spin" style="font-size: 30px; color: var(--primary-blue); margin-bottom: 15px;" id="loaderSpinner"></i><div style="font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Sistemuojami lygos duomenys...</div></div>
-                <div id="ratingsContent" style="display: none;">
-                    <div class="podium-container">
-                        <div class="podium-place place-2"><div class="podium-avatar">2</div><div class="podium-block">2</div><div class="podium-name" id="pod2-name">-</div><div class="podium-pts" id="pod2-pts">-</div></div>
-                        <div class="podium-place place-1"><div class="podium-avatar" style="color: #d69e2e;">1</div><div class="podium-block">1</div><div class="podium-name" id="pod1-name">-</div><div class="podium-pts" id="pod1-pts">-</div></div>
-                        <div class="podium-place place-3"><div class="podium-avatar">3</div><div class="podium-block">3</div><div class="podium-name" id="pod3-name">-</div><div class="podium-pts" id="pod3-pts">-</div></div>
-                    </div>
-                    <table class="leaderboard-table"><thead><tr><th style="text-align: center; width: 40px;">#</th><th>Žaidėjas</th><th style="text-align: right;">Reitingas</th></tr></thead><tbody id="ratingsTableBody"></tbody></table>
-                </div>
-            </div>
-        </div>
+.share-btn, .h2h-btn, .test-trigger { position: relative; z-index: 2; }
+.share-btn { background: none; border: none; color: var(--text-grey); font-size: 18px; cursor: pointer; padding: 5px; transition: 0.2s;}
+.card-time { font-size: 15px; color: var(--text-grey); font-weight: 600; margin: 6px 0; }
+.avatars-row { display: flex; align-items: center; margin-bottom: 10px; }
+.avatar { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--card-bg); margin-left: -8px; background: #e2e8f0; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; color: #4a5568; text-transform: uppercase;}
+.avatar:first-child { margin-left: 0; background: var(--primary-blue); color: white;} 
+.avatar-more { background: #1a202c; color: white; }
+.registration-count { font-size: 12px; color: var(--text-grey); margin-left: 8px; font-weight: 600;}
+.card-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; width: 100%;}
+.status-indicator { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 5px; }
+.status-open { color: var(--status-green); }
+.status-wait { color: var(--status-orange); }
+.status-in { color: var(--status-green); }
+.status-full { color: var(--status-red); }
+.h2h-btn { background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; color: var(--text-grey); cursor: pointer; display: flex; align-items: center; gap: 4px; transition: 0.2s;}
+.edit-badge { background: white; border: 1px solid #cbd5e0; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 600; color: var(--text-dark); display: flex; align-items: center; gap: 5px;}
+.watch-badge { background: white; border: 2px solid var(--status-red); border-radius: 6px; padding: 4px 10px; font-size: 11px; font-weight: 800; color: var(--status-red); display: flex; align-items: center; gap: 5px; transition: 0.2s; cursor: pointer;}
+.watch-badge:active { background: var(--status-red); color: white; }
+.test-trigger { width: 100%; margin-top: 15px; padding: 10px; background: #edf2f7; border: 1px dashed #cbd5e0; color: var(--text-grey); font-size: 12px; cursor: pointer; border-radius: 6px; transition: 0.2s;}
 
-        <div id="page-profile" class="page-view empty-page"><i class="fa-regular fa-user"></i><h3>Mano Profilis</h3><p style="font-size: 12px; margin-top: 5px;">Prisijunkite, kad matytumėte savo asmeninę statistiką ir istoriją.</p></div>
+.bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--nav-bg); display: flex; justify-content: space-around; padding: 15px 0; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);}
+.nav-item { color: #718096; font-size: 24px; cursor: pointer; position: relative; transition: 0.2s; padding: 0 15px; background: none; border: none; outline: none;}
+.nav-item:active { transform: scale(0.8); }
+.nav-item.active { color: var(--primary-blue); }
+.nav-cam { color: var(--primary-blue); font-size: 28px; transform: translateY(-5px); }
 
-        <div class="bottom-nav" id="bottomNav">
-            <button type="button" class="nav-item" data-index="0" onclick="switchTab('page-home', this)"><i class="fa-solid fa-house"></i></button>
-            <button type="button" class="nav-item active" data-index="1" onclick="switchTab('page-calendar', this)"><i class="fa-regular fa-calendar-check"></i></button>
-            <button type="button" class="nav-item nav-cam" data-index="2" onclick="switchTab('page-cam', this)"><i class="fa-solid fa-video"></i></button>
-            <button type="button" class="nav-item" data-index="3" onclick="switchTab('page-trophy', this)"><i class="fa-solid fa-trophy"></i></button>
-            <button type="button" class="nav-item" data-index="4" onclick="switchTab('page-profile', this)"><i class="fa-regular fa-user"></i></button>
-        </div>
-    </div>
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: 0.3s; backdrop-filter: blur(3px); }
+.modal-overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
+.modal-box { background: white; width: 90%; max-width: 400px; border-radius: 12px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transform: translateY(20px); transition: 0.3s; }
+.modal-overlay.show .modal-box { transform: translateY(0); }
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 10px; color: var(--text-dark); display: flex; align-items: center; gap: 8px;}
+.modal-body { font-size: 14px; color: var(--text-grey); margin-bottom: 20px; line-height: 1.5;}
+.modal-actions { display: flex; flex-direction: column; gap: 10px; }
+.modal-btn { padding: 14px; border-radius: 8px; font-weight: bold; font-size: 15px; cursor: pointer; border: none; transition: 0.2s; text-align: center; }
+.modal-btn.primary { background: var(--primary-blue); color: white; }
+.modal-btn.secondary { background: #edf2f7; color: var(--text-dark); }
+.modal-btn.danger { background: #fff; border: 1px solid var(--status-red); color: var(--status-red); }
 
-    <div id="adminMode">
-        <div class="admin-layout">
-            <div class="admin-sidebar">
-                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius</span></div>
-                <ul class="nav-menu">
-                    <li onclick="adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
-                    <li class="active" onclick="adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
-                    <li onclick="adminNav(this, 'admin-view-zaidejai')"><i class="fa-solid fa-users"></i> Žaidėjų bazė</li>
-                    
-                    <a href="index.html" target="_blank" style="display: flex; align-items: center; gap: 15px; padding: 15px 20px; color: #48bb78; text-decoration: none; font-weight: bold; margin-top: 20px; border-top: 1px solid #2d3748;">
-                        <i class="fa-solid fa-gear"></i> Pagrindinė Programa
-                    </a>
-                    
-                    <li onclick="toggleMode()" style="color: #e53e3e; margin-top: 5px; font-weight: bold;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Grįžti į Portalą</li>
-                </ul>
-            </div>
-            <div class="admin-main">
-                
-                <div id="admin-view-apzvalga" class="admin-tab" style="display: none;">
-                    <h1 style="margin-bottom: 20px;">Apžvalga</h1>
-                    <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <p style="color: var(--text-grey); font-size: 14px;">Čia netrukus atsiras bendra sistemos statistika (Kiek iš viso turnyrų sužaista, kiek unikalių žaidėjų prisijungę ir pan.)</p>
-                    </div>
-                </div>
+.toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: #1a202c; color: white; padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 3000;}
+.toast.show { opacity: 1; bottom: 120px; }
 
-                <div id="admin-view-turnyrai" class="admin-tab">
-                    <h1 style="margin-bottom: 20px;">Turnyrų Valdymas</h1>
-                    <div style="display: grid; grid-template-columns: 1fr; max-width: 600px;">
-                        <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                            <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Sukurti Naują Turnyrą</div>
-                            <form id="adminForm" onsubmit="createTournament(event)">
-                                <div style="margin-bottom: 15px;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Formatas</label>
-                                    <select id="newFormat" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                        <option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option>
-                                    </select>
-                                </div>
-                                
-                                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Lygis</label>
-                                        <select id="newLevel" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                            <option value="Atviras">Atviras (Visi lygiai)</option>
-                                            <option value="A">A (Ekspertai)</option>
-                                            <option value="B">B-/B (Patyrę)</option>
-                                            <option value="C">C/C+ (Pažengę)</option>
-                                            <option value="D-C">D/C- (Pradedantieji)</option>
-                                            <option value="D">D (Naujokai)</option>
-                                            <option value="Privatus">Privatus (Nereitinguojamas)</option>
-                                        </select>
-                                    </div>
-                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Vietų sk.</label>
-                                        <input type="number" id="newMax" value="16" min="2" max="32" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                    </div>
-                                </div>
-                                
-                                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Diena</label>
-                                        <select id="newDate" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;"></select>
-                                    </div>
-                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Laikas</label>
-                                        <input type="text" id="newTime" value="18:00 - 20:00" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                    </div>
-                                </div>
-                                <button type="submit" style="background-color: var(--primary-blue); color: white; border: none; padding: 12px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Paskelbti Turnyrą</button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+.live-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-light); z-index: 3000; transform: translateY(100%); transition: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); display: flex; flex-direction: column; visibility: hidden; pointer-events: none;}
+.live-modal.show { transform: translateY(0); visibility: visible; pointer-events: auto;}
+.live-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #1a202c; color: white;}
+.live-close { font-size: 26px; cursor: pointer; padding: 15px; margin: -15px; background: transparent; border: none; color: white; display: flex; align-items: center; justify-content: center;}
+.live-close:active { opacity: 0.6; }
+.yt-container { width: 100%; background: #000; position: relative; padding-top: 56.25%; }
+.yt-iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+.firebase-connector { background: #2d3748; padding: 15px; display: flex; gap: 10px; align-items: center;}
+.firebase-connector input { flex: 1; padding: 8px 12px; border-radius: 6px; border: none; font-size: 13px; font-weight: bold; outline: none; }
+.firebase-connector button { background: var(--status-green); color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;}
+.live-filters { display: flex; padding: 10px 20px; background: #edf2f7; gap: 10px; overflow-x: auto; scrollbar-width: none;}
+.live-filter-btn { padding: 8px 16px; border-radius: 20px; background: white; border: 1px solid #cbd5e0; font-size: 13px; font-weight: bold; color: var(--text-grey); white-space: nowrap; cursor: pointer; transition: 0.2s; border-color: transparent;}
+.live-filter-btn.active { background: var(--primary-blue); color: white; border-color: var(--primary-blue);}
+.live-score-area { padding: 20px; flex-grow: 1; background: var(--bg-light); display: flex; flex-direction: column; align-items: center; overflow-y: auto;}
+.live-score-title { font-size: 12px; color: var(--text-grey); text-transform: uppercase; letter-spacing: 1px; font-weight: bold; margin-bottom: 15px; display: flex; align-items: center; gap: 5px;}
+.score-box { background: white; width: 100%; max-width: 400px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #edf2f7; overflow: hidden; transition: 0.2s;}
+.team-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #edf2f7;}
+.team-names { font-weight: 800; font-size: 15px; color: var(--text-dark); display: flex; flex-direction: column; gap: 4px;}
+.team-score { font-size: 28px; font-weight: 900; color: var(--primary-blue); font-variant-numeric: tabular-nums; transition: color 0.3s;}
 
-                <div id="admin-view-zaidejai" class="admin-tab" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h1 style="margin: 0;">Žaidėjų Bazė</h1>
-                        <span style="font-size: 12px; background: var(--primary-blue); color: white; padding: 4px 8px; border-radius: 12px; font-weight: bold;" id="admin-players-count">Viso: 0</span>
-                    </div>
-                    <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto;">
-                        <div class="search-wrapper" style="margin-bottom: 15px;">
-                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                            <input type="text" id="adminPlayerSearch" placeholder="Ieškoti žaidėjo pagal vardą..." onkeyup="filterAdminPlayers()" style="width: 100%; padding: 10px 10px 10px 35px; border: 1px solid #cbd5e0; border-radius: 6px; font-weight: bold; color: var(--text-dark); outline: none;">
-                        </div>
-                        <div id="admin-players-list-db">
-                            <div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami duomenys iš debesies...</div>
-                        </div>
-                    </div>
-                </div>
+#page-cam { background-color: #000; min-height: calc(100vh - 70px); color: white; position: relative;}
+.cam-header { position: absolute; top: 0; width: 100%; padding: 20px; display: flex; justify-content: space-between; z-index: 10; background: linear-gradient(rgba(0,0,0,0.8), transparent);}
+.cam-viewfinder { height: 60vh; background: #1a202c; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; border-bottom: 2px solid #333;}
+#cameraFeed { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.cam-viewfinder::before { content: ''; position: absolute; width: 60%; height: 60%; border: 2px dashed rgba(255,255,255,0.3); pointer-events: none; z-index: 2;}
+.court-hint { color: rgba(255,255,255,0.9); font-size: 14px; text-align: center; position: absolute; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.8); font-weight: bold;}
+.cam-controls { padding: 30px 20px; display: flex; flex-direction: column; align-items: center; gap: 20px; background: #000;}
+.record-btn { width: 80px; height: 80px; border-radius: 50%; background: transparent; border: 4px solid white; display: flex; justify-content: center; align-items: center; cursor: pointer; transition: 0.3s; z-index: 10;}
+.record-btn-inner { width: 60px; height: 60px; border-radius: 50%; background: #e53e3e; transition: 0.3s; }
+.record-btn.recording .record-btn-inner { width: 40px; height: 40px; border-radius: 8px; }
+.recording-indicator { display: none; align-items: center; gap: 8px; color: #e53e3e; font-weight: bold; font-size: 18px; position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 20; text-shadow: 0 2px 4px rgba(0,0,0,0.8);}
+.dot { width: 12px; height: 12px; background: #e53e3e; border-radius: 50%; animation: blink 1s infinite; box-shadow: 0 0 8px #e53e3e;}
+@keyframes blink { 0% {opacity: 1;} 50% {opacity: 0;} 100% {opacity: 1;} }
+.ai-result-panel { display: none; padding: 20px; width: 100%; text-align: center; background: #111; border-radius: 16px; margin-top: 10px; border: 1px solid #333;}
+.ai-btn { background: linear-gradient(135deg, #805ad5, #009fe3); border: none; padding: 15px 20px; color: white; font-weight: bold; border-radius: 12px; width: 100%; font-size: 16px; cursor: pointer; transition: 0.2s;}
+.ai-progress-bar { width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin: 15px 0; display: none; }
+.ai-progress-fill { height: 100%; background: var(--primary-blue); width: 0%; transition: width 0.1s linear;}
+.video-card { background: #1a202c; border-radius: 12px; overflow: hidden; margin-top: 20px; border: 1px solid #2d3748; display: none; text-align: left;}
+.video-thumb { height: 150px; background: #2d3748; position: relative; display: flex; justify-content: center; align-items: center;}
 
-            </div>
-        </div>
-    </div>
+.ratings-wrapper { padding: 0 15px 20px 15px; }
+.trophy-header { background: white; padding: 15px 20px 10px 20px; border-bottom: 1px solid #edf2f7; position: sticky; top: 0; z-index: 10;}
+.trophy-header h2 { font-size: 24px; font-weight: 900; color: var(--text-dark); margin-bottom: 15px; letter-spacing: -0.5px;}
+.league-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 5px;}
+.league-tab { padding: 8px 14px; border-radius: 20px; background: #edf2f7; color: var(--text-grey); font-size: 12px; font-weight: bold; white-space: nowrap; cursor: pointer; transition: 0.2s; border: 1px solid transparent; outline: none;}
+.league-tab.active[data-league="all"] { background: var(--primary-blue); color: white; }
+.league-tab.active[data-league="D"] { background: var(--lvl-d); color: white; }
+.league-tab.active[data-league="D-C"] { background: var(--lvl-d-c); color: white; }
+.league-tab.active[data-league="C"] { background: var(--lvl-c); color: white; }
+.league-tab.active[data-league="B"] { background: var(--lvl-b); color: white; }
+.league-tab.active[data-league="A"] { background: var(--lvl-a); color: white; }
+.podium-container { display: flex; justify-content: center; align-items: flex-end; gap: 10px; margin: 25px 0; padding: 0 10px;}
+.podium-place { display: flex; flex-direction: column; align-items: center; flex: 1; max-width: 100px; text-align: center;}
+.podium-avatar { width: 50px; height: 50px; border-radius: 50%; background: white; display: flex; justify-content: center; align-items: center; font-weight: 900; color: #1a202c; font-size: 16px; margin-bottom: -15px; z-index: 2; border: 3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);}
+.podium-block { width: 100%; border-radius: 8px 8px 4px 4px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding-top: 20px; color: white; font-weight: 900; font-size: 20px;}
+.podium-name { font-size: 11px; font-weight: bold; color: var(--text-dark); margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;}
+.podium-pts { font-size: 10px; font-weight: 900; color: var(--primary-blue);} 
+.place-1 .podium-avatar { width: 65px; height: 65px; font-size: 20px; border-color: #d69e2e; }
+.place-1 .podium-block { height: 90px; background: linear-gradient(to bottom, #d69e2e, #b7791f); }
+.place-2 .podium-block { height: 70px; background: linear-gradient(to bottom, #a0aec0, #718096); }
+.place-3 .podium-block { height: 50px; background: linear-gradient(to bottom, #ed8936, #c05621); }
+.leaderboard-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.02); border: 1px solid #edf2f7;}
+.leaderboard-table th { background: #f8f9fb; padding: 12px 15px; text-align: left; font-size: 10px; color: var(--text-grey); border-bottom: 1px solid #edf2f7; text-transform: uppercase; letter-spacing: 1px;}
+.leaderboard-table td { padding: 12px 15px; border-bottom: 1px solid #edf2f7; font-size: 14px; font-weight: 700; color: var(--text-dark);}
 
-    <script src="js/registras.js"></script>
-</body>
-</html>
+/* ADMIN ZONOS DIZAINAS */
+#adminMode { display: none; height: 100vh; background-color: var(--admin-bg); color: var(--text-dark); }
+.admin-layout { display: flex; height: 100%; }
+.admin-sidebar { width: 250px; background-color: var(--admin-sidebar); color: white; display: flex; flex-direction: column; flex-shrink: 0;}
+.admin-sidebar .nav-menu { list-style: none; padding: 20px 0; flex-grow: 1; margin: 0; }
+.admin-sidebar .nav-menu li { padding: 15px 20px; cursor: pointer; color: #a0aec0; transition: 0.2s; display: flex; align-items: center; gap: 15px;}
+.admin-sidebar .nav-menu li.active { background-color: var(--primary-blue); color: white; }
+.admin-main { flex-grow: 1; padding: 30px; overflow-y: auto; }
+
+/* MOBILUS ADMIN ZONOS PRISITAIKYMAS */
+@media (max-width: 768px) {
+    .admin-layout { flex-direction: column; }
+    .admin-sidebar { width: 100%; height: auto; flex-shrink: 0; border-bottom: 2px solid #2d3748; padding-bottom: 10px; }
+    .admin-sidebar .logo { padding: 15px !important; font-size: 18px !important; display: flex; align-items: center; gap: 10px; }
+    .admin-sidebar .logo br { display: none; }
+    .admin-sidebar .nav-menu { display: flex !important; flex-wrap: wrap; padding: 0 10px !important; gap: 5px; }
+    .admin-sidebar .nav-menu li, .admin-sidebar .nav-menu a { flex: 1 1 45% !important; padding: 10px !important; margin: 0 !important; font-size: 12px !important; justify-content: center !important; border: none !important; border-radius: 6px; background-color: #2d3748; }
+    .admin-sidebar .nav-menu li.active { background-color: var(--primary-blue) !important; }
+    .admin-main { padding: 15px !important; }
+}
