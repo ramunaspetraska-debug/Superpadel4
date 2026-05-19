@@ -1,15 +1,26 @@
-const firebaseConfig = { apiKey: "AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc", authDomain: "padelio-turnyrai.firebaseapp.com", databaseURL: "https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app", projectId: "padelio-turnyrai" };
+// „Firebase“ konfigūracija ir inicializacija
+const firebaseConfig = { 
+    apiKey: "AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc", 
+    authDomain: "padelio-turnyrai.firebaseapp.com", 
+    databaseURL: "https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app", 
+    projectId: "padelio-turnyrai" 
+};
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 
 const DB_KEY = "padelio_pro_master"; 
 const GLOBAL_PLAYERS_KEY = "padelio_global_players";
 
-let liveDbRef = null; let currentLiveMatches = []; let activeLiveCourt = 1;
-let eRefAuthenticated = false; let currentFirebaseData = null;
+let liveDbRef = null; 
+let currentLiveMatches = []; 
+let activeLiveCourt = 1;
+let eRefAuthenticated = false; 
+let currentFirebaseData = null;
 let currentUser = JSON.parse(localStorage.getItem('sp_current_user')) || null;
 let isAppMode = true; 
 
-// ====== AUTENTIFIKACIJA IR PROFILIS ======
+// ==========================================
+// 1. AUTENTIFIKACIJA IR VARTOTOJO PROFILIS
+// ==========================================
 
 function openAuthModal() {
     document.getElementById('authInput').value = '';
@@ -18,11 +29,13 @@ function openAuthModal() {
     document.getElementById('authModal').classList.add('show');
 }
 
-function closeAuthModal() { document.getElementById('authModal').classList.remove('show'); }
+function closeAuthModal() { 
+    document.getElementById('authModal').classList.remove('show'); 
+}
 
 function processAuth() {
     let inputId = document.getElementById('authInput').value.trim().toLowerCase();
-    if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
+    if(!inputId) { showToast("Idėkite ID arba telefono numerį!"); return; }
     let safeId = inputId.replace(/[^a-z0-9]/g, '');
 
     firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
@@ -62,7 +75,14 @@ function updateAuthUI() {
         btn.innerHTML = `<i class="fa-solid fa-user-check"></i> ${shortName}`;
         btn.style.background = 'var(--status-green)';
         btn.style.color = 'white';
-        btn.onclick = () => { if(confirm("Ar tikrai norite atsijungti?")) { currentUser=null; localStorage.removeItem('sp_current_user'); updateAuthUI(); showToast("Atsijungta sėkmingai."); } };
+        btn.onclick = () => { 
+            if(confirm("Ar tikrai norite atsijungti?")) { 
+                currentUser = null; 
+                localStorage.removeItem('sp_current_user'); 
+                updateAuthUI(); 
+                showToast("Atsijungta sėkmingai."); 
+            } 
+        };
     } else {
         btn.innerHTML = `Prisijungti`;
         btn.style.background = '#ebf8ff';
@@ -71,12 +91,16 @@ function updateAuthUI() {
     }
 }
 
-// ====== TIESIOGIAI (LIVE) TV ======
+// ==========================================
+// 2. TIESIOGIAI (LIVE) MAČŲ STEBĖJIMAS TV
+// ==========================================
 
 function connectLiveRoom() {
     const roomInput = document.getElementById('liveRoomInput').value.trim();
     if (!roomInput) { showToast("Įveskite kambario pavadinimą!"); return; }
-    document.getElementById('fbStatusIcon').style.color = "var(--status-orange)"; document.getElementById('fbStatusText').innerText = `Jungiamasi prie "${roomInput}"...`;
+    document.getElementById('fbStatusIcon').style.color = "var(--status-orange)"; 
+    document.getElementById('fbStatusText').innerText = `Jungiamasi prie "${roomInput}"...`;
+    
     if (liveDbRef) { liveDbRef.off(); }
     liveDbRef = firebase.database().ref(DB_KEY + '/' + roomInput.toUpperCase());
     
@@ -85,9 +109,14 @@ function connectLiveRoom() {
         currentFirebaseData = data;
 
         if (!data || !data.matches) { 
-            document.getElementById('fbStatusIcon').style.color = "var(--status-red)"; document.getElementById('fbStatusText').innerText = "Kambaryje dar nėra pradėtų mačų."; document.getElementById('liveScoreBoxContainer').innerHTML = ""; document.getElementById('liveCourtsContainer').innerHTML = ""; return; 
+            document.getElementById('fbStatusIcon').style.color = "var(--status-red)"; 
+            document.getElementById('fbStatusText').innerText = "Kambaryje dar nėra pradėtų mačų."; 
+            document.getElementById('liveScoreBoxContainer').innerHTML = ""; 
+            document.getElementById('liveCourtsContainer').innerHTML = ""; 
+            return; 
         }
-        document.getElementById('fbStatusIcon').style.color = "var(--status-green)"; document.getElementById('fbStatusText').innerText = `Tiesiogiai: ${data.settings?.format || 'Turnyras'}`;
+        document.getElementById('fbStatusIcon').style.color = "var(--status-green)"; 
+        document.getElementById('fbStatusText').innerText = `Tiesiogiai: ${data.settings?.format || 'Turnyras'}`;
         
         currentLiveMatches = data.matches.filter(m => !m.finished);
         if(currentLiveMatches.length === 0) {
@@ -95,42 +124,96 @@ function connectLiveRoom() {
             let finishedMatches = data.matches.filter(m => m.finished);
             finishedMatches.sort((a, b) => { 
                 function getWeight(m) { 
-                    if (m.isFinal) { let t = (m.finalTitle || "").toUpperCase(); if (t.indexOf("DIDYSIS") > -1) return 10000; if (t.indexOf("MAŽASIS") > -1) return 9000; let matchNum = t.match(/\d+/); if (matchNum) return 8000 - parseInt(matchNum[0]); return 5000; } 
+                    if (m.isFinal) { 
+                        let t = (m.finalTitle || "").toUpperCase(); 
+                        if (t.indexOf("DIDYSIS") > -1) return 10000; 
+                        if (t.indexOf("MAŽASIS") > -1) return 9000; 
+                        let matchNum = t.match(/\d+/); 
+                        if (matchNum) return 8000 - parseInt(matchNum[0]); 
+                        return 5000; 
+                    } 
                     return (m.round || 0) * 10; 
                 } 
-                let wA = getWeight(a); let wB = getWeight(b); if (wA !== wB) return wB - wA; return (a.court || 0) - (b.court || 0); 
+                let wA = getWeight(a); 
+                let wB = getWeight(b); 
+                if (wA !== wB) return wB - wA; 
+                return (a.court || 0) - (b.court || 0); 
             });
             
             if (finishedMatches.length > 0) {
                 document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-trophy" style="color: #d69e2e;"></i> <span id="fbStatusText">Turnyro rezultatai</span>`;
                 let html = '';
                 finishedMatches.forEach(m => {
-                    let t1 = (m.team1 || []).map(p=>p.name).join(' / '); let t2 = (m.team2 || []).map(p=>p.name).join(' / ');
+                    let t1 = (m.team1 || []).map(p=>p.name).join(' / '); 
+                    let t2 = (m.team2 || []).map(p=>p.name).join(' / ');
                     let title = m.isFinal ? (m.finalTitle || 'FINALAS') : `RAUNDAS ${m.round || 'X'} (Kortas ${m.court})`;
                     let bgTitle = 'background: #1a202c;';
-                    if (m.isFinal) { let tUpper = title.toUpperCase(); if (tUpper.indexOf("DIDYSIS") > -1) bgTitle = 'background: linear-gradient(to right, #d69e2e, #b7791f);'; else if (tUpper.indexOf("MAŽASIS") > -1) bgTitle = 'background: linear-gradient(to right, #ed8936, #c05621);'; else bgTitle = 'background: #4a5568;'; }
-                    let w1 = m.score1 > m.score2 ? 'font-weight: 900; color: var(--primary-blue);' : 'color: var(--text-dark);'; let w2 = m.score2 > m.score1 ? 'font-weight: 900; color: var(--primary-blue);' : 'color: var(--text-dark);';
+                    if (m.isFinal) { 
+                        let tUpper = title.toUpperCase(); 
+                        if (tUpper.indexOf("DIDYSIS") > -1) bgTitle = 'background: linear-gradient(to right, #d69e2e, #b7791f);'; 
+                        else if (tUpper.indexOf("MAŽASIS") > -1) bgTitle = 'background: linear-gradient(to right, #ed8936, #c05621);'; 
+                        else bgTitle = 'background: #4a5568;'; 
+                    }
+                    let w1 = m.score1 > m.score2 ? 'font-weight: 900; color: var(--primary-blue);' : 'color: var(--text-dark);'; 
+                    let w2 = m.score2 > m.score1 ? 'font-weight: 900; color: var(--primary-blue);' : 'color: var(--text-dark);';
                     html += `<div class="score-box" style="margin-bottom: 10px;"><div style="${bgTitle} color: white; padding: 6px 15px; font-size: 10px; font-weight: bold; letter-spacing: 1px;">${title}</div><div class="team-row" style="padding: 10px 15px;"><div class="team-names" style="font-size: 13px;">${t1}</div><div class="team-score" style="font-size: 20px; ${w1}">${m.score1 || 0}</div></div><div class="team-row" style="border-bottom: none; background: #f8f9fb; padding: 10px 15px;"><div class="team-names" style="font-size: 13px;">${t2}</div><div class="team-score" style="font-size: 20px; ${w2}">${m.score2 || 0}</div></div></div>`;
                 });
                 document.getElementById('liveScoreBoxContainer').innerHTML = html;
-            } else { document.getElementById('liveScoreBoxContainer').innerHTML = "<p style='margin-top:20px; color:#718096; font-size:13px; text-align:center;'>Šiuo metu mačų nėra.</p>"; }
+            } else { 
+                document.getElementById('liveScoreBoxContainer').innerHTML = "<p style='margin-top:20px; color:#718096; font-size:13px; text-align:center;'>Šiuo metu mačų nėra.</p>"; 
+            }
             return;
         }
         document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-green);"></i> <span id="fbStatusText">Tiesiogiai: ${data.settings?.format || 'Turnyras'}</span>`;
-        renderLiveCourtFilters(); if(!currentLiveMatches.find(m => m.court == activeLiveCourt)) { activeLiveCourt = currentLiveMatches[0].court; } renderLiveScoreboard();
+        renderLiveCourtFilters(); 
+        if(!currentLiveMatches.find(m => m.court == activeLiveCourt)) { activeLiveCourt = currentLiveMatches[0].court; } 
+        renderLiveScoreboard();
     });
 }
 
-function renderLiveCourtFilters() { const container = document.getElementById('liveCourtsContainer'); container.innerHTML = ''; let courts = [...new Set(currentLiveMatches.map(m => m.court))].sort((a,b) => a-b); courts.forEach(courtNum => { let activeCls = (courtNum == activeLiveCourt) ? 'active' : ''; container.innerHTML += `<button type="button" class="live-filter-btn ${activeCls}" onclick="changeLiveCourt(${courtNum})">Kortas ${courtNum}</button>`; }); }
-function changeLiveCourt(courtNum) { activeLiveCourt = courtNum; renderLiveCourtFilters(); renderLiveScoreboard(); }
+function renderLiveCourtFilters() { 
+    const container = document.getElementById('liveCourtsContainer'); 
+    container.innerHTML = ''; 
+    let courts = [...new Set(currentLiveMatches.map(m => m.court))].sort((a,b) => a-b); 
+    courts.forEach(courtNum => { 
+        let activeCls = (courtNum == activeLiveCourt) ? 'active' : ''; 
+        container.innerHTML += `<button type="button" class="live-filter-btn ${activeCls}" onclick="changeLiveCourt(${courtNum})">Kortas ${courtNum}</button>`; 
+    }); 
+}
+
+function changeLiveCourt(courtNum) { 
+    activeLiveCourt = courtNum; 
+    renderLiveCourtFilters(); 
+    renderLiveScoreboard(); 
+}
 
 function changeLiveScore(matchId, teamNum, change) {
     if (!currentFirebaseData || !currentFirebaseData.settings?.eReferee) return;
-    if (!eRefAuthenticated) { const pin = prompt("Įveskite E-Teisėjavimo PIN kodą:"); if (pin === currentFirebaseData.settings.eRefereePin) { eRefAuthenticated = true; showToast("Sėkmingai prisijungėte!"); } else { showToast("Neteisingas PIN kodas!"); return; } }
-    const matchIndex = currentFirebaseData.matches.findIndex(m => m.id === matchId); if (matchIndex === -1) return;
-    let match = currentFirebaseData.matches[matchIndex]; let currentScore = teamNum === 1 ? (match.score1 || 0) : (match.score2 || 0); let newScore = Math.max(0, currentScore + change);
-    let updates = {}; updates[`matches/${matchIndex}/score${teamNum}`] = newScore; updates[`lastUpdate`] = Date.now();
-    liveDbRef.update(updates).catch(err => { console.error("Score update error:", err); showToast("Klaida išsaugant tašką!"); });
+    if (!eRefAuthenticated) { 
+        const pin = prompt("Įveskite E-Teisėjavimo PIN kodą:"); 
+        if (pin === currentFirebaseData.settings.eRefereePin) { 
+            eRefAuthenticated = true; 
+            showToast("Sėkmingai prisijungėte!"); 
+        } else { 
+            showToast("Neteisingas PIN kodas!"); 
+            return; 
+        } 
+    }
+    const matchIndex = currentFirebaseData.matches.findIndex(m => m.id === matchId); 
+    if (matchIndex === -1) return;
+    
+    let match = currentFirebaseData.matches[matchIndex]; 
+    let currentScore = teamNum === 1 ? (match.score1 || 0) : (match.score2 || 0); 
+    let newScore = Math.max(0, currentScore + change);
+    
+    let updates = {}; 
+    updates[`matches/${matchIndex}/score${teamNum}`] = newScore; 
+    updates[`lastUpdate`] = Date.now();
+    
+    liveDbRef.update(updates).catch(err => { 
+        console.error("Score update error:", err); 
+        showToast("Klaida išsaugant tašką!"); 
+    });
 }
 
 function renderLiveScoreboard() { 
@@ -154,18 +237,41 @@ function renderLiveScoreboard() {
     container.innerHTML = `<div class="score-box"><div style="background: #1a202c; color: white; padding: 6px 15px; font-size: 10px; font-weight: bold; letter-spacing: 1px;">${headerTitle}</div><div class="team-row"><div class="team-names">${team1Names}</div>${score1Html}</div><div class="team-row" style="border-bottom: none; background: #f8f9fb;"><div class="team-names">${team2Names}</div>${score2Html}</div></div>`; 
 }
 
-function openLiveModal(e) { e.stopPropagation(); document.getElementById('liveModal').classList.add('show'); document.body.style.overflow = 'hidden'; }
-
-function closeLiveModal() { 
-    try { eRefAuthenticated = false; currentFirebaseData = null; const modal = document.getElementById('liveModal'); if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; } setTimeout(() => { try { if(liveDbRef) { liveDbRef.off(); liveDbRef = null; } document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span>`; document.getElementById('liveRoomInput').value = ''; document.getElementById('liveCourtsContainer').innerHTML = '<div class="live-filter-btn">Laukiama prisijungimo...</div>'; document.getElementById('liveScoreBoxContainer').innerHTML = `<div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite V188 kambario pavadinimą...</div>`; } catch(err) {} }, 300); } catch(e) {}
+function openLiveModal(e) { 
+    e.stopPropagation(); 
+    document.getElementById('liveModal').classList.add('show'); 
+    document.body.style.overflow = 'hidden'; 
 }
 
-// ====== KALENDORIUS IR TURNYRAI ======
+function closeLiveModal() { 
+    try { 
+        eRefAuthenticated = false; 
+        currentFirebaseData = null; 
+        const modal = document.getElementById('liveModal'); 
+        if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; } 
+        setTimeout(() => { 
+            try { 
+                if(liveDbRef) { liveDbRef.off(); liveDbRef = null; } 
+                document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span>`; 
+                document.getElementById('liveRoomInput').value = ''; 
+                document.getElementById('liveCourtsContainer').innerHTML = '<div class="live-filter-btn">Laukiama prisijungimo...</div>'; 
+                document.getElementById('liveScoreBoxContainer').innerHTML = `<div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite V188 kambario pavadinimą...</div>`; 
+            } catch(err) {} 
+        }, 300); 
+    } catch(e) {}
+}
 
-const now = new Date(); const daysArr = ['S', 'P', 'A', 'T', 'K', 'P', 'Š']; let dynamicDates = []; 
+// ==========================================
+// 3. KALENDORIUS IR TURNYRAI
+// ==========================================
+
+const daysArr = ['S', 'P', 'A', 'T', 'K', 'P', 'Š']; 
+let dynamicDates = []; 
 for(let i = -3; i <= 13; i++) { 
     let d = new Date(now); d.setDate(now.getDate() + i); 
-    let m = (d.getMonth() + 1).toString().padStart(2, '0'); let day = d.getDate().toString().padStart(2, '0'); let dateKey = `${m}-${day}`;
+    let m = (d.getMonth() + 1).toString().padStart(2, '0'); 
+    let day = d.getDate().toString().padStart(2, '0'); 
+    let dateKey = `${m}-${day}`;
     dynamicDates.push({ fullDate: d, dateKey: dateKey, dayNumStr: d.getDate().toString(), dayNameStr: daysArr[d.getDay()], isToday: i === 0 }); 
 }
 let activeDate = dynamicDates.find(d => d.isToday).dateKey; 
@@ -177,7 +283,8 @@ function initDates() {
     if(adminSelect) adminSelect.innerHTML = '';
     
     dynamicDates.forEach(d => { 
-        let activeCls = d.isToday ? 'active' : ''; let idAttr = d.isToday ? 'id="today-date-box"' : ''; 
+        let activeCls = d.isToday ? 'active' : ''; 
+        let idAttr = d.isToday ? 'id="today-date-box"' : ''; 
         carousel.innerHTML += `<div ${idAttr} class="date-box ${activeCls}" onclick="selectDate('${d.dateKey}', this)"><div class="day-num">${d.dayNumStr}</div><div class="day-name">${d.dayNameStr}</div></div>`; 
         let selected = d.isToday ? 'selected' : ''; 
         if(adminSelect) adminSelect.innerHTML += `<option value="${d.dateKey}" ${selected}>${d.dayNumStr} d. (${d.dayNameStr})</option>`; 
@@ -187,12 +294,23 @@ function initDates() {
 
 function getTimeState(tDateKey, timeString) { 
     let targetDate = dynamicDates.find(d => d.dateKey === tDateKey); if (!targetDate) return 'future';
-    let tDate = targetDate.fullDate; let targetStartOfDay = new Date(tDate.getFullYear(), tDate.getMonth(), tDate.getDate()).getTime(); let todayStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    if (targetStartOfDay < todayStartOfDay) return 'past'; if (targetStartOfDay > todayStartOfDay) return 'future';
-    const currentTotalMins = now.getHours() * 60 + now.getMinutes(); const parts = timeString.split('-'); if(parts.length !== 2) return 'future'; 
-    const startParts = parts[0].trim().split(':'); const endParts = parts[1].trim().split(':'); 
-    const startTotal = parseInt(startParts[0]) * 60 + parseInt(startParts[1]); const endTotal = parseInt(endParts[0]) * 60 + parseInt(endParts[1]); 
-    if (currentTotalMins < startTotal) return 'future'; if (currentTotalMins >= startTotal && currentTotalMins <= endTotal) return 'live'; return 'past'; 
+    let tDate = targetDate.fullDate; 
+    let targetStartOfDay = new Date(tDate.getFullYear(), tDate.getMonth(), tDate.getDate()).getTime(); 
+    let todayStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    
+    if (targetStartOfDay < todayStartOfDay) return 'past'; 
+    if (targetStartOfDay > todayStartOfDay) return 'future';
+    
+    const currentTotalMins = now.getHours() * 60 + now.getMinutes(); 
+    const parts = timeString.split('-'); if(parts.length !== 2) return 'future'; 
+    const startParts = parts[0].trim().split(':'); 
+    const endParts = parts[1].trim().split(':'); 
+    const startTotal = parseInt(startParts[0]) * 60 + parseInt(startParts[1]); 
+    const endTotal = parseInt(endParts[0]) * 60 + parseInt(endParts[1]); 
+    
+    if (currentTotalMins < startTotal) return 'future'; 
+    if (currentTotalMins >= startTotal && currentTotalMins <= endTotal) return 'live'; 
+    return 'past'; 
 }
 
 const dYest = dynamicDates.find(d => d.fullDate.getDate() === new Date(now.getTime() - 86400000).getDate())?.dateKey || dynamicDates[0].dateKey;
@@ -261,7 +379,9 @@ function closePush() { document.getElementById('pushNotification').style.top = '
 function manageReservation() { closePush(); openCancelModal(currentPushId); } 
 function showToast(text) { const toast = document.getElementById('toastMsg'); toast.innerText = text; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
 
-// ====== REITINGŲ LOGIKA ======
+// ==========================================
+// 4. PASAULINIAI REITINGAI (TIER LEAGUES)
+// ==========================================
 
 function changeLeague(league) {
     document.querySelectorAll('.league-tab').forEach(el => el.classList.remove('active'));
@@ -286,14 +406,10 @@ function loadAutomatedRatings(leagueLevel = 'all') {
         let allPlayers = Object.values(snap.val() || {});
         let dataPool = [];
 
-        if (leagueLevel === 'all') { 
-            dataPool = allPlayers; 
-        } else { 
-            dataPool = allPlayers.filter(p => p.tier === leagueLevel); 
-        }
+        if (leagueLevel === 'all') { dataPool = allPlayers; } 
+        else { dataPool = allPlayers.filter(p => p.tier === leagueLevel); }
 
         dataPool.sort((a,b) => (b.rating || 0) - (a.rating || 0));
-
         let mappedPool = dataPool.map(p => ({ name: p.name, points: p.rating || 0 }));
 
         if(mappedPool.length >= 3) {
@@ -331,16 +447,20 @@ function switchTab(pageId, element) {
 }
 function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); switchTab('page-calendar', calendarBtn); }
 
-// ====== KAMERA IR DI ======
+// ==========================================
+// 5. IŠMANIOJI KAMERA IR DI HIGHLIGHTS
+// ==========================================
 
-let isRecording = false; let timerIntervalCam; let secondsRecord = 0; let cameraStream = null;
+let cameraStream = null;
 async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
 function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; document.getElementById('cameraFeed').srcObject = null; } }
 function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; btn.classList.add('recording'); indicator.style.display = 'flex'; aiPanel.style.display = 'none'; infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); document.getElementById('recTimer').innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; btn.classList.remove('recording'); indicator.style.display = 'none'; clearInterval(timerIntervalCam); btn.style.display = 'none'; infoText.style.display = 'none'; aiPanel.style.display = 'block'; setTimeout(() => { document.getElementById('recTimer').innerText = `00:00:00`; }, 1000); } }
 function startAiProcessing() { document.getElementById('startAiBtn').style.display = 'none'; document.getElementById('aiProgress').style.display = 'block'; document.getElementById('aiStatusText').style.display = 'block'; let fill = document.getElementById('aiFill'); let status = document.getElementById('aiStatusText'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; fill.style.width = width + '%'; if(width < 40) status.innerText = `Analizuojama... Ieškoma smūgių (${Math.floor(width)}%)`; else if(width < 80) status.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else status.innerText = `Baigiama... (${Math.floor(width)}%)`; if(width >= 100) { clearInterval(interval); document.getElementById('aiProgress').style.display = 'none'; document.getElementById('aiStatusText').style.display = 'none'; document.getElementById('generatedVideo').style.display = 'block'; showToast("DI Highlights sėkmingai sugeneruoti!"); } }, 500); }
 function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { document.getElementById('generatedVideo').innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Kopijuoti nuorodą</button></div>`; }, 2000); }
 
-// ====== ADMINISTRAVIMO LOGIKA ======
+// ==========================================
+// 6. ADMNISTRATORIAUS VALDYMO PLATFORMA
+// ==========================================
 
 function promptAdmin() {
     if (!isAppMode) { toggleMode(); return; }
@@ -349,30 +469,37 @@ function promptAdmin() {
 }
 
 function toggleMode() {
-    const app = document.getElementById('appMode'); const admin = document.getElementById('adminMode');
+    const app = document.getElementById('appMode'); 
+    const admin = document.getElementById('adminMode');
     if (isAppMode) { 
-        app.style.display = 'none'; admin.style.display = 'block'; 
-        // Automatiškai atidaromas "Turnyrų valdymas"
+        app.style.display = 'none'; 
+        admin.style.display = 'block'; 
         adminNav(document.querySelector('.admin-sidebar li:nth-child(2)'), 'admin-view-turnyrai');
-    } 
-    else { app.style.display = 'block'; admin.style.display = 'none'; renderTournaments(); }
+    } else { 
+        app.style.display = 'block'; 
+        admin.style.display = 'none'; 
+        renderTournaments(); 
+    }
     isAppMode = !isAppMode;
 }
 
 function adminNav(element, viewId) { 
-    // Perjungiame aktyvų mygtuką
     document.querySelectorAll('.admin-sidebar li').forEach(el => el.classList.remove('active')); 
     if (element) element.classList.add('active'); 
     
-    // Paslepiame visus langus ir parodome norimą
     document.querySelectorAll('.admin-tab').forEach(el => el.style.display = 'none');
     const targetView = document.getElementById(viewId);
     if (targetView) targetView.style.display = 'block';
 
-    // Jei atidarome žaidėjų bazę - užkrauname duomenis iš Firebase
     if (viewId === 'admin-view-zaidejai') {
         loadAdminPlayersDB();
     }
+}
+
+function createTournament(e) { 
+    e.preventDefault(); 
+    const newT = { id: Date.now(), date: document.getElementById('newDate').value, format: document.getElementById('newFormat').value, level: document.getElementById('newLevel').value, time: document.getElementById('newTime').value, registered: 0, max: parseInt(document.getElementById('newMax').value), status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [] }; 
+    tournaments.push(newT); saveData(); showToast("Turnyras sėkmingai sugeneruotas!"); document.getElementById('adminForm').reset(); renderTournaments(); 
 }
 
 let globalAdminPlayers = [];
@@ -386,7 +513,7 @@ function loadAdminPlayersDB() {
         document.getElementById('admin-players-count').innerText = `Viso: ${globalAdminPlayers.length}`;
         renderAdminPlayersDB(globalAdminPlayers);
     }).catch(err => {
-        document.getElementById('admin-players-list-db').innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis. Patikrinkite interneto ryšį.</div>';
+        document.getElementById('admin-players-list-db').innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis. Patikrinkite ryšį.</div>';
     });
 }
 
@@ -413,8 +540,8 @@ function renderAdminPlayersDB(playersArray) {
             <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${p.tier || 'D'}</span></td>
             <td style="padding: 12px; color: ${ptsColor}; font-weight: 900; font-size: 15px;">${p.rating || 300}</td>
             <td style="padding: 12px; text-align: right;">
-                <button onclick="editAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti taškus"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Ištrinti žaidėją"><i class="fa-solid fa-trash"></i></button>
+                <button onclick="editAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti reitingą"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Ištrinti paskyrą"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
@@ -431,9 +558,9 @@ function filterAdminPlayers() {
 function deleteAdminPlayer(id) {
     let p = globalAdminPlayers.find(x => x.id === id);
     if(!p) return;
-    if(confirm(`Ar tikrai norite IŠTRINTI žaidėją "${p.name}" iš globalios duomenų bazės?\n\nŠio veiksmo atšaukti negalima! Jis praras visą ELO istoriją ir profilį.`)) {
+    if(confirm(`Ar tikrai norite IŠTRINTI žaidėją "${p.name}" iš globalios duomenų bazės?\n\nŠis žaidėjas praras savo unikalų Padel ID bei ELO istoriją!`)) {
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + id).remove().then(() => {
-            showToast("Žaidėjas ištrintas iš DB!");
+            showToast("Žaidėjas ištrintas!");
             loadAdminPlayersDB();
         });
     }
@@ -456,10 +583,11 @@ function editAdminPlayer(id) {
             rating: pts,
             tier: tier
         }).then(() => {
-            showToast(`Atnaujinta! Nauji taškai: ${pts} (${tier} lygis)`);
+            showToast(`Atnaujinta! ${pts} ELO (${tier} lygis)`);
             loadAdminPlayersDB();
         });
     }
 }
 
+// Inicializacija užkrovus puslapį
 window.onload = () => { initDates(); renderTournaments(); updateAuthUI(); };
