@@ -442,4 +442,274 @@ function loadAutomatedRatings(leagueLevel = 'all') {
     const spinner = document.getElementById('loaderSpinner');
     if (leagueLevel === 'all') spinner.style.color = 'var(--primary-blue)';
     if (leagueLevel === 'D') spinner.style.color = 'var(--lvl-d)';
-    if
+    if (leagueLevel === 'D-C') spinner.style.color = 'var(--lvl-d-c)';
+    if (leagueLevel === 'C') spinner.style.color = 'var(--lvl-c)';
+    if (leagueLevel === 'B') spinner.style.color = 'var(--lvl-b)';
+    if (leagueLevel === 'A') spinner.style.color = 'var(--lvl-a)';
+
+    firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
+        let allPlayers = Object.values(snap.val() || {});
+        let dataPool = [];
+
+        if (leagueLevel === 'all') { dataPool = allPlayers; } 
+        else { dataPool = allPlayers.filter(p => p.tier === leagueLevel); }
+
+        dataPool.sort((a,b) => (b.rating || 0) - (a.rating || 0));
+        let mappedPool = dataPool.map(p => ({ name: p.name, points: p.rating || 0 }));
+
+        if(mappedPool.length >= 3) {
+            document.getElementById('pod1-name').innerText = mappedPool[0].name; document.getElementById('pod1-pts').innerText = mappedPool[0].points + " pts";
+            document.getElementById('pod2-name').innerText = mappedPool[1].name; document.getElementById('pod2-pts').innerText = mappedPool[1].points + " pts";
+            document.getElementById('pod3-name').innerText = mappedPool[2].name; document.getElementById('pod3-pts').innerText = mappedPool[2].points + " pts";
+        } else {
+            document.getElementById('pod1-name').innerText = mappedPool[0]?.name || "-"; document.getElementById('pod1-pts').innerText = mappedPool[0] ? mappedPool[0].points + " pts" : "-";
+            document.getElementById('pod2-name').innerText = mappedPool[1]?.name || "-"; document.getElementById('pod2-pts').innerText = mappedPool[1] ? mappedPool[1].points + " pts" : "-";
+            document.getElementById('pod3-name').innerText = "-"; document.getElementById('pod3-pts').innerText = "-";
+        }
+
+        const tbody = document.getElementById('ratingsTableBody'); tbody.innerHTML = '';
+        mappedPool.forEach((player, index) => {
+            let rankNum = index + 1;
+            let rankClass = index === 0 ? 'color: #d69e2e; font-size: 18px; font-weight: 900;' : index === 1 ? 'color: #a0aec0; font-weight: 800;' : index === 2 ? 'color: #dd6b20; font-weight: 800;' : 'color: var(--text-grey);';
+            let ptsColor = 'var(--primary-blue)';
+            if (leagueLevel === 'D') ptsColor = 'var(--lvl-d)'; if (leagueLevel === 'D-C') ptsColor = 'var(--lvl-d-c)'; if (leagueLevel === 'C') ptsColor = 'var(--lvl-c)'; if (leagueLevel === 'B') ptsColor = 'var(--lvl-b)'; if (leagueLevel === 'A') ptsColor = 'var(--lvl-a)';
+            tbody.innerHTML += `<tr><td style="text-align: center; ${rankClass}">${rankNum}</td><td>${player.name}</td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
+        });
+
+        document.getElementById('ratingsLoader').style.display = 'none'; document.getElementById('ratingsContent').style.display = 'block';
+    }).catch(err => {
+        console.error("Reitingų užkrovimo klaida:", err);
+        document.getElementById('ratingsLoader').innerHTML = "<div style='color:var(--status-red); font-weight:bold;'>Klaida kraunant reitingus. Patikrinkite ryšį.</div>";
+    });
+}
+
+function switchTab(pageId, element) { 
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active')); if(element) element.classList.add('active'); 
+    document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active')); const page = document.getElementById(pageId); if(page) page.classList.add('active'); 
+    
+    if(pageId === 'page-cam') { document.getElementById('mainHeader').style.display = 'none'; startCamera(); } else { document.getElementById('mainHeader').style.display = 'flex'; stopCamera(); }
+    if(pageId === 'page-trophy') { document.querySelectorAll('.league-tab').forEach(el => el.classList.remove('active')); document.querySelector('.league-tab[data-league="all"]').classList.add('active'); loadAutomatedRatings('all'); }
+}
+function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); switchTab('page-calendar', calendarBtn); }
+
+// ==========================================
+// 5. IŠMANIOJI KAMERA IR DI HIGHLIGHTS
+// ==========================================
+
+let cameraStream = null;
+async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
+function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; document.getElementById('cameraFeed').srcObject = null; } }
+function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; btn.classList.add('recording'); indicator.style.display = 'flex'; aiPanel.style.display = 'none'; infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); document.getElementById('recTimer').innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; btn.classList.remove('recording'); indicator.style.display = 'none'; clearInterval(timerIntervalCam); btn.style.display = 'none'; infoText.style.display = 'none'; aiPanel.style.display = 'block'; setTimeout(() => { document.getElementById('recTimer').innerText = `00:00:00`; }, 1000); } }
+function startAiProcessing() { document.getElementById('startAiBtn').style.display = 'none'; document.getElementById('aiProgress').style.display = 'block'; document.getElementById('aiStatusText').style.display = 'block'; let fill = document.getElementById('aiFill'); let status = document.getElementById('aiStatusText'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; fill.style.width = width + '%'; if(width < 40) status.innerText = `Analizuojama... Ieškoma smūgių (${Math.floor(width)}%)`; else if(width < 80) status.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else status.innerText = `Baigiama... (${Math.floor(width)}%)`; if(width >= 100) { clearInterval(interval); document.getElementById('aiProgress').style.display = 'none'; document.getElementById('aiStatusText').style.display = 'none'; document.getElementById('generatedVideo').style.display = 'block'; showToast("DI Highlights sėkmingai sugeneruoti!"); } }, 500); }
+function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { document.getElementById('generatedVideo').innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Kopijuoti nuorodą</button></div>`; }, 2000); }
+
+// ==========================================
+// 6. ADMNISTRATORIAUS VALDYMO PLATFORMA
+// ==========================================
+
+function promptAdmin() {
+    if (!isAppMode) { toggleMode(); return; }
+    const code = prompt("Įveskite administratoriaus kodą:");
+    if (code === "7030") { toggleMode(); } else if (code !== null) { showToast("Neteisingas kodas!"); }
+}
+
+function toggleMode() {
+    const app = document.getElementById('appMode'); 
+    const admin = document.getElementById('adminMode');
+    if (isAppMode) { 
+        app.style.display = 'none'; 
+        admin.style.display = 'block'; 
+        adminNav(document.querySelector('.admin-sidebar li:nth-child(2)'), 'admin-view-turnyrai');
+    } else { 
+        app.style.display = 'block'; 
+        admin.style.display = 'none'; 
+        renderTournaments(); 
+    }
+    isAppMode = !isAppMode;
+}
+
+function adminNav(element, viewId) { 
+    document.querySelectorAll('.admin-sidebar li').forEach(el => el.classList.remove('active')); 
+    if (element) element.classList.add('active'); 
+    
+    document.querySelectorAll('.admin-tab').forEach(el => el.style.display = 'none');
+    const targetView = document.getElementById(viewId);
+    if (targetView) targetView.style.display = 'block';
+
+    if (viewId === 'admin-view-zaidejai') {
+        loadAdminPlayersDB();
+    } else if (viewId === 'admin-view-turnyrai') {
+        renderAdminTournaments();
+    }
+}
+
+// NAUJA KŪRIMO FUNKCIJA (IŠSAUGO, IŠVALO IR ATNAUJINA LENTELĘ)
+function createTournament(e) { 
+    e.preventDefault(); 
+    const newT = { 
+        id: Date.now(), 
+        date: document.getElementById('newDate').value, 
+        format: document.getElementById('newFormat').value, 
+        level: document.getElementById('newLevel').value, 
+        time: document.getElementById('newTime').value, 
+        registered: 0, 
+        max: parseInt(document.getElementById('newMax').value), 
+        status: 'open', 
+        isDemoWaitlist: false, 
+        waitlistCount: 0, 
+        timeState: 'future', 
+        players: [] 
+    }; 
+    tournaments.push(newT); 
+    saveData(); 
+    showToast("Turnyras sėkmingai sugeneruotas!"); 
+    document.getElementById('adminForm').reset(); 
+    renderAdminTournaments();
+    renderTournaments(); 
+}
+
+function renderAdminTournaments() {
+    const list = document.getElementById('admin-tournaments-list-db');
+    if(!list) return;
+    if(tournaments.length === 0) {
+        list.innerHTML = '<div style="color: #718096; font-size: 13px; text-align:center; padding: 20px;">Turnyrų nėra.</div>';
+        return;
+    }
+    
+    let sorted = [...tournaments].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; min-width: 500px;">';
+    html += '<tr style="background: #edf2f7; color: #718096; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;"><th style="padding: 12px; border-radius: 6px 0 0 0;">Diena</th><th style="padding: 12px;">Laikas</th><th style="padding: 12px;">Formatas</th><th style="padding: 12px;">Lygis</th><th style="padding: 12px;">Dalyviai</th><th style="padding: 12px; border-radius: 0 6px 0 0; text-align: right;">Veiksmai</th></tr>';
+
+    sorted.forEach(t => {
+        html += `<tr style="border-bottom: 1px solid #e2e8f0; transition: 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'">
+            <td style="padding: 12px; font-weight: bold; color: var(--text-dark);">${t.date}</td>
+            <td style="padding: 12px; color: var(--text-grey); font-weight: 600;">${t.time}</td>
+            <td style="padding: 12px; font-weight: 800; color: var(--primary-blue);">${t.format}</td>
+            <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${t.level}</span></td>
+            <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
+            <td style="padding: 12px; text-align: right;">
+                <button onclick="deleteTournament(${t.id})" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    html += '</table>';
+    list.innerHTML = html;
+}
+
+function deleteTournament(id) {
+    if(confirm("Ar tikrai norite ištrinti šį turnyrą iš sistemos? Visi užsiregistravę žaidėjai bus pašalinti.")) {
+        tournaments = tournaments.filter(t => t.id !== id);
+        saveData();
+        renderAdminTournaments();
+        renderTournaments();
+        showToast("Turnyras ištrintas!");
+    }
+}
+
+let globalAdminPlayers = [];
+
+function loadAdminPlayersDB() {
+    document.getElementById('admin-players-list-db').innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Jungiamasi prie debesies...</div>';
+    
+    firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
+        let data = snap.val() || {};
+        globalAdminPlayers = Object.values(data).sort((a,b) => (b.rating || 0) - (a.rating || 0));
+        document.getElementById('admin-players-count').innerText = `Viso: ${globalAdminPlayers.length}`;
+        renderAdminPlayersDB(globalAdminPlayers);
+    }).catch(err => {
+        document.getElementById('admin-players-list-db').innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis. Patikrinkite ryšį.</div>';
+    });
+}
+
+function renderAdminPlayersDB(playersArray) {
+    if(playersArray.length === 0) {
+        document.getElementById('admin-players-list-db').innerHTML = '<div style="text-align:center; padding:20px; color:#718096;">Žaidėjų nerasta.</div>';
+        return;
+    }
+
+    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; min-width: 400px;">';
+    html += '<tr style="background: #edf2f7; color: #718096; text-transform: uppercase; font-size: 10px; letter-spacing: 1px;"><th style="padding: 12px; border-top-left-radius: 6px;">Vardas</th><th style="padding: 12px;">Lytis</th><th style="padding: 12px;">Lygis</th><th style="padding: 12px;">ELO Taškai</th><th style="padding: 12px; border-top-right-radius: 6px; text-align: right;">Veiksmai</th></tr>';
+    
+    playersArray.forEach(p => {
+        let ptsColor = 'var(--primary-blue)';
+        if (p.tier === 'A') ptsColor = 'var(--lvl-a)';
+        else if (p.tier === 'B') ptsColor = 'var(--lvl-b)';
+        else if (p.tier === 'C') ptsColor = 'var(--lvl-c)';
+        else if (p.tier === 'D-C') ptsColor = 'var(--lvl-d-c)';
+        else ptsColor = 'var(--lvl-d)';
+
+        html += `<tr style="border-bottom: 1px solid #e2e8f0; transition: 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'">
+            <td style="padding: 12px; font-weight: 800; color: var(--text-dark);">${p.name} <br><span style="font-size:9px; color:#a0aec0; font-weight:normal;">ID: ${p.id}</span></td>
+            <td style="padding: 12px; font-weight: bold; color: var(--text-grey);">${p.gender === 'M' ? 'V' : 'M'}</td>
+            <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${p.tier || 'D'}</span></td>
+            <td style="padding: 12px; color: ${ptsColor}; font-weight: 900; font-size: 15px;">${p.rating || 300}</td>
+            <td style="padding: 12px; text-align: right;">
+                <button onclick="editAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti reitingą"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Ištrinti paskyrą"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('admin-players-list-db').innerHTML = html;
+}
+
+// IŠTAISYTA PAIEŠKOS KLAIDA (Teksto tipo užtikrinimas)
+function filterAdminPlayers() {
+    let query = document.getElementById('adminPlayerSearch').value.toLowerCase();
+    let filtered = globalAdminPlayers.filter(p => {
+        let nameMatch = (p.name || "").toLowerCase().includes(query);
+        let idMatch = String(p.id || "").toLowerCase().includes(query);
+        return nameMatch || idMatch;
+    });
+    renderAdminPlayersDB(filtered);
+}
+
+// IŠTAISYTA TRYNIMO KLAIDA (Teksto tipo užtikrinimas)
+function deleteAdminPlayer(id) {
+    let p = globalAdminPlayers.find(x => String(x.id) === String(id));
+    if(!p) {
+        showToast("Klaida: Žaidėjas nerastas!");
+        return;
+    }
+    if(confirm(`Ar tikrai norite IŠTRINTI žaidėją "${p.name}" iš globalios duomenų bazės?\n\nŠis žaidėjas praras savo unikalų Padel ID bei ELO istoriją!`)) {
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + p.id).remove().then(() => {
+            showToast("Žaidėjas ištrintas!");
+            loadAdminPlayersDB();
+        }).catch(err => {
+            showToast("Klaida trinant žaidėją.");
+        });
+    }
+}
+
+// IŠTAISYTA REDAGAVIMO KLAIDA (Teksto tipo užtikrinimas)
+function editAdminPlayer(id) {
+    let p = globalAdminPlayers.find(x => String(x.id) === String(id));
+    if(!p) {
+        showToast("Klaida: Žaidėjas nerastas!");
+        return;
+    }
+    let newPts = prompt(`Redaguojate žaidėją: ${p.name}\nDabartinis reitingas: ${p.rating || 300}\n\nĮveskite naują ELO taškų skaičių:`, p.rating || 300);
+    
+    if(newPts !== null && newPts.trim() !== "" && !isNaN(newPts)) {
+        let pts = parseInt(newPts);
+        let tier = "D";
+        if (pts >= 851) tier = "A";
+        else if (pts >= 671) tier = "B";
+        else if (pts >= 501) tier = "C";
+        else if (pts >= 351) tier = "D-C";
+
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + p.id).update({
+            rating: pts,
+            tier: tier
+        }).then(() => {
+            showToast(`Atnaujinta! ${pts} ELO (${tier} lygis)`);
+            loadAdminPlayersDB();
+        }).catch(err => {
+            showToast("Klaida atnaujinant.");
+        });
+    }
+}
+
+// Inicializacija užkrovus puslapį
+window.onload = () => { initDates(); renderTournaments(); updateAuthUI(); };
