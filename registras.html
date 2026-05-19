@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <link rel="stylesheet" href="/css/registras.css?v=4">
+    <link rel="stylesheet" href="/css/registras.css?v=5">
 </head>
 <body>
 
@@ -102,7 +102,6 @@
         <div id="page-calendar" class="page-view active">
             <div class="filters">
                 <div class="filter-group"><select id="filterFormat" onchange="renderTournaments()"><option value="all">Visi formatai</option><option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option></select></div>
-                
                 <div class="filter-group">
                     <select id="filterLevel" onchange="renderTournaments()">
                         <option value="all">Visi lygiai</option>
@@ -115,7 +114,6 @@
                         <option value="Privatus">Privatus (Nereitinguojamas)</option>
                     </select>
                 </div>
-                
                 <div class="filter-group full-width"><div class="search-wrapper"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="filterPlayer" placeholder="Ieškoti žaidėjo (pvz. Marius)" onkeyup="renderTournaments()"></div></div>
             </div>
             <div class="date-carousel" id="dateCarousel"></div>
@@ -210,6 +208,7 @@
                 <div id="admin-view-turnyrai" class="admin-tab">
                     <h1 style="margin-bottom: 20px;">Turnyrų Valdymas</h1>
                     <div style="display: grid; grid-template-columns: 1fr; max-width: 600px;">
+                        
                         <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;">
                             <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Sukurti Naują Turnyrą</div>
                             <form id="adminForm" onsubmit="createTournament(event)">
@@ -249,7 +248,7 @@
                         </div>
 
                         <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto;">
-                            <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Sukurti Turnyrai</div>
+                            <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Visi Sistemos Turnyrai</div>
                             <div id="admin-tournaments-list-db">
                                 </div>
                         </div>
@@ -277,6 +276,6 @@
         </div>
     </div>
 
-    <script src="/js/registras.js?v=4"></script>
+    <script src="/js/registras.js?v=5"></script>
 </body>
 </html>
