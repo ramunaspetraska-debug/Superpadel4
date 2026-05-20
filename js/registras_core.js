@@ -37,6 +37,13 @@ function closeAuthModal() {
 function processAuth() {
     let inputId = document.getElementById('authInput').value.trim().toLowerCase();
     if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
+    
+    // SPRENDIMAS NUO DUBLIKATŲ: Suvienodiname lietuviškus telefono numerius
+    // Jei žaidėjas įveda numerį, prasidedantį "86...", automatiškai paverčiame į tarptautinį "3706..."
+    if (inputId.startsWith('86') && inputId.length === 9) {
+        inputId = '370' + inputId.substring(1);
+    }
+    
     let safeId = inputId.replace(/[^a-z0-9]/g, '');
 
     firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
