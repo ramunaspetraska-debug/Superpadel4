@@ -9,7 +9,8 @@ if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 
 const DB_KEY = "padelio_pro_master"; 
 const GLOBAL_PLAYERS_KEY = "padelio_global_players";
-const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments"; // NAUJA DEBESIES ŠAKA TURNYRAMS
+const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments"; 
+const GLOBAL_ARCHIVE_KEY = "padelio_archive_tournaments"; // AMŽINAS ARCHYVAS SENIEMS TURNYRAMS
 
 let liveDbRef = null; 
 let currentLiveMatches = []; 
@@ -38,18 +39,17 @@ function processAuth() {
     let inputId = document.getElementById('authInput').value.trim().toLowerCase();
     if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
     
-    // 1. ŽINGSNIS: Iš karto išvalome visus tarpus, pliusus, brūkšnelius
+    // Iš karto išvalome visus tarpus, pliusus, brūkšnelius
     let safeId = inputId.replace(/[^a-z0-9]/g, '');
 
-    // 2. ŽINGSNIS: Suvienodiname pradžią į tarptautinį "3706..." formatą
+    // Suvienodiname pradžią į tarptautinį "3706..." formatą
     if (safeId.startsWith('86') && safeId.length === 9) {
-        safeId = '370' + safeId.substring(1); // tampa 3706...
+        safeId = '370' + safeId.substring(1); 
     }
     else if (safeId.startsWith('06') && safeId.length === 9) {
-        safeId = '370' + safeId.substring(1); // nuimam 0, pridedam 370 -> tampa 3706...
+        safeId = '370' + safeId.substring(1); 
     }
 
-    // Dabar safeId visais atvejais yra vienodas (pvz., "37061122233"), ieškome duomenų bazėje
     firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
         let user = snap.val();
         if(user) {
@@ -68,7 +68,6 @@ function processAuth() {
                 let gender = document.getElementById('authGender').value;
                 if(!name) { showToast("Būtina įvesti vardą!"); return; }
                 
-                // Išsaugome naują žaidėją su galutinai išvalytu tarptautiniu ID
                 let newUser = { id: safeId, name: name, gender: gender, rating: 300, tier: "D", total_matches: 0, last_played: Date.now() };
                 firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).set(newUser).then(() => {
                     currentUser = newUser;
@@ -276,7 +275,7 @@ function closeLiveModal() {
 }
 
 // ==========================================
-// 3. KALENDORIUS IR TURNYRAI (DEBESYJE)
+// 3. KALENDORIUS IR TURNYRAI (DEBESYJE + AUTOMATINIS ARCHYVAS)
 // ==========================================
 
 const now = new Date(); const daysArr = ['S', 'P', 'A', 'T', 'K', 'P', 'Š']; 
@@ -327,30 +326,66 @@ function getTimeState(tDateKey, timeString) {
     return 'past'; 
 }
 
-const dYest = dynamicDates.find(d => d.fullDate.getDate() === new Date(now.getTime() - 86400000).getDate())?.dateKey || dynamicDates[0].dateKey;
-const dToday = dynamicDates.find(d => d.isToday).dateKey;
-const dTom = dynamicDates.find(d => d.fullDate.getDate() === new Date(now.getTime() + 86400000).getDate())?.dateKey || dynamicDates[4].dateKey;
-
 const defaultTournaments = [
-    { id: 1, date: dYest, timeState: 'past', format: 'Americano', level: 'D', time: '10:00 - 12:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: false, waitlistCount: 0, players: ['Darius', 'Lina', 'Petras', 'Rasa'] }, 
-    { id: 2, date: dToday, timeState: 'past', format: 'Mix Blitz', level: 'D-C', time: '08:15 - 10:00', registered: 12, max: 16, status: 'open', isDemoWaitlist: false, waitlistCount: 0, players: ['Andrius', 'Laura', 'Karolis'] }, 
-    { id: 3, date: dToday, timeState: 'live', format: 'Blitz', level: 'C', time: '14:00 - 17:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: true, waitlistCount: 2, players: ['Marius', 'Lukas', 'Tomas', 'Aistė'] }, 
-    { id: 4, date: dToday, timeState: 'future', format: 'Americano', level: 'C', time: '18:00 - 20:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: true, waitlistCount: 2, players: ['Marius', 'Dovydas', 'Ignas'] }, 
-    { id: 5, date: dToday, timeState: 'future', format: 'Mixed Kings', level: 'A', time: '20:30 - 22:30', registered: 2, max: 12, status: 'open', isDemoWaitlist: false, waitlistCount: 0, players: ['Vilius', 'Mantas'] }, 
-    { id: 6, date: dTom, timeState: 'future', format: 'Moterų Blitz', level: 'B', time: '18:00 - 20:00', registered: 8, max: 16, status: 'open', isDemoWaitlist: false, waitlistCount: 0, players: ['Aistė', 'Rūta', 'Eglė'] } 
+    { id: 1, date: "05-19", timeState: 'past', format: 'Americano', level: 'D', time: '10:00 - 12:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: false, waitlistCount: 0, players: ['Darius', 'Lina', 'Petras', 'Rasa'] }
 ];
 
 let tournaments = []; 
 
+// -----------------------------------------------------------------
+// SUTVARKyta: Visiškai automatinis senų turnyrų archyvavimas fone fone
+// -----------------------------------------------------------------
+function runBackgroundAutoArchiving(fetchedTournaments) {
+    let checkDate = new Date();
+    let archiveThreshold = new Date();
+    archiveThreshold.setDate(checkDate.getDate() - 30); // Slenkstis: senesni nei 30 dienų
+
+    let toArchive = [];
+    let toKeep = [];
+    let isDataChanged = false;
+
+    fetchedTournaments.forEach(t => {
+        if (!t || !t.date) return;
+        let [m, d] = t.date.split('-').map(Number);
+        let tDate = new Date(new Date().getFullYear(), m - 1, d);
+
+        if (tDate < archiveThreshold) {
+            toArchive.push(t);
+            isDataChanged = true;
+        } else {
+            toKeep.push(t);
+        }
+    });
+
+    // Jeigu radome senų turnyrų, automatiškai migruojame į archyvo šaką debesyje fone
+    if (isDataChanged && toArchive.length > 0) {
+        firebase.database().ref(GLOBAL_ARCHIVE_KEY).once('value').then(snap => {
+            let existingArchive = snap.val() || [];
+            if (!Array.isArray(existingArchive)) existingArchive = Object.values(existingArchive);
+            let updatedArchive = existingArchive.concat(toArchive);
+            
+            // 1. Įrašome į archyvą
+            firebase.database().ref(GLOBAL_ARCHIVE_KEY).set(updatedArchive).then(() => {
+                // 2. Išvalome iš aktyvaus sąrašo
+                firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(toKeep);
+                console.log(`[Auto-Archive] ${toArchive.length} turnyrai sėkmingai perkelti į archyvą.`);
+            });
+        });
+    }
+}
+
 function initTournamentsDB() {
     const list = document.getElementById('scheduleList');
-    if (list) list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-grey);"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami turnyrai iš debesies...</div>`;
+    if (list) list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-grey);"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami turnyrai...</div>`;
 
     firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).on('value', snap => {
         let data = snap.val();
         if (data) {
             tournaments = Array.isArray(data) ? data : Object.values(data);
             tournaments = tournaments.filter(t => t !== null); 
+            
+            // KIEKVIENĄ KARTĄ UŽSIKROVUS AUTOMATIŠKAI VALOME SENUS DUOMENIS FONE
+            runBackgroundAutoArchiving(tournaments);
         } else {
             tournaments = JSON.parse(JSON.stringify(defaultTournaments));
             saveData();
@@ -370,10 +405,10 @@ function saveData() {
 }
 
 function resetLocalStorage() { 
-    if(confirm("DĖMESIO! Ar tikrai norite atstatyti turnyrus debesyje? Visi kompiuteriai ir telefonai praras esamas registracijas!")) {
+    if(confirm("Ar tikrai norite atstatyti turnyrus debesyje?")) {
         tournaments = JSON.parse(JSON.stringify(defaultTournaments)); 
         saveData(); 
-        showToast("Debesies turnyrai atstatyti!"); 
+        showToast("Turnyrai atstatyti!"); 
     }
 }
 
@@ -445,7 +480,7 @@ function renderTournaments() {
     });
 }
 
-function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi. Peržiūrėkite rezultatus reitingų lentelėje."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
+function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; document.getElementById('filterPlayer').value = ''; renderTournaments(); }
@@ -460,12 +495,12 @@ function openRegisterModal(id) {
     modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.<br><br>Kaip norite registruotis?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
 }
 function confirmRegistration(id, withPartner) { let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += (withPartner ? 2 : 1); if(!t.players) t.players = []; t.players.push(currentUser ? currentUser.name : "Jūs"); saveData(); closeModal(); showToast("Jūs sėkmingai užregistruoti!"); }
-function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra.<br>Ar norite atsistoti į laukiančiųjų sąrašą? Jei kas nors atšauks dalyvavimą, sistema automatiškai perleis vietą jums.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip, stoti į eilę</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne, atšaukti</button>`; modal.classList.add('show'); }
+function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra.<br>Ar norite atsistoti į laukiančiųjų sąrašą?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip, stoti į eilę</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne, atšaukti</button>`; modal.classList.add('show'); }
 function confirmWaitlist(id) { let t = tournaments.find(x => x.id === id); t.status = 'waitlist'; t.waitlistCount += 1; saveData(); closeModal(); showToast("Pridėta į laukiančiųjų sąrašą."); }
-function openCancelModal(id) { modalTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--status-red);"></i> Atšaukti Dalyvavimą`; modalBody.innerHTML = `<strong>Dėmesio:</strong> Geriau atšaukti savo vietą net ir likus vos 1 valandai, nei visai neatvykti. Jūsų vieta bus skubiai pasiūlyta žaidėjams iš rezervinio sąrašo.<br><br>Ar tikrai norite atšaukti?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmCancel(${id})">Taip, atšaukti mano vietą</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne, aš dalyvausiu</button>`; modal.classList.add('show'); }
-function confirmCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'open'; t.registered -= 1; let pName = currentUser ? currentUser.name : "Jūs"; if(t.players) t.players = t.players.filter(p => p !== pName); saveData(); closeModal(); document.getElementById('notifBadge').style.display = 'none'; showToast("Jūsų registracija atšaukta. Ieškome pamainos."); }
+function openCancelModal(id) { modalTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--status-red);"></i> Atšaukti Dalyvavimą`; modalBody.innerHTML = `Ar tikrai norite atšaukti registraciją?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmCancel(${id})">Taip, atšaukti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne, dalyvausiu</button>`; modal.classList.add('show'); }
+function confirmCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'open'; t.registered -= 1; let pName = currentUser ? currentUser.name : "Jūs"; if(t.players) t.players = t.players.filter(p => p !== pName); saveData(); closeModal(); document.getElementById('notifBadge').style.display = 'none'; showToast("Jūsų registracija atšaukta."); }
 function openWaitlistCancelModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `Palikti rezervą?`; modalBody.innerHTML = `Jūs esate ${t.waitlistCount}-as eilėje. Jei išeisite, prarasite savo poziciją.`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmWaitlistCancel(${id})">Išeiti iš eilės</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Pasilikti</button>`; modal.classList.add('show'); }
-function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); closeModal(); showToast("Jūs išbrauktas iš laukiančiųjų sąrašo."); }
+function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); closeModal(); showToast("Jūs išbrauktas iš laukiančiųjų sąrašą."); }
 
 let currentPushId = null; 
 function simulateSpotOpening(e, id) { e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); document.getElementById('pushFormatName').innerText = `${t.format}`; document.getElementById('notifBadge').style.display = 'flex'; document.getElementById('pushNotification').style.top = '20px'; setTimeout(() => { document.getElementById('pushNotification').style.top = '-100px'; }, 8000); }
@@ -528,7 +563,6 @@ function loadAutomatedRatings(leagueLevel = 'all') {
         document.getElementById('ratingsLoader').style.display = 'none'; document.getElementById('ratingsContent').style.display = 'block';
     }).catch(err => {
         console.error("Reitingų užkrovimo klaida:", err);
-        document.getElementById('ratingsLoader').innerHTML = "<div style='color:var(--status-red); font-weight:bold;'>Klaida kraunant reitingus. Patikrinkite ryšį.</div>";
     });
 }
 
@@ -546,9 +580,9 @@ function goToHome() { const calendarBtn = document.querySelector('[data-index="1
 // ==========================================
 
 let cameraStream = null;
-let isRecording = false;      // SUTVARKyta: Atstatytas trūkstamas kintamasis
-let timerIntervalCam = null;  // SUTVARKyta: Atstatytas trūkstamas kintamasis
-let secondsRecord = 0;        // SUTVARKyta: Atstatytas trūkstamas kintamasis
+let isRecording = false;      
+let timerIntervalCam = null;  
+let secondsRecord = 0;        
 
 async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
 function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; document.getElementById('cameraFeed').srcObject = null; } }
@@ -596,25 +630,46 @@ function adminNav(element, viewId) {
     }
 }
 
+// -----------------------------------------------------------------
+// SUTVARKyta: Patobulintas turnyrų kūrimas su kelių savaičių kartojimu
+// -----------------------------------------------------------------
 function createTournament(e) { 
     e.preventDefault(); 
-    const newT = { 
-        id: Date.now(), 
-        date: document.getElementById('newDate').value, 
-        format: document.getElementById('newFormat').value, 
-        level: document.getElementById('newLevel').value, 
-        time: document.getElementById('newTime').value, 
-        registered: 0, 
-        max: parseInt(document.getElementById('newMax').value), 
-        status: 'open', 
-        isDemoWaitlist: false, 
-        waitlistCount: 0, 
-        timeState: 'future', 
-        players: [] 
-    }; 
-    tournaments.push(newT); 
+    
+    const baseDateStr = document.getElementById('newDate').value; // Pasiimame MM-DD formatą
+    const repeatCount = parseInt(document.getElementById('newRepeat').value || 1); // Kiek savaičių kartoti
+    
+    const [month, day] = baseDateStr.split('-').map(Number);
+    const baseDate = new Date(new Date().getFullYear(), month - 1, day);
+
+    // Vykdome ciklą priklausomai nuo pasirinktų savaičių skaičiaus
+    for (let i = 0; i < repeatCount; i++) {
+        let newDateObj = new Date(baseDate);
+        newDateObj.setDate(baseDate.getDate() + (i * 7)); // Pridedame 7 dienas, 14 dienų ir t.t.
+        
+        let m = (newDateObj.getMonth() + 1).toString().padStart(2, '0');
+        let d = newDateObj.getDate().toString().padStart(2, '0');
+        let finalDateStr = `${m}-${d}`;
+
+        const newT = { 
+            id: Date.now() + i, // Suteikiame unikalų ID milisekundėmis
+            date: finalDateStr, 
+            format: document.getElementById('newFormat').value, 
+            level: document.getElementById('newLevel').value, 
+            time: document.getElementById('newTime').value, 
+            registered: 0, 
+            max: parseInt(document.getElementById('newMax').value), 
+            status: 'open', 
+            isDemoWaitlist: false, 
+            waitlistCount: 0, 
+            timeState: 'future', 
+            players: [] 
+        }; 
+        tournaments.push(newT); 
+    }
+    
     saveData(); 
-    showToast("Turnyras sugeneruotas ir išsaugotas debesyje!"); 
+    showToast(`Turnyrai sėkmingai paskelbti debesyje! (Viso: ${repeatCount})`); 
     document.getElementById('adminForm').reset(); 
 }
 
@@ -715,7 +770,7 @@ function filterAdminPlayers() {
 function deleteAdminPlayer(id) {
     let p = globalAdminPlayers.find(x => String(x.id) === String(id));
     if(!p) { return; }
-    if(confirm(`Ar tikrai norite IŠTRINTI žaidėją "${p.name}" iš globalios duomenų bazės?\n\nŠis žaidėjas praras savo unikalų Padel ID bei ELO istoriją!`)) {
+    if(confirm(`Ar tikrai norite IŠTRINTI žaidėją "${p.name}"?`)) {
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + p.id).remove().then(() => {
             showToast("Žaidėjas ištrintas!");
             loadAdminPlayersDB();
@@ -726,7 +781,7 @@ function deleteAdminPlayer(id) {
 function editAdminPlayer(id) {
     let p = globalAdminPlayers.find(x => String(x.id) === String(id));
     if(!p) { return; }
-    let newPts = prompt(`Redaguojate žaidėją: ${p.name}\nDabartinis reitingas: ${p.rating || 300}\n\nĮveskite naują ELO taškų skaičių:`, p.rating || 300);
+    let newPts = prompt(`Įveskite naują ELO taškų skaičių žaidėjui ${p.name}:`, p.rating || 300);
     
     if(newPts !== null && newPts.trim() !== "" && !isNaN(newPts)) {
         let pts = parseInt(newPts);
@@ -740,7 +795,7 @@ function editAdminPlayer(id) {
             rating: pts,
             tier: tier
         }).then(() => {
-            showToast(`Atnaujinta! ${pts} ELO (${tier} lygis)`);
+            showToast(`Atnaujinta! ${pts} ELO`);
             loadAdminPlayersDB();
         });
     }
