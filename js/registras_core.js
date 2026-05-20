@@ -10,7 +10,7 @@ if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 const DB_KEY = "padelio_pro_master"; 
 const GLOBAL_PLAYERS_KEY = "padelio_global_players";
 const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments"; 
-const GLOBAL_ARCHIVE_KEY = "padelio_archive_tournaments"; // AMŽINAS ARCHYVAS SENIEMS TURNYRAMS
+const GLOBAL_ARCHIVE_KEY = "padelio_archive_tournaments"; 
 
 let liveDbRef = null; 
 let currentLiveMatches = []; 
@@ -39,10 +39,8 @@ function processAuth() {
     let inputId = document.getElementById('authInput').value.trim().toLowerCase();
     if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
     
-    // Iš karto išvalome visus tarpus, pliusus, brūkšnelius
     let safeId = inputId.replace(/[^a-z0-9]/g, '');
 
-    // Suvienodiname pradžią į tarptautinį "3706..." formatą
     if (safeId.startsWith('86') && safeId.length === 9) {
         safeId = '370' + safeId.substring(1); 
     }
@@ -250,37 +248,15 @@ function renderLiveScoreboard() {
     container.innerHTML = `<div class="score-box"><div style="background: #1a202c; color: white; padding: 6px 15px; font-size: 10px; font-weight: bold; letter-spacing: 1px;">${headerTitle}</div><div class="team-row"><div class="team-names">${team1Names}</div>${score1Html}</div><div class="team-row" style="border-bottom: none; background: #f8f9fb;"><div class="team-names">${team2Names}</div>${score2Html}</div></div>`; 
 }
 
-function openLiveModal(e) { 
-    e.stopPropagation(); 
-    document.getElementById('liveModal').classList.add('show'); 
-    document.body.style.overflow = 'hidden'; 
-}
-
-function closeLiveModal() { 
-    try { 
-        eRefAuthenticated = false; 
-        currentFirebaseData = null; 
-        const modal = document.getElementById('liveModal'); 
-        if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; } 
-        setTimeout(() => { 
-            try { 
-                if(liveDbRef) { liveDbRef.off(); liveDbRef = null; } 
-                document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span>`; 
-                document.getElementById('liveRoomInput').value = ''; 
-                document.getElementById('liveCourtsContainer').innerHTML = '<div class="live-filter-btn">Laukiama prisijungimo...</div>'; 
-                document.getElementById('liveScoreBoxContainer').innerHTML = `<div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite V188 kambario pavadinimą...</div>`; 
-            } catch(err) {} 
-        }, 300); 
-    } catch(e) {}
-}
-
 // ==========================================
 // 3. KALENDORIUS IR TURNYRAI (DEBESYJE + AUTOMATINIS ARCHYVAS)
 // ==========================================
 
 const now = new Date(); const daysArr = ['S', 'P', 'A', 'T', 'K', 'P', 'Š']; 
 let dynamicDates = []; 
-for(let i = -3; i <= 13; i++) { 
+
+// SUTVARKyta: i <= 30 užtikrina, kad žaidėjų kalendorius rodys lygiai 1 mėnesį į priekį
+for(let i = -3; i <= 30; i++) { 
     let d = new Date(now); d.setDate(now.getDate() + i); 
     let m = (d.getMonth() + 1).toString().padStart(2, '0'); 
     let day = d.getDate().toString().padStart(2, '0'); 
@@ -327,18 +303,15 @@ function getTimeState(tDateKey, timeString) {
 }
 
 const defaultTournaments = [
-    { id: 1, date: "05-19", timeState: 'past', format: 'Americano', level: 'D', time: '10:00 - 12:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: false, waitlistCount: 0, players: ['Darius', 'Lina', 'Petras', 'Rasa'] }
+    { id: 1, date: "05-20", timeState: 'past', format: 'Americano', level: 'D', time: '10:00 - 12:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: false, waitlistCount: 0, players: ['Darius', 'Lina', 'Petras', 'Rasa'] }
 ];
 
 let tournaments = []; 
 
-// -----------------------------------------------------------------
-// SUTVARKyta: Visiškai automatinis senų turnyrų archyvavimas fone fone
-// -----------------------------------------------------------------
 function runBackgroundAutoArchiving(fetchedTournaments) {
     let checkDate = new Date();
     let archiveThreshold = new Date();
-    archiveThreshold.setDate(checkDate.getDate() - 30); // Slenkstis: senesni nei 30 dienų
+    archiveThreshold.setDate(checkDate.getDate() - 30); 
 
     let toArchive = [];
     let toKeep = [];
@@ -357,18 +330,15 @@ function runBackgroundAutoArchiving(fetchedTournaments) {
         }
     });
 
-    // Jeigu radome senų turnyrų, automatiškai migruojame į archyvo šaką debesyje fone
     if (isDataChanged && toArchive.length > 0) {
         firebase.database().ref(GLOBAL_ARCHIVE_KEY).once('value').then(snap => {
             let existingArchive = snap.val() || [];
             if (!Array.isArray(existingArchive)) existingArchive = Object.values(existingArchive);
             let updatedArchive = existingArchive.concat(toArchive);
             
-            // 1. Įrašome į archyvą
             firebase.database().ref(GLOBAL_ARCHIVE_KEY).set(updatedArchive).then(() => {
-                // 2. Išvalome iš aktyvaus sąrašo
                 firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(toKeep);
-                console.log(`[Auto-Archive] ${toArchive.length} turnyrai sėkmingai perkelti į archyvą.`);
+                console.log(`[Auto-Archive] ${toArchive.length} perkelta į archyvą.`);
             });
         });
     }
@@ -383,8 +353,6 @@ function initTournamentsDB() {
         if (data) {
             tournaments = Array.isArray(data) ? data : Object.values(data);
             tournaments = tournaments.filter(t => t !== null); 
-            
-            // KIEKVIENĄ KARTĄ UŽSIKROVUS AUTOMATIŠKAI VALOME SENUS DUOMENIS FONE
             runBackgroundAutoArchiving(tournaments);
         } else {
             tournaments = JSON.parse(JSON.stringify(defaultTournaments));
@@ -471,7 +439,7 @@ function renderTournaments() {
             } 
         }
         
-        let demoBtn = (t.isDemoWaitlist && t.status === 'waitlist' && t.timeState === 'future') ? `<button type="button" class="test-trigger" onclick="simulateSpotOpening(event, ${t.id})">[Demo] Algoritmas perleidžia atšauktą vietą Jums (Push)</button>` : ''; 
+        let demoBtn = (t.isDemoWaitlist && t.status === 'waitlist' && t.timeState === 'future') ? `<button type="button" class="test-trigger" onclick="simulateSpotOpening(event, ${t.id})">[Demo] Algoritmus perleidžia vietą</button>` : ''; 
         let avatar1 = (t.players && t.players[0]) ? t.players[0].substring(0,2) : 'AŽ'; 
         let avatar2 = (t.players && t.players[1]) ? t.players[1].substring(0,2) : 'MK';
         
@@ -492,15 +460,15 @@ function openRegisterModal(id) {
     let t = tournaments.find(x => x.id === id); 
     let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level; 
     if (t.level === 'Privatus') displayLevel = 'Draugų';
-    modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.<br><br>Kaip norite registruotis?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
+    modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
 }
 function confirmRegistration(id, withPartner) { let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += (withPartner ? 2 : 1); if(!t.players) t.players = []; t.players.push(currentUser ? currentUser.name : "Jūs"); saveData(); closeModal(); showToast("Jūs sėkmingai užregistruoti!"); }
-function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra.<br>Ar norite atsistoti į laukiančiųjų sąrašą?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip, stoti į eilę</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne, atšaukti</button>`; modal.classList.add('show'); }
-function confirmWaitlist(id) { let t = tournaments.find(x => x.id === id); t.status = 'waitlist'; t.waitlistCount += 1; saveData(); closeModal(); showToast("Pridėta į laukiančiųjų sąrašą."); }
-function openCancelModal(id) { modalTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--status-red);"></i> Atšaukti Dalyvavimą`; modalBody.innerHTML = `Ar tikrai norite atšaukti registraciją?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmCancel(${id})">Taip, atšaukti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne, dalyvausiu</button>`; modal.classList.add('show'); }
-function confirmCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'open'; t.registered -= 1; let pName = currentUser ? currentUser.name : "Jūs"; if(t.players) t.players = t.players.filter(p => p !== pName); saveData(); closeModal(); document.getElementById('notifBadge').style.display = 'none'; showToast("Jūsų registracija atšaukta."); }
-function openWaitlistCancelModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `Palikti rezervą?`; modalBody.innerHTML = `Jūs esate ${t.waitlistCount}-as eilėje. Jei išeisite, prarasite savo poziciją.`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmWaitlistCancel(${id})">Išeiti iš eilės</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Pasilikti</button>`; modal.classList.add('show'); }
-function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); closeModal(); showToast("Jūs išbrauktas iš laukiančiųjų sąrašą."); }
+function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra. Stoti į eilę?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
+function confirmWaitlist(id) { let t = tournaments.find(x => x.id === id); t.status = 'waitlist'; t.waitlistCount += 1; saveData(); closeModal(); showToast("Pridėta į rezervą."); }
+function openCancelModal(id) { modalTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--status-red);"></i> Atšaukti Dalyvavimą`; modalBody.innerHTML = `Ar tikrai norite atšaukti savo vietą?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmCancel(${id})">Taip, atšaukti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
+function confirmCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'open'; t.registered -= 1; let pName = currentUser ? currentUser.name : "Jūs"; if(t.players) t.players = t.players.filter(p => p !== pName); saveData(); closeModal(); document.getElementById('notifBadge').style.display = 'none'; showToast("Registracija atšaukta."); }
+function openWaitlistCancelModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `Palikti rezervą?`; modalBody.innerHTML = `Išeiti iš eilės?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmWaitlistCancel(${id})">Išeiti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Pasilikti</button>`; modal.classList.add('show'); }
+function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); closeModal(); showToast("Išbraukta iš rezervo."); }
 
 let currentPushId = null; 
 function simulateSpotOpening(e, id) { e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); document.getElementById('pushFormatName').innerText = `${t.format}`; document.getElementById('notifBadge').style.display = 'flex'; document.getElementById('pushNotification').style.top = '20px'; setTimeout(() => { document.getElementById('pushNotification').style.top = '-100px'; }, 8000); }
@@ -630,29 +598,26 @@ function adminNav(element, viewId) {
     }
 }
 
-// -----------------------------------------------------------------
-// SUTVARKyta: Patobulintas turnyrų kūrimas su kelių savaičių kartojimu
-// -----------------------------------------------------------------
+// SUTVARKyta: Sukuria turnyrą pagal pasirinktą ciklą (iki 26 savaičių pusei metų į priekį)
 function createTournament(e) { 
     e.preventDefault(); 
     
-    const baseDateStr = document.getElementById('newDate').value; // Pasiimame MM-DD formatą
-    const repeatCount = parseInt(document.getElementById('newRepeat').value || 1); // Kiek savaičių kartoti
+    const baseDateStr = document.getElementById('newDate').value; 
+    const repeatCount = parseInt(document.getElementById('newRepeat').value || 1); 
     
     const [month, day] = baseDateStr.split('-').map(Number);
     const baseDate = new Date(new Date().getFullYear(), month - 1, day);
 
-    // Vykdome ciklą priklausomai nuo pasirinktų savaičių skaičiaus
     for (let i = 0; i < repeatCount; i++) {
         let newDateObj = new Date(baseDate);
-        newDateObj.setDate(baseDate.getDate() + (i * 7)); // Pridedame 7 dienas, 14 dienų ir t.t.
+        newDateObj.setDate(baseDate.getDate() + (i * 7)); 
         
         let m = (newDateObj.getMonth() + 1).toString().padStart(2, '0');
         let d = newDateObj.getDate().toString().padStart(2, '0');
         let finalDateStr = `${m}-${d}`;
 
         const newT = { 
-            id: Date.now() + i, // Suteikiame unikalų ID milisekundėmis
+            id: Date.now() + i, 
             date: finalDateStr, 
             format: document.getElementById('newFormat').value, 
             level: document.getElementById('newLevel').value, 
