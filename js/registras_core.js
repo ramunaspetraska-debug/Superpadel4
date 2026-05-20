@@ -39,21 +39,12 @@ function processAuth() {
     if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
     
     // 1. ŽINGSNIS: Iš karto išvalome visus tarpus, pliusus, brūkšnelius
-    // Po šio žingsnio:
-    // "+370 611 22 233" -> "37061122233" (ilgis 11)
-    // "370-611-22233"   -> "37061122233" (ilgis 11)
-    // "8 611 22 233"    -> "861122233"   (ilgis 9)
-    // "06-11-22-233"    -> "061122233"   (ilgis 9)
     let safeId = inputId.replace(/[^a-z0-9]/g, '');
 
     // 2. ŽINGSNIS: Suvienodiname pradžią į tarptautinį "3706..." formatą
-    
-    // Jei numeris prasideda senuoju "86..." formatu ir yra 9 simbolių
     if (safeId.startsWith('86') && safeId.length === 9) {
         safeId = '370' + safeId.substring(1); // tampa 3706...
     }
-    
-    // Jei numeris prasideda naujuoju "06..." formatu ir yra 9 simbolių
     else if (safeId.startsWith('06') && safeId.length === 9) {
         safeId = '370' + safeId.substring(1); // nuimam 0, pridedam 370 -> tampa 3706...
     }
@@ -351,9 +342,6 @@ const defaultTournaments = [
 
 let tournaments = []; 
 
-// ---------------------------------------------------------
-// NAUJA: TURNYRŲ TRAUKIMAS IŠ DEBESIES REALU LAIKU
-// ---------------------------------------------------------
 function initTournamentsDB() {
     const list = document.getElementById('scheduleList');
     if (list) list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-grey);"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami turnyrai iš debesies...</div>`;
@@ -362,16 +350,14 @@ function initTournamentsDB() {
         let data = snap.val();
         if (data) {
             tournaments = Array.isArray(data) ? data : Object.values(data);
-            tournaments = tournaments.filter(t => t !== null); // Išvalome galimas spragas
+            tournaments = tournaments.filter(t => t !== null); 
         } else {
-            // Jei debesis visiškai tuščias, įkeliame gamyklinius
             tournaments = JSON.parse(JSON.stringify(defaultTournaments));
             saveData();
         }
         
         renderTournaments();
         
-        // Atnaujiname ir admin lentelę, jei ji atidaryta
         let adminTab = document.getElementById('admin-view-turnyrai');
         if (adminTab && adminTab.style.display === 'block') {
             renderAdminTournaments();
@@ -380,7 +366,6 @@ function initTournamentsDB() {
 }
 
 function saveData() { 
-    // Dabar išsaugojimas vyksta tiesiai į "Firebase" debesį!
     firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(tournaments);
 }
 
@@ -561,6 +546,10 @@ function goToHome() { const calendarBtn = document.querySelector('[data-index="1
 // ==========================================
 
 let cameraStream = null;
+let isRecording = false;      // SUTVARKyta: Atstatytas trūkstamas kintamasis
+let timerIntervalCam = null;  // SUTVARKyta: Atstatytas trūkstamas kintamasis
+let secondsRecord = 0;        // SUTVARKyta: Atstatytas trūkstamas kintamasis
+
 async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
 function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; document.getElementById('cameraFeed').srcObject = null; } }
 function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; btn.classList.add('recording'); indicator.style.display = 'flex'; aiPanel.style.display = 'none'; infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); document.getElementById('recTimer').innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; btn.classList.remove('recording'); indicator.style.display = 'none'; clearInterval(timerIntervalCam); btn.style.display = 'none'; infoText.style.display = 'none'; aiPanel.style.display = 'block'; setTimeout(() => { document.getElementById('recTimer').innerText = `00:00:00`; }, 1000); } }
