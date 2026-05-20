@@ -234,9 +234,19 @@
                                         <input type="number" id="newMax" value="16" min="2" max="32" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
                                     </div>
                                 </div>
+
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Kartoti turnyrą (savaitės)</label>
+                                    <select id="newRepeat" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; font-weight: bold; color: var(--primary-blue);">
+                                        <option value="1">Nekartoti (Sukurti tik 1 kartą)</option>
+                                        <option value="4">Kartoti kas savaitę (Ateinančias 4 savaites)</option>
+                                        <option value="8">Kartoti kas savaitę (Ateinančias 8 savaites)</option>
+                                        <option value="12">Kartoti kas savaitę (Ateinančias 12 savaičių)</option>
+                                    </select>
+                                </div>
                                 
                                 <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Diena</label>
+                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Pirmojo turnyro diena</label>
                                         <select id="newDate" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;"></select>
                                     </div>
                                     <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Laikas</label>
@@ -248,7 +258,7 @@
                         </div>
 
                         <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto;">
-                            <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Visi Sistemos Turnyrai</div>
+                            <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Visi Sistemos Turnyrai (Aktyvūs)</div>
                             <div id="admin-tournaments-list-db"></div>
                         </div>
 
