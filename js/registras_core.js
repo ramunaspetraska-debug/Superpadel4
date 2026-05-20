@@ -38,14 +38,27 @@ function processAuth() {
     let inputId = document.getElementById('authInput').value.trim().toLowerCase();
     if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
     
-    // SPRENDIMAS NUO DUBLIKATŲ: Suvienodiname lietuviškus telefono numerius
-    // Jei žaidėjas įveda numerį, prasidedantį "86...", automatiškai paverčiame į tarptautinį "3706..."
-    if (inputId.startsWith('86') && inputId.length === 9) {
-        inputId = '370' + inputId.substring(1);
-    }
-    
+    // 1. ŽINGSNIS: Iš karto išvalome visus tarpus, pliusus, brūkšnelius
+    // Po šio žingsnio:
+    // "+370 611 22 233" -> "37061122233" (ilgis 11)
+    // "370-611-22233"   -> "37061122233" (ilgis 11)
+    // "8 611 22 233"    -> "861122233"   (ilgis 9)
+    // "06-11-22-233"    -> "061122233"   (ilgis 9)
     let safeId = inputId.replace(/[^a-z0-9]/g, '');
 
+    // 2. ŽINGSNIS: Suvienodiname pradžią į tarptautinį "3706..." formatą
+    
+    // Jei numeris prasideda senuoju "86..." formatu ir yra 9 simbolių
+    if (safeId.startsWith('86') && safeId.length === 9) {
+        safeId = '370' + safeId.substring(1); // tampa 3706...
+    }
+    
+    // Jei numeris prasideda naujuoju "06..." formatu ir yra 9 simbolių
+    else if (safeId.startsWith('06') && safeId.length === 9) {
+        safeId = '370' + safeId.substring(1); // nuimam 0, pridedam 370 -> tampa 3706...
+    }
+
+    // Dabar safeId visais atvejais yra vienodas (pvz., "37061122233"), ieškome duomenų bazėje
     firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
         let user = snap.val();
         if(user) {
@@ -63,6 +76,8 @@ function processAuth() {
                 let name = document.getElementById('authName').value.trim();
                 let gender = document.getElementById('authGender').value;
                 if(!name) { showToast("Būtina įvesti vardą!"); return; }
+                
+                // Išsaugome naują žaidėją su galutinai išvalytu tarptautiniu ID
                 let newUser = { id: safeId, name: name, gender: gender, rating: 300, tier: "D", total_matches: 0, last_played: Date.now() };
                 firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).set(newUser).then(() => {
                     currentUser = newUser;
