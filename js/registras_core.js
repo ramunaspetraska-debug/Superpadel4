@@ -19,6 +19,7 @@ let eRefAuthenticated = false;
 let currentFirebaseData = null;
 let currentUser = JSON.parse(localStorage.getItem('sp_current_user')) || null;
 let isAppMode = true; 
+let pendingTournamentId = null; // NAUJA: Prisimename turnyrą, jei vartotojas jungiasi registracijos metu
 
 // ==========================================
 // 1. AUTENTIFIKACIJA IR VARTOTOJO PROFILIS
@@ -56,6 +57,13 @@ function processAuth() {
             showToast(`Sveiki sugrįžę, ${user.name}!`);
             updateAuthUI();
             closeAuthModal();
+            
+            // SUTVARKyta: Jei vartotojas atėjo iš turnyro kortelės, iškart nukreipiame atgal į registraciją
+            if (pendingTournamentId) {
+                const targetId = pendingTournamentId;
+                pendingTournamentId = null; // Išvalome atmintį
+                handleCardClick(targetId);
+            }
         } else {
             let regFields = document.getElementById('registerFields');
             if(regFields.style.display === 'none') {
@@ -73,6 +81,13 @@ function processAuth() {
                     showToast("Registracija sėkminga! Profilis sukurtas.");
                     updateAuthUI();
                     closeAuthModal();
+                    
+                    // SUTVARKyta: Jei naujas vartotojas užsiregistravo spausdamas ant turnyro, iškart atidarome registraciją
+                    if (pendingTournamentId) {
+                        const targetId = pendingTournamentId;
+                        pendingTournamentId = null; // Išvalome atmintį
+                        handleCardClick(targetId);
+                    }
                 });
             }
         }
@@ -98,7 +113,7 @@ function updateAuthUI() {
         btn.innerHTML = `Prisijungti`;
         btn.style.background = '#ebf8ff';
         btn.style.color = 'var(--primary-blue)';
-        btn.onclick = openAuthModal;
+        btn.onclick = () => { pendingTournamentId = null; openAuthModal(); }; // Jei jungiasi rankiniu būdu iš headerio - išvalom laukiantį ID
     }
 }
 
@@ -204,7 +219,7 @@ function changeLiveScore(matchId, teamNum, change) {
         const pin = prompt("Įveskite E-Teisėjavimo PIN kodą:"); 
         if (pin === currentFirebaseData.settings.eRefereePin) { 
             eRefAuthenticated = true; 
-            showToast("Sėkmingai prisijungėte!"); 
+            showToast("Sėkmingai prisijonėte!"); 
         } else { 
             showToast("Neteisingas PIN kodas!"); 
             return; 
@@ -246,30 +261,6 @@ function renderLiveScoreboard() {
         score2Html = `<div style="display: flex; align-items: center; gap: 10px;"><button type="button" onclick="changeLiveScore('${match.id}', 2, -1)" style="width: 35px; height: 35px; border-radius: 50%; border: 1px solid #cbd5e0; background: #f8f9fb; font-size: 18px; font-weight: bold; color: #718096; cursor: pointer;">-</button><div style="font-size: 26px; font-weight: 900; width: 40px; text-align: center; color: var(--text-dark);">${match.score2 || 0}</div><button type="button" onclick="changeLiveScore('${match.id}', 2, 1)" style="width: 35px; height: 35px; border-radius: 50%; border: none; background: var(--status-green); font-size: 18px; font-weight: bold; color: white; cursor: pointer;">+</button></div>`;
     }
     container.innerHTML = `<div class="score-box"><div style="background: #1a202c; color: white; padding: 6px 15px; font-size: 10px; font-weight: bold; letter-spacing: 1px;">${headerTitle}</div><div class="team-row"><div class="team-names">${team1Names}</div>${score1Html}</div><div class="team-row" style="border-bottom: none; background: #f8f9fb;"><div class="team-names">${team2Names}</div>${score2Html}</div></div>`; 
-}
-
-function openLiveModal(e) { 
-    e.stopPropagation(); 
-    document.getElementById('liveModal').classList.add('show'); 
-    document.body.style.overflow = 'hidden'; 
-}
-
-function closeLiveModal() { 
-    try { 
-        eRefAuthenticated = false; 
-        currentFirebaseData = null; 
-        const modal = document.getElementById('liveModal'); 
-        if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; } 
-        setTimeout(() => { 
-            try { 
-                if(liveDbRef) { liveDbRef.off(); liveDbRef = null; } 
-                document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span>`; 
-                document.getElementById('liveRoomInput').value = ''; 
-                document.getElementById('liveCourtsContainer').innerHTML = '<div class="live-filter-btn">Laukiama prisijungimo...</div>'; 
-                document.getElementById('liveScoreBoxContainer').innerHTML = `<div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite V188 kambario pavadinimą...</div>`; 
-            } catch(err) {} 
-        }, 300); 
-    } catch(e) {}
 }
 
 // ==========================================
@@ -518,7 +509,13 @@ function selectDate(dateKey, element) { document.querySelectorAll('.date-box').f
 const modal = document.getElementById('actionModal'); const modalTitle = document.getElementById('modalTitle'); const modalBody = document.getElementById('modalBody'); const modalActions = document.getElementById('modalActions'); function closeModal() { modal.classList.remove('show'); }
 
 function openRegisterModal(id) { 
-    if(!currentUser) { showToast("Norėdami registruotis, pirmiausia prisijunkite!"); openAuthModal(); return; }
+    // SUTVARKyta: Jei vartotojas neprisijungęs, fone įsimename šį turnyro ID prieš atidarant auth langą
+    if(!currentUser) { 
+        pendingTournamentId = id; 
+        showToast("Norėdami registruotis, pirmiausia prisijunkite!"); 
+        openAuthModal(); 
+        return; 
+    }
     let t = tournaments.find(x => x.id === id); 
     let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level; 
     if (t.level === 'Privatus') displayLevel = 'Draugų';
@@ -660,7 +657,6 @@ function adminNav(element, viewId) {
     }
 }
 
-// NAUJA / SUTVARKyta: Pagalbinė funkcija laiko teksto pavertimui minutėmis (pvz. "10:30" -> 630 minučių)
 function parseTimeStr(timeStr) {
     const parts = timeStr.split('-');
     if (parts.length !== 2) return null;
@@ -673,22 +669,18 @@ function parseTimeStr(timeStr) {
     };
 }
 
-// Sukuria turnyrą pagal pasirinktą ciklą (su protingu laiko tarpų persidengimo tikrinimu)
 function createTournament(e) { 
     e.preventDefault(); 
     
     const baseDateStr = document.getElementById('newDate').value; 
-    const laikas = document.getElementById('newTime').value; // pvz., "10:00 - 12:00"
+    const laikas = document.getElementById('newTime').value; 
     const repeatCount = parseInt(document.getElementById('newRepeat').value || 1); 
     
-    // NAUJA: Išmanusis laiko persidengimo/prasikeitimo tikrinimas (minutėmis)
     const naujasLaikasObj = parseTimeStr(laikas);
     const persidengiantysTurnyrai = tournaments.filter(t => {
         if (t.date !== baseDateStr) return false;
         const esamasLaikasObj = parseTimeStr(t.time);
         if (!naujasLaikasObj || !esamasLaikasObj) return false;
-        
-        // Matematinė sankirtos formulė: pradžia1 < pabaiga2 IR pabaiga1 > pradžia2
         return naujasLaikasObj.start < esamasLaikasObj.end && naujasLaikasObj.end > esamasLaikasObj.start;
     });
 
@@ -696,7 +688,7 @@ function createTournament(e) {
         const rastiTurnyrai = persidengiantysTurnyrai.map(t => `${t.format} (${t.time}, ${t.level} lygis)`).join('\n👉 ');
         const testiKurima = confirm(`⚠️ ĮSPĖJIMAS: Šią dieną (${baseDateStr}) pasirinktas laikas kerta/persidengia su jau esamais turnyrais:\n👉 ${rastiTurnyrai}\n\nAr tikrai norite sukurti dar vieną turnyrą lygiagrečiai šiuo periodu?`);
         if (!testiKurima) {
-            return; // Atšaukiama
+            return; 
         }
     }
 
@@ -771,61 +763,6 @@ function deleteTournament(id) {
 }
 
 let globalAdminPlayers = [];
-
-function loadAdminPlayersDB() {
-    document.getElementById('admin-players-list-db').innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Jungiamasi prie debesies...</div>';
-    
-    firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
-        let data = snap.val() || {};
-        globalAdminPlayers = Object.values(data).sort((a,b) => (b.rating || 0) - (a.rating || 0));
-        document.getElementById('admin-players-count').innerText = `Viso: ${globalAdminPlayers.length}`;
-        renderAdminPlayersDB(globalAdminPlayers);
-    }).catch(err => {
-        document.getElementById('admin-players-list-db').innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis. Patikrinkite ryšį.</div>';
-    });
-}
-
-function renderAdminPlayersDB(playersArray) {
-    if(playersArray.length === 0) {
-        document.getElementById('admin-players-list-db').innerHTML = '<div style="text-align:center; padding:20px; color:#718096;">Žaidėjų nerasta.</div>';
-        return;
-    }
-
-    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; min-width: 400px;">';
-    html += '<tr style="background: #edf2f7; color: #718096; text-transform: uppercase; font-size: 10px; letter-spacing: 1px;"><th style="padding: 12px; border-top-left-radius: 6px;">Vardas</th><th style="padding: 12px;">Lytis</th><th style="padding: 12px;">Lygis</th><th style="padding: 12px;">ELO Taškai</th><th style="padding: 12px; border-top-right-radius: 6px; text-align: right;">Veiksmai</th></tr>';
-    
-    playersArray.forEach(p => {
-        let ptsColor = 'var(--primary-blue)';
-        if (p.tier === 'A') ptsColor = 'var(--lvl-a)';
-        else if (p.tier === 'B') ptsColor = 'var(--lvl-b)';
-        else if (p.tier === 'C') ptsColor = 'var(--lvl-c)';
-        else if (p.tier === 'D-C') ptsColor = 'var(--lvl-d-c)';
-        else ptsColor = 'var(--lvl-d)';
-
-        html += `<tr style="border-bottom: 1px solid #e2e8f0; transition: 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'">
-            <td style="padding: 12px; font-weight: 800; color: var(--text-dark);">${p.name} <br><span style="font-size:9px; color:#a0aec0; font-weight:normal;">ID: ${p.id}</span></td>
-            <td style="padding: 12px; font-weight: bold; color: var(--text-grey);">${p.gender === 'M' ? 'V' : 'M'}</td>
-            <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${p.tier || 'D'}</span></td>
-            <td style="padding: 12px; color: ${ptsColor}; font-weight: 900; font-size: 15px;">${p.rating || 300}</td>
-            <td style="padding: 12px; text-align: right;">
-                <button onclick="editAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti reitingą"><i class="fa-solid fa-pen"></i></button>
-                <button onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Ištrinti paskyrą"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    html += '</table>';
-    document.getElementById('admin-players-list-db').innerHTML = html;
-}
-
-function filterAdminPlayers() {
-    let query = document.getElementById('adminPlayerSearch').value.toLowerCase();
-    let filtered = globalAdminPlayers.filter(p => {
-        let nameMatch = (p.name || "").toLowerCase().includes(query);
-        let idMatch = String(p.id || "").toLowerCase().includes(query);
-        return nameMatch || idMatch;
-    });
-    renderAdminPlayersDB(filtered);
-}
 
 // Inicializacija užkrovus puslapį
 window.onload = () => { initDates(); initTournamentsDB(); updateAuthUI(); };
