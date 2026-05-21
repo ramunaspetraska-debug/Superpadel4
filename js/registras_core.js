@@ -255,7 +255,6 @@ function renderLiveScoreboard() {
 const now = new Date(); const daysArr = ['S', 'P', 'A', 'T', 'K', 'P', 'Š']; 
 let dynamicDates = []; 
 
-// SUTVARKyta: i <= 30 užtikrina, kad žaidėjų kalendorius rodys lygiai 1 mėnesį į priekį
 for(let i = -3; i <= 30; i++) { 
     let d = new Date(now); d.setDate(now.getDate() + i); 
     let m = (d.getMonth() + 1).toString().padStart(2, '0'); 
@@ -278,7 +277,49 @@ function initDates() {
         let selected = d.isToday ? 'selected' : ''; 
         if(adminSelect) adminSelect.innerHTML += `<option value="${d.dateKey}" ${selected}>${d.dayNumStr} d. (${d.dayNameStr})</option>`; 
     }); 
+    
+    // -----------------------------------------------------------------
+    // NAUJA / SUTVARKyta: Profesionali darbalaukio slinkties kontrolė (Pelytės ratukas + Nutempimas)
+    // -----------------------------------------------------------------
+    
+    // 1. Įgaliname horizontalų slinkimą pelytės ratuku virš datų
+    carousel.removeEventListener('wheel', handleCarouselWheel); // Apsauga nuo dubliavimosi
+    carousel.addEventListener('wheel', handleCarouselWheel, { passive: false });
+
+    // 2. Įgaliname slinkimą pelės nutempimu (Drag-to-Scroll) kaip telefone
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    carousel.addEventListener('mousedown', (e) => {
+        isDown = true;
+        carousel.style.cursor = 'grabbing';
+        startX = e.pageX - carousel.offsetLeft;
+        scrollLeft = carousel.scrollLeft;
+    });
+    carousel.addEventListener('mouseleave', () => { isDown = false; carousel.style.cursor = 'grab'; });
+    carousel.addEventListener('mouseup', () => { isDown = false; carousel.style.cursor = 'grab'; });
+    carousel.addEventListener('mousemove', (e) => {
+        if(!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - carousel.offsetLeft;
+        const walk = (x - startX) * 2; // Slinkimo greičio jautrumas
+        carousel.scrollLeft = scrollLeft - walk;
+    });
+    
+    // Nustatome pradinį kursoriaus stilių, kad vartotojas suprastų, jog galima tempti
+    carousel.style.cursor = 'grab';
+
     setTimeout(() => { const todayBox = document.getElementById('today-date-box'); if(todayBox) { todayBox.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } }, 100);
+}
+
+// Pagalbinė funkcija pelės ratuko valdymui
+function handleCarouselWheel(e) {
+    const carousel = document.getElementById('dateCarousel');
+    if (e.deltaY !== 0) {
+        e.preventDefault();
+        carousel.scrollLeft += e.deltaY * 1.5; // Konvertuojame vertikalų sukimą į horizontalų judesį
+    }
 }
 
 function getTimeState(tDateKey, timeString) { 
@@ -303,7 +344,7 @@ function getTimeState(tDateKey, timeString) {
 }
 
 const defaultTournaments = [
-    { id: 1, date: "05-20", timeState: 'past', format: 'Americano', level: 'D', time: '10:00 - 12:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: false, waitlistCount: 0, players: ['Darius', 'Lina', 'Petras', 'Rasa'] }
+    { id: 1, date: "05-21", timeState: 'past', format: 'Americano', level: 'D', time: '10:00 - 12:00', registered: 16, max: 16, status: 'full', isDemoWaitlist: false, waitlistCount: 0, players: ['Darius', 'Lina', 'Petras', 'Rasa'] }
 ];
 
 let tournaments = []; 
@@ -598,7 +639,6 @@ function adminNav(element, viewId) {
     }
 }
 
-// SUTVARKyta: Sukuria turnyrą pagal pasirinktą ciklą (iki 26 savaičių pusei metų į priekį)
 function createTournament(e) { 
     e.preventDefault(); 
     
