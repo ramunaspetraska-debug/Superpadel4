@@ -117,7 +117,7 @@ function updateAuthUI() {
 }
 
 // -----------------------------------------------------------------
-// SUTVARKyta: Patobulintas profilio variklis su tiesioginiais greitaisiais veiksmais
+// SUTVARKyta: Maksimaliai išvalytas, sutrumpintas ir estetiškas profilio langas
 // -----------------------------------------------------------------
 function renderUserProfile() {
     const container = document.getElementById('page-profile');
@@ -161,12 +161,12 @@ function renderUserProfile() {
 
     let html = `
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
-            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ebf8ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ebf8ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
                 ${currentUser.name.substring(0,2)}
             </div>
             <div style="flex: 1;">
                 <div style="font-size: 16px; font-weight: 900; color: var(--text-dark);">${currentUser.name}</div>
-                <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 3px;"><i class="fa-solid fa-address-card" style="margin-right:4px;"></i> Padelio ID: ${currentUser.id}</div>
+                <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 3px;"><i class="fa-solid fa-id-badge" style="margin-right:4px;"></i> ID: ${currentUser.id}</div>
             </div>
             <div style="text-align: right;">
                 <span style="background: ${ptsColor}; color: white; padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${currentUser.tier || 'D'} Lyga</span>
@@ -174,25 +174,25 @@ function renderUserProfile() {
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px;">
-            <div style="background: white; border-radius: 10px; padding: 15px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">ELO Reitingas</div>
-                <div style="font-size: 22px; font-weight: 900; color: ${ptsColor};">${currentUser.rating || 300}</div>
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">ELO reitingas</div>
+                <div style="font-size: 20px; font-weight: 900; color: ${ptsColor};">${currentUser.rating || 300}</div>
             </div>
-            <div style="background: white; border-radius: 10px; padding: 15px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Sužaisti mačai</div>
-                <div style="font-size: 22px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Mačai</div>
+                <div style="font-size: 20px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
             </div>
         </div>
 
-        <div style="font-size: 13px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-regular fa-calendar-check" style="color: var(--primary-blue); font-size: 14px;"></i> Artimiausi mano turnyrai (${myUpcoming.length})
+        <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-regular fa-calendar-check" style="color: var(--primary-blue); font-size: 13px;"></i> Mano turnyrai (${myUpcoming.length})
         </div>
     `;
 
     if (myUpcoming.length === 0) {
         html += `
-            <div style="background: #f8f9fb; border: 1px dashed #cbd5e0; border-radius: 8px; padding: 20px; text-align: center; color: var(--text-grey); font-size: 12px; margin-bottom: 25px;">
-                Nesate užsiregistravęs jokiame būsimame turnyre.
+            <div style="background: #f8f9fb; border: 1px dashed #cbd5e0; border-radius: 8px; padding: 15px; text-align: center; color: var(--text-grey); font-size: 12px; margin-bottom: 25px;">
+                Būsimų registracijų nėra.
             </div>
         `;
     } else {
@@ -208,29 +208,27 @@ function renderUserProfile() {
             if (hasPartner) {
                 let parts = teamStr.split('/');
                 let pName = parts[0].trim().toLowerCase() === currentUser.name.toLowerCase() ? parts[1].trim() : parts[0].trim();
-                partnerInfo = `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 2px;"><i class="fa-solid fa-user-group"></i> Partneris: ${pName}</div>`;
+                partnerInfo = `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 3px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-group"></i> ${pName}</div>`;
             } else {
-                // SUTVARKyta: Jei partnerio nėra, atvaizduojame greitą žalią mygtuką partnerio pridėjimui iškart iš profilio
                 actionButtons += `
-                    <button type="button" onclick="event.stopPropagation(); confirmRegistration(${t.id}, true);" style="background: var(--status-green); color: white; border: none; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: 0.2s; box-shadow: 0 2px 4px rgba(72,187,120,0.2);" title="Pridėti partnerį">
+                    <button type="button" onclick="event.stopPropagation(); confirmRegistration(${t.id}, true);" style="background: var(--status-green); color: white; border: none; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: 0.2s; box-shadow: 0 2px 4px rgba(72,187,120,0.2);">
                         <i class="fa-solid fa-user-plus"></i>
                     </button>
                 `;
             }
 
-            // SUTVARKyta: Raudona šiukšliadėžė greitam išsiregistravimui tiesiai iš profilio kortelės
             actionButtons += `
-                <button type="button" onclick="event.stopPropagation(); openCancelModal(${t.id});" style="background: #fff; color: var(--status-red); border: 1px solid #fed7d7; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-left: 6px; transition: 0.2s;" title="Atšaukti vietą">
+                <button type="button" onclick="event.stopPropagation(); openCancelModal(${t.id});" style="background: #fff; color: var(--status-red); border: 1px solid #fed7d7; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-left: 6px; transition: 0.2s;">
                     <i class="fa-solid fa-trash-can"></i>
                 </button>
             `;
 
             html += `
-                <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-blue); border-radius: 12px; padding: 14px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='#cbd5e0'" onmouseout="this.style.borderColor='#e2e8f0'" onclick="activeDate='${t.date}'; switchTab('page-calendar'); setTimeout(() => { renderTournaments(); initDates(); }, 50);">
+                <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-blue); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;" onclick="activeDate='${t.date}'; switchTab('page-calendar'); setTimeout(() => { renderTournaments(); initDates(); }, 50);">
                     <div style="flex: 1; padding-right: 10px;">
                         <div style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${t.format} <span style="font-size: 10px; background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: var(--text-dark); margin-left: 5px;">${displayLevel}</span></div>
-                        <div style="font-size: 12px; color: var(--text-grey); margin-top: 3px; font-weight: 600;">
-                            <i class="fa-regular fa-clock" style="margin-right: 2px;"></i> ${t.date} d. • ${t.time}
+                        <div style="font-size: 12px; color: var(--text-grey); margin-top: 2px; font-weight: 600;">
+                            <i class="fa-regular fa-clock" style="margin-right: 2px; font-size: 11px;"></i> ${t.date} • ${t.time}
                         </div>
                         ${partnerInfo}
                     </div>
@@ -243,16 +241,17 @@ function renderUserProfile() {
         html += `</div>`;
     }
 
+    // TURNYRAI ISTORIJA
     html += `
-        <div style="font-size: 13px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-clock-rotate-left" style="color: #a0aec0; font-size: 14px;"></i> Neseni turnyrai (30 d. istorija)
+        <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-clock-rotate-left" style="color: #a0aec0; font-size: 13px;"></i> Turnyrų istorija
         </div>
     `;
 
     if (myPast.length === 0) {
         html += `
             <div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 15px; text-align: center; color: var(--text-grey); font-size: 11px;">
-                Nėra sužaistų turnyrų per pastarąsias 30 dienų.
+                Turnyrų istorija tuščia.
             </div>
         `;
     } else {
@@ -262,7 +261,7 @@ function renderUserProfile() {
                 <div style="background: #f8f9fb; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; opacity: 0.85;">
                     <div>
                         <div style="font-weight: 700; color: var(--text-dark); font-size: 13px;">${t.format}</div>
-                        <div style="font-size: 11px; color: var(--text-grey);">${t.date} d. • ${t.time}</div>
+                        <div style="font-size: 11px; color: var(--text-grey); margin-top: 1px;">${t.date} • ${t.time}</div>
                     </div>
                     <div>
                         <span style="font-size: 9px; background: #cbd5e0; padding: 2px 5px; border-radius: 4px; font-weight: bold; color: white; text-transform:uppercase;">Įvyko</span>
@@ -776,7 +775,7 @@ function confirmCancel(id) {
     saveData(); 
     closeModal(); 
     document.getElementById('notifBadge').style.display = 'none'; 
-    showToast("Registracija sėkmingai atšaukta."); 
+    showToast("Registracija sėkmingi atšaukta."); 
     renderUserProfile();
 }
 
