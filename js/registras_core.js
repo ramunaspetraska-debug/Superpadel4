@@ -116,9 +116,6 @@ function updateAuthUI() {
     renderUserProfile();
 }
 
-// -----------------------------------------------------------------
-// SUTVARKyta: Maksimaliai išvalytas, sutrumpintas ir estetiškas profilio langas
-// -----------------------------------------------------------------
 function renderUserProfile() {
     const container = document.getElementById('page-profile');
     if (!container) return;
@@ -241,7 +238,6 @@ function renderUserProfile() {
         html += `</div>`;
     }
 
-    // TURNYRAI ISTORIJA
     html += `
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
             <i class="fa-solid fa-clock-rotate-left" style="color: #a0aec0; font-size: 13px;"></i> Turnyrų istorija
@@ -663,7 +659,7 @@ function renderTournaments() {
     });
 }
 
-function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
+function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; document.getElementById('filterPlayer').value = ''; renderTournaments(); }
@@ -686,6 +682,24 @@ function openRegisterModal(id) {
 function confirmRegistration(id, withPartner) { 
     let t = tournaments.find(x => x.id === id); 
     if (!t) return;
+
+    // -----------------------------------------------------------------
+    // NAUJA: Griežta lyties kontrolė (Gender Safety Guard)
+    // -----------------------------------------------------------------
+    const formatUpper = t.format.toUpperCase();
+    if (currentUser && currentUser.gender) {
+        if (formatUpper.includes("MOTERŲ") && currentUser.gender === "M") {
+            if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras yra skirtas MOTERIMS (${t.format}), o jūsų profilio lytis nurodyta – Vyras.\n\nAr tikrai norite tęsti registraciją?`)) {
+                return; // Administratorius paspaudė atšaukti - sustabdom
+            }
+        }
+        if (formatUpper.includes("VYRŲ") && currentUser.gender === "F") {
+            if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras yra skirtas VYRAMS (${t.format}), o jūsų profilio lytis nurodyta – Moteris.\n\nAr tikrai norite tęsti registraciją?`)) {
+                return; // Administratorius paspaudė atšaukti - sustabdom
+            }
+        }
+    }
+    // -----------------------------------------------------------------
 
     if (withPartner) {
         let partnerInput = prompt("Įveskite partnerio telefono numerį arba Padel ID:");
@@ -775,7 +789,7 @@ function confirmCancel(id) {
     saveData(); 
     closeModal(); 
     document.getElementById('notifBadge').style.display = 'none'; 
-    showToast("Registracija sėkmingi atšaukta."); 
+    showToast("Registracija sėkmingai atšaukta."); 
     renderUserProfile();
 }
 
