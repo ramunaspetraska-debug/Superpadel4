@@ -248,6 +248,30 @@ function renderLiveScoreboard() {
     container.innerHTML = `<div class="score-box"><div style="background: #1a202c; color: white; padding: 6px 15px; font-size: 10px; font-weight: bold; letter-spacing: 1px;">${headerTitle}</div><div class="team-row"><div class="team-names">${team1Names}</div>${score1Html}</div><div class="team-row" style="border-bottom: none; background: #f8f9fb;"><div class="team-names">${team2Names}</div>${score2Html}</div></div>`; 
 }
 
+function openLiveModal(e) { 
+    e.stopPropagation(); 
+    document.getElementById('liveModal').classList.add('show'); 
+    document.body.style.overflow = 'hidden'; 
+}
+
+function closeLiveModal() { 
+    try { 
+        eRefAuthenticated = false; 
+        currentFirebaseData = null; 
+        const modal = document.getElementById('liveModal'); 
+        if (modal) { modal.classList.remove('show'); document.body.style.overflow = 'auto'; } 
+        setTimeout(() => { 
+            try { 
+                if(liveDbRef) { liveDbRef.off(); liveDbRef = null; } 
+                document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span>`; 
+                document.getElementById('liveRoomInput').value = ''; 
+                document.getElementById('liveCourtsContainer').innerHTML = '<div class="live-filter-btn">Laukiama prisijungimo...</div>'; 
+                document.getElementById('liveScoreBoxContainer').innerHTML = `<div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite V188 kambario pavadinimą...</div>`; 
+            } catch(err) {} 
+        }, 300); 
+    } catch(e) {}
+}
+
 // ==========================================
 // 3. KALENDORIUS IR TURNYRAI (DEBESYJE + AUTOMATINIS ARCHYVAS)
 // ==========================================
@@ -278,19 +302,14 @@ function initDates() {
         if(adminSelect) adminSelect.innerHTML += `<option value="${d.dateKey}" ${selected}>${d.dayNumStr} d. (${d.dayNameStr})</option>`; 
     }); 
     
-    // -----------------------------------------------------------------
-    // SUTVARKyta: Visiškai uždraustas teksto žymėjimas slinkimo metu (Apsauga nuo mėlyno žymėjimo)
-    // -----------------------------------------------------------------
     carousel.style.userSelect = 'none';
     carousel.style.webkitUserSelect = 'none';
     carousel.style.mozUserSelect = 'none';
     carousel.style.msUserSelect = 'none';
     
-    // Įgaliname horizontalų slinkimą pelytės ratuku virš datų
     carousel.removeEventListener('wheel', handleCarouselWheel); 
     carousel.addEventListener('wheel', handleCarouselWheel, { passive: false });
 
-    // Įgaliname slinkimą pelės nutempimu (Drag-to-Scroll)
     let isDown = false;
     let startX;
     let scrollLeft;
@@ -641,12 +660,46 @@ function adminNav(element, viewId) {
     }
 }
 
+// NAUJA / SUTVARKyta: Pagalbinė funkcija laiko teksto pavertimui minutėmis (pvz. "10:30" -> 630 minučių)
+function parseTimeStr(timeStr) {
+    const parts = timeStr.split('-');
+    if (parts.length !== 2) return null;
+    const startParts = parts[0].trim().split(':');
+    const endParts = parts[1].trim().split(':');
+    if (startParts.length !== 2 || endParts.length !== 2) return null;
+    return {
+        start: parseInt(startParts[0]) * 60 + parseInt(startParts[1]),
+        end: parseInt(endParts[0]) * 60 + parseInt(endParts[1])
+    };
+}
+
+// Sukuria turnyrą pagal pasirinktą ciklą (su protingu laiko tarpų persidengimo tikrinimu)
 function createTournament(e) { 
     e.preventDefault(); 
     
     const baseDateStr = document.getElementById('newDate').value; 
+    const laikas = document.getElementById('newTime').value; // pvz., "10:00 - 12:00"
     const repeatCount = parseInt(document.getElementById('newRepeat').value || 1); 
     
+    // NAUJA: Išmanusis laiko persidengimo/prasikeitimo tikrinimas (minutėmis)
+    const naujasLaikasObj = parseTimeStr(laikas);
+    const persidengiantysTurnyrai = tournaments.filter(t => {
+        if (t.date !== baseDateStr) return false;
+        const esamasLaikasObj = parseTimeStr(t.time);
+        if (!naujasLaikasObj || !esamasLaikasObj) return false;
+        
+        // Matematinė sankirtos formulė: pradžia1 < pabaiga2 IR pabaiga1 > pradžia2
+        return naujasLaikasObj.start < esamasLaikasObj.end && naujasLaikasObj.end > esamasLaikasObj.start;
+    });
+
+    if (persidengiantysTurnyrai.length > 0) {
+        const rastiTurnyrai = persidengiantysTurnyrai.map(t => `${t.format} (${t.time}, ${t.level} lygis)`).join('\n👉 ');
+        const testiKurima = confirm(`⚠️ ĮSPĖJIMAS: Šią dieną (${baseDateStr}) pasirinktas laikas kerta/persidengia su jau esamais turnyrais:\n👉 ${rastiTurnyrai}\n\nAr tikrai norite sukurti dar vieną turnyrą lygiagrečiai šiuo periodu?`);
+        if (!testiKurima) {
+            return; // Atšaukiama
+        }
+    }
+
     const [month, day] = baseDateStr.split('-').map(Number);
     const baseDate = new Date(new Date().getFullYear(), month - 1, day);
 
@@ -663,7 +716,7 @@ function createTournament(e) {
             date: finalDateStr, 
             format: document.getElementById('newFormat').value, 
             level: document.getElementById('newLevel').value, 
-            time: document.getElementById('newTime').value, 
+            time: laikas, 
             registered: 0, 
             max: parseInt(document.getElementById('newMax').value), 
             status: 'open', 
