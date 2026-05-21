@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <link rel="stylesheet" href="css/registras.css">
+    <link rel="stylesheet" href="/css/registras.css?v=5">
 </head>
 <body>
 
@@ -89,7 +89,7 @@
         </div>
 
         <div class="app-header" id="mainHeader">
-            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span></div>
+            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.5</span></div>
             <div class="header-actions">
                 <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
                 <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
@@ -102,7 +102,6 @@
         <div id="page-calendar" class="page-view active">
             <div class="filters">
                 <div class="filter-group"><select id="filterFormat" onchange="renderTournaments()"><option value="all">Visi formatai</option><option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option></select></div>
-                
                 <div class="filter-group">
                     <select id="filterLevel" onchange="renderTournaments()">
                         <option value="all">Visi lygiai</option>
@@ -115,7 +114,6 @@
                         <option value="Privatus">Privatus (Nereitinguojamas)</option>
                     </select>
                 </div>
-                
                 <div class="filter-group full-width"><div class="search-wrapper"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="filterPlayer" placeholder="Ieškoti žaidėjo (pvz. Marius)" onkeyup="renderTournaments()"></div></div>
             </div>
             <div class="date-carousel" id="dateCarousel"></div>
@@ -185,11 +183,11 @@
     <div id="adminMode">
         <div class="admin-layout">
             <div class="admin-sidebar">
-                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius</span></div>
+                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.5</span></span></div>
                 <ul class="nav-menu">
-                    <li onclick="adminNav(this)"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
-                    <li class="active" onclick="adminNav(this)"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
-                    <li onclick="adminNav(this)"><i class="fa-solid fa-users"></i> Žaidėjų bazė</li>
+                    <li onclick="adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
+                    <li class="active" onclick="adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
+                    <li onclick="adminNav(this, 'admin-view-zaidejai')"><i class="fa-solid fa-users"></i> Žaidėjų bazė</li>
                     
                     <a href="index.html" target="_blank" style="display: flex; align-items: center; gap: 15px; padding: 15px 20px; color: #48bb78; text-decoration: none; font-weight: bold; margin-top: 20px; border-top: 1px solid #2d3748;">
                         <i class="fa-solid fa-gear"></i> Pagrindinė Programa
@@ -199,50 +197,95 @@
                 </ul>
             </div>
             <div class="admin-main">
-                <h1 style="margin-bottom: 20px;">Turnyrų Valdymas</h1>
-                <div style="display: grid; grid-template-columns: 1fr; max-width: 600px;">
+                
+                <div id="admin-view-apzvalga" class="admin-tab" style="display: none;">
+                    <h1 style="margin-bottom: 20px;">Apžvalga</h1>
                     <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Sukurti Naują Turnyrą</div>
-                        <form id="adminForm" onsubmit="createTournament(event)">
-                            <div style="margin-bottom: 15px;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Formatas</label>
-                                <select id="newFormat" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                    <option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option>
-                                </select>
-                            </div>
-                            
-                            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                                <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Lygis</label>
-                                    <select id="newLevel" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                        <option value="Atviras">Atviras (Visi lygiai)</option>
-                                        <option value="A">A (Ekspertai)</option>
-                                        <option value="B">B-/B (Patyrę)</option>
-                                        <option value="C">C/C+ (Pažengę)</option>
-                                        <option value="D-C">D/C- (Pradedantieji)</option>
-                                        <option value="D">D (Naujokai)</option>
-                                        <option value="Privatus">Privatus (Nereitinguojamas)</option>
-                                    </select>
-                                </div>
-                                <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Vietų sk.</label>
-                                    <input type="number" id="newMax" value="16" min="2" max="32" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                </div>
-                            </div>
-                            
-                            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                                <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Diena</label>
-                                    <select id="newDate" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;"></select>
-                                </div>
-                                <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Laikas</label>
-                                    <input type="text" id="newTime" value="18:00 - 20:00" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
-                                </div>
-                            </div>
-                            <button type="submit" style="background-color: var(--primary-blue); color: white; border: none; padding: 12px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Paskelbti Turnyrą</button>
-                        </form>
+                        <p style="color: var(--text-grey); font-size: 14px;">Čia netrukus atsiras bendra sistemos statistika (Kiek iš viso turnyrų sužaista, kiek unikalių žaidėjų prisijungę ir pan.)</p>
                     </div>
                 </div>
+
+                <div id="admin-view-turnyrai" class="admin-tab">
+                    <h1 style="margin-bottom: 20px;">Turnyrų Valdymas</h1>
+                    <div style="display: grid; grid-template-columns: 1fr; max-width: 600px;">
+                        
+                        <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                            <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Sukurti Naują Turnyrą</div>
+                            <form id="adminForm" onsubmit="createTournament(event)">
+                                <div style="margin-bottom: 15px;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Formatas</label>
+                                    <select id="newFormat" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                        <option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option>
+                                    </select>
+                                </div>
+                                
+                                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Lygis</label>
+                                        <select id="newLevel" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                            <option value="Atviras">Atviras (Visi lygiai)</option>
+                                            <option value="A">A (Ekspertai)</option>
+                                            <option value="B">B-/B (Patyrę)</option>
+                                            <option value="C">C/C+ (Pažengę)</option>
+                                            <option value="D-C">D/C- (Pradedantieji)</option>
+                                            <option value="D">D (Naujokai)</option>
+                                            <option value="Privatus">Privatus (Nereitinguojamas)</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Vietų sk.</label>
+                                        <input type="number" id="newMax" value="16" min="2" max="32" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Kartoti turnyrą (periodas)</label>
+                                    <select id="newRepeat" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; font-weight: bold; color: var(--primary-blue);">
+                                        <option value="1">Nekartoti (Sukurti tik 1 kartą)</option>
+                                        <option value="4">Kartoti 4 savaites (1 mėnesį)</option>
+                                        <option value="8">Kartoti 8 savaites (2 mėnesius)</option>
+                                        <option value="12">Kartoti 12 savaičių (3 mėnesius)</option>
+                                        <option value="26">Kartoti nuolat (Pusės metų sezonui / 26 savaitėms)</option>
+                                    </select>
+                                </div>
+                                
+                                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Pirmojo turnyro diena</label>
+                                        <select id="newDate" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;"></select>
+                                    </div>
+                                    <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Laikas</label>
+                                        <input type="text" id="newTime" value="18:00 - 20:00" required style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                    </div>
+                                </div>
+                                <button type="submit" style="background-color: var(--primary-blue); color: white; border: none; padding: 12px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: 0.2s;"><i class="fa-solid fa-plus"></i> Paskelbti Turnyrą</button>
+                            </form>
+                        </div>
+
+                        <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto;">
+                            <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Visi Sistemos Turnyrai (Aktyvūs)</div>
+                            <div id="admin-tournaments-list-db"></div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div id="admin-view-zaidejai" class="admin-tab" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h1 style="margin: 0;">Žaidėjų Bazė</h1>
+                        <span style="font-size: 12px; background: var(--primary-blue); color: white; padding: 4px 8px; border-radius: 12px; font-weight: bold;" id="admin-players-count">Viso: 0</span>
+                    </div>
+                    <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto;">
+                        <div class="search-wrapper" style="margin-bottom: 15px;">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="adminPlayerSearch" placeholder="Ieškoti žaidėjo pagal vardą..." onkeyup="filterAdminPlayers()" style="width: 100%; padding: 10px 10px 10px 35px; border: 1px solid #cbd5e0; border-radius: 6px; font-weight: bold; color: var(--text-dark); outline: none;">
+                        </div>
+                        <div id="admin-players-list-db">
+                            <div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami duomenys iš debesies...</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 
-    <script src="js/registras.js"></script>
+    <script src="/js/registras_core.js"></script>
 </body>
 </html>
