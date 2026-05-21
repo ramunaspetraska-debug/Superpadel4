@@ -279,14 +279,18 @@ function initDates() {
     }); 
     
     // -----------------------------------------------------------------
-    // NAUJA / SUTVARKyta: Profesionali darbalaukio slinkties kontrolė (Pelytės ratukas + Nutempimas)
+    // SUTVARKyta: Visiškai uždraustas teksto žymėjimas slinkimo metu (Apsauga nuo mėlyno žymėjimo)
     // -----------------------------------------------------------------
+    carousel.style.userSelect = 'none';
+    carousel.style.webkitUserSelect = 'none';
+    carousel.style.mozUserSelect = 'none';
+    carousel.style.msUserSelect = 'none';
     
-    // 1. Įgaliname horizontalų slinkimą pelytės ratuku virš datų
-    carousel.removeEventListener('wheel', handleCarouselWheel); // Apsauga nuo dubliavimosi
+    // Įgaliname horizontalų slinkimą pelytės ratuku virš datų
+    carousel.removeEventListener('wheel', handleCarouselWheel); 
     carousel.addEventListener('wheel', handleCarouselWheel, { passive: false });
 
-    // 2. Įgaliname slinkimą pelės nutempimu (Drag-to-Scroll) kaip telefone
+    // Įgaliname slinkimą pelės nutempimu (Drag-to-Scroll)
     let isDown = false;
     let startX;
     let scrollLeft;
@@ -303,22 +307,20 @@ function initDates() {
         if(!isDown) return;
         e.preventDefault();
         const x = e.pageX - carousel.offsetLeft;
-        const walk = (x - startX) * 2; // Slinkimo greičio jautrumas
+        const walk = (x - startX) * 2; 
         carousel.scrollLeft = scrollLeft - walk;
     });
     
-    // Nustatome pradinį kursoriaus stilių, kad vartotojas suprastų, jog galima tempti
     carousel.style.cursor = 'grab';
 
     setTimeout(() => { const todayBox = document.getElementById('today-date-box'); if(todayBox) { todayBox.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } }, 100);
 }
 
-// Pagalbinė funkcija pelės ratuko valdymui
 function handleCarouselWheel(e) {
     const carousel = document.getElementById('dateCarousel');
     if (e.deltaY !== 0) {
         e.preventDefault();
-        carousel.scrollLeft += e.deltaY * 1.5; // Konvertuojame vertikalų sukimą į horizontalų judesį
+        carousel.scrollLeft += e.deltaY * 1.5; 
     }
 }
 
@@ -770,40 +772,6 @@ function filterAdminPlayers() {
         return nameMatch || idMatch;
     });
     renderAdminPlayersDB(filtered);
-}
-
-function deleteAdminPlayer(id) {
-    let p = globalAdminPlayers.find(x => String(x.id) === String(id));
-    if(!p) { return; }
-    if(confirm(`Ar tikrai norite IŠTRINTI žaidėją "${p.name}"?`)) {
-        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + p.id).remove().then(() => {
-            showToast("Žaidėjas ištrintas!");
-            loadAdminPlayersDB();
-        });
-    }
-}
-
-function editAdminPlayer(id) {
-    let p = globalAdminPlayers.find(x => String(x.id) === String(id));
-    if(!p) { return; }
-    let newPts = prompt(`Įveskite naują ELO taškų skaičių žaidėjui ${p.name}:`, p.rating || 300);
-    
-    if(newPts !== null && newPts.trim() !== "" && !isNaN(newPts)) {
-        let pts = parseInt(newPts);
-        let tier = "D";
-        if (pts >= 851) tier = "A";
-        else if (pts >= 671) tier = "B";
-        else if (pts >= 501) tier = "C";
-        else if (pts >= 351) tier = "D-C";
-
-        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + p.id).update({
-            rating: pts,
-            tier: tier
-        }).then(() => {
-            showToast(`Atnaujinta! ${pts} ELO`);
-            loadAdminPlayersDB();
-        });
-    }
 }
 
 // Inicializacija užkrovus puslapį
