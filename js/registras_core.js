@@ -113,6 +113,156 @@ function updateAuthUI() {
         btn.style.color = 'var(--primary-blue)';
         btn.onclick = () => { pendingTournamentId = null; openAuthModal(); }; 
     }
+    
+    // SUTVARKyta: Jei esame profilio puslapyje, atnaujiname jo išvaizdą iškart po prisijungimo/atsijungimo
+    renderUserProfile();
+}
+
+// -----------------------------------------------------------------
+// NAUJA: Dinaminio profilio atvaizdavimo variklis (Statistika + Istorija + Registracijos)
+// -----------------------------------------------------------------
+function renderUserProfile() {
+    const container = document.getElementById('page-profile');
+    if (!container) return;
+
+    if (!currentUser) {
+        container.style.padding = "40px 20px";
+        container.style.textAlign = "center";
+        container.innerHTML = `
+            <div style="background: #f8f9fb; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; color: #a0aec0; border: 1px dashed #cbd5e0;">
+                <i class="fa-regular fa-user" style="font-size: 32px;"></i>
+            </div>
+            <h3 style="font-weight: 800; color: var(--text-dark); margin-bottom: 8px; font-size: 18px;">Mano Profilis</h3>
+            <p style="font-size: 13px; color: var(--text-grey); margin-bottom: 25px; line-height: 1.5;">Prisijunkite prie savo paskyros, kad matytumėte asmeninę statistiką, reitingo taškus bei ateinančių turnyrų rezervacijas.</p>
+            <button type="button" class="modal-btn primary" onclick="openAuthModal()" style="padding: 12px 30px; font-size: 14px; font-weight: bold; border-radius: 8px; margin: 0 auto;">Prisijungti dabar</button>
+        `;
+        return;
+    }
+
+    container.style.padding = "20px";
+    container.style.textAlign = "left";
+
+    // Surandame aktyvias registracijas, kur asmuo žaidžia vienas arba su partneriu
+    let myUpcoming = tournaments.filter(t => {
+        if (!t.players || !Array.isArray(t.players)) return false;
+        t.timeState = getTimeState(t.date, t.time);
+        return t.players.some(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) && t.timeState !== 'past';
+    });
+
+    let myPast = tournaments.filter(t => {
+        if (!t.players || !Array.isArray(t.players)) return false;
+        t.timeState = getTimeState(t.date, t.time);
+        return t.players.some(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) && t.timeState === 'past';
+    });
+
+    // Paruošiame lygos ženkliuko vizualą
+    let ptsColor = 'var(--primary-blue)';
+    if (currentUser.tier === 'A') ptsColor = 'var(--lvl-a)';
+    else if (currentUser.tier === 'B') ptsColor = 'var(--lvl-b)';
+    else if (currentUser.tier === 'C') ptsColor = 'var(--lvl-c)';
+    else if (currentUser.tier === 'D-C') ptsColor = 'var(--lvl-d-c)';
+    else ptsColor = 'var(--lvl-d)';
+
+    let html = `
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ebf8ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
+                ${currentUser.name.substring(0,2)}
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 16px; font-weight: 900; color: var(--text-dark);">${currentUser.name}</div>
+                <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 3px;"><i class="fa-solid fa-address-card" style="margin-right:4px;"></i> Padelio ID: ${currentUser.id}</div>
+            </div>
+            <div style="text-align: right;">
+                <span style="background: ${ptsColor}; color: white; padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${currentUser.tier || 'D'} Lyga</span>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px;">
+            <div style="background: white; border-radius: 10px; padding: 15px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">ELO Reitingas</div>
+                <div style="font-size: 22px; font-weight: 900; color: ${ptsColor};">${currentUser.rating || 300}</div>
+            </div>
+            <div style="background: white; border-radius: 10px; padding: 15px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Sužaisti mačai</div>
+                <div style="font-size: 22px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
+            </div>
+        </div>
+
+        <div style="font-size: 13px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-regular fa-calendar-check" style="color: var(--primary-blue); font-size: 14px;"></i> Artimiausi mano turnyrai (${myUpcoming.length})
+        </div>
+    `;
+
+    if (myUpcoming.length === 0) {
+        html += `
+            <div style="background: #f8f9fb; border: 1px dashed #cbd5e0; border-radius: 8px; padding: 20px; text-align: center; color: var(--text-grey); font-size: 12px; margin-bottom: 25px;">
+                Nesate užsiregistravęs jokiame būsimame turnyre.
+            </div>
+        `;
+    } else {
+        html += `<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">`;
+        myUpcoming.forEach(t => {
+            let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level;
+            
+            // Surandame ar žaidžia su partneriu poroje
+            let partnerInfo = "";
+            let teamStr = t.players.find(p => p.toLowerCase().includes(currentUser.name.toLowerCase()));
+            if(teamStr && teamStr.includes('/')) {
+                let parts = teamStr.split('/');
+                let pName = parts[0].trim().toLowerCase() === currentUser.name.toLowerCase() ? parts[1].trim() : parts[0].trim();
+                partnerInfo = `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 2px;"><i class="fa-solid fa-user-group"></i> Partneris: ${pName}</div>`;
+            }
+
+            html += `
+                <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-blue); border-radius: 8px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="activeDate='${t.date}'; switchTab('page-calendar'); setTimeout(() => { renderTournaments(); initDates(); }, 50);">
+                    <div>
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${t.format}</div>
+                        <div style="font-size: 12px; color: var(--text-grey); margin-top: 2px; font-weight: 600;">
+                            <i class="fa-regular fa-clock"></i> ${t.date} d. • ${t.time}
+                        </div>
+                        ${partnerInfo}
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 10px; background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight: bold; color: var(--text-dark);">${displayLevel}</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+    }
+
+    // PRAĖJĘ TURNYRAI (PASKUTINIŲ 30 d. ISTORIJA)
+    html += `
+        <div style="font-size: 13px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-clock-rotate-left" style="color: #a0aec0; font-size: 14px;"></i> Neseni turnyrai (30 d. istorija)
+        </div>
+    `;
+
+    if (myPast.length === 0) {
+        html += `
+            <div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 15px; text-align: center; color: var(--text-grey); font-size: 11px;">
+                Nėra sužaistų turnyrų per pastarąsias 30 dienų.
+            </div>
+        `;
+    } else {
+        html += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
+        myPast.forEach(t => {
+            html += `
+                <div style="background: #f8f9fb; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; opacity: 0.85;">
+                    <div>
+                        <div style="font-weight: 700; color: var(--text-dark); font-size: 13px;">${t.format}</div>
+                        <div style="font-size: 11px; color: var(--text-grey);">${t.date} d. • ${t.time}</div>
+                    </div>
+                    <div>
+                        <span style="font-size: 9px; background: #cbd5e0; padding: 2px 5px; border-radius: 4px; font-weight: bold; color: white; text-transform:uppercase;">Įvyko</span>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+    }
+
+    container.innerHTML = html;
 }
 
 // ==========================================
@@ -412,6 +562,11 @@ function initTournamentsDB() {
         
         renderTournaments();
         
+        // SUTVARKyta: Jei duomenys debesyje pasikeitė, o žaidėjas žiūri savo profilį – atnaujiname jo turnyrų sąrašą
+        if (document.getElementById('page-profile').classList.contains('active')) {
+            renderUserProfile();
+        }
+        
         let adminTab = document.getElementById('admin-view-turnyrai');
         if (adminTab && adminTab.style.display === 'block') {
             renderAdminTournaments();
@@ -519,14 +674,13 @@ function openRegisterModal(id) {
     modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
 }
 
-// SUTVARKyta: Profesionalus partnerio atpažinimas su automatinio naujo profilio kūrimo ciklu debesyje
 function confirmRegistration(id, withPartner) { 
     let t = tournaments.find(x => x.id === id); 
     if (!t) return;
 
     if (withPartner) {
         let partnerInput = prompt("Įveskite partnerio telefono numerį arba Padel ID:");
-        if (!partnerInput) return; // Atšaukta
+        if (!partnerInput) return; 
         
         let safePartnerId = partnerInput.replace(/[^a-z0-9]/g, '');
         if (safePartnerId.startsWith('86') && safePartnerId.length === 9) safePartnerId = '370' + safePartnerId.substring(1);
@@ -541,10 +695,8 @@ function confirmRegistration(id, withPartner) {
             let partnerData = snap.val();
             
             if (partnerData) {
-                // SUTVARKyta: Partneris jau yra sistemoje – patvirtiname registraciją iškart
                 completePairRegistration(t, currentUser.name, partnerData.name);
             } else {
-                // SUTVARKyta: Partneris nerastas – akimirksniu sukuriam jam naują unikalią paskyrą!
                 let partnerName = prompt("Šis partneris dar neturi paskyros sistemoje.\n\nĮveskite partnerio VARDĄ ir PAVARDĘ, kad sukurtume naują profilį:");
                 if (!partnerName || partnerName.trim() === "") {
                     showToast("Registracija atšaukta. Būtina įvesti partnerio vardą.");
@@ -554,21 +706,19 @@ function confirmRegistration(id, withPartner) {
                 let newPartnerUser = {
                     id: safePartnerId,
                     name: partnerName.trim(),
-                    gender: currentUser.gender || "M", // Nukopijuojame lytį pagal nutylėjimą
+                    gender: currentUser.gender || "M", 
                     rating: 300,
                     tier: "D",
                     total_matches: 0,
                     last_played: Date.now()
                 };
                 
-                // Įrašome naują žaidėją į globalią bazę
                 firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safePartnerId).set(newPartnerUser).then(() => {
                     completePairRegistration(t, currentUser.name, newPartnerUser.name);
                 });
             }
         });
     } else {
-        // Individuali registracija
         if (!t.players) t.players = [];
         t.status = 'registered';
         t.registered += 1;
@@ -579,7 +729,6 @@ function confirmRegistration(id, withPartner) {
     }
 }
 
-// Pagalbinė funkcija švariam poros įrašymui į turnyrą
 function completePairRegistration(tournament, player1, player2) {
     if (!tournament.players) tournament.players = [];
     tournament.status = 'registered';
@@ -593,7 +742,33 @@ function completePairRegistration(tournament, player1, player2) {
 function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra. Stoti į eilę?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
 function confirmWaitlist(id) { let t = tournaments.find(x => x.id === id); t.status = 'waitlist'; t.waitlistCount += 1; saveData(); closeModal(); showToast("Pridėta į rezervą."); }
 function openCancelModal(id) { modalTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--status-red);"></i> Atšaukti Dalyvavimą`; modalBody.innerHTML = `Ar tikrai norite atšaukti savo vietą?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmCancel(${id})">Taip, atšaukti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
-function confirmCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'open'; t.registered -= 1; let pName = currentUser ? currentUser.name : "Jūs"; if(t.players) t.players = t.players.filter(p => p !== pName); saveData(); closeModal(); document.getElementById('notifBadge').style.display = 'none'; showToast("Registracija atšaukta."); }
+
+// SUTVARKyta: Atšaukiant registraciją, iš žaidėjų masyvo dabar taisyklingai ištrinamas įrašas (nesvarbu, ar registruotasi vienam, ar su partneriu poroje)
+function confirmCancel(id) { 
+    let t = tournaments.find(x => x.id === id); 
+    if(!t) return;
+
+    let pName = currentUser ? currentUser.name : "Jūs"; 
+    if(t.players) {
+        // Tikriname, ar žaidėjas buvo užregistruotas poroje "Vardas1 / Vardas2"
+        let teamIndex = t.players.findIndex(p => p.toLowerCase().includes(pName.toLowerCase()));
+        if(teamIndex !== -1) {
+            let teamStr = t.players[teamIndex];
+            if(teamStr.includes('/')) {
+                t.registered -= 2; // Jei atšaukia pora – atlaisvinam 2 vietas
+            } else {
+                t.registered -= 1; // Jei vienas – 1 vietą
+            }
+            t.players.splice(teamIndex, 1); // Pašaliname komandą iš sąrašo
+        }
+    }
+    t.status = 'open';
+    saveData(); 
+    closeModal(); 
+    document.getElementById('notifBadge').style.display = 'none'; 
+    showToast("Registracija sėkminga atšaukta."); 
+}
+
 function openWaitlistCancelModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `Palikti rezervą?`; modalBody.innerHTML = `Išeiti iš eilės?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmWaitlistCancel(${id})">Išeiti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Pasilikti</button>`; modal.classList.add('show'); }
 function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); closeModal(); showToast("Išbraukta iš rezervo."); }
 
@@ -667,6 +842,9 @@ function switchTab(pageId, element) {
     
     if(pageId === 'page-cam') { document.getElementById('mainHeader').style.display = 'none'; startCamera(); } else { document.getElementById('mainHeader').style.display = 'flex'; stopCamera(); }
     if(pageId === 'page-trophy') { document.querySelectorAll('.league-tab').forEach(el => el.classList.remove('active')); document.querySelector('.league-tab[data-league="all"]').classList.add('active'); loadAutomatedRatings('all'); }
+    
+    // SUTVARKyta: Kiekvieną kartą, kai žaidėjas paspaudžia ant profilio ikonos – pergeneruojame puslapį iš naujo su šviežiausiais duomenimis
+    if(pageId === 'page-profile') { renderUserProfile(); }
 }
 function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); switchTab('page-calendar', calendarBtn); }
 
@@ -723,18 +901,6 @@ function adminNav(element, viewId) {
     } else if (viewId === 'admin-view-turnyrai') {
         renderAdminTournaments();
     }
-}
-
-function parseTimeStr(timeStr) {
-    const parts = timeStr.split('-');
-    if (parts.length !== 2) return null;
-    const startParts = parts[0].trim().split(':');
-    const endParts = parts[1].trim().split(':');
-    if (startParts.length !== 2 || endParts.length !== 2) return null;
-    return {
-        start: parseInt(startParts[0]) * 60 + parseInt(startParts[1]),
-        end: parseInt(endParts[0]) * 60 + parseInt(endParts[1])
-    };
 }
 
 function createTournament(e) { 
