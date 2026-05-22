@@ -11,6 +11,7 @@ const DB_KEY = "padelio_pro_master";
 const GLOBAL_PLAYERS_KEY = "padelio_global_players";
 const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments"; 
 const GLOBAL_ARCHIVE_KEY = "padelio_archive_turnyrai"; 
+const GLOBAL_FRIENDLIES_KEY = "padelio_global_friendlies"; // NAUJA: Pramoginių mačų bazė
 
 let liveDbRef = null; 
 let currentLiveMatches = []; 
@@ -20,6 +21,7 @@ let currentFirebaseData = null;
 let currentUser = JSON.parse(localStorage.getItem('sp_current_user')) || null;
 let isAppMode = true; 
 let pendingTournamentId = null; 
+let friendlyMatches = []; // Vietinis masyvas draugiškiems mačams saugoti
 
 // ==========================================
 // 1. AUTENTIFIKACIJA IR VARTOTOJO PROFILIS
@@ -116,6 +118,9 @@ function updateAuthUI() {
     renderUserProfile();
 }
 
+// -----------------------------------------------------------------
+// SUTVARKyta: Švarus, minimalistinis profilio variklis (Atskiros lygos)
+// -----------------------------------------------------------------
 function renderUserProfile() {
     const container = document.getElementById('page-profile');
     if (!container) return;
@@ -137,17 +142,55 @@ function renderUserProfile() {
     container.style.padding = "20px";
     container.style.textAlign = "left";
 
+    // Filtruojame turnyrus
     let myUpcoming = tournaments.filter(t => {
         if (!t.players || !Array.isArray(t.players)) return false;
         t.timeState = getTimeState(t.date, t.time);
         return t.players.some(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) && t.timeState !== 'past';
     });
 
-    let myPast = tournaments.filter(t => {
+    let myPastTournaments = tournaments.filter(t => {
         if (!t.players || !Array.isArray(t.players)) return false;
         t.timeState = getTimeState(t.date, t.time);
         return t.players.some(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) && t.timeState === 'past';
     });
+
+    // SUTVARKyta: Filtruojame draugiškus mačus, kur asmuo dalyvavo (kaip kūrėjas, partneris ar varžovas)
+    let myFriendlies = friendlyMatches.filter(m => 
+        m.creatorName.toLowerCase() === currentUser.name.toLowerCase() ||
+        m.partner.toLowerCase() === currentUser.name.toLowerCase() ||
+        m.opp1.toLowerCase() === currentUser.name.toLowerCase() ||
+        m.opp2.toLowerCase() === currentUser.name.toLowerCase()
+    );
+
+    // Skaičiuojame draugiškų mačų pergales ir ieškome dažniausio partnerio fone
+    let friendlyWins = 0;
+    let partnersCount = {};
+
+    myFriendlies.forEach(m => {
+        let iAmTeam1 = m.creatorName.toLowerCase() === currentUser.name.toLowerCase() || m.partner.toLowerCase() === currentUser.name.toLowerCase();
+        let team1Won = m.score1 > m.score2;
+        if ((iAmTeam1 && team1Won) || (!iAmTeam1 && !team1Won && m.score1 !== m.score2)) {
+            friendlyWins++;
+        }
+        
+        if (m.creatorName.toLowerCase() === currentUser.name.toLowerCase() && m.partner && !m.partner.includes("Be partnerio")) {
+            partnersCount[m.partner] = (partnersCount[m.partner] || 0) + 1;
+        } else if (m.partner.toLowerCase() === currentUser.name.toLowerCase()) {
+            partnersCount[m.creatorName] = (partnersCount[m.creatorName] || 0) + 1;
+        }
+    });
+
+    let friendlyWinRate = myFriendlies.length > 0 ? Math.round((friendlyWins / myFriendlies.length) * 100) : 0;
+    
+    let topPartner = "-";
+    let maxPCount = 0;
+    for (let p in partnersCount) {
+        if (partnersCount[p] > maxPCount) {
+            maxPCount = partnersCount[p];
+            topPartner = p.split(' ')[0]; 
+        }
+    }
 
     let ptsColor = 'var(--primary-blue)';
     if (currentUser.tier === 'A') ptsColor = 'var(--lvl-a)';
@@ -157,7 +200,7 @@ function renderUserProfile() {
     else ptsColor = 'var(--lvl-d)';
 
     let html = `
-        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 15px; display: flex; align-items: center; gap: 15px;">
+        <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: #ebf8ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
                 ${currentUser.name.substring(0,2)}
             </div>
@@ -170,16 +213,37 @@ function renderUserProfile() {
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px;">
+        <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Oficiali Lyga</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">ELO reitingas</div>
+                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey);">ELO Reitingas</div>
                 <div style="font-size: 20px; font-weight: 900; color: ${ptsColor};">${currentUser.rating || 300}</div>
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px;">Mačai</div>
-                <div style="font-size: 20px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
+                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey);">Turnyrai</div>
+                <div style="font-size: 20px; font-weight: 900; color: var(--text-dark);">${myPastTournaments.length}</div>
             </div>
         </div>
+
+        <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Mėgėjų Lyga</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px;">
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Mačai</div>
+                <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${myFriendlies.length}</div>
+            </div>
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
+                <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${friendlyWinRate}%</div>
+            </div>
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Partneris</div>
+                <div style="font-size: 14px; font-weight: 900; color: var(--primary-blue); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${topPartner}</div>
+            </div>
+        </div>
+
+        <button type="button" onclick="openFriendlyMatchModal()" style="width: 100%; background: var(--primary-blue); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(49,130,206,0.15);">
+            <i class="fa-solid fa-circle-plus"></i> Registruoti draugišką mačą
+        </button>
 
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
             <i class="fa-regular fa-calendar-check" style="color: var(--primary-blue); font-size: 13px;"></i> Mano turnyrai (${myUpcoming.length})
@@ -196,7 +260,6 @@ function renderUserProfile() {
         html += `<div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px;">`;
         myUpcoming.forEach(t => {
             let displayLevel = t.level === 'D-C' ? 'D/C-' : t.level;
-            
             let partnerInfo = "";
             let actionButtons = "";
             let teamStr = t.players.find(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) || "";
@@ -238,29 +301,51 @@ function renderUserProfile() {
         html += `</div>`;
     }
 
+    // SUTVARKyta: Sąrašas suvestų draugiškų mačų istorijai profilyje
     html += `
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
-            <i class="fa-solid fa-clock-rotate-left" style="color: #a0aec0; font-size: 13px;"></i> Turnyrų istorija
+            <i class="fa-solid fa-user-group" style="color: #a0aec0; font-size: 13px;"></i> Draugiški mačai (${myFriendlies.length})
         </div>
     `;
 
-    if (myPast.length === 0) {
+    if (myFriendlies.length === 0) {
         html += `
             <div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 15px; text-align: center; color: var(--text-grey); font-size: 11px;">
-                Turnyrų istorija tuščia.
+                Draugiškų mačų istorija tuščia.
             </div>
         `;
     } else {
         html += `<div style="display: flex; flex-direction: column; gap: 8px;">`;
-        myPast.forEach(t => {
+        let sortedFriendlies = [...myFriendlies].sort((a,b) => b.id - a.id);
+        
+        sortedFriendlies.forEach(m => {
+            let iAmTeam1 = m.creatorName.toLowerCase() === currentUser.name.toLowerCase() || m.partner.toLowerCase() === currentUser.name.toLowerCase();
+            let team1Won = m.score1 > m.score2;
+            let iWon = (iAmTeam1 && team1Won) || (!iAmTeam1 && !team1Won && m.score1 !== m.score2);
+            let isTie = m.score1 === m.score2;
+
+            let badgeHtml = isTie ? 
+                `<span style="font-size: 9px; background: #e2e8f0; color: #4a5568; padding: 2px 6px; border-radius: 4px; font-weight: bold;">LYGIOSIOS</span>` :
+                (iWon ? 
+                    `<span style="font-size: 9px; background: #c6f6d5; color: #22543d; padding: 2px 6px; border-radius: 4px; font-weight: bold;">LAIMĖTA</span>` : 
+                    `<span style="font-size: 9px; background: #fed7d7; color: #742a2a; padding: 2px 6px; border-radius: 4px; font-weight: bold;">PRALAIMĖTA</span>`
+                );
+
+            let t1Names = m.partner && !m.partner.includes("Be partnerio") ? `${m.creatorName.split(' ')[0]} / ${m.partner.split(' ')[0]}` : m.creatorName.split(' ')[0];
+            let t2Names = m.opp2 ? `${m.opp1.split(' ')[0]} / ${m.opp2.split(' ')[0]}` : m.opp1.split(' ')[0];
+
             html += `
-                <div style="background: #f8f9fb; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; opacity: 0.85;">
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
                     <div>
-                        <div style="font-weight: 700; color: var(--text-dark); font-size: 13px;">${t.format}</div>
-                        <div style="font-size: 11px; color: var(--text-grey); margin-top: 1px;">${t.date} • ${t.time}</div>
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 13px;">
+                            ${t1Names} <span style="font-weight:normal; color:#a0aec0; font-size:11px;">vs</span> ${t2Names}
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-grey); margin-top: 2px; font-weight: 600;">
+                            <i class="fa-regular fa-clock"></i> ${m.date} • Rezultatas: <strong style="color:var(--text-dark);">${m.score1}:${m.score2}</strong>
+                        </div>
                     </div>
                     <div>
-                        <span style="font-size: 9px; background: #cbd5e0; padding: 2px 5px; border-radius: 4px; font-weight: bold; color: white; text-transform:uppercase;">Įvyko</span>
+                        ${badgeHtml}
                     </div>
                 </div>
             `;
@@ -269,6 +354,93 @@ function renderUserProfile() {
     }
 
     container.innerHTML = html;
+}
+
+// -----------------------------------------------------------------
+// SUTVARKyta: Draugiško mačo įvesties formos atvaizdavimas modale
+// -----------------------------------------------------------------
+function openFriendlyMatchModal() {
+    modalTitle.innerHTML = `<i class="fa-solid fa-trophy" style="color: var(--primary-blue);"></i> Įvesti draugišką mačą`;
+    modalBody.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 12px; text-align: left;">
+            <div>
+                <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px;">Jūsų Partneris (Vardas)</label>
+                <input type="text" id="fPartner" placeholder="Palikite tuščią, jei žaidėte 1x1" style="width:100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; outline:none; font-size:14px;">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div>
+                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px;">Varžovas 1</label>
+                    <input type="text" id="fOpp1" placeholder="Vardas" required style="width:100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; outline:none; font-size:14px;">
+                </div>
+                <div>
+                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px;">Varžovas 2</label>
+                    <input type="text" id="fOpp2" placeholder="Vardas (jei 2x2)" style="width:100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; outline:none; font-size:14px;">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8f9fb; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top:5px;">
+                <div>
+                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px; text-align:center;">Mūsų taškai</label>
+                    <input type="number" id="fScore1" value="0" min="0" max="50" style="width:100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-weight: 900; text-align: center; font-size: 18px; color: var(--primary-blue);">
+                </div>
+                <div>
+                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px; text-align:center;">Varžovų taškai</label>
+                    <input type="number" id="fScore2" value="0" min="0" max="50" style="width:100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-weight: 900; text-align: center; font-size: 18px; color: var(--text-dark);">
+                </div>
+            </div>
+        </div>
+    `;
+    modalActions.innerHTML = `
+        <button type="button" class="modal-btn primary" onclick="submitFriendlyMatch()">Išsaugoti mačą</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>
+    `;
+    modal.classList.add('show');
+}
+
+// SUTVARKyta: Draugiško mačo išsaugojimo ciklas debesyje
+function submitFriendlyMatch() {
+    let partner = document.getElementById('fPartner').value.trim();
+    let opp1 = document.getElementById('fOpp1').value.trim();
+    let opp2 = document.getElementById('fOpp2').value.trim();
+    let score1 = parseInt(document.getElementById('fScore1').value) || 0;
+    let score2 = parseInt(document.getElementById('fScore2').value) || 0;
+
+    if (!opp1) { showToast("Įveskite bent vieną varžovą!"); return; }
+
+    let newMatch = {
+        id: Date.now(),
+        creatorName: currentUser.name,
+        creatorId: currentUser.id,
+        partner: partner || "Be partnerio",
+        opp1: opp1,
+        opp2: opp2 || "",
+        score1: score1,
+        score2: score2,
+        date: `${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`
+    };
+
+    firebase.database().ref(GLOBAL_FRIENDLIES_KEY + '/' + newMatch.id).set(newMatch).then(() => {
+        closeModal();
+        showToast("Draugiškas mačas sėkmingai užregistruotas!");
+    }).catch(err => {
+        showToast("Klaida debesyje!");
+    });
+}
+
+// -----------------------------------------------------------------
+// SUTVARKyta: Naujo draugiškų mačų stebėtojo sujungimas debesyje realiu laiku
+// -----------------------------------------------------------------
+function initFriendliesDB() {
+    firebase.database().ref(GLOBAL_FRIENDLIES_KEY).on('value', snap => {
+        let data = snap.val();
+        if (data) {
+            friendlyMatches = Object.values(data);
+        } else {
+            friendlyMatches = [];
+        }
+        if (document.getElementById('page-profile').classList.contains('active')) {
+            renderUserProfile();
+        }
+    });
 }
 
 // ==========================================
@@ -659,7 +831,7 @@ function renderTournaments() {
     });
 }
 
-function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
+function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; document.getElementById('filterPlayer').value = ''; renderTournaments(); }
@@ -683,23 +855,20 @@ function confirmRegistration(id, withPartner) {
     let t = tournaments.find(x => x.id === id); 
     if (!t) return;
 
-    // -----------------------------------------------------------------
-    // NAUJA: Griežta lyties kontrolė (Gender Safety Guard)
-    // -----------------------------------------------------------------
+    // Griežta lyties kontrolė (Gender Safety Guard)
     const formatUpper = t.format.toUpperCase();
     if (currentUser && currentUser.gender) {
         if (formatUpper.includes("MOTERŲ") && currentUser.gender === "M") {
             if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras yra skirtas MOTERIMS (${t.format}), o jūsų profilio lytis nurodyta – Vyras.\n\nAr tikrai norite tęsti registraciją?`)) {
-                return; // Administratorius paspaudė atšaukti - sustabdom
+                return; 
             }
         }
         if (formatUpper.includes("VYRŲ") && currentUser.gender === "F") {
             if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras yra skirtas VYRAMS (${t.format}), o jūsų profilio lytis nurodyta – Moteris.\n\nAr tikrai norite tęsti registraciją?`)) {
-                return; // Administratorius paspaudė atšaukti - sustabdom
+                return; 
             }
         }
     }
-    // -----------------------------------------------------------------
 
     if (withPartner) {
         let partnerInput = prompt("Įveskite partnerio telefono numerį arba Padel ID:");
@@ -1034,4 +1203,4 @@ function deleteTournament(id) {
 let globalAdminPlayers = [];
 
 // Inicializacija užkrovus puslapį
-window.onload = () => { initDates(); initTournamentsDB(); updateAuthUI(); };
+window.onload = () => { initDates(); initTournamentsDB(); initFriendliesDB(); updateAuthUI(); };
