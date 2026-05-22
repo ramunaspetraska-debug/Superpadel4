@@ -235,9 +235,11 @@ function renderUserProfile() {
             </div>
         </div>
 
-        <div style="background: #ebf8ff; border: 1px solid #bee3f8; border-radius: 10px; padding: 12px; font-size: 12px; color: #2b6cb0; font-weight: 600; text-align: center; margin-bottom: 25px;">
-            <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i> Draugiški mačai fiksuojami automatiškai, suvedus savo Padel ID pagrindiniame korto ekrane prieš žaidimą.
-        </div>
+        <a href="/index.html" style="text-decoration: none; display: block; margin-bottom: 25px;">
+            <div style="background: linear-gradient(to right, var(--primary-blue), #2b6cb0); color: white; border-radius: 10px; padding: 14px; font-size: 13px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(49,130,206,0.2); transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fa-solid fa-table-tennis-paddle-ball"></i> Paleisti Mačų Skaičiuoklę / Generatorį
+            </div>
+        </a>
 
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
             <i class="fa-regular fa-calendar-check" style="color: var(--primary-blue); font-size: 13px;"></i> Mano turnyrai (${myUpcoming.length})
@@ -761,7 +763,6 @@ function confirmRegistration(id, withPartner) {
     let t = tournaments.find(x => x.id === id); 
     if (!t) return;
 
-    // Griežta lyties kontrolė (Gender Safety Guard)
     const formatUpper = t.format.toUpperCase();
     if (currentUser && currentUser.gender) {
         if (formatUpper.includes("MOTERŲ") && currentUser.gender === "M") {
