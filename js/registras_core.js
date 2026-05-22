@@ -11,7 +11,7 @@ const DB_KEY = "padelio_pro_master";
 const GLOBAL_PLAYERS_KEY = "padelio_global_players";
 const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments"; 
 const GLOBAL_ARCHIVE_KEY = "padelio_archive_turnyrai"; 
-const GLOBAL_FRIENDLIES_KEY = "padelio_global_friendlies"; // NAUJA: Pramoginių mačų bazė
+const GLOBAL_FRIENDLIES_KEY = "padelio_global_friendlies"; 
 
 let liveDbRef = null; 
 let currentLiveMatches = []; 
@@ -21,7 +21,7 @@ let currentFirebaseData = null;
 let currentUser = JSON.parse(localStorage.getItem('sp_current_user')) || null;
 let isAppMode = true; 
 let pendingTournamentId = null; 
-let friendlyMatches = []; // Vietinis masyvas draugiškiems mačams saugoti
+let friendlyMatches = []; 
 
 // ==========================================
 // 1. AUTENTIFIKACIJA IR VARTOTOJO PROFILIS
@@ -118,9 +118,6 @@ function updateAuthUI() {
     renderUserProfile();
 }
 
-// -----------------------------------------------------------------
-// SUTVARKyta: Švarus, minimalistinis profilio variklis (Atskiros lygos)
-// -----------------------------------------------------------------
 function renderUserProfile() {
     const container = document.getElementById('page-profile');
     if (!container) return;
@@ -142,7 +139,6 @@ function renderUserProfile() {
     container.style.padding = "20px";
     container.style.textAlign = "left";
 
-    // Filtruojame turnyrus
     let myUpcoming = tournaments.filter(t => {
         if (!t.players || !Array.isArray(t.players)) return false;
         t.timeState = getTimeState(t.date, t.time);
@@ -155,7 +151,6 @@ function renderUserProfile() {
         return t.players.some(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) && t.timeState === 'past';
     });
 
-    // SUTVARKyta: Filtruojame draugiškus mačus, kur asmuo dalyvavo (kaip kūrėjas, partneris ar varžovas)
     let myFriendlies = friendlyMatches.filter(m => 
         m.creatorName.toLowerCase() === currentUser.name.toLowerCase() ||
         m.partner.toLowerCase() === currentUser.name.toLowerCase() ||
@@ -163,7 +158,6 @@ function renderUserProfile() {
         m.opp2.toLowerCase() === currentUser.name.toLowerCase()
     );
 
-    // Skaičiuojame draugiškų mačų pergales ir ieškome dažniausio partnerio fone
     let friendlyWins = 0;
     let partnersCount = {};
 
@@ -241,9 +235,9 @@ function renderUserProfile() {
             </div>
         </div>
 
-        <button type="button" onclick="openFriendlyMatchModal()" style="width: 100%; background: var(--primary-blue); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(49,130,206,0.15);">
-            <i class="fa-solid fa-circle-plus"></i> Registruoti draugišką mačą
-        </button>
+        <div style="background: #ebf8ff; border: 1px solid #bee3f8; border-radius: 10px; padding: 12px; font-size: 12px; color: #2b6cb0; font-weight: 600; text-align: center; margin-bottom: 25px;">
+            <i class="fa-solid fa-circle-info" style="margin-right:4px;"></i> Draugiški mačai fiksuojami automatiškai, suvedus savo Padel ID pagrindiniame korto ekrane prieš žaidimą.
+        </div>
 
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
             <i class="fa-regular fa-calendar-check" style="color: var(--primary-blue); font-size: 13px;"></i> Mano turnyrai (${myUpcoming.length})
@@ -301,7 +295,6 @@ function renderUserProfile() {
         html += `</div>`;
     }
 
-    // SUTVARKyta: Sąrašas suvestų draugiškų mačų istorijai profilyje
     html += `
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
             <i class="fa-solid fa-user-group" style="color: #a0aec0; font-size: 13px;"></i> Draugiški mačai (${myFriendlies.length})
@@ -354,93 +347,6 @@ function renderUserProfile() {
     }
 
     container.innerHTML = html;
-}
-
-// -----------------------------------------------------------------
-// SUTVARKyta: Draugiško mačo įvesties formos atvaizdavimas modale
-// -----------------------------------------------------------------
-function openFriendlyMatchModal() {
-    modalTitle.innerHTML = `<i class="fa-solid fa-trophy" style="color: var(--primary-blue);"></i> Įvesti draugišką mačą`;
-    modalBody.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 12px; text-align: left;">
-            <div>
-                <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px;">Jūsų Partneris (Vardas)</label>
-                <input type="text" id="fPartner" placeholder="Palikite tuščią, jei žaidėte 1x1" style="width:100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; outline:none; font-size:14px;">
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <div>
-                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px;">Varžovas 1</label>
-                    <input type="text" id="fOpp1" placeholder="Vardas" required style="width:100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; outline:none; font-size:14px;">
-                </div>
-                <div>
-                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px;">Varžovas 2</label>
-                    <input type="text" id="fOpp2" placeholder="Vardas (jei 2x2)" style="width:100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; outline:none; font-size:14px;">
-                </div>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8f9fb; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top:5px;">
-                <div>
-                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px; text-align:center;">Mūsų taškai</label>
-                    <input type="number" id="fScore1" value="0" min="0" max="50" style="width:100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-weight: 900; text-align: center; font-size: 18px; color: var(--primary-blue);">
-                </div>
-                <div>
-                    <label style="font-size: 11px; font-weight: bold; color: var(--text-grey); display:block; margin-bottom:4px; text-align:center;">Varžovų taškai</label>
-                    <input type="number" id="fScore2" value="0" min="0" max="50" style="width:100%; padding: 8px; border: 1px solid #cbd5e0; border-radius: 6px; font-weight: 900; text-align: center; font-size: 18px; color: var(--text-dark);">
-                </div>
-            </div>
-        </div>
-    `;
-    modalActions.innerHTML = `
-        <button type="button" class="modal-btn primary" onclick="submitFriendlyMatch()">Išsaugoti mačą</button>
-        <button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>
-    `;
-    modal.classList.add('show');
-}
-
-// SUTVARKyta: Draugiško mačo išsaugojimo ciklas debesyje
-function submitFriendlyMatch() {
-    let partner = document.getElementById('fPartner').value.trim();
-    let opp1 = document.getElementById('fOpp1').value.trim();
-    let opp2 = document.getElementById('fOpp2').value.trim();
-    let score1 = parseInt(document.getElementById('fScore1').value) || 0;
-    let score2 = parseInt(document.getElementById('fScore2').value) || 0;
-
-    if (!opp1) { showToast("Įveskite bent vieną varžovą!"); return; }
-
-    let newMatch = {
-        id: Date.now(),
-        creatorName: currentUser.name,
-        creatorId: currentUser.id,
-        partner: partner || "Be partnerio",
-        opp1: opp1,
-        opp2: opp2 || "",
-        score1: score1,
-        score2: score2,
-        date: `${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`
-    };
-
-    firebase.database().ref(GLOBAL_FRIENDLIES_KEY + '/' + newMatch.id).set(newMatch).then(() => {
-        closeModal();
-        showToast("Draugiškas mačas sėkmingai užregistruotas!");
-    }).catch(err => {
-        showToast("Klaida debesyje!");
-    });
-}
-
-// -----------------------------------------------------------------
-// SUTVARKyta: Naujo draugiškų mačų stebėtojo sujungimas debesyje realiu laiku
-// -----------------------------------------------------------------
-function initFriendliesDB() {
-    firebase.database().ref(GLOBAL_FRIENDLIES_KEY).on('value', snap => {
-        let data = snap.val();
-        if (data) {
-            friendlyMatches = Object.values(data);
-        } else {
-            friendlyMatches = [];
-        }
-        if (document.getElementById('page-profile').classList.contains('active')) {
-            renderUserProfile();
-        }
-    });
 }
 
 // ==========================================
@@ -1201,6 +1107,105 @@ function deleteTournament(id) {
 }
 
 let globalAdminPlayers = [];
+
+function loadAdminPlayersDB() {
+    document.getElementById('admin-players-list-db').innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Jungiamasi prie debesies...</div>';
+    
+    firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
+        let data = snap.val() || {};
+        globalAdminPlayers = Object.values(data).sort((a,b) => (b.rating || 0) - (a.rating || 0));
+        document.getElementById('admin-players-count').innerText = `Viso: ${globalAdminPlayers.length}`;
+        renderAdminPlayersDB(globalAdminPlayers);
+    }).catch(err => {
+        document.getElementById('admin-players-list-db').innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis. Patikrinkite ryšį.</div>';
+    });
+}
+
+function renderAdminPlayersDB(playersArray) {
+    if(playersArray.length === 0) {
+        document.getElementById('admin-players-list-db').innerHTML = '<div style="text-align:center; padding:20px; color:#718096;">Žaidėjų nerasta.</div>';
+        return;
+    }
+
+    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; min-width: 400px;">';
+    html += '<tr style="background: #edf2f7; color: #718096; text-transform: uppercase; font-size: 10px; letter-spacing: 1px;"><th style="padding: 12px; border-top-left-radius: 6px;">Vardas</th><th style="padding: 12px;">Lytis</th><th style="padding: 12px;">Lygis</th><th style="padding: 12px;">ELO Taškai</th><th style="padding: 12px; border-top-right-radius: 6px; text-align: right;">Veiksmai</th></tr>';
+    
+    playersArray.forEach(p => {
+        let ptsColor = 'var(--primary-blue)';
+        if (p.tier === 'A') ptsColor = 'var(--lvl-a)';
+        else if (p.tier === 'B') ptsColor = 'var(--lvl-b)';
+        else if (p.tier === 'C') ptsColor = 'var(--lvl-c)';
+        else if (p.tier === 'D-C') ptsColor = 'var(--lvl-d-c)';
+        else ptsColor = 'var(--lvl-d)';
+
+        html += `<tr style="border-bottom: 1px solid #e2e8f0; transition: 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'">
+            <td style="padding: 12px; font-weight: 800; color: var(--text-dark);">${p.name} <br><span style="font-size:9px; color:#a0aec0; font-weight:normal;">ID: ${p.id}</span></td>
+            <td style="padding: 12px; font-weight: bold; color: var(--text-grey);">${p.gender === 'M' ? 'V' : 'M'}</td>
+            <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${p.tier || 'D'}</span></td>
+            <td style="padding: 12px; color: ${ptsColor}; font-weight: 900; font-size: 15px;">${p.rating || 300}</td>
+            <td style="padding: 12px; text-align: right;">
+                <button onclick="editAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti reitingą"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Ištrinti paskyrą"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    html += '</table>';
+    document.getElementById('admin-players-list-db').innerHTML = html;
+}
+
+function filterAdminPlayers() {
+    let query = document.getElementById('adminPlayerSearch').value.toLowerCase();
+    let filtered = globalAdminPlayers.filter(p => {
+        let nameMatch = (p.name || "").toLowerCase().includes(query);
+        let idMatch = String(p.id || "").toLowerCase().includes(query);
+        return nameMatch || idMatch;
+    });
+    renderAdminPlayersDB(filtered);
+}
+
+function deleteAdminPlayer(id) {
+    let p = globalAdminPlayers.find(x => String(x.id) === String(id));
+    if(!p) { return; }
+    if(confirm(`Ar tikrai norite IŠTRINTI žaidėją "${p.name}"?`)) {
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + p.id).remove().then(() => {
+            showToast("Žaidėjas ištrintas!");
+            loadAdminPlayersDB();
+        });
+    }
+}
+
+function editAdminPlayer(id) {
+    let p = globalAdminPlayers.find(x => String(x.id) === String(id));
+    if(!p) { return; }
+    let newPts = prompt(`Įveskite naują ELO taškų skaičių žaidėjui ${p.name}:`, p.rating || 300);
+    
+    if(newPts !== null && newPts.trim() !== "" && !isNaN(newPts)) {
+        let pts = parseInt(newPts);
+        let tier = "D";
+        if (pts >= 851) tier = "A";
+        else if (pts >= 671) tier = "B";
+        else if (pts >= 501) tier = "C";
+        else if (pts >= 351) tier = "D-C";
+
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + p.id).update({
+            rating: pts,
+            tier: tier
+        }).then(() => {
+            showToast(`Atnaujinta! ${pts} ELO`);
+            loadAdminPlayersDB();
+        });
+    }
+}
+
+function initFriendliesDB() {
+    firebase.database().ref(GLOBAL_FRIENDLIES_KEY).on('value', snap => {
+        let data = snap.val();
+        friendlyMatches = data ? Object.values(data) : [];
+        if (document.getElementById('page-profile').classList.contains('active')) {
+            renderUserProfile();
+        }
+    });
+}
 
 // Inicializacija užkrovus puslapį
 window.onload = () => { initDates(); initTournamentsDB(); initFriendliesDB(); updateAuthUI(); };
