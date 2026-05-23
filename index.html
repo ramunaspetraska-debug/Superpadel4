@@ -126,6 +126,7 @@
                 <div class="flex justify-between items-center mb-2 px-1">
                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjai</span>
                     <div class="flex items-center gap-2">
+                        <button type="button" onclick="importFromPortal()" class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest"><i class="fa-solid fa-cloud-arrow-down"></i> Importuoti iš Portalo</button>
                         <button type="button" onclick="openPlayerBank()" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">+ DB</button>
                         <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold">Viso: 0</span>
                     </div>
@@ -362,6 +363,73 @@
         function updateERefPin() {
             settings.eRefereePin = document.getElementById('setting-ereferee-pin').value;
             if(typeof autoSave === 'function') autoSave(true);
+        }
+
+        /* 📡 NAUJA IŠMANI FUNKCIJA: Importuoja registruotus žaidėjus tiesiai iš portalo debesies */
+        async function importFromPortal() {
+            const tDate = prompt("Įveskite turnyro datą (MM-DD), iš kurio norite importuoti žaidėjus:", "05-23");
+            if (!tDate) return;
+
+            document.getElementById('loading-overlay').style.display = 'flex';
+            document.getElementById('loading-text').innerText = "Ieškoma registracijų...";
+
+            firebase.database().ref("padelio_global_tournaments").once('value').then(snap => {
+                const data = snap.val();
+                document.getElementById('loading-overlay').style.display = 'none';
+
+                if (!data) {
+                    alert("Duomenų bazėje turnyrų nerasta.");
+                    return;
+                }
+
+                const tournamentsList = Array.isArray(data) ? data : Object.values(data);
+                const targetTournament = tournamentsList.find(t => t && t.date === tDate);
+
+                if (!targetTournament || !targetTournament.players) {
+                    alert(`Turnyras datai ${tDate} nerastas arba jame nėra užsiregistravusių žaidėjų.`);
+                    return;
+                }
+
+                let importCount = 0;
+                
+                targetTournament.players.forEach(playerRow => {
+                    const separateNames = playerRow.split('/');
+                    
+                    separateNames.forEach(rawName => {
+                        const cleanName = rawName.trim();
+                        if (!cleanName) return;
+
+                        const exists = players.some(p => p.name.toLowerCase() === cleanName.toLowerCase());
+                        
+                        if (!exists) {
+                            const newPlayer = {
+                                id: Date.now() + Math.random(),
+                                name: cleanName,
+                                gender: "M", 
+                                photo: null,
+                                wins: 0,
+                                losses: 0,
+                                draws: 0,
+                                points: 0,
+                                diff: 0,
+                                history: []
+                            };
+                            players.push(newPlayer);
+                            importCount++;
+                        }
+                    });
+                });
+
+                if (typeof savePlayers === 'function') savePlayers(); 
+                if (typeof renderPlayers === 'function') renderPlayers(); 
+                if (typeof updatePlayerCount === 'function') updatePlayerCount();
+
+                alert(`Sėkmingai importuoti ${importCount} nauji žaidėjai!`);
+            }).catch(err => {
+                document.getElementById('loading-overlay').style.display = 'none';
+                console.error(err);
+                alert("Klaida importuojant duomenis iš debesies.");
+            });
         }
 
         document.addEventListener("DOMContentLoaded", function() {
