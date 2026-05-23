@@ -126,7 +126,6 @@
                 <div class="flex justify-between items-center mb-2 px-1">
                     <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Žaidėjai</span>
                     <div class="flex items-center gap-2">
-                        <button type="button" onclick="importFromPortal()" class="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest"><i class="fa-solid fa-cloud-arrow-down"></i> Importuoti iš Portalo</button>
                         <button type="button" onclick="openPlayerBank()" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">+ DB</button>
                         <span id="player-count" class="bg-slate-100 text-slate-600 text-[10px] px-2 py-1 rounded font-bold">Viso: 0</span>
                     </div>
@@ -279,6 +278,14 @@
                 <button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button>
             </div>
             <div class="space-y-4">
+                <div class="bg-white p-4 rounded-2xl border-2 border-green-200 shadow-sm bg-gradient-to-br from-white to-green-50/30">
+                    <h3 class="text-[10px] font-black uppercase text-green-600 mb-1 tracking-widest"><i class="fa-solid fa-cloud-arrow-down"></i> Duomenų Sinchronizacija</h3>
+                    <p class="text-xs text-slate-500 mb-3">Atsisiųskite žaidėjų sąrašą, kurie užsiregistravo per oficialų registracijos portalą.</p>
+                    <button type="button" onclick="importFromPortal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-users-gear"></i> Importuoti žaidėjus iš Portalo
+                    </button>
+                </div>
+
                 <div class="bg-white p-4 rounded-2xl border border-slate-200">
                     <h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Turnyrai</h3>
                     <div id="admin-tournaments-list" class="space-y-2"></div>
@@ -365,7 +372,7 @@
             if(typeof autoSave === 'function') autoSave(true);
         }
 
-        /* 📡 NAUJA IŠMANI FUNKCIJA: Importuoja registruotus žaidėjus tiesiai iš portalo debesies */
+        /* 📡 IMPORTAVIMO FUNKCIJA: Nuskaito registracijas iš debesies, išpakuoja poras ir saugo lokaliai */
         async function importFromPortal() {
             const tDate = prompt("Įveskite turnyro datą (MM-DD), iš kurio norite importuoti žaidėjus:", "05-23");
             if (!tDate) return;
