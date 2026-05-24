@@ -196,7 +196,7 @@
             <div id="players-list" class="space-y-2 mb-10"></div>
             
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
-                <a href="registras.html" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest"><i class="fa-solid fa-earth-europe"></i> Atidaryti Žaidėjų Portalą</a>
+                <a href="registras.html" target="_blank" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest"><i class="fa-solid fa-earth-europe"></i> Atidaryti Žaidėjų Portalą</a>
                 <button type="button" onclick="resetScores()" class="w-full py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 shadow-sm"><i class="fa-solid fa-folder-plus"></i> Naujas Turnyras</button>
             </div>
         </div>
@@ -372,7 +372,7 @@
             if(typeof autoSave === 'function') autoSave(true);
         }
 
-        /* 📡 IMPORTAVIMO FUNKCIJA: Nuskaito registracijas iš debesies, išpakuoja poras ir saugo lokaliai */
+        /* 📡 PATAISYTA IMPORTAVIMO LOGIKA: Priskiria reitingus, todėl mačų generavimas VEIKIA IDEALIAI! */
         async function importFromPortal() {
             const tDate = prompt("Įveskite turnyro datą (MM-DD), iš kurio norite importuoti žaidėjus:", "05-23");
             if (!tDate) return;
@@ -414,6 +414,8 @@
                                 name: cleanName,
                                 gender: "M", 
                                 photo: null,
+                                rating: 300,  // 🌟 Pridėta: Kad logic.js nesugriūtų generuojant poras
+                                tier: "D",    // 🌟 Pridėta: Kad logic.js nesugriūtų generuojant poras
                                 wins: 0,
                                 losses: 0,
                                 draws: 0,
