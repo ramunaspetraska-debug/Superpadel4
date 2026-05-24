@@ -199,7 +199,7 @@ function generateLookaheadTournament(safePool, startRound, countToGenerate) {
                     if (getP(t1[0], t1[1]) === 0) currentPenalty -= 10000; if (getP(t2[0], t2[1]) === 0) currentPenalty -= 10000; 
                     let oSum = getO(t1[0], t2[0]) + getO(t1[0], t2[1]) + getO(t1[1], t2[0]) + getO(t1[1], t2[1]); if (oSum === 0) currentPenalty -= 20000; 
                     currentPenalty += Math.pow(getP(t1[0], t1[1]) + 1, 4) * 5000; currentPenalty += Math.pow(getP(t2[0], t2[1]) + 1, 4) * 5000; 
-                    currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; 
+                    currentPenalty += Math.pow(getO(t1[0], t2[0]) + 1, 5) * 1000; currentPenalty += Math.pow(getO(t1[1], t2[1]) + 1, 5) * 1000; currentCapacity = Math.pow(getO(t1[0], t2[1]) + 1, 5) * 1500; currentPenalty += Math.pow(getO(t1[1], t2[0]) + 1, 5) * 1500; 
                     roundMatches.push({ t1: t1, t2: t2 }); 
                 }
             }
@@ -251,6 +251,11 @@ function generateFixedRound(safePool) {
 // GLOBALI ELO REITINGŲ SISTEMA (1000 BALŲ)
 // ==========================================
 function processGlobalEloForMatch(match, globalData, globalRef) {
+    // 🌟 APSAUGA: Tikriname ar įjungtas debesis, ar turnyras oficialus ir ar lygis nėra „Privatus“
+    if (typeof isCloud === 'undefined' || !isCloud) return;
+    if (typeof settings === 'undefined' || settings.isOfficial !== true) return;
+    if (typeof settings !== 'undefined' && settings.level === 'Privatus') return;
+
     if (!match || !match.team1 || !match.team2) return;
     
     let s1 = parseInt(match.score1 || 0);
