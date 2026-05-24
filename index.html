@@ -94,6 +94,9 @@
         <div class="flex items-center gap-1 shrink-0">
             <div id="score-mode-text" class="hidden text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">IKI TAŠKŲ</div>
             
+            <div id="official-badge" class="hidden text-[9px] font-black bg-green-500 text-white rounded px-2 py-1 uppercase tracking-wide scale-90"><i class="fa-solid fa-trophy text-[8px]"></i> Lygos ELO</div>
+            <div id="casual-badge" class="text-[9px] font-black bg-slate-400 text-white rounded px-2 py-1 uppercase tracking-wide scale-90"><i class="fa-solid fa-mug-hot text-[8px]"></i> Draugiškas</div>
+
             <div class="flex items-center gap-1 bg-slate-50 px-1 py-1 rounded-full border border-slate-200" id="timer-controls">
                 <button type="button" onclick="adjustTime(-60)" class="w-6 h-6 rounded-full flex items-center justify-center text-slate-500 font-bold active:bg-slate-200"><i class="fa-solid fa-minus text-[10px]"></i></button>
                 <span id="timer-display" class="text-base font-black font-mono tracking-tighter tabular-nums text-slate-800 w-[42px] text-center">12:00</span>
@@ -281,9 +284,17 @@
                 <div class="bg-white p-4 rounded-2xl border-2 border-green-200 shadow-sm bg-gradient-to-br from-white to-green-50/30">
                     <h3 class="text-[10px] font-black uppercase text-green-600 mb-1 tracking-widest"><i class="fa-solid fa-cloud-arrow-down"></i> Duomenų Sinchronizacija</h3>
                     <p class="text-xs text-slate-500 mb-3">Atsisiųskite žaidėjų sąrašą, kurie užsiregistravo per oficialų registracijos portalą.</p>
-                    <button type="button" onclick="importFromPortal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2">
+                    <button type="button" onclick="importFromPortal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2 mb-3">
                         <i class="fa-solid fa-users-gear"></i> Importuoti žaidėjus iš Portalo
                     </button>
+
+                    <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-green-100 shadow-inner">
+                        <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Reitingavimo režimas:</span>
+                        <select id="admin-is-official" onchange="toggleAdminOfficial(this.value)" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-black text-slate-700 focus:outline-none">
+                            <option value="false">Casual (Be ELO)</option>
+                            <option value="true">🏆 Official (Skaičiuoti ELO)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="bg-white p-4 rounded-2xl border border-slate-200">
@@ -372,7 +383,16 @@
             if(typeof autoSave === 'function') autoSave(true);
         }
 
-        /* 📡 PATAISYTA IMPORTAVIMO LOGIKA: Priskiria reitingus, todėl mačų generavimas VEIKIA IDEALIAI! */
+        /* 🎛️ Rankinio ELO valdymo funkcija administratoriams */
+        function toggleAdminOfficial(val) {
+            if(typeof settings !== 'undefined') {
+                settings.isOfficial = (val === "true");
+                if(typeof autoSave === 'function') autoSave(true);
+                if(typeof renderTimerAndSettings === 'function') renderTimerAndSettings();
+            }
+        }
+
+        /* 📡 ATNAUJINTA IMPORTAVIMO LOGIKA: Importuotas lygos turnyras AUTOMATIŠKAI tampa reitinguojamu */
         async function importFromPortal() {
             const tDate = prompt("Įveskite turnyro datą (MM-DD), iš kurio norite importuoti žaidėjus:", "05-23");
             if (!tDate) return;
@@ -414,8 +434,8 @@
                                 name: cleanName,
                                 gender: "M", 
                                 photo: null,
-                                rating: 300,  // 🌟 Pridėta: Kad logic.js nesugriūtų generuojant poras
-                                tier: "D",    // 🌟 Pridėta: Kad logic.js nesugriūtų generuojant poras
+                                rating: 300,  
+                                tier: "D",    
                                 wins: 0,
                                 losses: 0,
                                 draws: 0,
@@ -429,11 +449,16 @@
                     });
                 });
 
+                // 🏅 Kadangi turnyras oficialus – automatiškai aktyvuojame reitingų skaičiavimą!
+                if(typeof settings !== 'undefined') {
+                    settings.isOfficial = true;
+                }
+
                 if (typeof savePlayers === 'function') savePlayers(); 
                 if (typeof renderPlayers === 'function') renderPlayers(); 
                 if (typeof updatePlayerCount === 'function') updatePlayerCount();
 
-                alert(`Sėkmingai importuoti ${importCount} nauji žaidėjai!`);
+                alert(`Sėkmingai importuoti ${importCount} nauji žaidėjai! Turnyras nustatytas kaip OFICIALUS.`);
             }).catch(err => {
                 document.getElementById('loading-overlay').style.display = 'none';
                 console.error(err);
@@ -443,6 +468,17 @@
 
         document.addEventListener("DOMContentLoaded", function() {
             setTimeout(function() {
+                // 🔄 Perimame „Naujo Turnyro“ mygtuką, kad draugiškas režimas būtų numatytasis
+                if (typeof window.resetScores === 'function') {
+                    const originalResetScores = window.resetScores;
+                    window.resetScores = function() {
+                        if(typeof settings !== 'undefined') {
+                            settings.isOfficial = false;
+                        }
+                        originalResetScores();
+                    }
+                }
+
                 if (typeof window.renderTimerAndSettings === 'function') {
                     const originalRender = window.renderTimerAndSettings;
                     window.renderTimerAndSettings = function() {
@@ -452,6 +488,22 @@
                             lvlSel.value = settings.level || 'Atviras';
                         }
                         
+                        // 🏷️ Dinamiškai keičiame viršutinius ženkliukus (Badge) pagal turnyro būseną
+                        const offBadge = document.getElementById('official-badge');
+                        const casBadge = document.getElementById('casual-badge');
+                        const adminOffSel = document.getElementById('admin-is-official');
+                        
+                        if(typeof settings !== 'undefined') {
+                            if (settings.isOfficial) {
+                                if(offBadge) offBadge.classList.remove('hidden');
+                                if(casBadge) casBadge.classList.add('hidden');
+                            } else {
+                                if(offBadge) offBadge.classList.add('hidden');
+                                if(casBadge) casBadge.classList.remove('hidden');
+                            }
+                            if(adminOffSel) adminOffSel.value = settings.isOfficial ? "true" : "false";
+                        }
+
                         const eRefContainer = document.getElementById('ereferee-container');
                         if (eRefContainer) {
                             if (typeof isCloud !== 'undefined' && isCloud) {
