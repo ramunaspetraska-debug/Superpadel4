@@ -360,7 +360,12 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
         
         casualRef.once('value').then(snap => {
             const casualData = snap.val() || {};
-            const getP = (p) => casualData[p.id] || { rating: 300, total_matches: 0 };
+            
+            const getP = (p) => {
+                if (casualData[p.id]) return casualData[p.id];
+                let lp = players.find(x => x.id === p.id);
+                return { rating: (lp && lp.rating) ? lp.rating : 300, total_matches: 0 };
+            };
             
             let t1Players = safeArr(match.team1);
             let t2Players = safeArr(match.team2);
@@ -398,6 +403,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 else if (newR >= 501) tier = "C";
                 else if (newR >= 351) tier = "D-C";
                 
+                // 1. Įrašome į Firebase
                 casualRef.child(p.id).update({
                     name: p.name,
                     rating: newR,
@@ -405,10 +411,22 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                     total_matches: newMatches,
                     last_played: Date.now()
                 });
+
+                // 2. 🌟 NAUJA: Atnaujiname lokaliai naršyklės atmintyje, kad lange pasikeistų IŠKART!
+                let localPlayer = players.find(x => x.id === p.id);
+                if (localPlayer) {
+                    localPlayer.rating = newR;
+                    localPlayer.tier = tier;
+                }
             };
             
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
+
+            // 3. 🌟 NAUJA: Išsaugome į LocalStorage ir perkrauname UI elementus lange
+            if (typeof savePlayers === 'function') savePlayers(); 
+            if (typeof renderPlayers === 'function') renderPlayers();
+            if (typeof renderLeaderboard === 'function') renderLeaderboard();
         }).catch(err => console.error("Casual ELO Error:", err));
     }
 }
