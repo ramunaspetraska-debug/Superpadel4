@@ -45,6 +45,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (activeRoom) { 
         safeVal('fb-room', activeRoom); 
         initFirebaseConnection(); 
+        
+        // 🌟 SUTRAUKTA: Jei prisijungiama per nuorodą, fone iškart paleidžiamas kambario klausiklis
+        if (typeof listenToCasualPlayers === 'function') {
+            setTimeout(listenToCasualPlayers, 600);
+        }
     } 
     
     logVisit();
