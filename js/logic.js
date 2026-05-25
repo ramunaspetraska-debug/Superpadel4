@@ -139,40 +139,7 @@ function requestNextRound() {
 
 function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
 
-function generatePerfectMix16Matrix(safePool) { 
-    let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); 
-    const perfectMatrix16 = [ 
-        [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], 
-        [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], 
-        [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], 
-        [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], 
-        [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], 
-        [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], 
-        [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], 
-        [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], 
-        [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], 
-        [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], 
-        [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], 
-        [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], 
-        [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], 
-        [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], 
-        [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], 
-        [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] 
-    ]; 
-    let baseRounds = []; 
-    perfectMatrix16.forEach((roundData) => { 
-        let currentRound = []; 
-        roundData.forEach((match) => { 
-            currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); 
-        }); 
-        baseRounds.push(currentRound); 
-    }); 
-    let extendedPreGen = []; 
-    for (let copy = 0; copy < 1; copy++) { 
-        baseRounds.forEach(rm => extendedPreGen.push(rm)); 
-    } 
-    return extendedPreGen; 
-}
+function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const perfectMatrix16 = [ [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
 
 function generateLookaheadTournament(safePool, startRound, countToGenerate) {
     let M = [], F = []; 
@@ -280,9 +247,9 @@ function generateFixedRound(safePool) {
     } catch(e) { console.error("generateFixedRound Error:", e); }
 }
 
-// ==========================================
-// IŠMANIOJI DUAL-PATH REITINGŲ SISTEMA (1000 BALŲ)
-// ==========================================
+// =======================================================
+// IŠMANIOJI DUAL-PATH REITINGŲ SISTEMA (OFICIALI / KAMBARIO)
+// =======================================================
 function processGlobalEloForMatch(match, globalData, globalRef) {
     if (typeof isCloud === 'undefined' || !isCloud) return;
     if (typeof settings !== 'undefined' && settings.level === 'Privatus') return;
@@ -295,7 +262,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
     const isOfficial = (typeof settings !== 'undefined' && settings.isOfficial === true);
 
     if (isOfficial) {
-        // 🏆 AŠAKA 1: OFICIALUS LYGOS REITINGAS (padelio_global_players)
+        // 🏆 PATH 1: OFICIALUS LYGOS REITINGAS (padelio_global_players)
         const getP = (p) => globalData[p.id] || { rating: 300, total_matches: 0 };
         
         let t1Players = safeArr(match.team1);
@@ -352,7 +319,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
         t2Players.forEach(p => updatePlayer(p, delta2));
 
     } else {
-        // ☕ AŠAKA 2: PRIVATE KAMBARIO REITINGAS (padelio_rooms/{kambarys}/casual_players)
+        // ☕ PATH 2: UŽDARAS KAMBARIO REITINGAS (padelio_rooms/{kambarys}/casual_players)
         const roomName = document.getElementById('fb-room')?.value?.trim();
         if (!roomName) return; 
 
@@ -403,6 +370,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 else if (newR >= 501) tier = "C";
                 else if (newR >= 351) tier = "D-C";
                 
+                // Įrašome į Firebase konkretaus kambario medyje
                 casualRef.child(p.id).update({
                     name: p.name,
                     rating: newR,
@@ -411,6 +379,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                     last_played: Date.now()
                 });
 
+                // Atnaujiname lokaliai atmintyje, kad lange vaizdas persipieštų iškart
                 let localPlayer = players.find(x => x.id === p.id);
                 if (localPlayer) {
                     localPlayer.rating = newR;
@@ -421,6 +390,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
 
+            // Išsaugome vietinę būseną ir atnaujiname sąrašus ekrane
             if (typeof savePlayers === 'function') savePlayers(); 
             if (typeof renderPlayers === 'function') renderPlayers();
             if (typeof renderLeaderboard === 'function') renderLeaderboard();
