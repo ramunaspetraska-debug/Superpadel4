@@ -139,7 +139,40 @@ function requestNextRound() {
 
 function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
 
-function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const perfectMatrix16 = [ [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
+function generatePerfectMix16Matrix(safePool) { 
+    let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); 
+    const perfectMatrix16 = [ 
+        [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], 
+        [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], 
+        [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], 
+        [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], 
+        [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], 
+        [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], 
+        [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], 
+        [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], 
+        [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], 
+        [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], 
+        [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], 
+        [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], 
+        [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], 
+        [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], 
+        [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], 
+        [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] 
+    ]; 
+    let baseRounds = []; 
+    perfectMatrix16.forEach((roundData) => { 
+        let currentRound = []; 
+        roundData.forEach((match) => { 
+            currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); 
+        }); 
+        baseRounds.push(currentRound); 
+    }); 
+    let extendedPreGen = []; 
+    for (let copy = 0; copy < 1; copy++) { 
+        baseRounds.forEach(rm => extendedPreGen.push(rm)); 
+    } 
+    return extendedPreGen; 
+}
 
 function generateLookaheadTournament(safePool, startRound, countToGenerate) {
     let M = [], F = []; 
@@ -248,75 +281,152 @@ function generateFixedRound(safePool) {
 }
 
 // ==========================================
-// GLOBALI ELO REITINGŲ SISTEMA (1000 BALŲ)
+// IŠMANIOJI DUAL-PATH REITINGŲ SISTEMA (1000 BALŲ)
 // ==========================================
 function processGlobalEloForMatch(match, globalData, globalRef) {
+    if (typeof isCloud === 'undefined' || !isCloud) return;
+    if (typeof settings !== 'undefined' && settings.level === 'Privatus') return;
     if (!match || !match.team1 || !match.team2) return;
     
     let s1 = parseInt(match.score1 || 0);
     let s2 = parseInt(match.score2 || 0);
     if (s1 === 0 && s2 === 0 && !match.finished) return; 
-    
-    // Gauname žaidėjo reitingą (jei naujokas - 300)
-    const getP = (p) => globalData[p.id] || { rating: 300, total_matches: 0 };
-    
-    let t1Players = safeArr(match.team1);
-    let t2Players = safeArr(match.team2);
-    if (t1Players.length === 0 || t2Players.length === 0) return;
-    
-    // Skaičiuojame komandų vidurkius
-    let t1R = t1Players.reduce((sum, p) => sum + getP(p).rating, 0) / t1Players.length;
-    let t2R = t2Players.reduce((sum, p) => sum + getP(p).rating, 0) / t2Players.length;
-    
-    // ELO pergalės tikimybė (nuo 0 iki 1)
-    let e1 = 1 / (1 + Math.pow(10, (t2R - t1R) / 400));
-    let e2 = 1 / (1 + Math.pow(10, (t1R - t2R) / 400));
-    
-    // Kas laimėjo?
-    let out1 = s1 > s2 ? 1 : (s1 === s2 ? 0.5 : 0);
-    let out2 = s2 > s1 ? 1 : (s1 === s2 ? 0.5 : 0);
-    
-    // Pergalės maržos daugiklis (Kuo didesniu skirtumu laimi, tuo daugiau taškų gauni)
-    let diff = Math.abs(s1 - s2);
-    let mov = Math.log(diff + 2); 
-    
-    let K = 32; // Standartinis ELO poslinkio greitis
-    let delta1 = K * mov * (out1 - e1);
-    let delta2 = K * mov * (out2 - e2);
-    
-    const updatePlayer = (p, delta) => {
-        let g = getP(p);
-        let oldR = g.rating;
-        let newR = Math.round(oldR + delta);
+
+    const isOfficial = (typeof settings !== 'undefined' && settings.isOfficial === true);
+
+    if (isOfficial) {
+        // 🏆 AŠAKA 1: OFICIALUS LYGOS REITINGAS (padelio_global_players)
+        const getP = (p) => globalData[p.id] || { rating: 300, total_matches: 0 };
         
-        // Ribos: ne mažiau 0 ir ne daugiau 1000
-        if (newR < 0) newR = 0;
-        if (newR > 1000) newR = 1000;
+        let t1Players = safeArr(match.team1);
+        let t2Players = safeArr(match.team2);
+        if (t1Players.length === 0 || t2Players.length === 0) return;
         
-        let newMatches = (g.total_matches || 0) + 1;
+        let t1R = t1Players.reduce((sum, p) => sum + getP(p).rating, 0) / t1Players.length;
+        let t2R = t2Players.reduce((sum, p) => sum + getP(p).rating, 0) / t2Players.length;
         
-        // Atnaujinamas oficialios lygos (Tier) statusas
-        let tier = "D";
-        if (newR >= 851) tier = "A";
-        else if (newR >= 671) tier = "B";
-        else if (newR >= 501) tier = "C";
-        else if (newR >= 351) tier = "D-C";
+        let e1 = 1 / (1 + Math.pow(10, (t2R - t1R) / 400));
+        let e2 = 1 / (1 + Math.pow(10, (t1R - t2R) / 400));
         
-        globalRef.child(p.id).update({
-            rating: newR,
-            tier: tier,
-            total_matches: newMatches,
-            last_played: Date.now()
-        });
+        let out1 = s1 > s2 ? 1 : (s1 === s2 ? 0.5 : 0);
+        let out2 = s2 > s1 ? 1 : (s1 === s2 ? 0.5 : 0);
         
-        // Vietinis atnaujinimas fone, kad išvengtume vėlavimų
-        if(globalData[p.id]) {
-            globalData[p.id].rating = newR;
-            globalData[p.id].total_matches = newMatches;
-            globalData[p.id].tier = tier;
-        }
-    };
-    
-    t1Players.forEach(p => updatePlayer(p, delta1));
-    t2Players.forEach(p => updatePlayer(p, delta2));
+        let diff = Math.abs(s1 - s2);
+        let mov = Math.log(diff + 2); 
+        
+        let K = 32; 
+        let delta1 = K * mov * (out1 - e1);
+        let delta2 = K * mov * (out2 - e2);
+        
+        const updatePlayer = (p, delta) => {
+            let g = getP(p);
+            let oldR = g.rating;
+            let newR = Math.round(oldR + delta);
+            
+            if (newR < 0) newR = 0;
+            if (newR > 1000) newR = 1000;
+            
+            let newMatches = (g.total_matches || 0) + 1;
+            
+            let tier = "D";
+            if (newR >= 851) tier = "A";
+            else if (newR >= 671) tier = "B";
+            else if (newR >= 501) tier = "C";
+            else if (newR >= 351) tier = "D-C";
+            
+            globalRef.child(p.id).update({
+                rating: newR,
+                tier: tier,
+                total_matches: newMatches,
+                last_played: Date.now()
+            });
+            
+            if(globalData[p.id]) {
+                globalData[p.id].rating = newR;
+                globalData[p.id].total_matches = newMatches;
+                globalData[p.id].tier = tier;
+            }
+        };
+        
+        t1Players.forEach(p => updatePlayer(p, delta1));
+        t2Players.forEach(p => updatePlayer(p, delta2));
+
+    } else {
+        // ☕ AŠAKA 2: PRIVATE KAMBARIO REITINGAS (padelio_rooms/{kambarys}/casual_players)
+        const roomName = document.getElementById('fb-room')?.value?.trim();
+        if (!roomName) return; 
+
+        const casualRef = firebase.database().ref("padelio_rooms/" + roomName + "/casual_players");
+        
+        casualRef.once('value').then(snap => {
+            const casualData = snap.val() || {};
+            
+            const getP = (p) => {
+                if (casualData[p.id]) return casualData[p.id];
+                let lp = players.find(x => x.id === p.id);
+                return { rating: (lp && lp.rating) ? lp.rating : 300, total_matches: 0 };
+            };
+            
+            let t1Players = safeArr(match.team1);
+            let t2Players = safeArr(match.team2);
+            if (t1Players.length === 0 || t2Players.length === 0) return;
+            
+            let t1R = t1Players.reduce((sum, p) => sum + getP(p).rating, 0) / t1Players.length;
+            let t2R = t2Players.reduce((sum, p) => sum + getP(p).rating, 0) / t2Players.length;
+            
+            let e1 = 1 / (1 + Math.pow(10, (t2R - t1R) / 400));
+            let e2 = 1 / (1 + Math.pow(10, (t1R - t2R) / 400));
+            
+            let out1 = s1 > s2 ? 1 : (s1 === s2 ? 0.5 : 0);
+            let out2 = s2 > s1 ? 1 : (s1 === s2 ? 0.5 : 0);
+            
+            let diff = Math.abs(s1 - s2);
+            let mov = Math.log(diff + 2); 
+            
+            let K = 32; 
+            let delta1 = K * mov * (out1 - e1);
+            let delta2 = K * mov * (out2 - e2);
+            
+            const updatePlayer = (p, delta) => {
+                let g = getP(p);
+                let oldR = g.rating;
+                let newR = Math.round(oldR + delta);
+                
+                if (newR < 0) newR = 0;
+                if (newR > 1000) newR = 1000;
+                
+                let newMatches = (g.total_matches || 0) + 1;
+                
+                let tier = "D";
+                if (newR >= 851) tier = "A";
+                else if (newR >= 671) tier = "B";
+                else if (newR >= 501) tier = "C";
+                else if (newR >= 351) tier = "D-C";
+                
+                // 1. Įrašome į Firebase
+                casualRef.child(p.id).update({
+                    name: p.name,
+                    rating: newR,
+                    tier: tier,
+                    total_matches: newMatches,
+                    last_played: Date.now()
+                });
+
+                // 2. 🌟 NAUJA: Atnaujiname lokaliai naršyklės atmintyje, kad lange pasikeistų IŠKART!
+                let localPlayer = players.find(x => x.id === p.id);
+                if (localPlayer) {
+                    localPlayer.rating = newR;
+                    localPlayer.tier = tier;
+                }
+            };
+            
+            t1Players.forEach(p => updatePlayer(p, delta1));
+            t2Players.forEach(p => updatePlayer(p, delta2));
+
+            // 3. 🌟 NAUJA: Išsaugome į LocalStorage ir perkrauname UI elementus lange
+            if (typeof savePlayers === 'function') savePlayers(); 
+            if (typeof renderPlayers === 'function') renderPlayers();
+            if (typeof renderLeaderboard === 'function') renderLeaderboard();
+        }).catch(err => console.error("Casual ELO Error:", err));
+    }
 }
