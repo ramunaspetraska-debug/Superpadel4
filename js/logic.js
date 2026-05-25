@@ -247,9 +247,6 @@ function generateFixedRound(safePool) {
     } catch(e) { console.error("generateFixedRound Error:", e); }
 }
 
-// =======================================================
-// IŠMANIOJI DUAL-PATH REITINGŲ SISTEMA (OFICIALI / KAMBARIO)
-// =======================================================
 function processGlobalEloForMatch(match, globalData, globalRef) {
     if (typeof isCloud === 'undefined' || !isCloud) return;
     if (typeof settings !== 'undefined' && settings.level === 'Privatus') return;
@@ -262,9 +259,8 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
     const isOfficial = (typeof settings !== 'undefined' && settings.isOfficial === true);
 
     if (isOfficial) {
-        // 🏆 PATH 1: OFICIALUS LYGOS REITINGAS (padelio_global_players)
+        // PATH 1: GLOBALUS LYGOS REITINGAS
         const getP = (p) => globalData[p.id] || { rating: 300, total_matches: 0 };
-        
         let t1Players = safeArr(match.team1);
         let t2Players = safeArr(match.team2);
         if (t1Players.length === 0 || t2Players.length === 0) return;
@@ -274,13 +270,10 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
         
         let e1 = 1 / (1 + Math.pow(10, (t2R - t1R) / 400));
         let e2 = 1 / (1 + Math.pow(10, (t1R - t2R) / 400));
-        
         let out1 = s1 > s2 ? 1 : (s1 === s2 ? 0.5 : 0);
         let out2 = s2 > s1 ? 1 : (s1 === s2 ? 0.5 : 0);
-        
         let diff = Math.abs(s1 - s2);
         let mov = Math.log(diff + 2); 
-        
         let K = 32; 
         let delta1 = K * mov * (out1 - e1);
         let delta2 = K * mov * (out2 - e2);
@@ -289,10 +282,8 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             let g = getP(p);
             let oldR = g.rating;
             let newR = Math.round(oldR + delta);
-            
             if (newR < 0) newR = 0;
             if (newR > 1000) newR = 1000;
-            
             let newMatches = (g.total_matches || 0) + 1;
             
             let tier = "D";
@@ -307,27 +298,22 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 total_matches: newMatches,
                 last_played: Date.now()
             });
-            
             if(globalData[p.id]) {
                 globalData[p.id].rating = newR;
                 globalData[p.id].total_matches = newMatches;
                 globalData[p.id].tier = tier;
             }
         };
-        
         t1Players.forEach(p => updatePlayer(p, delta1));
         t2Players.forEach(p => updatePlayer(p, delta2));
-
     } else {
-        // ☕ PATH 2: UŽDARAS KAMBARIO REITINGAS (padelio_rooms/{kambarys}/casual_players)
+        // PATH 2: UŽDARAS ISOLIUOTAS KAMBARIO REITINGAS
         const roomName = document.getElementById('fb-room')?.value?.trim();
         if (!roomName) return; 
-
         const casualRef = firebase.database().ref("padelio_rooms/" + roomName + "/casual_players");
         
         casualRef.once('value').then(snap => {
             const casualData = snap.val() || {};
-            
             const getP = (p) => {
                 if (casualData[p.id]) return casualData[p.id];
                 let lp = players.find(x => x.id === p.id);
@@ -343,13 +329,10 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             
             let e1 = 1 / (1 + Math.pow(10, (t2R - t1R) / 400));
             let e2 = 1 / (1 + Math.pow(10, (t1R - t2R) / 400));
-            
             let out1 = s1 > s2 ? 1 : (s1 === s2 ? 0.5 : 0);
             let out2 = s2 > s1 ? 1 : (s1 === s2 ? 0.5 : 0);
-            
             let diff = Math.abs(s1 - s2);
             let mov = Math.log(diff + 2); 
-            
             let K = 32; 
             let delta1 = K * mov * (out1 - e1);
             let delta2 = K * mov * (out2 - e2);
@@ -358,10 +341,8 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 let g = getP(p);
                 let oldR = g.rating;
                 let newR = Math.round(oldR + delta);
-                
                 if (newR < 0) newR = 0;
                 if (newR > 1000) newR = 1000;
-                
                 let newMatches = (g.total_matches || 0) + 1;
                 
                 let tier = "D";
@@ -370,27 +351,25 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 else if (newR >= 501) tier = "C";
                 else if (newR >= 351) tier = "D-C";
                 
-                // Įrašome į Firebase konkretaus kambario medyje
                 casualRef.child(p.id).update({
+                    id: p.id,
                     name: p.name,
+                    gender: p.gender || "M", // 🌟 SUTRAUKTA: Lytis dabar neiškraipoma debesyje!
                     rating: newR,
                     tier: tier,
                     total_matches: newMatches,
                     last_played: Date.now()
                 });
 
-                // Atnaujiname lokaliai atmintyje, kad lange vaizdas persipieštų iškart
                 let localPlayer = players.find(x => x.id === p.id);
                 if (localPlayer) {
                     localPlayer.rating = newR;
                     localPlayer.tier = tier;
                 }
             };
-            
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
 
-            // Išsaugome vietinę būseną ir atnaujiname sąrašus ekrane
             if (typeof savePlayers === 'function') savePlayers(); 
             if (typeof renderPlayers === 'function') renderPlayers();
             if (typeof renderLeaderboard === 'function') renderLeaderboard();
