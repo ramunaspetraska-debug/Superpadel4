@@ -403,7 +403,6 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 else if (newR >= 501) tier = "C";
                 else if (newR >= 351) tier = "D-C";
                 
-                // 1. Įrašome į Firebase
                 casualRef.child(p.id).update({
                     name: p.name,
                     rating: newR,
@@ -412,7 +411,6 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                     last_played: Date.now()
                 });
 
-                // 2. 🌟 NAUJA: Atnaujiname lokaliai naršyklės atmintyje, kad lange pasikeistų IŠKART!
                 let localPlayer = players.find(x => x.id === p.id);
                 if (localPlayer) {
                     localPlayer.rating = newR;
@@ -423,7 +421,6 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
 
-            // 3. 🌟 NAUJA: Išsaugome į LocalStorage ir perkrauname UI elementus lange
             if (typeof savePlayers === 'function') savePlayers(); 
             if (typeof renderPlayers === 'function') renderPlayers();
             if (typeof renderLeaderboard === 'function') renderLeaderboard();
