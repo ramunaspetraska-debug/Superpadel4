@@ -321,6 +321,21 @@ function renderTimerAndSettings() {
     safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('player-count', "Viso: " + players.length); 
     safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
 
+    // Sinchronizuojame viršutinės juostos badges matomumą
+    const offBadge = el('official-badge');
+    const casBadge = el('casual-badge');
+    const adminOffSel = el('admin-is-official');
+    if (typeof settings !== 'undefined') {
+        if (settings.isOfficial) {
+            if(offBadge) offBadge.classList.remove('hidden');
+            if(casBadge) casBadge.classList.add('hidden');
+        } else {
+            if(offBadge) offBadge.classList.add('hidden');
+            if(casBadge) casBadge.classList.remove('hidden');
+        }
+        if(adminOffSel) adminOffSel.value = settings.isOfficial ? "true" : "false";
+    }
+
     const btnFinals = el('btn-generate-finals');
     if(btnFinals) btnFinals.className = (safeArr(matches).some(m => m.finished)) ? "px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase" : "hidden";
 }
@@ -444,7 +459,21 @@ function changeFormat(v) { settings.format = v; preGeneratedTournament = []; set
 function changeRanking(v) { settings.rankingMode = v; autoSave(true); }
 
 function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
-function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; liveUpdateMatches(); } }
+
+/* 🏁 ATNAUJINTA: Šis mygtuko paspaudimas dabar tiesiogiai paleidžia ELO skaičiavimą abiems režimams! */
+function finM(id) { 
+    const m = matches.find(x=>x.id===id); 
+    if(m){ 
+        m.finished = true; 
+        liveUpdateMatches(); 
+        
+        // Sužadiname ELO perskaičiavimą, jei turnyras nėra pažymėtas kaip visiškai privatus
+        if (typeof processGlobalEloForMatch === 'function' && typeof settings !== 'undefined' && settings.level !== 'Privatus') {
+            processGlobalEloForMatch(m, typeof globalPlayersData !== 'undefined' ? globalPlayersData : {}, typeof globalPlayersRef !== 'undefined' ? globalPlayersRef : null);
+        }
+    } 
+}
+
 function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
 function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą ir išsaugoti šį į istoriją?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); autoSave(true); switchView('setup'); } }
 function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyrą iš istorijos?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); switchView('setup'); } autoSave(true); renderHistoryList(); } }
