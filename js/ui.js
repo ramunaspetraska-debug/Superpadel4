@@ -223,7 +223,7 @@ function openPlayerCard(name) {
                     <div class="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner relative"><div class="h-full ${barColor} transition-all duration-1000 ease-out rounded-full" style="width: ${(globalRating / 1000) * 100}%"></div></div>
                     <div class="text-[8px] text-slate-400 text-right mt-1.5 uppercase font-bold tracking-widest">Globalūs mačai sistemoje: ${globalMatches}</div>
                 </div>
-                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-t border-slate-100 pt-4">Vietinė Karjeros Statistika</p>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-t border-slate-100 pt-4">Vietinė Karjeros Statistika</div>
                 <div class="grid grid-cols-2 gap-4 mb-5"><div class="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div class="text-3xl font-black text-slate-800">${stats.mp}</div><div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mačai</div></div><div class="bg-green-50 p-4 rounded-2xl border border-green-100"><div class="text-3xl font-black text-green-600">${winPerc}%</div><div class="text-[9px] font-black text-green-600 uppercase tracking-widest">Pergalės</div></div></div>
                 <div class="flex justify-center gap-6 mb-6 font-bold text-sm"><div class="text-center"><span class="block text-green-600 text-xl">${stats.w}</span><span class="text-[9px] text-slate-400 uppercase">Laimėta</span></div><div class="text-center"><span class="block text-slate-400 text-xl">${stats.t}</span><span class="text-[9px] text-slate-400 uppercase">Lygios</span></div><div class="text-center"><span class="block text-red-500 text-xl">${stats.l}</span><span class="text-[9px] text-slate-400 uppercase">Pralaimėta</span></div></div>
                 <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100"><div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Geriausias Partneris</div><div class="font-bold text-indigo-900">${bestPartner} <span class="text-xs text-indigo-500 font-normal">${maxText}</span></div></div>
@@ -444,7 +444,21 @@ function changeFormat(v) { settings.format = v; preGeneratedTournament = []; set
 function changeRanking(v) { settings.rankingMode = v; autoSave(true); }
 
 function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
-function finM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=true; liveUpdateMatches(); } }
+
+/* 🏁 ATNAUJINTA: Mačo uždarymas dabar gyvai išprovokuoja ELO skaičiavimą draugiškuose kambariuose! */
+function finM(id) { 
+    const m = matches.find(x=>x.id===id); 
+    if(m){ 
+        m.finished = true; 
+        liveUpdateMatches(); 
+        
+        // ☕ Jeigu žaidžiamas neoficialus (casual) mačas – priverstinai sužadiname kambario ELO perskaičiavimą
+        if (typeof processGlobalEloForMatch === 'function' && typeof settings !== 'undefined' && settings.isOfficial !== true) {
+            processGlobalEloForMatch(m, typeof globalPlayersData !== 'undefined' ? globalPlayersData : {}, null);
+        }
+    } 
+}
+
 function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
 function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą ir išsaugoti šį į istoriją?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); autoSave(true); switchView('setup'); } }
 function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyrą iš istorijos?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); switchView('setup'); } autoSave(true); renderHistoryList(); } }
