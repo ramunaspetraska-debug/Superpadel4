@@ -72,6 +72,53 @@
         </div>
     </div>
 
+    <div id="adminEditTournamentModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 5000; align-items: center; justify-content: center;">
+        <div style="background: #fff; border-radius: 12px; padding: 25px; max-width: 450px; width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+            <div style="font-size: 18px; font-weight: 900; margin-bottom: 20px; color: #1a202c; display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-calendar-solid" style="color: #48bb78;"></i> Redaguoti Turnyro Nustatymus
+            </div>
+            <input type="hidden" id="editAdminTournamentId">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Formatas</label>
+                <select id="editAdminTournamentFormat" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                    <option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Lygis</label>
+                    <select id="editAdminTournamentLevel" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                        <option value="Atviras">Atviras (Visi lygiai)</option>
+                        <option value="A">A (Ekspertai)</option>
+                        <option value="B-/B">B-/B (Patyrę)</option>
+                        <option value="C/C+">C/C+ (Pažengę)</option>
+                        <option value="D-C">D/C- (Pradedantieji)</option>
+                        <option value="D">D (Naujokai)</option>
+                        <option value="Privatus">Privatus (Nereitinguojamas)</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Maksimalus vietų sk.</label>
+                    <input type="number" id="editAdminTournamentMax" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Data</label>
+                    <input type="text" id="editAdminTournamentDate" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Laikas</label>
+                    <input type="text" id="editAdminTournamentTime" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="modal-btn secondary" style="padding: 10px 18px;" onclick="closeAdminTournamentModal()">Atšaukti</button>
+                <button type="button" class="modal-btn primary" style="padding: 10px 22px; background: #48bb78;" onclick="saveAdminTournamentChanges()">Atnaujinti</button>
+            </div>
+        </div>
+    </div>
+
     <div id="actionModal" class="modal-overlay">
         <div class="modal-box">
             <div id="modalTitle" class="modal-title"></div>
@@ -85,30 +132,17 @@
             <div style="font-weight: 800; font-size: 16px;"><i class="fa-solid fa-circle" style="color: #e53e3e; font-size: 10px; margin-right: 5px;"></i> SuperPadel.lt TV</div>
             <button type="button" class="live-close" onclick="closeLiveModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        
         <div class="yt-container">
             <iframe class="yt-iframe" src="https://www.youtube.com/embed/A6XUVjK9W4o?autoplay=0&mute=1&controls=0&modestbranding=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         </div>
-
         <div class="firebase-connector">
             <input type="text" id="liveRoomInput" placeholder="Įveskite kambario ID (pvz. kaunas1)">
             <button type="button" onclick="connectLiveRoom()"><i class="fa-solid fa-link"></i> Jungtis</button>
         </div>
-
-        <div class="live-filters" id="liveCourtsContainer">
-            <div class="live-filter-btn">Laukiama prisijungimo...</div>
-        </div>
-
+        <div class="live-filters" id="liveCourtsContainer"><div class="live-filter-btn">Laukiama prisijungimo...</div></div>
         <div class="live-score-area">
-            <div class="live-score-title" id="fbStatusTitleContainer">
-                <i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> 
-                <span id="fbStatusText">Neprisijungta prie Firebase</span>
-            </div>
-            <div id="liveScoreBoxContainer" style="width: 100%;">
-                <div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">
-                    Įveskite savo V188 programos kambario pavadinimą ir stebėkite taškus gyvai!
-                </div>
-            </div>
+            <div class="live-score-title" id="fbStatusTitleContainer"><i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span></div>
+            <div id="liveScoreBoxContainer" style="width: 100%;"><div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite savo programos kambario pavadinimą ir stebėkite taškus gyvai!</div></div>
         </div>
     </div>
 
@@ -131,7 +165,7 @@
             </div>
         </div>
 
-        <div id="page-home" class="page-view empty-page"><i class="fa-solid fa-newspaper"></i><h3>Klubo naujienos</h3><p style="font-size: 12px; margin-top: 5px;">Čia bus skelbiamos svarbiausios klubo naujienos.</p></div>
+        <div id="page-home" class="page-view empty-page"><i class="fa-solid fa-newspaper"></i><h3>Klubo naujienos</h3><p style="font-size: 12px; margin-top: 5px;">Čia bude skelbiamos svarbiausios klubo naujienos.</p></div>
 
         <div id="page-calendar" class="page-view active">
             <div class="filters">
@@ -141,8 +175,8 @@
                         <option value="all">Visi lygiai</option>
                         <option value="Atviras">Atviras (Visi lygiai)</option>
                         <option value="A">A (Ekspertai)</option>
-                        <option value="B">B-/B (Patyrę)</option>
-                        <option value="C">C/C+ (Pažengę)</option>
+                        <option value="B-/B">B-/B (Patyrę)</option>
+                        <option value="C/C+">C/C+ (Pažengę)</option>
                         <option value="D-C">D/C- (Pradedantieji)</option>
                         <option value="D">D (Naujokai)</option>
                         <option value="Privatus">Privatus (Nereitinguojamas)</option>
@@ -158,10 +192,7 @@
         <div id="page-cam" class="page-view">
             <div class="cam-header"><i class="fa-solid fa-bolt" style="font-size: 20px; cursor: pointer;"></i><div class="cam-title">SuperPadel Cam</div><i class="fa-solid fa-gear" style="font-size: 20px; cursor: pointer;"></i></div>
             <div class="recording-indicator" id="recIndicator"><div class="dot"></div> <span id="recTimer">00:00:00</span></div>
-            <div class="cam-viewfinder" id="viewFinder">
-                <video id="cameraFeed" autoplay playsinline muted></video>
-                <div class="court-hint" id="cameraHintText">Sulygiuokite telefono kamerą<br>su padelio korto linijomis</div>
-            </div>
+            <div class="cam-viewfinder" id="viewFinder"><video id="cameraFeed" autoplay playsinline muted></video><div class="court-hint" id="cameraHintText">Sulygiuokite telefono kamerą<br>su padelio korto linijomis</div></div>
             <div class="cam-controls" id="camControls">
                 <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 14px;">Pritvirtinkite telefoną prie stiklo.<br>Filmuokite visą mačą, o geriausius ralius išrinks dirbtinis intelektas.</div>
                 <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
@@ -222,12 +253,8 @@
                     <li onclick="adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
                     <li class="active" onclick="adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
                     <li onclick="adminNav(this, 'admin-view-zaidejai')"><i class="fa-solid fa-users"></i> Žaidėjų bazė</li>
-                    
-                    <a href="index.html" target="_blank" style="display: flex; align-items: center; gap: 15px; padding: 15px 20px; color: #48bb78; text-decoration: none; font-weight: bold; margin-top: 20px; border-top: 1px solid #2d3748;">
-                        <i class="fa-solid fa-gear"></i> Pagrindinė Programa
-                    </a>
-                    
-                    <li onclick="toggleMode()" style="color: #e53e3e; margin-top: 5px; font-weight: bold;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Grįžti į Portalą</li>
+                    <a href="index.html" target="_blank" style="display: flex; align-items: center; gap: 15px; padding: 15px 20px; color: #48bb78; text-decoration: none; font-weight: bold; margin-top: 20px; border-top: 1px solid #2d3748;"><i class="fa-solid fa-gear"></i> Pagrindinė Programa</a>
+                    <li onclick="toggleMode()" style="color: #e53e3e; margin-top: 5px; font-weight: bold;"><i class="fa-solid fa-bracket-arrow-right"></i> Grįžti į Portalą</li>
                 </ul>
             </div>
             <div class="admin-main">
@@ -241,7 +268,7 @@
 
                 <div id="admin-view-turnyrai" class="admin-tab">
                     <h1 style="margin-bottom: 20px;">Turnyrų Valdymas</h1>
-                    <div style="display: grid; grid-template-columns: 1fr; max-width: 600px;">
+                    <div style="display: grid; grid-template-columns: 1fr; max-width: 650px;">
                         
                         <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;">
                             <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Sukurti Naują Turnyrą</div>
@@ -257,8 +284,8 @@
                                         <select id="newLevel" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
                                             <option value="Atviras">Atviras (Visi lygiai)</option>
                                             <option value="A">A (Ekspertai)</option>
-                                            <option value="B">B-/B (Patyrę)</option>
-                                            <option value="C">C/C+ (Pažengę)</option>
+                                            <option value="B-/B">B-/B (Patyrę)</option>
+                                            <option value="C/C+">C/C+ (Pažengę)</option>
                                             <option value="D-C">D/C- (Pradedantieji)</option>
                                             <option value="D">D (Naujokai)</option>
                                             <option value="Privatus">Privatus (Nereitinguojamas)</option>
@@ -296,7 +323,6 @@
                             <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Visi Sistemos Turnyrai (Aktyvūs)</div>
                             <div id="admin-tournaments-list-db"></div>
                         </div>
-
                     </div>
                 </div>
 
@@ -322,10 +348,13 @@
                             <div>
                                 <select id="adminFilterTier" onchange="filterAdminPlayers()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; color: #4a5568; outline: none; background: #fff; height: 100%;">
                                     <option value="all">Visi lygiai</option>
+                                    <option value="Atviras">Atviras</option>
                                     <option value="A">A (Ekspertai)</option>
-                                    <option value="B">B (Patyrę)</option>
-                                    <option value="C">C (Pažengę)</option>
+                                    <option value="B-/B">B-/B (Patyrę)</option>
+                                    <option value="C/C+">C/C+ (Pažengę)</option>
+                                    <option value="D-C">D/C- (Pradedantieji)</option>
                                     <option value="D">D (Naujokai)</option>
+                                    <option value="Privatus">Privatus</option>
                                 </select>
                             </div>
                         </div>
@@ -333,7 +362,6 @@
                         <div id="admin-players-list-db">
                             <div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami duomenys iš debesies...</div>
                         </div>
-
                     </div>
                 </div>
 
@@ -348,12 +376,9 @@
 
         function loadAdminGlobalPlayers() {
             if (typeof firebase === 'undefined') return;
-            
-            // Jungiamės tik prie oficialios, registruotų narių šakos
             firebase.database().ref("padelio_global_players").on('value', snap => {
                 const data = snap.val();
                 adminGlobalPlayers = [];
-                
                 if (data) {
                     Object.keys(data).forEach(key => {
                         let p = data[key];
@@ -367,28 +392,124 @@
                         });
                     });
                 }
-                
-                // Atnaujiname skaitiklį viršuje
                 const countBadge = document.getElementById('admin-players-count');
                 if (countBadge) countBadge.innerText = "Viso: " + adminGlobalPlayers.length;
-                
-                filterAdminPlayers(); // Atvaizduojame lentelę pritaikant aktyvius filtrus
+                filterAdminPlayers();
             });
+        }
+
+        /* 🔄 NAUJAS SEKTORIUS: Gyvas turnyrų atvaizdavimas su redagavimo ir trynimo funkcija */
+        function loadAdminTournamentsLive() {
+            if (typeof firebase === 'undefined') return;
+            firebase.database().ref("padelio_global_tournaments").on('value', snap => {
+                const data = snap.val();
+                const container = document.getElementById('admin-tournaments-list-db');
+                if (!container) return;
+                if (!data) {
+                    container.innerHTML = '<div style="text-align:center; padding:20px; color:#718096; font-weight:bold;">Aktyvių lygos turnyrų nerasta.</div>';
+                    return;
+                }
+
+                let list = [];
+                Object.keys(data).forEach(key => {
+                    if(data[key]) list.push({ dbId: key, ...data[key] });
+                });
+
+                let html = `
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+                        <thead>
+                            <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0; color: #718096; font-weight: bold; text-transform: uppercase; font-size: 10px;">
+                                <th style="padding: 10px;">Data</th>
+                                <th style="padding: 10px;">Formatas</th>
+                                <th style="padding: 10px;">Lygis</th>
+                                <th style="padding: 10px;">Laikas</th>
+                                <th style="padding: 10px; text-align: center;">Maks</th>
+                                <th style="padding: 10px; text-align: center; width: 150px;">Veiksmai</th>
+                            </tr>
+                        </thead>
+                        <tbody style="font-weight: 600; color: #2d3748;">
+                `;
+
+                list.sort((a,b) => a.date.localeCompare(b.date)).forEach(t => {
+                    let levelColor = "color: #3182ce;";
+                    if(t.level === 'A') levelColor = "color: #e53e3e;";
+                    else if(t.level === 'B-/B') levelColor = "color: #9f7aea;";
+
+                    html += `
+                        <tr style="border-bottom: 1px solid #edf2f7;">
+                            <td style="padding: 10px; font-weight: 700; color: #1a202c;">${t.date}</td>
+                            <td style="padding: 10px;">${t.format}</td>
+                            <td style="padding: 10px; ${levelColor}">${t.level}</td>
+                            <td style="padding: 10px; color: #718096;">${t.time}</td>
+                            <td style="padding: 10px; text-align: center; font-weight: 700;">${t.maxPlayers || t.max || 16}</td>
+                            <td style="padding: 10px; text-align: center;">
+                                <button onclick="openAdminTournamentModal('${t.dbId}', '${t.format}', '${t.level}', ${t.maxPlayers || t.max || 16}, '${t.time}', '${t.date}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️</button>
+                                <button onclick="deleteAdminTournamentLive('${t.dbId}')" style="background: #fff5f5; color: #c53030; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">🗑️</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                html += `</tbody></table>`;
+                container.innerHTML = html;
+            });
+        }
+
+        function openAdminTournamentModal(id, format, level, max, time, date) {
+            document.getElementById('editAdminTournamentId').value = id;
+            document.getElementById('editAdminTournamentFormat').value = format;
+            document.getElementById('editAdminTournamentLevel').value = level;
+            document.getElementById('editAdminTournamentMax').value = max;
+            document.getElementById('editAdminTournamentTime').value = time;
+            document.getElementById('editAdminTournamentDate').value = date;
+            document.getElementById('adminEditTournamentModal').style.display = 'flex';
+        }
+
+        function closeAdminTournamentModal() {
+            document.getElementById('adminEditTournamentModal').style.display = 'none';
+        }
+
+        function saveAdminTournamentChanges() {
+            const id = document.getElementById('editAdminTournamentId').value;
+            const format = document.getElementById('editAdminTournamentFormat').value;
+            const level = document.getElementById('editAdminTournamentLevel').value;
+            const max = parseInt(document.getElementById('editAdminTournamentMax').value) || 16;
+            const time = document.getElementById('editAdminTournamentTime').value.trim();
+            const date = document.getElementById('editAdminTournamentDate').value.trim();
+
+            if(!time || !date) { alert("Data ir laikas yra privalomi laukai!"); return; }
+
+            firebase.database().ref("padelio_global_tournaments/" + id).update({
+                format: format,
+                level: level,
+                maxPlayers: max,
+                max: max,
+                time: time,
+                date: date
+            }).then(() => {
+                closeAdminTournamentModal();
+                if (typeof showToast === 'function') showToast("Turnyro parametrai sėkmingai atnaujinti!");
+            }).catch(err => { console.error(err); alert("Nepavyko atnaujinti turnyro debesyje."); });
+        }
+
+        function deleteAdminTournamentLive(id) {
+            if(!confirm("Ar tikrai norite visam laikui panaikinti šį lygos turnyrą bei visas jame esančias registracijas?")) return;
+            firebase.database().ref("padelio_global_tournaments/" + id).remove().then(() => {
+                if (typeof showToast === 'function') showToast("Turnyras sėkmingai ištrintas.");
+            }).catch(err => { console.error(err); alert("Klaida trinant turnyrą."); });
         }
 
         function renderAdminPlayersTable(playersList) {
             const container = document.getElementById('admin-players-list-db');
             if (!container) return;
-
             if (playersList.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:30px; color:#718096; font-weight:bold;"><i class="fa-solid fa-folder-open"></i> Registruotų žaidėjų pagal pasirinktus filtrus nerasta.</div>';
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#718096; font-weight:bold;"><i class="fa-solid fa-folder-open"></i> Registruotų žaidėjų nerasta.</div>';
                 return;
             }
 
             let html = `
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
                     <thead>
-                        <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0; color: #718096; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">
+                        <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0; color: #718096; font-weight: bold; text-transform: uppercase; font-size: 11px;">
                             <th style="padding: 12px 10px; text-align: center; width: 50px;">#</th>
                             <th style="padding: 12px 10px;">Vardas Pavardė</th>
                             <th style="padding: 12px 10px; text-align: center; width: 70px;">Lytis</th>
@@ -405,21 +526,21 @@
                     '<span style="background: #ebf8ff; color: #2b6cb0; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900;">V</span>' : 
                     '<span style="background: #fff5f5; color: #c53030; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900;">M</span>';
                     
-                let tierStyle = "color: #48bb78;"; // D (default)
+                let tierStyle = "color: #48bb78;";
                 if (p.tier === 'A') tierStyle = "color: #e53e3e;";
-                else if (p.tier.includes('B')) tierStyle = "color: #9f7aea;";
-                else if (p.tier.includes('C')) tierStyle = "color: #3182ce;";
+                else if (p.tier === 'B-/B') tierStyle = "color: #9f7aea;";
+                else if (p.tier === 'C/C+') tierStyle = "color: #3182ce;";
 
                 html += `
                     <tr style="border-bottom: 1px solid #edf2f7; transition: background 0.1s;" onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='transparent'">
                         <td style="padding: 12px 10px; text-align: center; color: #a0aec0; font-size: 11px;">${idx + 1}</td>
                         <td style="padding: 12px 10px; color: #1a202c; font-weight: 700; font-size: 14px;">${esc_local(p.name)}</td>
                         <td style="padding: 12px 10px; text-align: center;">${genderBadge}</td>
-                        <td style="padding: 12px 10px; font-family: monospace; color: #4a5568; letter-spacing: -0.5px;">${esc_local(p.phone)}</td>
+                        <td style="padding: 12px 10px; font-family: monospace; color: #4a5568;">${esc_local(p.phone)}</td>
                         <td style="padding: 12px 10px; text-align: right; font-weight: 900; font-size: 14px; ${tierStyle}">${p.rating} <span style="font-size: 10px; color: #a0aec0; font-weight: normal; margin-left: 2px;">(${p.tier})</span></td>
                         <td style="padding: 12px 10px; text-align: center;">
-                            <button onclick="openAdminEditModal('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.gender}', ${p.rating}, '${p.phone}')" style="background: #e2e8f0; color: #4a5568; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px; transition: 0.15s;" onmouseover="this.style.background='#cbd5e0'" onmouseout="this.style.background='#e2e8f0'">✏️ Keisti</button>
-                            <button onclick="deleteAdminPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; transition: 0.15s;" onmouseover="this.style.background='#fed7d7'" onmouseout="this.style.background='#fff5f5'">🗑️</button>
+                            <button onclick="openAdminEditModal('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.gender}', ${p.rating}, '${p.phone}')" style="background: #e2e8f0; color: #4a5568; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
+                            <button onclick="deleteAdminPlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">🗑️</button>
                         </td>
                     </tr>
                 `;
@@ -437,7 +558,7 @@
             const filtered = adminGlobalPlayers.filter(p => {
                 let matchQuery = p.name.toLowerCase().includes(query) || p.phone.toLowerCase().includes(query);
                 let matchGender = (gender === "all") || (p.gender === gender);
-                let matchTier = (tier === "all") || (p.tier === tier || (tier === 'B' && p.tier.includes('B')) || (tier === 'C' && p.tier.includes('C')));
+                let matchTier = (tier === "all") || (p.tier === tier);
                 return matchQuery && matchGender && matchTier;
             });
 
@@ -467,8 +588,8 @@
 
             let tier = "D";
             if (rating >= 851) tier = "A";
-            else if (rating >= 671) tier = "B";
-            else if (rating >= 501) tier = "C";
+            else if (rating >= 671) tier = "B-/B";
+            else if (rating >= 501) tier = "C/C+";
             else if (rating >= 351) tier = "D-C";
 
             firebase.database().ref("padelio_global_players/" + id).update({
@@ -479,21 +600,14 @@
             }).then(() => {
                 closeAdminEditModal();
                 if (typeof showToast === 'function') showToast("Profilio keitimai sėkmingai išsaugoti!");
-            }).catch(err => {
-                console.error(err);
-                alert("Klaida: nepavyko išsaugoti pakeitimų debesyje.");
-            });
+            }).catch(err => { console.error(err); alert("Klaida debesyje."); });
         }
 
         function deleteAdminPlayer(id, name) {
-            if (!confirm(`DĖMESIO: Ar tikrai norite ištrinti žaidėją "${name}" iš bendros Lietuvos lygos sistemos? Šis veiksmas yra negražinamas.`)) return;
-
+            if (!confirm(`DĖMESIO: Ar tikrai norite ištrinti žaidėją "${name}" iš bendros Lietuvos lygos sistemos?`)) return;
             firebase.database().ref("padelio_global_players/" + id).remove().then(() => {
                 if (typeof showToast === 'function') showToast("Žaidėjas sėkmingai pašalintas.");
-            }).catch(err => {
-                console.error(err);
-                alert("Klaida trinant žaidėją.");
-            });
+            }).catch(err => { console.error(err); alert("Klaida."); });
         }
 
         function esc_local(str) {
@@ -501,11 +615,11 @@
             return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
         }
 
-        // Užkrauname žaidėjus, kai tik Firebase sistemos karkasas tampa pasiekiamas fone
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 if (typeof firebase !== 'undefined') {
                     loadAdminGlobalPlayers();
+                    loadAdminTournamentsLive(); // ⚡ Paleidžiame gyvą turnyrų stebėjimą fone
                 }
             }, 1200);
         });
