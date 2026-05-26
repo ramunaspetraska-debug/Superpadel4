@@ -2,56 +2,60 @@
 <html lang="lt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>SuperPadel.lt | Administratorius v1.0.9</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuperPadel.lt | Administratorius v1.1.0</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <link rel="stylesheet" href="/css/registras.css">
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; margin: 0; }
+        .admin-btn { padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 12px; margin: 2px; }
+        .btn-edit { background: #009fe3; color: white; }
+        .btn-delete { background: #e53e3e; color: white; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    </style>
 </head>
 <body>
 
     <div id="admin-view-zaidejai" style="padding: 20px;">
-        <h1>Žaidėjų bazė (v1.0.9)</h1>
-        <input type="text" id="adminPlayerSearch" onkeyup="window.filterAdminPlayers()" placeholder="Paieška...">
-        <div id="admin-players-list-db"></div>
+        <h1>Žaidėjų bazė (v1.1.0)</h1>
+        <div id="admin-players-list-db">Kraunama...</div>
     </div>
 
     <div id="adminEditPlayerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999;">
         <div style="background:white; padding:20px; margin:50px auto; width:90%; max-width:400px; border-radius:10px;">
             <h3>Redaguoti žaidėją</h3>
             <input type="hidden" id="editAdminPlayerId">
-            <input type="text" id="editAdminPlayerName" placeholder="Vardas">
-            <input type="number" id="editAdminPlayerRating" placeholder="ELO">
+            <input type="text" id="editAdminPlayerName" placeholder="Vardas" style="width:100%; margin-bottom:10px;">
+            <input type="number" id="editAdminPlayerRating" placeholder="ELO" style="width:100%; margin-bottom:10px;">
             <button onclick="window.saveAdminPlayerChanges()">Išsaugoti</button>
-            <button onclick="window.closeAdminEditModal()">Uždaryti</button>
+            <button onclick="document.getElementById('adminEditPlayerModal').style.display='none'">Uždaryti</button>
         </div>
     </div>
 
     <script>
         // GLOBALIAI KINTAMIEJI
         window.adminGlobalPlayers = [];
-        const GLOBAL_PLAYERS_KEY = "padelio_global_players";
 
-        // 1. Žaidėjų krovimas
         window.loadAdminPlayersDB = function() {
-            firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
+            const container = document.getElementById('admin-players-list-db');
+            firebase.database().ref("padelio_global_players").once('value').then(snap => {
                 let data = snap.val() || {};
                 window.adminGlobalPlayers = Object.keys(data).map(key => ({id: key, ...data[key]}));
                 window.renderAdminPlayersDB(window.adminGlobalPlayers);
             });
         };
 
-        // 2. Lentelės atvaizdavimas (su saugiais mygtukais)
         window.renderAdminPlayersDB = function(players) {
             const container = document.getElementById('admin-players-list-db');
-            let html = '<table style="width:100%">';
+            let html = '<table>';
             players.forEach(p => {
                 html += `<tr>
                     <td>${p.name || 'Nenurodytas'}</td>
                     <td>
-                        <button type="button" onclick="window.openAdminEditModal('${p.id}')">Keisti</button>
-                        <button type="button" onclick="window.deleteAdminPlayerLive('${p.id}')">Trinti</button>
+                        <button class="admin-btn btn-edit" onclick="window.openAdminEditModal('${p.id}')">Keisti</button>
+                        <button class="admin-btn btn-delete" onclick="window.deleteAdminPlayerLive('${p.id}')">Trinti</button>
                     </td>
                 </tr>`;
             });
@@ -59,7 +63,6 @@
             container.innerHTML = html;
         };
 
-        // 3. Redagavimo atidarymas (Paima duomenis tik pagal ID)
         window.openAdminEditModal = function(id) {
             let p = window.adminGlobalPlayers.find(x => String(x.id) === String(id));
             if(!p) return;
@@ -69,34 +72,24 @@
             document.getElementById('adminEditPlayerModal').style.display = 'flex';
         };
 
-        window.closeAdminEditModal = function() { document.getElementById('adminEditPlayerModal').style.display = 'none'; };
-
-        // 4. Išsaugojimas
         window.saveAdminPlayerChanges = function() {
             const id = document.getElementById('editAdminPlayerId').value;
             const name = document.getElementById('editAdminPlayerName').value;
             const rating = parseInt(document.getElementById('editAdminPlayerRating').value);
-            
-            firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + id).update({ name, rating }).then(() => {
-                alert("Išsaugota!");
-                window.closeAdminEditModal();
+            firebase.database().ref("padelio_global_players/" + id).update({ name, rating }).then(() => {
+                alert("Atnaujinta!");
+                document.getElementById('adminEditPlayerModal').style.display = 'none';
                 window.loadAdminPlayersDB();
             });
         };
 
-        // 5. Trynimas
         window.deleteAdminPlayerLive = function(id) {
-            if(confirm("Trinti?")) {
-                firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + String(id).trim()).remove().then(() => {
-                    window.loadAdminPlayersDB();
-                });
+            if(confirm("Ar tikrai trinti?")) {
+                firebase.database().ref("padelio_global_players/" + id).remove().then(() => window.loadAdminPlayersDB());
             }
         };
 
-        // Paleidimas
-        window.addEventListener('load', () => {
-            if(typeof firebase !== 'undefined') window.loadAdminPlayersDB();
-        });
+        window.addEventListener('load', () => window.loadAdminPlayersDB());
     </script>
 </body>
 </html>
