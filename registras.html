@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <link rel="stylesheet" href="/css/registras.css?v=8">
+    <link rel="stylesheet" href="/css/registras.css?v=9">
 </head>
 <body>
 
@@ -169,7 +169,7 @@
         </div>
 
         <div class="app-header" id="mainHeader">
-            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.8</span></div>
+            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.9</span></div>
             <div class="header-actions">
                 <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
                 <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
@@ -260,7 +260,7 @@
     <div id="adminMode">
         <div class="admin-layout">
             <div class="admin-sidebar">
-                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.8</span></span></div>
+                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.9</span></span></div>
                 <ul class="nav-menu">
                     <li onclick="window.adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
                     <li class="active" onclick="window.adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
@@ -387,7 +387,7 @@
         let adminGlobalPlayers = [];
         let tempAdminPlayerPhotoBase64 = null;
 
-        // 🛡️ PILNAS NAVIGACIJOS PERĖMIMAS: Pritvirtiname funkciją prie window objekto prieš pasileidžiant core failui
+        // Iš anksto paruošiame window objektus, kad jokie fone paleisti skriptai jų neperrašytų senuoju formatu
         window.adminNav = function(element, viewId) {
             document.querySelectorAll('.admin-sidebar li').forEach(el => el.classList.remove('active'));
             if (element) element.classList.add('active');
@@ -403,7 +403,6 @@
             }
         };
 
-        // 🛡️ ŽAIDĖJŲ BAZĖS UŽKROVIMAS: Apsaugotas nuo asinchroninio Firebase vėlavimo
         window.loadAdminPlayersDB = function() {
             const dbList = document.getElementById('admin-players-list-db');
             if (dbList) dbList.innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama oficiali lygos bazė...</div>';
@@ -450,7 +449,7 @@
             window.renderAdminPlayersDB(filtered);
         };
 
-        // 🛡️ ŽAIDĖJŲ LENTELĖ: Saugus replace() metodas su visiška vardo apsauga nuo lūžimo
+        // 📊 ŽAIDĖJŲ LENTELĖ: Suvienodintas modernus dizainas su turnyrų skiltimi
         window.renderAdminPlayersDB = function(playersArray) {
             const container = document.getElementById('admin-players-list-db');
             if (!container) return;
@@ -469,7 +468,7 @@
                             <th style="padding: 12px 10px; text-align: center; width: 70px;">Lytis</th>
                             <th style="padding: 12px 10px;">Telefono numeris / ID</th>
                             <th style="padding: 12px 10px; text-align: right; width: 130px;">Lygos ELO</th>
-                            <th style="padding: 12px 10px; text-align: center; width: 140px;">Veiksmai</th>
+                            <th style="padding: 12px 10px; text-align: center; width: 180px;">Veiksmai</th>
                         </tr>
                     </thead>
                     <tbody style="color: #2d3748; font-weight: 600;">
@@ -497,9 +496,9 @@
                         <td style="padding: 12px 10px; text-align: center;">${genderBadge}</td>
                         <td style="padding: 12px 10px; font-family: monospace; color: #4a5568;">${esc_local(p.phone || p.id)}</td>
                         <td style="padding: 12px 10px; text-align: right; font-weight: 900; font-size: 14px; ${tierStyle}">${p.rating} <span style="font-size: 10px; color: #a0aec0; font-weight: normal; margin-left: 2px;">(${p.tier})</span></td>
-                        <td style="padding: 12px 10px; text-align: center;">
-                            <button type="button" onclick="window.openAdminEditModal('${p.id}', '${safeName}', '${p.gender}', ${p.rating}, '${p.phone || p.id}', '${p.photo || ''}')" style="background: #e2e8f0; color: #4a5568; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
-                            <button type="button" onclick="window.deleteAdminPlayer('${p.id}', '${safeName}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">🗑️ Trinti</button>
+                        <td style="padding: 12px 10px; text-align: center; display: flex; gap: 6px; justify-content: center;">
+                            <button type="button" onclick="window.openAdminEditModal('${p.id}', '${safeName}', '${p.gender}', ${p.rating}, '${p.phone || p.id}', '${p.photo || ''}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-pen-to-square"></i> Keisti</button>
+                            <button type="button" onclick="window.deleteAdminPlayerLive('${p.id}', '${safeName}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-trash-can"></i> Trinti</button>
                         </td>
                     </tr>
                 `;
@@ -509,7 +508,7 @@
             container.innerHTML = html;
         };
 
-        window.deleteAdminPlayer = function(id, name) {
+        window.deleteAdminPlayerLive = function(id, name) {
             if (!confirm(`DĖMESIO: Ar tikrai norite visam laikui ištrinti žaidėją "${name}" iš bendros Lietuvos lygos sistemos?`)) return;
             firebase.database().ref("padelio_global_players").child(String(id).trim()).remove().then(() => {
                 showToast("Žaidėjas sėkmingai pašalintas!");
@@ -517,7 +516,7 @@
             }).catch(err => { alert("Klaida trinant žaidėją."); });
         };
 
-        // 🛡️ TURNYRAI: Priverstinis atvaizdavimas su įskiepytu „Redaguoti“ palaikymu
+        // 📊 TURNYRAI: Suvienodinta lentelė ir idealiai sutampantis mygtukų dizainas
         window.renderAdminTournaments = function() {
             const list = document.getElementById('admin-tournaments-list-db');
             if(!list) return;
@@ -537,7 +536,7 @@
                             <th style="padding: 12px;">Formatas</th>
                             <th style="padding: 12px;">Lygis</th>
                             <th style="padding: 12px;">Dalyviai</th>
-                            <th style="padding: 12px; text-align: center; width: 150px;">Veiksmai</th>
+                            <th style="padding: 12px; text-align: center; width: 180px;">Veiksmai</th>
                         </tr>
                     </thead>
                     <tbody style="font-weight: 600; color: #2d3748;">
@@ -558,9 +557,9 @@
                         <td style="padding: 12px; font-weight: 800; color: var(--primary-blue);">${t.format}</td>
                         <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${t.level}</span></td>
                         <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
-                        <td style="padding: 12px; text-align: center;">
-                            <button type="button" onclick="window.openAdminTournamentModal('${t.id}', '${t.format}', '${t.level}', ${t.max || t.maxPlayers || 16}, '${t.time}', '${t.date}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Redaguoti</button>
-                            <button type="button" onclick="window.deleteAdminTournamentLive('${t.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
+                        <td style="padding: 12px; text-align: center; display: flex; gap: 6px; justify-content: center;">
+                            <button type="button" onclick="window.openAdminTournamentModal('${t.id}', '${t.format}', '${t.level}', ${t.max || t.maxPlayers || 16}, '${t.time}', '${t.date}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-pen-to-square"></i> Keisti</button>
+                            <button type="button" onclick="window.deleteAdminTournamentLive('${t.id}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-trash-can"></i> Trinti</button>
                         </td>
                     </tr>
                 `;
@@ -569,7 +568,6 @@
             list.innerHTML = html;
         };
 
-        // 🛡️ KORREKTINIS ID PASIRINKIMAS IR TRYNIMAS (Pašalina String/Number klaidą debesyje)
         window.deleteAdminTournamentLive = function(id) {
             if(!confirm("Ar tikrai norite visam laikui ištrinti šį turnyrą iš debesies? Visi užsiregistravę žaidėjai bus pašalinti.")) return;
             tournaments = tournaments.filter(t => String(t.id) !== String(id));
@@ -578,7 +576,10 @@
             window.renderAdminTournaments();
         };
 
+        // Peradresuojame senąsias core funkcijas, kad nekeltų konfliktų fone
         window.deleteTournament = function(id) { window.deleteAdminTournamentLive(id); };
+        window.deleteAdminPlayer = function(id, name) { window.deleteAdminPlayerLive(id, name); };
+        window.editAdminPlayer = function(id) { }; 
 
         window.openAdminTournamentModal = function(id, format, level, max, time, date) {
             document.getElementById('editAdminTournamentId').value = id;
@@ -686,16 +687,14 @@
             return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
         }
 
-        // 🌟 VYKDYMAS SVEIKAME KANALE: Prisirišame prie 'load' įvykio, kuris suveikia po core failo pasileidimo
+        // Priverstinis perėmimas per 'load' kanalą, kad užklotume visą core logiką po jos užsikrovimo
         window.addEventListener('load', () => {
-            // Perrašome kairiojo meniu parametrus programiškai
             const sidebarButtons = document.querySelectorAll('.nav-menu li');
             if(sidebarButtons.length >= 3) {
                 sidebarButtons[0].setAttribute('onclick', "window.adminNav(this, 'admin-view-apzvalga')");
                 sidebarButtons[1].setAttribute('onclick', "window.adminNav(this, 'admin-view-turnyrai')");
                 sidebarButtons[2].setAttribute('onclick', "window.adminNav(this, 'admin-view-zaidejai')");
             }
-            // Pirminis užkrovimas lygiaverčiam atvaizdavimui
             window.loadAdminPlayersDB();
             window.renderAdminTournaments();
         });
