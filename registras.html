@@ -273,7 +273,7 @@
                 
                 <div id="admin-view-apzvalga" class="admin-tab" style="display: none;">
                     <h1 style="margin-bottom: 20px;">Apžvalga</h1>
-                    <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #edf2f7;">
                         <p style="color: var(--text-grey); font-size: 14px;">Čia netrukus atsiras bendra sistemos statistika.</p>
                     </div>
                 </div>
@@ -387,7 +387,7 @@
         let adminGlobalPlayers = [];
         let tempAdminPlayerPhotoBase64 = null;
 
-        // Iš anksto paruošiame window objektus, kad jokie fone paleisti skriptai jų neperrašytų senuoju formatu
+        // 🛡️ PILNAS NAVIGACIJOS VALDYMAS
         window.adminNav = function(element, viewId) {
             document.querySelectorAll('.admin-sidebar li').forEach(el => el.classList.remove('active'));
             if (element) element.classList.add('active');
@@ -403,6 +403,7 @@
             }
         };
 
+        // 🛡️ DUOMENŲ GAVIMAS: Saugus asinchroninis iškvietimas iš debesies
         window.loadAdminPlayersDB = function() {
             const dbList = document.getElementById('admin-players-list-db');
             if (dbList) dbList.innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama oficiali lygos bazė...</div>';
@@ -449,7 +450,7 @@
             window.renderAdminPlayersDB(filtered);
         };
 
-        // 📊 ŽAIDĖJŲ LENTELĖ: Suvienodintas modernus dizainas su turnyrų skiltimi
+        // 📊 ŽAIDĖJŲ LENTELĖ: Sulygiuotas ir 100% identiškas mygtukų dizainas
         window.renderAdminPlayersDB = function(playersArray) {
             const container = document.getElementById('admin-players-list-db');
             if (!container) return;
@@ -487,8 +488,6 @@
 
                 let av = p.photo ? `<img src="${p.photo}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:8px; border:1px solid #cbd5e0;">` : `<div style="width:26px; height:26px; border-radius:50%; background:#e2e8f0; display:inline-block; vertical-align:middle; margin-right:8px; text-align:center; line-height:26px; font-size:10px; color:#718096; font-weight:bold;">${p.gender==='M'?'V':'M'}</div>`;
                 
-                let safeName = (p.name || "Nenurodytas").replace(/'/g, "\\'");
-
                 html += `
                     <tr style="border-bottom: 1px solid #edf2f7; transition: background 0.1s;" onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='transparent'">
                         <td style="padding: 12px 10px; text-align: center; color: #a0aec0; font-size: 11px;">${idx + 1}</td>
@@ -497,8 +496,8 @@
                         <td style="padding: 12px 10px; font-family: monospace; color: #4a5568;">${esc_local(p.phone || p.id)}</td>
                         <td style="padding: 12px 10px; text-align: right; font-weight: 900; font-size: 14px; ${tierStyle}">${p.rating} <span style="font-size: 10px; color: #a0aec0; font-weight: normal; margin-left: 2px;">(${p.tier})</span></td>
                         <td style="padding: 12px 10px; text-align: center; display: flex; gap: 6px; justify-content: center;">
-                            <button type="button" onclick="window.openAdminEditModal('${p.id}', '${safeName}', '${p.gender}', ${p.rating}, '${p.phone || p.id}', '${p.photo || ''}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-pen-to-square"></i> Keisti</button>
-                            <button type="button" onclick="window.deleteAdminPlayerLive('${p.id}', '${safeName}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-trash-can"></i> Trinti</button>
+                            <button type="button" onclick="window.openAdminEditModal('${p.id}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-pen-to-square"></i> Keisti</button>
+                            <button type="button" onclick="window.deleteAdminPlayerLive('${p.id}', '${p.name.replace(/'/g, "\\'")}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-trash-can"></i> Trinti</button>
                         </td>
                     </tr>
                 `;
@@ -508,15 +507,7 @@
             container.innerHTML = html;
         };
 
-        window.deleteAdminPlayerLive = function(id, name) {
-            if (!confirm(`DĖMESIO: Ar tikrai norite visam laikui ištrinti žaidėją "${name}" iš bendros Lietuvos lygos sistemos?`)) return;
-            firebase.database().ref("padelio_global_players").child(String(id).trim()).remove().then(() => {
-                showToast("Žaidėjas sėkmingai pašalintas!");
-                window.loadAdminPlayersDB();
-            }).catch(err => { alert("Klaida trinant žaidėją."); });
-        };
-
-        // 📊 TURNYRAI: Suvienodinta lentelė ir idealiai sutampantis mygtukų dizainas
+        // 📊 TURNYRAI: Visiškai unifikuotas mygtukų dizainas (Paddingai, Spalvos, Tekstai)
         window.renderAdminTournaments = function() {
             const list = document.getElementById('admin-tournaments-list-db');
             if(!list) return;
@@ -558,7 +549,7 @@
                         <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${t.level}</span></td>
                         <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
                         <td style="padding: 12px; text-align: center; display: flex; gap: 6px; justify-content: center;">
-                            <button type="button" onclick="window.openAdminTournamentModal('${t.id}', '${t.format}', '${t.level}', ${t.max || t.maxPlayers || 16}, '${t.time}', '${t.date}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-pen-to-square"></i> Keisti</button>
+                            <button type="button" onclick="window.openAdminTournamentModal('${t.id}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-pen-to-square"></i> Keisti</button>
                             <button type="button" onclick="window.deleteAdminTournamentLive('${t.id}')" style="background: #fff5f5; color: #c53030; border: none; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-trash-can"></i> Trinti</button>
                         </td>
                     </tr>
@@ -568,31 +559,66 @@
             list.innerHTML = html;
         };
 
-        window.deleteAdminTournamentLive = function(id) {
-            if(!confirm("Ar tikrai norite visam laikui ištrinti šį turnyrą iš debesies? Visi užsiregistravę žaidėjai bus pašalinti.")) return;
-            tournaments = tournaments.filter(t => String(t.id) !== String(id));
-            saveData();
-            showToast("Turnyras sėkmingai panaikintas!");
-            window.renderAdminTournaments();
+        // 🛡️ MODALŲ FUNKCIJOS: Saugus ID nuskaitymas tiesiai iš atminties masyvo (Apsaugo nuo klaidų)
+        window.openAdminEditModal = function(id) {
+            let p = adminGlobalPlayers.find(x => String(x.id) === String(id));
+            if(!p) return;
+
+            document.getElementById('editAdminPlayerId').value = p.id;
+            document.getElementById('editAdminPlayerName').value = p.name;
+            document.getElementById('editAdminPlayerGender').value = p.gender;
+            document.getElementById('editAdminPlayerRating').value = p.rating;
+            document.getElementById('editAdminPlayerPhone').value = p.phone || p.id;
+            
+            tempAdminPlayerPhotoBase64 = (p.photo && p.photo !== "null" && p.photo !== "") ? p.photo : null;
+            const pr = document.getElementById('editAdminPlayerPhotoPreview');
+            const ph = document.getElementById('editAdminPlayerPhotoPlaceholder');
+            if(tempAdminPlayerPhotoBase64) {
+                pr.src = tempAdminPlayerPhotoBase64; pr.style.display = 'block'; ph.style.display = 'none';
+            } else {
+                pr.src = ''; pr.style.display = 'none'; ph.style.display = 'block';
+            }
+            document.getElementById('editAdminPlayerPhotoInput').value = '';
+            document.getElementById('adminEditPlayerModal').style.display = 'flex';
         };
 
-        // Peradresuojame senąsias core funkcijas, kad nekeltų konfliktų fone
-        window.deleteTournament = function(id) { window.deleteAdminTournamentLive(id); };
-        window.deleteAdminPlayer = function(id, name) { window.deleteAdminPlayerLive(id, name); };
-        window.editAdminPlayer = function(id) { }; 
+        window.openAdminTournamentModal = function(id) {
+            let t = tournaments.find(x => String(x.id) === String(id));
+            if(!t) return;
 
-        window.openAdminTournamentModal = function(id, format, level, max, time, date) {
-            document.getElementById('editAdminTournamentId').value = id;
-            document.getElementById('editAdminTournamentFormat').value = format;
-            document.getElementById('editAdminTournamentLevel').value = level;
-            document.getElementById('editAdminTournamentMax').value = max;
-            document.getElementById('editAdminTournamentTime').value = time;
-            document.getElementById('editAdminTournamentDate').value = date;
+            document.getElementById('editAdminTournamentId').value = t.id;
+            document.getElementById('editAdminTournamentFormat').value = t.format;
+            document.getElementById('editAdminTournamentLevel').value = t.level;
+            document.getElementById('editAdminTournamentMax').value = t.max || t.maxPlayers || 16;
+            document.getElementById('editAdminTournamentTime').value = t.time;
+            document.getElementById('editAdminTournamentDate').value = t.date;
             document.getElementById('adminEditTournamentModal').style.display = 'flex';
         };
 
-        window.closeAdminTournamentModal = function() { 
-            document.getElementById('adminEditTournamentModal').style.display = 'none'; 
+        window.closeAdminEditModal = function() { document.getElementById('adminEditPlayerModal').style.display = 'none'; };
+        window.closeAdminTournamentModal = function() { document.getElementById('adminEditTournamentModal').style.display = 'none'; };
+
+        window.saveAdminPlayerChanges = function() {
+            const id = document.getElementById('editAdminPlayerId').value;
+            const name = document.getElementById('editAdminPlayerName').value.trim();
+            const gender = document.getElementById('editAdminPlayerGender').value;
+            const rating = parseInt(document.getElementById('editAdminPlayerRating').value) || 300;
+
+            if (!name) { alert("Vardas ir Pavardė privalo būti užpildyti!"); return; }
+
+            let tier = "D";
+            if (rating >= 851) tier = "A";
+            else if (rating >= 671) tier = "B-/B";
+            else if (rating >= 501) tier = "C/C+";
+            else if (rating >= 351) tier = "D-C";
+
+            firebase.database().ref("padelio_global_players/" + id).update({
+                name: name, gender: gender, rating: rating, tier: tier, photo: tempAdminPlayerPhotoBase64
+            }).then(() => {
+                window.closeAdminEditModal();
+                showToast("Profilio keitimai išsaugoti!");
+                window.loadAdminPlayersDB();
+            }).catch(err => { alert("Klaida debesyje."); });
         };
 
         window.saveAdminTournamentChanges = function() {
@@ -619,6 +645,22 @@
             } else { alert("Turnyras nerastas."); }
         };
 
+        window.deleteAdminTournamentLive = function(id) {
+            if(!confirm("Ar tikrai norite ištrinti šį turnyrą iš debesies? Visi užsiregistravę žaidėjai bus pašalinti.")) return;
+            tournaments = tournaments.filter(t => String(t.id) !== String(id));
+            saveData();
+            showToast("Turnyras sėkmingai panaikintas!");
+            window.renderAdminTournaments();
+        };
+
+        window.deleteAdminPlayerLive = function(id, name) {
+            if (!confirm(`DĖMESIO: Ar tikrai norite visam laikui ištrinti žaidėją "${name}" iš bendros Lietuvos lygos sistemos?`)) return;
+            firebase.database().ref("padelio_global_players").child(String(id).trim()).remove().then(() => {
+                showToast("Žaidėjas sėkmingai pašalintas!");
+                window.loadAdminPlayersDB();
+            }).catch(err => { alert("Klaida trinant žaidėją."); });
+        };
+
         window.handleAdminPlayerPhotoUpload = function(e) {
             const file = e.target.files[0]; if (!file) return;
             const r = new FileReader();
@@ -638,56 +680,17 @@
             r.readAsDataURL(file);
         };
 
-        window.openAdminEditModal = function(id, name, gender, rating, phone, photo) {
-            document.getElementById('editAdminPlayerId').value = id;
-            document.getElementById('editAdminPlayerName').value = name;
-            document.getElementById('editAdminPlayerGender').value = gender;
-            document.getElementById('editAdminPlayerRating').value = rating;
-            document.getElementById('editAdminPlayerPhone').value = phone;
-            
-            tempAdminPlayerPhotoBase64 = (photo && photo !== "null" && photo !== "") ? photo : null;
-            const pr = document.getElementById('editAdminPlayerPhotoPreview');
-            const ph = document.getElementById('editAdminPlayerPhotoPlaceholder');
-            if(tempAdminPlayerPhotoBase64) {
-                pr.src = tempAdminPlayerPhotoBase64; pr.style.display = 'block'; ph.style.display = 'none';
-            } else {
-                pr.src = ''; pr.style.display = 'none'; ph.style.display = 'block';
-            }
-            document.getElementById('editAdminPlayerPhotoInput').value = '';
-            document.getElementById('adminEditPlayerModal').style.display = 'flex';
-        }
-
-        window.closeAdminEditModal = function() { document.getElementById('adminEditPlayerModal').style.display = 'none'; }
-
-        window.saveAdminPlayerChanges = function() {
-            const id = document.getElementById('editAdminPlayerId').value;
-            const name = document.getElementById('editAdminPlayerName').value.trim();
-            const gender = document.getElementById('editAdminPlayerGender').value;
-            const rating = parseInt(document.getElementById('editAdminPlayerRating').value) || 300;
-
-            if (!name) { alert("Vardas ir Pavardė privalo būti užpildyti!"); return; }
-
-            let tier = "D";
-            if (rating >= 851) tier = "A";
-            else if (rating >= 671) tier = "B-/B";
-            else if (rating >= 501) tier = "C/C+";
-            else if (rating >= 351) tier = "D-C";
-
-            firebase.database().ref("padelio_global_players/" + id).update({
-                name: name, gender: gender, rating: rating, tier: tier, photo: tempAdminPlayerPhotoBase64
-            }).then(() => {
-                window.closeAdminEditModal();
-                showToast("Profilio keitimai išsaugoti!");
-                window.loadAdminPlayersDB();
-            }).catch(err => { alert("Klaida debesyje."); });
-        }
+        // Nukreipiame senąsias core funkcijas, kad nekeltų konfliktų fone
+        window.deleteTournament = function(id) { window.deleteAdminTournamentLive(id); };
+        window.deleteAdminPlayer = function(id, name) { window.deleteAdminPlayerLive(id, name); };
+        window.editAdminPlayer = function(id) { }; 
 
         function esc_local(str) {
             if (!str) return '';
             return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
         }
 
-        // Priverstinis perėmimas per 'load' kanalą, kad užklotume visą core logiką po jos užsikrovimo
+        // Visiškas įvykių perėmimas po puslapio užsikrovimo
         window.addEventListener('load', () => {
             const sidebarButtons = document.querySelectorAll('.nav-menu li');
             if(sidebarButtons.length >= 3) {
