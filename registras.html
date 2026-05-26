@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <link rel="stylesheet" href="/css/registras.css?v=5">
+    <link rel="stylesheet" href="/css/registras.css?v=6">
 </head>
 <body>
 
@@ -169,7 +169,7 @@
         </div>
 
         <div class="app-header" id="mainHeader">
-            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.5</span></div>
+            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.6</span></div>
             <div class="header-actions">
                 <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
                 <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
@@ -260,7 +260,7 @@
     <div id="adminMode">
         <div class="admin-layout">
             <div class="admin-sidebar">
-                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.5</span></span></div>
+                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.6</span></span></div>
                 <ul class="nav-menu">
                     <li onclick="adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
                     <li class="active" onclick="adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
@@ -503,7 +503,6 @@
             });
         }
 
-        /* 📷 GRAFIKOS APDOROJIMAS: Nuotraukos failo pavertimas į mažo dydžio Base64 tekstą fone */
         function handleAdminPlayerPhotoUpload(e) {
             const file = e.target.files[0]; if (!file) return;
             const r = new FileReader();
@@ -556,7 +555,7 @@
                 else if (p.tier === 'B-/B') tierStyle = "color: #9f7aea;";
                 else if (p.tier === 'C/C+') tierStyle = "color: #3182ce;";
 
-                let av = p.photo ? `<img src="${p.photo}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:8px; border:1px solid #cbd5e0;">` : `<div style="width:26px; height:26px; border-radius:50%; background:#e2e8f0; display:inline-block; vertical-align:middle; margin-right:8px; text-align:center; line-net:26px; font-size:10px; color:#718096; font-weight:bold;">${p.gender==='M'?'V':'M'}</div>`;
+                let av = p.photo ? `<img src="${p.photo}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:8px; border:1px solid #cbd5e0;">` : `<div style="width:26px; height:26px; border-radius:50%; background:#e2e8f0; display:inline-block; vertical-align:middle; margin-right:8px; text-align:center; line-height:26px; font-size:10px; color:#718096; font-weight:bold;">${p.gender==='M'?'V':'M'}</div>`;
 
                 html += `
                     <tr style="border-bottom: 1px solid #edf2f7; transition: background 0.1s;" onmouseover="this.style.background='#f7fafc'" onmouseout="this.style.background='transparent'">
@@ -612,7 +611,7 @@
 
         function closeAdminEditModal() { document.getElementById('adminEditPlayerModal').style.display = 'none'; }
 
-        /* 💾 SUTVARKYTA: Pilnas visų duomenų, įskaitant vardą, lytį ir atvaizdą, išsaugojimas debesyje */
+        /* 💾 SUTVARKYTA: Pilnas visų duomenų išsaugojimas debesyje */
         function saveAdminPlayerChanges() {
             const id = document.getElementById('editAdminPlayerId').value;
             const name = document.getElementById('editAdminPlayerName').value.trim();
@@ -639,7 +638,7 @@
             }).catch(err => { console.error(err); alert("Klaida debesyje."); });
         }
 
-        /* 🗑️ SUTVARKYTA: Griežtas, saugus žaidėjo pašalinimas iš lygos duomenų bazės šakos */
+        /* 🗑️ SUTVARKYTA: Žaidėjo pašalinimas iš lygos duomenų bazės šakos veikia be klaidų */
         function deleteAdminPlayer(id, name) {
             if (!confirm(`DĖMESIO: Ar tikrai norite visam laikui ištrinti žaidėją "${name}" iš bendros Lietuvos lygos sistemos?`)) return;
             firebase.database().ref("padelio_global_players").child(id).remove().then(() => {
