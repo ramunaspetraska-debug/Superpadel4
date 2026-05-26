@@ -9,7 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-    <link rel="stylesheet" href="/css/registras.css?v=5">
+    <link rel="stylesheet" href="/css/registras.css?v=8">
 </head>
 <body>
 
@@ -38,6 +38,99 @@
         </div>
     </div>
 
+    <div id="adminEditPlayerModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 450px; width: 90%;">
+            <div class="modal-title">
+                <i class="fa-solid fa-user-gear" style="color: #009fe3;"></i> Redaguoti Žaidėjo Profilį
+            </div>
+            <input type="hidden" id="editAdminPlayerId">
+            
+            <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 15px; background: #f7fafc; padding: 10px; border-radius: 8px;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: #e2e8f0; overflow: hidden; display: flex; align-items: center; justify-content: center; shrink: 0;">
+                    <img id="editAdminPlayerPhotoPreview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                    <span id="editAdminPlayerPhotoPlaceholder" style="font-size: 20px; color: #a0aec0;">📷</span>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 11px; font-weight: bold; color: #718096; margin-bottom: 3px;">Atnaujinti Nuotrauką</label>
+                    <input type="file" id="editAdminPlayerPhotoInput" accept="image/*" onchange="handleAdminPlayerPhotoUpload(event)" style="font-size: 11px; width: 100%;">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Vardas Pavardė</label>
+                <input type="text" id="editAdminPlayerName" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none; color: #1a202c;">
+            </div>
+            <div style="margin-bottom: 15px; display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Lytis</label>
+                    <select id="editAdminPlayerGender" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none; background: white; color: #1a202c;">
+                        <option value="M">Vyras</option>
+                        <option value="F">Moteris</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Lygos ELO Taškai</label>
+                    <input type="number" id="editAdminPlayerRating" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none; color: #1a202c;">
+                </div>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Telefono / Unikalus ID</label>
+                <input type="text" id="editAdminPlayerPhone" readonly style="width: 100%; padding: 11px; border: 1px solid #e2e8f0; background: #f7fafc; border-radius: 8px; font-weight: bold; outline: none; color: #a0aec0; cursor: not-allowed;">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="modal-btn secondary" style="padding: 10px 18px; margin:0;" onclick="closeAdminEditModal()">Atšaukti</button>
+                <button type="button" class="modal-btn primary" style="padding: 10px 22px; margin:0; background: #009fe3;" onclick="saveAdminPlayerChanges()">Išsaugoti</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminEditTournamentModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 450px; width: 90%;">
+            <div class="modal-title">
+                <i class="fa-solid fa-calendar-days" style="color: #48bb78;"></i> Redaguoti Turnyro Nustatymus
+            </div>
+            <input type="hidden" id="editAdminTournamentId">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Formatas</label>
+                <select id="editAdminTournamentFormat" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                    <option value="Blitz">Blitz</option><option value="Moterų Blitz">Moterų Blitz</option><option value="Vyrų Blitz">Vyrų Blitz</option><option value="Mix Blitz">Mix Blitz</option><option value="Mixed Kings">Mixed Kings</option><option value="Americano">Americano</option><option value="1x1">1x1</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Lygis</label>
+                    <select id="editAdminTournamentLevel" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                        <option value="Atviras">Atviras (Visi lygiai)</option>
+                        <option value="A">A (Ekspertai)</option>
+                        <option value="B-/B">B-/B (Patyrę)</option>
+                        <option value="C/C+">C/C+ (Pažengę)</option>
+                        <option value="D-C">D/C- (Pradedantieji)</option>
+                        <option value="D">D (Naujokai)</option>
+                        <option value="Privatus">Privatus (Nereitinguojamas)</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Maksimalus vietų sk.</label>
+                    <input type="number" id="editAdminTournamentMax" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Data (MM-DD)</label>
+                    <input type="text" id="editAdminTournamentDate" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Laikas</label>
+                    <input type="text" id="editAdminTournamentTime" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="modal-btn secondary" style="padding: 10px 18px; margin:0;" onclick="closeAdminTournamentModal()">Atšaukti</button>
+                <button type="button" class="modal-btn primary" style="padding: 10px 22px; margin:0; background: #48bb78;" onclick="saveAdminTournamentChanges()">Atnaujinti</button>
+            </div>
+        </div>
+    </div>
+
     <div id="actionModal" class="modal-overlay">
         <div class="modal-box">
             <div id="modalTitle" class="modal-title"></div>
@@ -51,30 +144,17 @@
             <div style="font-weight: 800; font-size: 16px;"><i class="fa-solid fa-circle" style="color: #e53e3e; font-size: 10px; margin-right: 5px;"></i> SuperPadel.lt TV</div>
             <button type="button" class="live-close" onclick="closeLiveModal()"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        
         <div class="yt-container">
             <iframe class="yt-iframe" src="https://www.youtube.com/embed/A6XUVjK9W4o?autoplay=0&mute=1&controls=0&modestbranding=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         </div>
-
         <div class="firebase-connector">
             <input type="text" id="liveRoomInput" placeholder="Įveskite kambario ID (pvz. kaunas1)">
             <button type="button" onclick="connectLiveRoom()"><i class="fa-solid fa-link"></i> Jungtis</button>
         </div>
-
-        <div class="live-filters" id="liveCourtsContainer">
-            <div class="live-filter-btn">Laukiama prisijungimo...</div>
-        </div>
-
+        <div class="live-filters" id="liveCourtsContainer"><div class="live-filter-btn">Laukiama prisijungimo...</div></div>
         <div class="live-score-area">
-            <div class="live-score-title" id="fbStatusTitleContainer">
-                <i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> 
-                <span id="fbStatusText">Neprisijungta prie Firebase</span>
-            </div>
-            <div id="liveScoreBoxContainer" style="width: 100%;">
-                <div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">
-                    Įveskite savo V188 programos kambario pavadinimą ir stebėkite taškus gyvai!
-                </div>
-            </div>
+            <div class="live-score-title" id="fbStatusTitleContainer"><i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span></div>
+            <div id="liveScoreBoxContainer" style="width: 100%;"><div style="text-align: center; color: var(--text-grey); font-size: 13px; margin-top: 20px;">Įveskite savo programos kambario pavadinimą ir stebėkite taškus gyvai!</div></div>
         </div>
     </div>
 
@@ -89,7 +169,7 @@
         </div>
 
         <div class="app-header" id="mainHeader">
-            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.5</span></div>
+            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.8</span></div>
             <div class="header-actions">
                 <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
                 <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
@@ -107,8 +187,8 @@
                         <option value="all">Visi lygiai</option>
                         <option value="Atviras">Atviras (Visi lygiai)</option>
                         <option value="A">A (Ekspertai)</option>
-                        <option value="B">B-/B (Patyrę)</option>
-                        <option value="C">C/C+ (Pažengę)</option>
+                        <option value="B-/B">B-/B (Patyrę)</option>
+                        <option value="C/C+">C/C+ (Pažengę)</option>
                         <option value="D-C">D/C- (Pradedantieji)</option>
                         <option value="D">D (Naujokai)</option>
                         <option value="Privatus">Privatus (Nereitinguojamas)</option>
@@ -124,10 +204,7 @@
         <div id="page-cam" class="page-view">
             <div class="cam-header"><i class="fa-solid fa-bolt" style="font-size: 20px; cursor: pointer;"></i><div class="cam-title">SuperPadel Cam</div><i class="fa-solid fa-gear" style="font-size: 20px; cursor: pointer;"></i></div>
             <div class="recording-indicator" id="recIndicator"><div class="dot"></div> <span id="recTimer">00:00:00</span></div>
-            <div class="cam-viewfinder" id="viewFinder">
-                <video id="cameraFeed" autoplay playsinline muted></video>
-                <div class="court-hint" id="cameraHintText">Sulygiuokite telefono kamerą<br>su padelio korto linijomis</div>
-            </div>
+            <div class="cam-viewfinder" id="viewFinder"><video id="cameraFeed" autoplay playsinline muted></video><div class="court-hint" id="cameraHintText">Sulygiuokite telefono kamerą<br>su padelio korto linijomis</div></div>
             <div class="cam-controls" id="camControls">
                 <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 14px;">Pritvirtinkite telefoną prie stiklo.<br>Filmuokite visą mačą, o geriausius ralius išrinks dirbtinis intelektas.</div>
                 <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
@@ -151,8 +228,8 @@
                     <button type="button" class="league-tab active" data-league="all" onclick="changeLeague('all')">Visi</button>
                     <button type="button" class="league-tab" data-league="D" onclick="changeLeague('D')">D (Naujokai)</button>
                     <button type="button" class="league-tab" data-league="D-C" onclick="changeLeague('D-C')">D/C- (Pradedantieji)</button>
-                    <button type="button" class="league-tab" data-league="C" onclick="changeLeague('C')">C/C+ (Pažengę)</button>
-                    <button type="button" class="league-tab" data-league="B" onclick="changeLeague('B')">B-/B (Patyrę)</button>
+                    <button type="button" class="league-tab" data-league="C/C+" onclick="changeLeague('C/C+')">C/C+ (Pažengę)</button>
+                    <button type="button" class="league-tab" data-league="B-/B" onclick="changeLeague('B-/B')">B-/B (Patyrę)</button>
                     <button type="button" class="league-tab" data-league="A" onclick="changeLeague('A')">A (Ekspertai)</button>
                 </div>
             </div>
@@ -169,7 +246,7 @@
             </div>
         </div>
 
-        <div id="page-profile" class="page-view empty-page"><i class="fa-regular fa-user"></i><h3>Mano Profilis</h3><p style="font-size: 12px; margin-top: 5px;">Prisijunkite, kad matytumėte savo asmeninę statistiką ir istoriją.</p></div>
+        <div id="page-profile" class="page-view" style="overflow-y: auto; max-height: calc(100vh - 140px);"></div>
 
         <div class="bottom-nav" id="bottomNav">
             <button type="button" class="nav-item" data-index="0" onclick="switchTab('page-home', this)"><i class="fa-solid fa-house"></i></button>
@@ -183,16 +260,12 @@
     <div id="adminMode">
         <div class="admin-layout">
             <div class="admin-sidebar">
-                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.5</span></span></div>
+                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.8</span></span></div>
                 <ul class="nav-menu">
                     <li onclick="adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
                     <li class="active" onclick="adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
                     <li onclick="adminNav(this, 'admin-view-zaidejai')"><i class="fa-solid fa-users"></i> Žaidėjų bazė</li>
-                    
-                    <a href="index.html" target="_blank" style="display: flex; align-items: center; gap: 15px; padding: 15px 20px; color: #48bb78; text-decoration: none; font-weight: bold; margin-top: 20px; border-top: 1px solid #2d3748;">
-                        <i class="fa-solid fa-gear"></i> Pagrindinė Programa
-                    </a>
-                    
+                    <a href="index.html" target="_blank" style="display: flex; align-items: center; gap: 15px; padding: 15px 20px; color: #48bb78; text-decoration: none; font-weight: bold; margin-top: 20px; border-top: 1px solid #2d3748;"><i class="fa-solid fa-gear"></i> Pagrindinė Programa</a>
                     <li onclick="toggleMode()" style="color: #e53e3e; margin-top: 5px; font-weight: bold;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Grįžti į Portalą</li>
                 </ul>
             </div>
@@ -201,13 +274,13 @@
                 <div id="admin-view-apzvalga" class="admin-tab" style="display: none;">
                     <h1 style="margin-bottom: 20px;">Apžvalga</h1>
                     <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <p style="color: var(--text-grey); font-size: 14px;">Čia netrukus atsiras bendra sistemos statistika (Kiek iš viso turnyrų sužaista, kiek unikalių žaidėjų prisijungę ir pan.)</p>
+                        <p style="color: var(--text-grey); font-size: 14px;">Čia netrukus atsiras bendra sistemos statistika.</p>
                     </div>
                 </div>
 
                 <div id="admin-view-turnyrai" class="admin-tab">
                     <h1 style="margin-bottom: 20px;">Turnyrų Valdymas</h1>
-                    <div style="display: grid; grid-template-columns: 1fr; max-width: 600px;">
+                    <div style="display: grid; grid-template-columns: 1fr; max-width: 650px;">
                         
                         <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;">
                             <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Sukurti Naują Turnyrą</div>
@@ -223,8 +296,8 @@
                                         <select id="newLevel" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
                                             <option value="Atviras">Atviras (Visi lygiai)</option>
                                             <option value="A">A (Ekspertai)</option>
-                                            <option value="B">B-/B (Patyrę)</option>
-                                            <option value="C">C/C+ (Pažengę)</option>
+                                            <option value="B-/B">B-/B (Patyrę)</option>
+                                            <option value="C/C+">C/C+ (Pažengę)</option>
                                             <option value="D-C">D/C- (Pradedantieji)</option>
                                             <option value="D">D (Naujokai)</option>
                                             <option value="Privatus">Privatus (Nereitinguojamas)</option>
@@ -262,22 +335,44 @@
                             <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Visi Sistemos Turnyrai (Aktyvūs)</div>
                             <div id="admin-tournaments-list-db"></div>
                         </div>
-
                     </div>
                 </div>
 
                 <div id="admin-view-zaidejai" class="admin-tab" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h1 style="margin: 0;">Žaidėjų Bazė</h1>
-                        <span style="font-size: 12px; background: var(--primary-blue); color: white; padding: 4px 8px; border-radius: 12px; font-weight: bold;" id="admin-players-count">Viso: 0</span>
+                        <h1 style="margin: 0;">Oficiali Žaidėjų Bazė</h1>
+                        <span style="font-size: 12px; background: #009fe3; color: white; padding: 4px 10px; border-radius: 12px; font-weight: bold;" id="admin-players-count">Viso: 0</span>
                     </div>
                     <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto;">
-                        <div class="search-wrapper" style="margin-bottom: 15px;">
-                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                            <input type="text" id="adminPlayerSearch" placeholder="Ieškoti žaidėjo pagal vardą..." onkeyup="filterAdminPlayers()" style="width: 100%; padding: 10px 10px 10px 35px; border: 1px solid #cbd5e0; border-radius: 6px; font-weight: bold; color: var(--text-dark); outline: none;">
+                        
+                        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                            <div style="position: relative;">
+                                <i class="fa-solid fa-magnifying-glass" style="position: absolute; left: 12px; top: 13px; color: #a0aec0;"></i>
+                                <input type="text" id="adminPlayerSearch" placeholder="Ieškoti pagal vardą arba tel. nr..." onkeyup="filterAdminPlayers()" style="width: 100%; padding: 10px 10px 10px 35px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; color: var(--text-dark); outline: none;">
+                            </div>
+                            <div>
+                                <select id="adminFilterGender" onchange="filterAdminPlayers()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; color: #4a5568; outline: none; background: #fff; height: 100%;">
+                                    <option value="all">Visi (Lytis)</option>
+                                    <option value="M">Vyrai</option>
+                                    <option value="F">Moterys</option>
+                                </select>
+                            </div>
+                            <div>
+                                <select id="adminFilterTier" onchange="filterAdminPlayers()" style="width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; color: #4a5568; outline: none; background: #fff; height: 100%;">
+                                    <option value="all">Visi lygiai</option>
+                                    <option value="Atviras">Atviras</option>
+                                    <option value="A">A</option>
+                                    <option value="B-/B">B-/B</option>
+                                    <option value="C/C+">C/C+</option>
+                                    <option value="D-C">D/C-</option>
+                                    <option value="D">D</option>
+                                    <option value="Privatus">Privatus</option>
+                                </select>
+                            </div>
                         </div>
+
                         <div id="admin-players-list-db">
-                            <div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami duomenys iš debesies...</div>
+                            <div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami duomenys...</div>
                         </div>
                     </div>
                 </div>
@@ -286,6 +381,6 @@
         </div>
     </div>
 
-    <script src="/js/registras_core.js"></script>
+    <script src="/js/registras_core.js?v=8"></script>
 </body>
 </html>
