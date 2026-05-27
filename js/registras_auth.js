@@ -490,19 +490,98 @@ function openRoomJoinModal(roomName) {
 function confirmJoinRoom(roomName, roomPlayerId) {
     if (!currentUser) return;
 
-    // Išsaugome ryšį abiem kryptimis:
-    // portal_links/{phoneId} = roomPlayerId  (portalui: "prisijungta kaip X")
-    // portal_links_reverse/{roomPlayerId} = phoneId  (generatoriui: greita paieška pagal žaidėjo ID)
     const updates = {};
     updates[`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`] = roomPlayerId;
     updates[`${DB_KEY}/${roomName}/portal_links_reverse/${roomPlayerId}`] = currentUser.id;
 
     firebase.database().ref().update(updates).then(() => {
         closeModal();
-        showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
         loadActiveRooms();
+
+        // Retrospektyvus skaičiavimas — tik pirmą kartą prisijungus
+        firebase.database().ref(`${DB_KEY}/${roomName}/portal_links_retro/${currentUser.id}`).once('value').then(retroSnap => {
+            if (retroSnap.val()) {
+                showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
+                return;
+            }
+            calculateRetroactiveStats(roomName, roomPlayerId, currentUser.id);
+        });
     }).catch(() => {
         showToast("Klaida jungiantis prie kambario.");
+    });
+}
+
+function calculateRetroactiveStats(roomName, roomPlayerId, phoneId) {
+    showToast(`⏳ Tikrinami praeities mačai...`);
+
+    firebase.database().ref(`${DB_KEY}/${roomName}`).once('value').then(snap => {
+        const roomData = snap.val();
+        if (!roomData) {
+            showToast(`✅ Prisijungta! Praeities mačų nerasta.`);
+            return;
+        }
+
+        let foundMatches = 0;
+        let foundWins = 0;
+
+        const processMatch = (match, isOfficialTournament) => {
+            if (!match || !match.finished || isOfficialTournament) return;
+            const inTeam1 = (match.team1 || []).some(p => p && p.id === roomPlayerId);
+            const inTeam2 = (match.team2 || []).some(p => p && p.id === roomPlayerId);
+            if (!inTeam1 && !inTeam2) return;
+            const s1 = parseInt(match.score1 || 0);
+            const s2 = parseInt(match.score2 || 0);
+            foundMatches++;
+            if ((inTeam1 && s1 > s2) || (inTeam2 && s2 > s1)) foundWins++;
+        };
+
+        // Praeities turnyrai (savedTournaments)
+        const savedT = Array.isArray(roomData.savedTournaments)
+            ? roomData.savedTournaments
+            : Object.values(roomData.savedTournaments || {});
+        savedT.forEach(t => {
+            if (!t || !t.matches) return;
+            const tMatches = Array.isArray(t.matches) ? t.matches : Object.values(t.matches);
+            tMatches.forEach(m => processMatch(m, t.settings?.isOfficial === true));
+        });
+
+        // Dabartinio turnyro baigti mačai
+        const currentMatches = Array.isArray(roomData.matches)
+            ? roomData.matches
+            : Object.values(roomData.matches || {});
+        currentMatches.forEach(m => processMatch(m, roomData.settings?.isOfficial === true));
+
+        // Žymime kad retrospektyva atlikta (neleis skaičiuoti antrą kartą)
+        firebase.database().ref(`${DB_KEY}/${roomName}/portal_links_retro/${phoneId}`).set(Date.now());
+
+        if (foundMatches === 0) {
+            showToast(`✅ Prisijungta! Praeities mačų nerasta.`);
+            return;
+        }
+
+        // Atnaujiname globalų profilį
+        firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).once('value').then(gSnap => {
+            const gData = gSnap.val();
+            if (!gData) {
+                showToast(`✅ Prisijungta! Rasti ${foundMatches} mačai.`);
+                return;
+            }
+            firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
+                casual_matches: (gData.casual_matches || 0) + foundMatches,
+                casual_wins: (gData.casual_wins || 0) + foundWins,
+                last_played: Date.now()
+            }).then(() => {
+                // Atnaujiname vietinę kopiją iš karto
+                currentUser.casual_matches = (currentUser.casual_matches || 0) + foundMatches;
+                currentUser.casual_wins = (currentUser.casual_wins || 0) + foundWins;
+                localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
+                renderUserProfile();
+                showToast(`✅ Rasti ${foundMatches} praeities mačai — statistika atnaujinta!`);
+            });
+        });
+    }).catch(err => {
+        console.error("Retroactive stats error:", err);
+        showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
     });
 }
 
