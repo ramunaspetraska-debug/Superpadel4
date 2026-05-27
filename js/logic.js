@@ -21,6 +21,7 @@ function uid() {
 function calculatePairsResults(mArr, pArr) { 
     const pairs = new Map(); 
     try { 
+        // 🌟 IŠTAISYTA SINTAKSĖS KLAIDA: m => m && m.finished (saugus tikrinimas)
         safeArr(mArr).filter(m => m && m.finished).forEach(m => { 
             const proc = (team, myS, enS) => { 
                 let safeTeam = safeArr(team); 
@@ -42,7 +43,7 @@ function calculatePairsResults(mArr, pArr) {
             proc(m.team1, m.score1, m.score2); 
             proc(m.team2, m.score2, m.score1); 
         }); 
-    } catch(e) {} 
+    } catch(e) { console.error("calculatePairsResults Error:", e); } 
     return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp); 
 }
 
@@ -67,7 +68,7 @@ function calculateResults(mArr, pArr, isF = false) {
             up(m.team1, m.score1||0, m.score2||0); up(m.team2, m.score2||0, m.score1||0); 
         }); 
     } catch(e) { console.error("calculateResults Error:", e); } 
-    return res.sort((a,b) => settings.rankingMode === 'wins' ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); 
+    return res.sort((a,b) => (typeof settings !== 'undefined' && settings.rankingMode === 'wins') ? (b.lp - a.lp || b.dif - a.dif) : (b.sw - a.sw || b.dif - a.dif)); 
 }
 
 function generateFinals() {
@@ -76,11 +77,11 @@ function generateFinals() {
         const safeP = safeArr(players);
         if (safeP.length < 4) { alert("Nepakanka žaidėjų finalams."); return; }
 
-        const isF = settings.format === 'fixed';
+        const isF = (typeof settings !== 'undefined' && settings.format === 'fixed');
         const ranked = calculateResults(matches, players, isF); 
 
         let teams = [];
-        if (settings.format === 'mix_americano') {
+        if (typeof settings !== 'undefined' && settings.format === 'mix_americano') {
             const males = ranked.filter(p => p.gender === 'M');
             const females = ranked.filter(p => p.gender === 'F');
             const pairCount = Math.min(males.length, females.length);
@@ -112,9 +113,9 @@ function requestNextRound() {
     try {
         ensureTournamentId(); 
         const safeP = safeArr(players); 
-        if (settings.format === 'fixed') { return generateFixedRound(safeP); }
+        if (typeof settings !== 'undefined' && settings.format === 'fixed') { return generateFixedRound(safeP); }
         if (safeP.length < 4 || safeP.length % 4 !== 0) { alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4! (Dabar yra ${safeP.length})`); return; }
-        if (settings.format === 'mix_americano') { 
+        if (typeof settings !== 'undefined' && settings.format === 'mix_americano') { 
             const mC = safeP.filter(p => p.gender === 'M').length, fC = safeP.filter(p => p.gender === 'F').length; 
             if (mC !== fC) { alert("KLAIDA: Mix formatui reikia vienodo vyrų ir moterų skaičiaus!"); return; } 
         }
@@ -122,19 +123,20 @@ function requestNextRound() {
         let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
         
         if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]) {
-            el('loading-overlay').style.display = 'flex';
+            let overlay = document.getElementById('loading-overlay');
+            if(overlay) overlay.style.display = 'flex';
             setTimeout(() => {
                 try {
-                    if (settings.format === 'mix_americano') {
+                    if (typeof settings !== 'undefined' && settings.format === 'mix_americano') {
                         if (safeP.length === 8) { preGeneratedTournament = generateInterleavedMix8Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
                         else if (safeP.length === 16) { preGeneratedTournament = generatePerfectMix16Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
                         else { generateLookaheadTournament(safeP, roundNum, 30); }
                     } else { generateLookaheadTournament(safeP, roundNum, 30); }
-                    el('loading-overlay').style.display = 'none'; dispatchRoundFromPreGen(roundNum);
-                } catch (e) { console.error("Matrix generation error:", e); el('loading-overlay').style.display = 'none'; }
+                    if(overlay) overlay.style.display = 'none'; dispatchRoundFromPreGen(roundNum);
+                } catch (e) { console.error("Matrix generation error:", e); if(overlay) overlay.style.display = 'none'; }
             }, 50);
         } else { dispatchRoundFromPreGen(roundNum); }
-    } catch(e) { console.error("requestNextRound Error:", e); el('loading-overlay').style.display = 'none'; }
+    } catch(e) { console.error("requestNextRound Error:", e); let overlay = document.getElementById('loading-overlay'); if(overlay) overlay.style.display = 'none'; }
 }
 
 function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
@@ -143,7 +145,7 @@ function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.g
 
 function generateLookaheadTournament(safePool, startRound, countToGenerate) {
     let M = [], F = []; 
-    if (settings.format === 'mix_americano') { M = safePool.filter(p => p.gender === 'M'); F = safePool.filter(p => p.gender === 'F'); } 
+    if (typeof settings !== 'undefined' && settings.format === 'mix_americano') { M = safePool.filter(p => p.gender === 'M'); F = safePool.filter(p => p.gender === 'F'); } 
     else { let shuffledPool = shuffle([...safePool]); let half = shuffledPool.length / 2; M = shuffledPool.slice(0, half); F = shuffledPool.slice(half); }
     
     let halfNum = M.length, courtsNeeded = halfNum / 2, partners = new Map(), opponents = new Map(), pastMatches = new Set();
@@ -178,7 +180,7 @@ function generateLookaheadTournament(safePool, startRound, countToGenerate) {
         let bestSet = null, minPenalty = Infinity, iterations = 2000; 
         for (let iter = 0; iter < iterations; iter++) {
             let currentPenalty = 0, roundMatches = [];
-            if (settings.format === 'mix_americano') {
+            if (typeof settings !== 'undefined' && settings.format === 'mix_americano') {
                 let roundShift = round - 1, pairs = []; for(let i = 0; i < halfNum; i++) { pairs.push([M[i], F[(i + roundShift) % halfNum]]); } pairs = shuffle(pairs); 
                 for(let c = 0; c < courtsNeeded; c++) { 
                     let t1 = pairs[c * 2], t2 = pairs[c * 2 + 1], mk = [ [t1[0].id, t1[1].id].sort().join('+'), [t2[0].id, t2[1].id].sort().join('+') ].sort().join('VS'); 
@@ -205,7 +207,7 @@ function generateLookaheadTournament(safePool, startRound, countToGenerate) {
             }
             if (currentPenalty < minPenalty) { minPenalty = currentPenalty; bestSet = roundMatches; }
         }
-        bestSet.forEach(m => addStats(m)); newPreGen.push(bestSet); updateLastRoundOpponents(bestSet);
+        if(bestSet) bestSet.forEach(m => addStats(m)); newPreGen.push(bestSet); updateLastRoundOpponents(bestSet);
     }
     let fullPreGen = new Array(startRound - 1).fill(null).concat(newPreGen); preGeneratedTournament = fullPreGen; setStore('pregen', preGeneratedTournament);
 }
@@ -248,7 +250,7 @@ function generateFixedRound(safePool) {
 }
 
 function processGlobalEloForMatch(match, globalData, globalRef) {
-    if (typeof isCloud === 'undefined' || !isCloud) return;
+    if (typeof isCloud === 'undefined' || !isCloud || !globalRef) return;
     if (typeof settings !== 'undefined' && settings.level === 'Privatus') return;
     if (!match || !match.team1 || !match.team2) return;
     
@@ -259,7 +261,6 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
     const isOfficial = (typeof settings !== 'undefined' && settings.isOfficial === true);
 
     if (isOfficial) {
-        // PATH 1: GLOBALUS LYGOS REITINGAS
         const getP = (p) => globalData[p.id] || { rating: 300, total_matches: 0 };
         let t1Players = safeArr(match.team1);
         let t2Players = safeArr(match.team2);
@@ -307,7 +308,6 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
         t1Players.forEach(p => updatePlayer(p, delta1));
         t2Players.forEach(p => updatePlayer(p, delta2));
     } else {
-        // PATH 2: UŽDARAS ISOLIUOTAS KAMBARIO REITINGAS
         const roomName = document.getElementById('fb-room')?.value?.trim();
         if (!roomName) return; 
         const casualRef = firebase.database().ref("padelio_rooms/" + roomName + "/casual_players");
@@ -354,7 +354,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 casualRef.child(p.id).update({
                     id: p.id,
                     name: p.name,
-                    gender: p.gender || "M", // 🌟 SUTRAUKTA: Lytis dabar neiškraipoma debesyje!
+                    gender: p.gender || "M", 
                     rating: newR,
                     tier: tier,
                     total_matches: newMatches,
