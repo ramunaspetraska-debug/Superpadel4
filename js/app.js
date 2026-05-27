@@ -21,7 +21,7 @@ if(!localStorage.getItem(currentKey)) {
 
 // Apsauga nuo atsitiktinio lango uždarymo
 window.addEventListener('beforeunload', (e) => { 
-    if (matches.some(m => !m.finished)) { 
+    if (typeof matches !== 'undefined' && Array.isArray(matches) && matches.some(m => !m.finished)) { 
         e.preventDefault(); 
         e.returnValue = ''; 
     } 
@@ -46,7 +46,7 @@ window.addEventListener('DOMContentLoaded', () => {
         safeVal('fb-room', activeRoom); 
         initFirebaseConnection(); 
         
-        // 🌟 SUTRAUKTA: Jei prisijungiama per nuorodą, fone iškart paleidžiamas kambario klausiklis
+        // Jei prisijungiama per nuorodą, fone saugiai paleidžiamas kambario klausiklis
         if (typeof listenToCasualPlayers === 'function') {
             setTimeout(listenToCasualPlayers, 600);
         }
@@ -56,7 +56,7 @@ window.addEventListener('DOMContentLoaded', () => {
     render(); 
     
     // Nustatome kurį ekraną rodyti užsikrovus
-    if (matches.length > 0) {
+    if (typeof matches !== 'undefined' && matches.length > 0) {
         switchView('matches'); 
     } else {
         switchView('setup'); 
