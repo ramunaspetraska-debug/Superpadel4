@@ -506,7 +506,7 @@ function initTournamentsDB() {
     const list = document.getElementById('scheduleList');
     if (list) list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-grey);"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami turnyrai...</div>`;
 
-    firebase.database().ref(GLOBAL_TOURNATMENTS_KEY || GLOBAL_TOURNAMENTS_KEY).on('value', snap => {
+    firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).on('value', snap => {
         let data = snap.val();
         if (data) {
             tournaments = Array.isArray(data) ? data : Object.values(data);
