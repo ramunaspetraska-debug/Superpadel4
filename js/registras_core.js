@@ -28,6 +28,11 @@ let friendlyMatches = [];
 let globalAdminPlayers = [];
 let tempAdminPlayerPhotoBase64 = null;
 
+// 🌟 IŠMANIOJO PARTNERIO MODALINIO LANGO BŪSENOS KINTAMIEJI
+let selectedPartnerData = null;
+let tempPartnerGender = 'M';
+let partnerLookupTimeout = null;
+
 function esc(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
@@ -779,7 +784,7 @@ function openRegisterModal(id) {
     modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
 }
 
-// 🌟 PATAISYTA: Partnerio pridejimas su tiksliu lyties nustatymu be kodo struktūros lūžių
+// 🌟 INTEGRUOTA: Išmanioji partnerio formos generacija esamo modalinio lango viduje!
 function confirmRegistration(id, withPartner) { 
     let t = tournaments.find(x => x.id === id); 
     if (!t) return;
@@ -799,38 +804,34 @@ function confirmRegistration(id, withPartner) {
     }
 
     if (withPartner) {
-        let partnerInput = prompt("Įveskite partnerio telefono numerį arba Padel ID:");
-        if (!partnerInput) return; 
+        // 🛠️ Vietoj senų prompt() langų, dinamiškai perrašome esamo modalo turinį į išmaniąją formą!
+        selectedPartnerData = null;
+        tempPartnerGender = 'M';
         
-        let safePartnerId = partnerInput.replace(/[^a-z0-9]/g, '');
-        if (safePartnerId.startsWith('86') && safePartnerId.length === 9) safePartnerId = '370' + safePartnerId.substring(1);
-        if (safePartnerId.startsWith('06') && safePartnerId.length === 9) safePartnerId = '370' + safePartnerId.substring(1);
-
-        if (safePartnerId === currentUser.id) {
-            showToast("Negalite pridėti savęs kaip partnerio!");
-            return;
-        }
-
-        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safePartnerId).once('value').then(snap => {
-            let partnerData = snap.val();
-            if (partnerData) {
-                completePairRegistration(t, currentUser.name, partnerData.name);
-            } else {
-                let partnerName = prompt("Šis partneris dar neturi paskyros.\n\nĮveskite partnerio VARDĄ ir PAVARDĘ:");
-                if (!partnerName || partnerName.trim() === "") {
-                    showToast("Atšaukta. Būtina įvesti partnerio vardą.");
-                    return;
-                }
+        modalTitle.innerHTML = `<i class="fa-solid fa-user-plus"></i> Pridėti Partnerį`;
+        modalBody.innerHTML = `
+            <div style="text-align: left; margin-top: 10px;">
+                <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px;">1. Telefono numeris arba Padel ID</label>
+                <input type="text" id="partnerPhoneInput" oninput="handlePartnerPhoneInput(${id})" placeholder="Pvz. 860000000 arba 3706..." style="width: 100%; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; font-weight: bold; margin-top: 5px; font-size: 14px; outline: none; box-sizing: border-box;" autocomplete="off" />
                 
-                // 🛠️ Saugus ir aiškus lyties pasirinkimas kuriamam partneriui
-                let partnerGender = confirm(`Pasirinkite partnerio (${partnerName.trim()}) lytį:\n\n[OK] = MOTERIS (M)\n[Atšaukti] = VYRAS (V)`) ? "F" : "M";
+                <div id="partnerStatusMessage" style="margin-top: 8px; font-size: 12px; font-weight: bold; min-height: 18px;"></div>
                 
-                let newPartnerUser = { id: safePartnerId, name: partnerName.trim(), gender: partnerGender, rating: 300, tier: "D", total_matches: 0, last_played: Date.now() };
-                firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safePartnerId).set(newPartnerUser).then(() => {
-                    completePairRegistration(t, currentUser.name, newPartnerUser.name);
-                });
-            }
-        });
+                <div id="newPartnerFields" style="display: none; margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px;">
+                    <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px;">2. Partnerio Vardas ir Pavardė</label>
+                    <input type="text" id="partnerNameInput" placeholder="Vardas Pavardė" style="width: 100%; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; font-weight: bold; margin-top: 5px; font-size: 14px; outline: none; box-sizing: border-box;" />
+                    
+                    <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; display: block; margin-top: 15px; letter-spacing: 0.5px;">3. Partnerio Lytis</label>
+                    <div style="display: flex; gap: 10px; margin-top: 6px;">
+                        <button type="button" id="partnerGenderM" onclick="setPartnerModalGender('M')" style="flex: 1; padding: 12px; font-weight: bold; border-radius: 10px; border: 2px solid #009fe3; background: #ebf8ff; color: #009fe3; cursor: pointer; font-size: 13px; transition: 0.2s;">Vyras (V)</button>
+                        <button type="button" id="partnerGenderF" onclick="setPartnerModalGender('F')" style="flex: 1; padding: 12px; font-weight: bold; border-radius: 10px; border: 2px solid #cbd5e0; background: #fff; color: #718096; cursor: pointer; font-size: 13px; transition: 0.2s;">Moteris (M)</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        modalActions.innerHTML = `
+            <button type="button" id="submitPartnerBtn" onclick="submitSmartPartner(${id})" class="modal-btn primary" style="width: 100%; margin-bottom: 8px; font-size: 13px; font-weight: bold; padding: 12px 0;" disabled>Suveskite duomenis...</button>
+            <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width: 100%; font-size: 13px; padding: 12px 0;">Atšaukti</button>
+        `;
     } else {
         if (!t.players) t.players = [];
         t.status = 'registered';
@@ -840,6 +841,116 @@ function confirmRegistration(id, withPartner) {
         closeModal();
         showToast("Jūs sėkmingai užregistruoti!");
         renderUserProfile();
+    }
+}
+
+// 🌟 PAPILDOMOS FUNKCIJOS: Išmaniojo partnerių modalinio lango valdymas fone
+function setPartnerModalGender(g) {
+    tempPartnerGender = g;
+    const btnM = document.getElementById('partnerGenderM');
+    const btnF = document.getElementById('partnerGenderF');
+    if (!btnM || !btnF) return;
+    
+    if (g === 'M') {
+        btnM.style.background = '#ebf8ff'; btnM.style.borderColor = '#009fe3'; btnM.style.color = '#009fe3';
+        btnF.style.background = '#fff'; btnF.style.borderColor = '#cbd5e0'; btnF.style.color = '#718096';
+    } else {
+        btnM.style.background = '#fff'; btnM.style.borderColor = '#cbd5e0'; btnM.style.color = '#718096';
+        btnF.style.background = '#fff5f5'; btnF.style.borderColor = '#ec4899'; btnF.style.color = '#ec4899';
+    }
+}
+
+function handlePartnerPhoneInput(tournamentId) {
+    clearTimeout(partnerLookupTimeout);
+    
+    const phoneInput = document.getElementById('partnerPhoneInput');
+    const msgDiv = document.getElementById('partnerStatusMessage');
+    const extraFields = document.getElementById('newPartnerFields');
+    const submitBtn = document.getElementById('submitPartnerBtn');
+    
+    if (!phoneInput || !msgDiv || !extraFields || !submitBtn) return;
+    
+    let inputVal = phoneInput.value.trim().toLowerCase();
+    let safeId = inputVal.replace(/[^a-z0-9]/g, '');
+    
+    if (safeId.startsWith('86') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+    if (safeId.startsWith('06') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+    
+    if (safeId === currentUser.id) {
+        msgDiv.innerHTML = `<span style="color: var(--status-red);"><i class="fa-solid fa-triangle-exclamation"></i> Negalite pridėti savęs kaip partnerio!</span>`;
+        extraFields.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Klaida...";
+        return;
+    }
+    
+    if (safeId.length < 7) {
+        msgDiv.innerText = "";
+        extraFields.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Suveskite duomenis...";
+        selectedPartnerData = null;
+        return;
+    }
+    
+    msgDiv.innerHTML = `<span style="color: var(--status-orange);"><i class="fa-solid fa-spinner fa-spin"></i> Tikrinama bazė...</span>`;
+    
+    partnerLookupTimeout = setTimeout(() => {
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
+            let pData = snap.val();
+            if (pData) {
+                selectedPartnerData = pData;
+                msgDiv.innerHTML = `<span style="color: var(--status-green);"><i class="fa-solid fa-circle-check"></i> Žaidėjas rastas: <strong>${esc(pData.name)}</strong> (${pData.gender === 'F' ? 'M' : 'V'})</span>`;
+                extraFields.style.display = 'none';
+                submitBtn.disabled = false;
+                submitBtn.innerText = `Registruoti su ${pData.name.split(' ')[0]}`;
+            } else {
+                selectedPartnerData = null;
+                msgDiv.innerHTML = `<span style="color: #4a5568;"><i class="fa-solid fa-user-plus"></i> Naujas žaidėjas (nerastas DB). Užpildykite:</span>`;
+                extraFields.style.display = 'block';
+                setPartnerModalGender('M'); 
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Sukurti ir registruoti partnerį";
+            }
+        });
+    }, 400);
+}
+
+function submitSmartPartner(tournamentId) {
+    let t = tournaments.find(x => x.id === tournamentId);
+    if (!t) return;
+    
+    const phoneInput = document.getElementById('partnerPhoneInput');
+    if (!phoneInput) return;
+    
+    let inputVal = phoneInput.value.trim().toLowerCase();
+    let safeId = inputVal.replace(/[^a-z0-9]/g, '');
+    if (safeId.startsWith('86') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+    if (safeId.startsWith('06') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+
+    if (selectedPartnerData) {
+        completePairRegistration(t, currentUser.name, selectedPartnerData.name);
+    } else {
+        const nameInput = document.getElementById('partnerNameInput');
+        let pName = nameInput ? nameInput.value.trim() : "";
+        if (!pName) { alert("Įveskite partnerio vardą ir pavardę!"); return; }
+        
+        let newPartnerUser = { 
+            id: safeId, 
+            name: pName, 
+            gender: tempPartnerGender, 
+            rating: 300, 
+            tier: "D", 
+            total_matches: 0, 
+            last_played: Date.now() 
+        };
+        
+        document.getElementById('submitPartnerBtn').disabled = true;
+        document.getElementById('submitPartnerBtn').innerText = "Saugoma...";
+        
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).set(newPartnerUser).then(() => {
+            completePairRegistration(t, currentUser.name, newPartnerUser.name);
+        });
     }
 }
 
@@ -991,7 +1102,7 @@ let cameraStream = null; let isRecording = false; let timerIntervalCam = null; l
 async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (!videoElement || cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
 function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; let vFeed = document.getElementById('cameraFeed'); if(vFeed) vFeed.srcObject = null; } }
 function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; if(btn) btn.classList.add('recording'); if(indicator) indicator.style.display = 'flex'; if(aiPanel) aiPanel.style.display = 'none'; if(infoText) infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); let recTimer = document.getElementById('recTimer'); if(recTimer) recTimer.innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; if(btn) btn.classList.remove('recording'); if(indicator) indicator.style.display = 'none'; clearInterval(timerIntervalCam); if(btn) btn.style.display = 'none'; if(infoText) infoText.style.display = 'none'; if(aiPanel) aiPanel.style.display = 'block'; setTimeout(() => { let recTimer = document.getElementById('recTimer'); if(recTimer) recTimer.innerText = `00:00:00`; }, 1000); } }
-function startAiProcessing() { let sBtn = document.getElementById('startAiBtn'); if(sBtn) sBtn.style.display = 'none'; let aiProg = document.getElementById('aiProgress'); if(aiProg) aiProg.style.display = 'block'; let aiStat = document.getElementById('aiStatusText'); if(aiStat) aiStat.style.display = 'block'; let fill = document.getElementById('aiFill'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; if(fill) fill.style.width = width + '%'; if(aiStat) { if(width < 40) aiStat.innerText = `Analizuojama... (${Math.floor(width)}%)`; else if(width < 80) aiStat.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else aiStat.innerText = `Baigiama... (${Math.floor(width)}%)`; } if(width >= 100) { clearInterval(interval); if(aiProg) aiProg.style.display = 'none'; if(aiStat) { if(aiStat) aiStat.style.display = 'none'; let gVid = document.getElementById('generatedVideo'); if(gVid) gVid.style.display = 'block'; showToast("Highlights sugeneruoti!"); } } }, 500); }
+function startAiProcessing() { let sBtn = document.getElementById('startAiBtn'); if(sBtn) sBtn.style.display = 'none'; let aiProg = document.getElementById('aiProgress'); if(aiProg) aiProg.style.display = 'block'; let aiStat = document.getElementById('aiStatusText'); if(aiStat) aiStat.style.display = 'block'; let fill = document.getElementById('aiFill'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; if(fill) fill.style.width = width + '%'; if(aiStat) { if(width < 40) aiStat.innerText = `Analizuojama... (${Math.floor(width)}%)`; else if(width < 80) aiStat.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else aiStat.innerText = `Baigiama... (${Math.floor(width)}%)`; } if(width >= 100) { clearInterval(interval); if(aiProg) aiProg.style.display = 'none'; if(aiStat) aiStat.style.display = 'none'; let gVid = document.getElementById('generatedVideo'); if(gVid) gVid.style.display = 'block'; showToast("Highlights sugeneruoti!"); } }, 500); }
 function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { let gVid = document.getElementById('generatedVideo'); if(gVid) gVid.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Nuoroda</button></div>`; }, 2000); }
 
 // ==========================================
@@ -1004,7 +1115,6 @@ function promptAdmin() {
     if (code === "7030") { toggleMode(); } else if (code !== null) { showToast("Neteisingas kodas!"); }
 }
 
-// 🛠️ Atstatytas permanentinis Firebase klausiklių dubliavimosi saugiklis gyvame TV režime
 function toggleMode() {
     const app = document.getElementById('appMode'); 
     const admin = document.getElementById('adminMode');
