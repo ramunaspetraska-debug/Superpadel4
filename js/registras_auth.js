@@ -490,11 +490,17 @@ function openRoomJoinModal(roomName) {
 function confirmJoinRoom(roomName, roomPlayerId) {
     if (!currentUser) return;
 
-    // Išsaugome ryšį: portal_links/{phoneId} = roomPlayerId
-    firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`).set(roomPlayerId).then(() => {
+    // Išsaugome ryšį abiem kryptimis:
+    // portal_links/{phoneId} = roomPlayerId  (portalui: "prisijungta kaip X")
+    // portal_links_reverse/{roomPlayerId} = phoneId  (generatoriui: greita paieška pagal žaidėjo ID)
+    const updates = {};
+    updates[`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`] = roomPlayerId;
+    updates[`${DB_KEY}/${roomName}/portal_links_reverse/${roomPlayerId}`] = currentUser.id;
+
+    firebase.database().ref().update(updates).then(() => {
         closeModal();
         showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
-        loadActiveRooms(); // Atnaujiname kambarių sąrašą
+        loadActiveRooms();
     }).catch(() => {
         showToast("Klaida jungiantis prie kambario.");
     });
@@ -504,8 +510,19 @@ function disconnectFromRoom(roomName) {
     if (!currentUser) return;
     if (!confirm(`Ar tikrai norite atsijungti nuo kambario "${roomName}"? Statistika nebebebus skaičiuojama.`)) return;
 
-    firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`).remove().then(() => {
+    // Pirma randame roomPlayerId kad galėtume ištrinti ir reverse link
+    firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`).once('value').then(snap => {
+        const roomPlayerId = snap.val();
+        const updates = {};
+        updates[`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`] = null;
+        if (roomPlayerId) {
+            updates[`${DB_KEY}/${roomName}/portal_links_reverse/${roomPlayerId}`] = null;
+        }
+        return firebase.database().ref().update(updates);
+    }).then(() => {
         showToast("Atsijungta nuo kambario.");
         loadActiveRooms();
+    }).catch(() => {
+        showToast("Klaida atsijungiant.");
     });
 }
