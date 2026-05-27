@@ -289,8 +289,8 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             
             let tier = "D";
             if (newR >= 851) tier = "A";
-            else if (newR >= 671) tier = "B";
-            else if (newR >= 501) tier = "C";
+            else if (newR >= 671) tier = "B-/B";
+            else if (newR >= 501) tier = "C/C+";
             else if (newR >= 351) tier = "D-C";
             
             globalRef.child(p.id).update({
@@ -347,8 +347,8 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 
                 let tier = "D";
                 if (newR >= 851) tier = "A";
-                else if (newR >= 671) tier = "B";
-                else if (newR >= 501) tier = "C";
+                else if (newR >= 671) tier = "B-/B";
+                else if (newR >= 501) tier = "C/C+";
                 else if (newR >= 351) tier = "D-C";
                 
                 casualRef.child(p.id).update({
@@ -369,6 +369,21 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             };
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
+
+            // 🌟 Sinchronizuojame casual mačų statistiką į globalų profilį (be ELO pokyčio)
+            const syncCasualToGlobal = (p, isWin) => {
+                globalRef.child(p.id).once('value').then(gSnap => {
+                    const gData = gSnap.val();
+                    if (!gData) return; // sinchronizuojame tik jei žaidėjas jau turi globalų profilį
+                    globalRef.child(p.id).update({
+                        casual_matches: (gData.casual_matches || 0) + 1,
+                        casual_wins: (gData.casual_wins || 0) + (isWin ? 1 : 0),
+                        last_played: Date.now()
+                    });
+                }).catch(err => console.error("Casual global sync error:", err));
+            };
+            t1Players.forEach(p => syncCasualToGlobal(p, out1 > out2));
+            t2Players.forEach(p => syncCasualToGlobal(p, out2 > out1));
 
             if (typeof savePlayers === 'function') savePlayers(); 
             if (typeof renderPlayers === 'function') renderPlayers();
