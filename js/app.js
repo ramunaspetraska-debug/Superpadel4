@@ -145,17 +145,10 @@ function listenToCasualPlayers() {
     indexCasualPlayersRef.on('value', snap => {
         const data = snap.val();
         if (data) {
+            // Tik atnaujiname paieškos kešą — žaidėjų sąrašo NEKEIČIAME.
+            // Tai apsaugo nuo situacijos kai kuriant naują turnyrą
+            // automatiškai grįžta visi seni žaidėjai iš istorijos.
             cachedCloudPlayers = Object.values(data);
-            if (typeof settings === 'undefined' || settings.isOfficial !== true) {
-                players = Object.keys(data).map(id => {
-                    const p = data[id];
-                    return { id: p.id || id, name: p.name, gender: p.gender || "M", photo: p.photo || null, rating: p.rating || 300, tier: p.tier || "D", wins: p.wins || 0, losses: p.losses || 0, draws: p.draws || 0, points: p.points || 0, diff: p.diff || 0, history: p.history || [] };
-                });
-                if (typeof savePlayers === 'function') savePlayers(); 
-                if (typeof renderPlayers === 'function') renderPlayers(); 
-                if (typeof updatePlayerCount === 'function') updatePlayerCount();
-                if (typeof renderLeaderboard === 'function') renderLeaderboard();
-            }
         }
     });
 }
