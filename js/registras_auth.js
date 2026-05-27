@@ -237,24 +237,20 @@ function renderUserProfile() {
                 <div style="font-size: 20px; font-weight: 900; color: ${ptsColor};">${currentUser.rating || 300}</div>
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey);">Turnyrai</div>
+                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey);">Oficialūs mačai</div>
                 <div style="font-size: 20px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
             </div>
         </div>
 
         <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Mėgėjų Lyga</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Mačai</div>
-                <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${myFriendlies.length}</div>
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Draugiški mačai</div>
+                <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${currentUser.casual_matches || 0}</div>
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
                 <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
-                <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${friendlyWinRate}%</div>
-            </div>
-            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
-                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Partneris</div>
-                <div style="font-size: 14px; font-weight: 900; color: var(--primary-blue); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${topPartner}</div>
+                <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${(currentUser.casual_matches || 0) > 0 ? Math.round(((currentUser.casual_wins || 0) / currentUser.casual_matches) * 100) : 0}%</div>
             </div>
         </div>
 
