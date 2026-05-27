@@ -804,15 +804,15 @@ function confirmRegistration(id, withPartner) {
     }
 
     if (withPartner) {
-        // 🛠️ Vietoj senų prompt() langų, dinamiškai perrašome esamo modalo turinį į išmaniąją formą!
+        // Dinamiškai perrašome esamo modalo turinį į išmaniąją formą
         selectedPartnerData = null;
-        tempPartnerGender = 'M';
+        tempPartnerGender = null; // 🌟 Lytis iš pradžių yra nepasirinkta (neutrali)
         
         modalTitle.innerHTML = `<i class="fa-solid fa-user-plus"></i> Pridėti Partnerį`;
         modalBody.innerHTML = `
             <div style="text-align: left; margin-top: 10px;">
                 <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px;">1. Telefono numeris arba Padel ID</label>
-                <input type="text" id="partnerPhoneInput" oninput="handlePartnerPhoneInput(${id})" placeholder="Pvz. 860000000 arba 3706..." style="width: 100%; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; font-weight: bold; margin-top: 5px; font-size: 14px; outline: none; box-sizing: border-box;" autocomplete="off" />
+                <input type="text" id="partnerPhoneInput" oninput="handlePartnerPhoneInput(${id})" placeholder="Pvz. 37060000000" style="width: 100%; padding: 12px; border: 2px solid #cbd5e0; border-radius: 10px; font-weight: bold; margin-top: 5px; font-size: 14px; outline: none; box-sizing: border-box;" autocomplete="off" />
                 
                 <div id="partnerStatusMessage" style="margin-top: 8px; font-size: 12px; font-weight: bold; min-height: 18px;"></div>
                 
@@ -822,7 +822,7 @@ function confirmRegistration(id, withPartner) {
                     
                     <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; display: block; margin-top: 15px; letter-spacing: 0.5px;">3. Partnerio Lytis</label>
                     <div style="display: flex; gap: 10px; margin-top: 6px;">
-                        <button type="button" id="partnerGenderM" onclick="setPartnerModalGender('M')" style="flex: 1; padding: 12px; font-weight: bold; border-radius: 10px; border: 2px solid #009fe3; background: #ebf8ff; color: #009fe3; cursor: pointer; font-size: 13px; transition: 0.2s;">Vyras (V)</button>
+                        <button type="button" id="partnerGenderM" onclick="setPartnerModalGender('M')" style="flex: 1; padding: 12px; font-weight: bold; border-radius: 10px; border: 2px solid #cbd5e0; background: #fff; color: #718096; cursor: pointer; font-size: 13px; transition: 0.2s;">Vyras (V)</button>
                         <button type="button" id="partnerGenderF" onclick="setPartnerModalGender('F')" style="flex: 1; padding: 12px; font-weight: bold; border-radius: 10px; border: 2px solid #cbd5e0; background: #fff; color: #718096; cursor: pointer; font-size: 13px; transition: 0.2s;">Moteris (M)</button>
                     </div>
                 </div>
@@ -849,6 +849,7 @@ function setPartnerModalGender(g) {
     tempPartnerGender = g;
     const btnM = document.getElementById('partnerGenderM');
     const btnF = document.getElementById('partnerGenderF');
+    const submitBtn = document.getElementById('submitPartnerBtn');
     if (!btnM || !btnF) return;
     
     if (g === 'M') {
@@ -857,6 +858,11 @@ function setPartnerModalGender(g) {
     } else {
         btnM.style.background = '#fff'; btnM.style.borderColor = '#cbd5e0'; btnM.style.color = '#718096';
         btnF.style.background = '#fff5f5'; btnF.style.borderColor = '#ec4899'; btnF.style.color = '#ec4899';
+    }
+    
+    // Aktyvuojame mygtuko tekstą pasirinkus lytį
+    if (submitBtn && !selectedPartnerData) {
+        submitBtn.innerText = "Sukurti ir registruoti partnerį";
     }
 }
 
@@ -908,9 +914,18 @@ function handlePartnerPhoneInput(tournamentId) {
                 selectedPartnerData = null;
                 msgDiv.innerHTML = `<span style="color: #4a5568;"><i class="fa-solid fa-user-plus"></i> Naujas žaidėjas (nerastas DB). Užpildykite:</span>`;
                 extraFields.style.display = 'block';
-                setPartnerModalGender('M'); 
+                
+                // 🌟 Priverstinis lyties mygtukų anuliavimas (išvalymas) naujam žaidėjui
+                tempPartnerGender = null;
+                document.getElementById('partnerGenderM').style.background = '#fff';
+                document.getElementById('partnerGenderM').style.borderColor = '#cbd5e0';
+                document.getElementById('partnerGenderM').style.color = '#718096';
+                document.getElementById('partnerGenderF').style.background = '#fff';
+                document.getElementById('partnerGenderF').style.borderColor = '#cbd5e0';
+                document.getElementById('partnerGenderF').style.color = '#718096';
+                
                 submitBtn.disabled = false;
-                submitBtn.innerText = "Sukurti ir registruoti partnerį";
+                submitBtn.innerText = "Pasirinkite lytį...";
             }
         });
     }, 400);
@@ -934,6 +949,12 @@ function submitSmartPartner(tournamentId) {
         const nameInput = document.getElementById('partnerNameInput');
         let pName = nameInput ? nameInput.value.trim() : "";
         if (!pName) { alert("Įveskite partnerio vardą ir pavardę!"); return; }
+        
+        // 🌟 KRITINIS SAUGIKLIS: Jeigu lytis nepasirinkta, stabdome fone bet kokį išsaugojimą
+        if (!tempPartnerGender) { 
+            alert("KLAIDA: Prašome pasirinkti partnerio lytį (V arba M)!"); 
+            return; 
+        }
         
         let newPartnerUser = { 
             id: safeId, 
