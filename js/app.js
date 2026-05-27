@@ -179,7 +179,7 @@ async function importFromPortal() {
                 const name = rawName.trim(); if (!name) return;
                 
                 if (!players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-                    let globalMatch = Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase() === name.toLowerCase());
+                    let globalMatch = typeof globalPlayersData !== 'undefined' ? Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase() === name.toLowerCase()) : null;
                     let pGender = globalMatch ? (globalMatch.gender || "M") : "M";
                     let pRating = globalMatch ? (globalMatch.rating || 300) : 300;
                     let pTier = globalMatch ? (globalMatch.tier || "D") : "D";
@@ -227,8 +227,13 @@ setTimeout(function() {
             const casBadge = document.getElementById('casual-badge');
             const adminOffSel = document.getElementById('admin-is-official');
             if(typeof settings !== 'undefined') {
-                if (settings.isOfficial) { offBadge?.classList.remove('hidden'); casBadge?.classList.add('hidden'); } 
-                else { offBadge?.mathbf{classList}.remove('hidden'); }
+                if (settings.isOfficial) { 
+                    offBadge?.classList.remove('hidden'); 
+                    casBadge?.classList.add('hidden'); 
+                } else { 
+                    offBadge?.classList.add('hidden'); 
+                    casBadge?.classList.remove('hidden'); 
+                }
                 if(adminOffSel) adminOffSel.value = settings.isOfficial ? "true" : "false";
             }
         };
