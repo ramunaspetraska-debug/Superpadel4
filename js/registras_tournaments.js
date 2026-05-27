@@ -322,6 +322,7 @@ function confirmRegistration(id, withPartner) {
             <button type="button" id="submitPartnerBtn" onclick="submitSmartPartner(${id})" class="modal-btn primary" style="width: 100%; margin-bottom: 8px; font-size: 13px; font-weight: bold; padding: 12px 0;" disabled>Suveskite duomenis...</button>
             <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width: 100%; font-size: 13px; padding: 12px 0;">Atšaukti</button>
         `;
+        modal.classList.add('show');
     } else {
         if (!t.players) t.players = [];
         t.status = 'registered';
