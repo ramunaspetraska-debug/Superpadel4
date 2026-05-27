@@ -228,6 +228,7 @@
 
     <script>
         let cachedCloudPlayers = [];
+        let indexCasualPlayersRef = null; // 🛠️ SUTRAUKTA: Saugiklis dubliuojantiems Firebase klausikliams išjungti
 
         function toggleERef() {
             const isChecked = document.getElementById('setting-ereferee').checked;
@@ -240,7 +241,7 @@
         function updateERefPin() { settings.eRefereePin = document.getElementById('setting-ereferee-pin').value; if(typeof autoSave === 'function') autoSave(true); }
         function toggleAdminOfficial(val) { if(typeof settings !== 'undefined') { settings.isOfficial = (val === "true"); if(typeof autoSave === 'function') autoSave(true); if(typeof renderTimerAndSettings === 'function') renderTimerAndSettings(); } }
 
-        /* 📡 LIVE REAL-TIME CLOUD SEARCH FUNKCIJA (Pagal tavo aprašytą scenarijų) */
+        /* 📡 LIVE REAL-TIME CLOUD SEARCH FUNKCIJA (Su XSS ir HTML lūžių apsauga) */
         function searchLiveCloudPlayers(query) {
             const container = document.getElementById('live-search-results');
             if (!query.trim() || cachedCloudPlayers.length === 0) {
@@ -259,7 +260,8 @@
 
             let html = '';
             filtered.forEach(p => {
-                html += `<div onclick="selectCloudPlayer('${p.id}', '${esc(p.name)}', '${p.gender}')" class="px-4 py-2 hover:bg-slate-100 font-bold text-sm text-slate-700 cursor-pointer flex justify-between items-center"><span>${esc(p.name)}</span><span class="text-[9px] bg-slate-100 text-slate-400 border px-1.5 py-0.5 rounded uppercase">${p.gender==='M'?'Vyras':'Moteris'} (ELO: ${p.rating||300})</span></div>`;
+                // 🛠️ IŠTAISYTA: Visi parametrai praeina pro esc() funkciją apsaugai nuo XSS
+                html += `<div onclick="selectCloudPlayer('${esc(p.id)}', '${esc(p.name)}', '${esc(p.gender)}')" class="px-4 py-2 hover:bg-slate-100 font-bold text-sm text-slate-700 cursor-pointer flex justify-between items-center"><span>${esc(p.name)}</span><span class="text-[9px] bg-slate-100 text-slate-400 border px-1.5 py-0.5 rounded uppercase">${p.gender==='M'?'Vyras':'Moteris'} (ELO: ${p.rating||300})</span></div>`;
             });
             container.innerHTML = html;
             container.classList.remove('hidden');
@@ -276,7 +278,14 @@
             const roomName = document.getElementById('fb-room')?.value?.trim();
             if (!roomName) return;
 
-            firebase.database().ref("padelio_rooms/" + roomName + "/casual_players").on('value', snap => {
+            // 🛠️ IŠTAISYTA: Jei klausiklis jau buvo paleistas anksčiau, jį saugiai išjungiame su .off()
+            if (indexCasualPlayersRef) {
+                indexCasualPlayersRef.off();
+            }
+
+            indexCasualPlayersRef = firebase.database().ref("padelio_rooms/" + roomName + "/casual_players");
+            
+            indexCasualPlayersRef.on('value', snap => {
                 const data = snap.val();
                 if (data) {
                     cachedCloudPlayers = Object.values(data);
@@ -334,7 +343,8 @@
                         const casBadge = document.getElementById('casual-badge');
                         const adminOffSel = document.getElementById('admin-is-official');
                         if(typeof settings !== 'undefined') {
-                            if (settings.isOfficial) { offBadge?.classList.remove('hidden'); College=casBadge?.classList.add('hidden'); } 
+                            // 🛠️ IŠTAISYTA: Pašalintas netyčinis "College=" globalus kintamasis
+                            if (settings.isOfficial) { offBadge?.classList.remove('hidden'); casBadge?.classList.add('hidden'); } 
                             else { offBadge?.classList.add('hidden'); casBadge?.classList.remove('hidden'); }
                             if(adminOffSel) adminOffSel.value = settings.isOfficial ? "true" : "false";
                         }
