@@ -25,7 +25,7 @@ let friendlyMatches = [];
 let globalAdminPlayers = [];
 let tempAdminPlayerPhotoBase64 = null;
 
-// Helper: Saugus teksto išvalymas HTMLXSS prevencijai
+// Saugus teksto išvalymas HTML prevencijai
 function esc(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
@@ -973,7 +973,7 @@ async function startCamera() { try { const videoElement = document.getElementByI
 function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; document.getElementById('cameraFeed').srcObject = null; } }
 function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; btn.classList.add('recording'); indicator.style.display = 'flex'; aiPanel.style.display = 'none'; infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); document.getElementById('recTimer').innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; btn.classList.remove('recording'); indicator.style.display = 'none'; clearInterval(timerIntervalCam); btn.style.display = 'none'; infoText.style.display = 'none'; aiPanel.style.display = 'block'; setTimeout(() => { document.getElementById('recTimer').innerText = `00:00:00`; }, 1000); } }
 function startAiProcessing() { document.getElementById('startAiBtn').style.display = 'none'; document.getElementById('aiProgress').style.display = 'block'; document.getElementById('aiStatusText').style.display = 'block'; let fill = document.getElementById('aiFill'); let status = document.getElementById('aiStatusText'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; fill.style.width = width + '%'; if(width < 40) status.innerText = `Analizuojama... Ieškoma smūgių (${Math.floor(width)}%)`; else if(width < 80) status.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else status.innerText = `Baigiama... (${Math.floor(width)}%)`; if(width >= 100) { clearInterval(interval); document.getElementById('aiProgress').style.display = 'none'; document.getElementById('aiStatusText').style.display = 'none'; document.getElementById('generatedVideo').style.display = 'block'; showToast("DI Highlights sėkmingai sugeneruoti!"); } }, 500); }
-function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { document.getElementById('generatedVideo').innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Kopijuoti nuorodą</button></div>`; }, 2000); }
+function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { document.getElementById('generatedVideo').innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Nuoroda</button></div>`; }, 2000); }
 
 // ==========================================
 // 6. ADMNISTRATORIAUS VALDYMO PLATFORMA
@@ -1117,7 +1117,7 @@ function renderAdminTournaments() {
         </tr>`;
     });
     html += '</table>';
-    container.innerHTML = html;
+    list.innerHTML = html;
 }
 
 function openAdminTournamentModal(id) {
@@ -1163,7 +1163,7 @@ function saveAdminTournamentChanges() {
 
 function deleteAdminTournamentLive(id) {
     if(confirm("Ar tikrai norite ištrinti šį turnyrą iš debesies? Visi užsiregistravę žaidėjai bus pašalinti.")) {
-        tournaments = tournaments.filter(t => t.id !== id);
+        tournaments = tournaments.filter(t => String(t.id) !== String(id));
         saveData();
         showToast("Turnyras ištrintas iš debesies!");
     }
@@ -1313,7 +1313,6 @@ function saveAdminPlayerChanges() {
     };
 
     if (String(originalId) !== String(newId)) {
-        // Jei ID pasikeitė, sukuriam naują įrašą ir ištrinam senąjį
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + newId).set(updateData).then(() => {
             firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).remove().then(() => {
                 closeAdminEditModal();
@@ -1322,7 +1321,6 @@ function saveAdminPlayerChanges() {
             });
         }).catch(err => { alert("Klaida keičiant unikalų ID."); });
     } else {
-        // Jei ID nepakeistas, tiesiog atnaujinam mazgą
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).update(updateData).then(() => {
             closeAdminEditModal();
             showToast("Profilio keitimai sėkmingai išsaugoti!");
