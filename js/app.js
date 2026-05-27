@@ -21,7 +21,7 @@ if(!localStorage.getItem(currentKey)) {
 
 // Apsauga nuo atsitiktinio lango uždarymo
 window.addEventListener('beforeunload', (e) => { 
-    if (matches.some(m => !m.finished)) { 
+    if (typeof matches !== 'undefined' && Array.isArray(matches) && matches.some(m => !m.finished)) { 
         e.preventDefault(); 
         e.returnValue = ''; 
     } 
@@ -46,7 +46,6 @@ window.addEventListener('DOMContentLoaded', () => {
         safeVal('fb-room', activeRoom); 
         initFirebaseConnection(); 
         
-        // 🌟 SUTRAUKTA: Jei prisijungiama per nuorodą, fone iškart paleidžiamas kambario klausiklis
         if (typeof listenToCasualPlayers === 'function') {
             setTimeout(listenToCasualPlayers, 600);
         }
@@ -56,7 +55,7 @@ window.addEventListener('DOMContentLoaded', () => {
     render(); 
     
     // Nustatome kurį ekraną rodyti užsikrovus
-    if (matches.length > 0) {
+    if (typeof matches !== 'undefined' && matches.length > 0) {
         switchView('matches'); 
     } else {
         switchView('setup'); 
@@ -161,7 +160,6 @@ function listenToCasualPlayers() {
     });
 }
 
-// 🌟 PATAISYTA FUNKCIJA: Importo metu žaidėjų lytis, lygis bei ELO reitingas automatiškai surandami pagal vardą globalioje DB!
 async function importFromPortal() {
     if (typeof firebase === 'undefined') return;
     const tDate = prompt("Turnyro data (MM-DD):", "05-23"); if (!tDate) return;
@@ -181,7 +179,6 @@ async function importFromPortal() {
                 const name = rawName.trim(); if (!name) return;
                 
                 if (!players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-                    // 🛠️ KROVIMAS IŠ GLOBALIŲ DUOMENŲ: Kryžminis sutikrinimas su globaliu registrų sąrašu
                     let globalMatch = Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase() === name.toLowerCase());
                     let pGender = globalMatch ? (globalMatch.gender || "M") : "M";
                     let pRating = globalMatch ? (globalMatch.rating || 300) : 300;
@@ -231,7 +228,7 @@ setTimeout(function() {
             const adminOffSel = document.getElementById('admin-is-official');
             if(typeof settings !== 'undefined') {
                 if (settings.isOfficial) { offBadge?.classList.remove('hidden'); casBadge?.classList.add('hidden'); } 
-                else { offBadge?.classList.add('hidden'); casBadge?.classList.remove('hidden'); }
+                else { offBadge?.mathbf{classList}.remove('hidden'); }
                 if(adminOffSel) adminOffSel.value = settings.isOfficial ? "true" : "false";
             }
         };
