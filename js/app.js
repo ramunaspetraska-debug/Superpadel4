@@ -161,28 +161,55 @@ function listenToCasualPlayers() {
     });
 }
 
+// 🌟 PATAISYTA FUNKCIJA: Importo metu žaidėjų lytis, lygis bei ELO reitingas automatiškai surandami pagal vardą globalioje DB!
 async function importFromPortal() {
     if (typeof firebase === 'undefined') return;
     const tDate = prompt("Turnyro data (MM-DD):", "05-23"); if (!tDate) return;
     document.getElementById('loading-overlay').style.display = 'flex';
+    
     firebase.database().ref("padelio_global_tournaments").once('value').then(snap => {
-        const data = snap.val(); document.getElementById('loading-overlay').style.display = 'none';
+        const data = snap.val(); 
+        document.getElementById('loading-overlay').style.display = 'none';
         if (!data) return;
+        
         const target = Object.values(data).find(t => t && t.date === tDate);
         if (!target || !target.players) return;
+        
         let c = 0;
         target.players.forEach(row => {
             row.split('/').forEach(rawName => {
                 const name = rawName.trim(); if (!name) return;
+                
                 if (!players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-                    players.push({ id: Date.now() + Math.random(), name: name, gender: "M", photo: null, rating: 300, tier: "D", wins: 0, losses: 0, draws: 0, points: 0, diff: 0, history: [] });
+                    // 🛠️ KROVIMAS IŠ GLOBALIŲ DUOMENŲ: Kryžminis sutikrinimas su globaliu registrų sąrašu
+                    let globalMatch = Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase() === name.toLowerCase());
+                    let pGender = globalMatch ? (globalMatch.gender || "M") : "M";
+                    let pRating = globalMatch ? (globalMatch.rating || 300) : 300;
+                    let pTier = globalMatch ? (globalMatch.tier || "D") : "D";
+
+                    players.push({ 
+                        id: globalMatch ? globalMatch.id : (Date.now() + Math.random()).toString(36), 
+                        name: name, 
+                        gender: pGender, 
+                        photo: null, 
+                        rating: pRating, 
+                        tier: pTier, 
+                        wins: 0, 
+                        losses: 0, 
+                        draws: 0, 
+                        points: 0, 
+                        diff: 0, 
+                        history: [] 
+                    });
                     c++;
                 }
             });
         });
+        
         if (typeof savePlayers === 'function') savePlayers(); 
         if (typeof renderPlayers === 'function') renderPlayers(); 
-        alert(`Importuoti ${c} žaidėjai!`);
+        if (typeof autoSave === 'function') autoSave(true);
+        alert(`Sėkmingai importuoti ${c} žaidėjai! Jų lytis bei reitingai automatiškai sinchronizuoti iš debesies.`);
     });
 }
 
