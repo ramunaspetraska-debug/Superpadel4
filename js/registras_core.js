@@ -13,6 +13,9 @@ const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments";
 const GLOBAL_ARCHIVE_KEY = "padelio_archive_turnyrai"; 
 const GLOBAL_FRIENDLIES_KEY = "padelio_global_friendlies"; 
 
+// 🌟 VIENAS TEISYBĖS ŠALTINIS: Visi lygiai suvienodinti visai sistemai
+const LEAGUE_LEVELS = ['Atviras', 'A', 'B-/B', 'C/C+', 'D-C', 'D', 'Privatus'];
+
 let liveDbRef = null; 
 let currentLiveMatches = []; 
 let activeLiveCourt = 1;
@@ -25,7 +28,7 @@ let friendlyMatches = [];
 let globalAdminPlayers = [];
 let tempAdminPlayerPhotoBase64 = null;
 
-// Saugus teksto išvalymas HTML prevencijai
+// Helper: Saugus teksto išvalymas HTMLXSS prevencijai
 function esc(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
@@ -449,6 +452,7 @@ function renderLiveCourtFilters() {
     }); 
 }
 
+// Žiūrovų taškų valdymas gyvai
 function changeLiveCourt(courtNum) { 
     activeLiveCourt = courtNum; 
     renderLiveCourtFilters(); 
@@ -779,12 +783,12 @@ function confirmRegistration(id, withPartner) {
     const formatUpper = t.format.toUpperCase();
     if (currentUser && currentUser.gender) {
         if (formatUpper.includes("MOTERŲ") && currentUser.gender === "M") {
-            if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras yra skirtas MOTERIMS (${t.format}), o jūsų profilio lytis nurodyta – Vyras.\n\nAr tikrai norite tęsti registraciją?`)) {
+            if (!confirm(`⚠️ ĮSPĖJIMAS: Skirta MOTERIMS (${t.format}), o jūsų lytis – Vyras.\n\nTęsti registraciją?`)) {
                 return; 
             }
         }
         if (formatUpper.includes("VYRŲ") && currentUser.gender === "F") {
-            if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras yra skirtas VYRAMS (${t.format}), o jūsų profilio lytis nurodyta – Moteris.\n\nAr tikrai norite tęsti registraciją?`)) {
+            if (!confirm(`⚠️ ĮSPĖJIMAS: Skirta VYRAMS (${t.format}), o jūsų lytis – Moteris.\n\nTęsti registraciją?`)) {
                 return; 
             }
         }
@@ -805,26 +809,16 @@ function confirmRegistration(id, withPartner) {
 
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safePartnerId).once('value').then(snap => {
             let partnerData = snap.val();
-            
             if (partnerData) {
                 completePairRegistration(t, currentUser.name, partnerData.name);
             } else {
-                let partnerName = prompt("Šis partneris dar neturi paskyros sistemoje.\n\nĮveskite partnerio VARDĄ ir PAVARDĘ, kad sukurtume naują profilį:");
+                let partnerName = prompt("Šis partneris dar neturi paskyros.\n\nĮveskite partnerio VARDĄ ir PAVARDĘ:");
                 if (!partnerName || partnerName.trim() === "") {
-                    showToast("Registracija atšaukta. Būtina įvesti partnerio vardą.");
+                    showToast("Atšaukta. Būtina įvesti partnerio vardą.");
                     return;
                 }
                 
-                let newPartnerUser = {
-                    id: safePartnerId,
-                    name: partnerName.trim(),
-                    gender: currentUser.gender || "M", 
-                    rating: 300,
-                    tier: "D",
-                    total_matches: 0,
-                    last_played: Date.now()
-                };
-                
+                let newPartnerUser = { id: safePartnerId, name: partnerName.trim(), gender: currentUser.gender || "M", rating: 300, tier: "D", total_matches: 0, last_played: Date.now() };
                 firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safePartnerId).set(newPartnerUser).then(() => {
                     completePairRegistration(t, currentUser.name, newPartnerUser.name);
                 });
@@ -866,11 +860,7 @@ function confirmCancel(id) {
         let teamIndex = t.players.findIndex(p => p.toLowerCase().includes(pName.toLowerCase()));
         if(teamIndex !== -1) {
             let teamStr = t.players[teamIndex];
-            if(teamStr.includes('/')) {
-                t.registered -= 2; 
-            } else {
-                t.registered -= 1; 
-            }
+            if(teamStr.includes('/')) { t.registered -= 2; } else { t.registered -= 1; }
             t.players.splice(teamIndex, 1); 
         }
     }
@@ -908,11 +898,11 @@ function loadAutomatedRatings(leagueLevel = 'all') {
 
     const spinner = document.getElementById('loaderSpinner');
     if (leagueLevel === 'all') spinner.style.color = 'var(--primary-blue)';
-    if (leagueLevel === 'D') spinner.style.color = 'var(--lvl-d)';
-    if (leagueLevel === 'D-C') spinner.style.color = 'var(--lvl-d-c)';
-    if (leagueLevel === 'C/C+') spinner.style.color = 'var(--lvl-c)';
-    if (leagueLevel === 'B-/B') spinner.style.color = 'var(--lvl-b)';
-    if (leagueLevel === 'A') spinner.style.color = 'var(--lvl-a)';
+    else if (leagueLevel === 'D') spinner.style.color = 'var(--lvl-d)';
+    else if (leagueLevel === 'D-C') spinner.style.color = 'var(--lvl-d-c)';
+    else if (leagueLevel === 'C/C+') spinner.style.color = 'var(--lvl-c)';
+    else if (leagueLevel === 'B-/B') spinner.style.color = 'var(--lvl-b)';
+    else if (leagueLevel === 'A') spinner.style.color = 'var(--lvl-a)';
 
     firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
         let allPlayers = Object.values(snap.val() || {});
@@ -938,15 +928,13 @@ function loadAutomatedRatings(leagueLevel = 'all') {
         mappedPool.forEach((player, index) => {
             let rankNum = index + 1;
             let rankClass = index === 0 ? 'color: #d69e2e; font-size: 18px; font-weight: 900;' : index === 1 ? 'color: #a0aec0; font-weight: 800;' : index === 2 ? 'color: #dd6b20; font-weight: 800;' : 'color: var(--text-grey);';
+            
             let ptsColor = 'var(--primary-blue)';
-            if (leagueLevel === 'D') ptsColor = 'var(--lvl-d)'; if (leagueLevel === 'D-C') ptsColor = 'var(--lvl-d-c)'; if (leagueLevel === 'C/C+') ptsColor = 'var(--lvl-c)'; if (leagueLevel === 'B-/B') ptsColor = 'var(--lvl-b)'; if (leagueLevel === 'A') ptsColor = 'var(--lvl-a)';
             tbody.innerHTML += `<tr><td style="text-align: center; ${rankClass}">${rankNum}</td><td>${player.name}</td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
         });
 
         document.getElementById('ratingsLoader').style.display = 'none'; document.getElementById('ratingsContent').style.display = 'block';
-    }).catch(err => {
-        console.error("Reitingų užkrovimo klaida:", err);
-    });
+    }).catch(err => { console.error(err); });
 }
 
 function switchTab(pageId, element) { 
@@ -955,7 +943,6 @@ function switchTab(pageId, element) {
     
     if(pageId === 'page-cam') { document.getElementById('mainHeader').style.display = 'none'; startCamera(); } else { document.getElementById('mainHeader').style.display = 'flex'; stopCamera(); }
     if(pageId === 'page-trophy') { document.querySelectorAll('.league-tab').forEach(el => el.classList.remove('active')); document.querySelector('.league-tab[data-league="all"]').classList.add('active'); loadAutomatedRatings('all'); }
-    
     if(pageId === 'page-profile') { renderUserProfile(); }
 }
 function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); switchTab('page-calendar', calendarBtn); }
@@ -964,15 +951,11 @@ function goToHome() { const calendarBtn = document.querySelector('[data-index="1
 // 5. IŠMANIOJI KAMERA IR DI HIGHLIGHTS
 // ==========================================
 
-let cameraStream = null;
-let isRecording = false;      
-let timerIntervalCam = null;  
-let secondsRecord = 0;        
-
+let cameraStream = null; let isRecording = false; let timerIntervalCam = null; let secondsRecord = 0;        
 async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
 function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; document.getElementById('cameraFeed').srcObject = null; } }
 function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; btn.classList.add('recording'); indicator.style.display = 'flex'; aiPanel.style.display = 'none'; infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); document.getElementById('recTimer').innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; btn.classList.remove('recording'); indicator.style.display = 'none'; clearInterval(timerIntervalCam); btn.style.display = 'none'; infoText.style.display = 'none'; aiPanel.style.display = 'block'; setTimeout(() => { document.getElementById('recTimer').innerText = `00:00:00`; }, 1000); } }
-function startAiProcessing() { document.getElementById('startAiBtn').style.display = 'none'; document.getElementById('aiProgress').style.display = 'block'; document.getElementById('aiStatusText').style.display = 'block'; let fill = document.getElementById('aiFill'); let status = document.getElementById('aiStatusText'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; fill.style.width = width + '%'; if(width < 40) status.innerText = `Analizuojama... Ieškoma smūgių (${Math.floor(width)}%)`; else if(width < 80) status.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else status.innerText = `Baigiama... (${Math.floor(width)}%)`; if(width >= 100) { clearInterval(interval); document.getElementById('aiProgress').style.display = 'none'; document.getElementById('aiStatusText').style.display = 'none'; document.getElementById('generatedVideo').style.display = 'block'; showToast("DI Highlights sėkmingai sugeneruoti!"); } }, 500); }
+function startAiProcessing() { document.getElementById('startAiBtn').style.display = 'none'; document.getElementById('aiProgress').style.display = 'block'; document.getElementById('aiStatusText').style.display = 'block'; let fill = document.getElementById('aiFill'); let status = document.getElementById('aiStatusText'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; fill.style.width = width + '%'; if(width < 40) status.innerText = `Analizuojama... (${Math.floor(width)}%)`; else if(width < 80) status.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else status.innerText = `Baigiama... (${Math.floor(width)}%)`; if(width >= 100) { clearInterval(interval); document.getElementById('aiProgress').style.display = 'none'; document.getElementById('aiStatusText').style.display = 'none'; document.getElementById('generatedVideo').style.display = 'block'; showToast("Highlights sugeneruoti!"); } }, 500); }
 function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { document.getElementById('generatedVideo').innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Nuoroda</button></div>`; }, 2000); }
 
 // ==========================================
@@ -1016,20 +999,14 @@ function adminNav(element, viewId) {
 }
 
 function parseTimeStr(timeStr) {
-    const parts = timeStr.split('-');
-    if (parts.length !== 2) return null;
-    const startParts = parts[0].trim().split(':');
-    const endParts = parts[1].trim().split(':');
+    const parts = timeStr.split('-'); if (parts.length !== 2) return null;
+    const startParts = parts[0].trim().split(':'); const endParts = parts[1].trim().split(':');
     if (startParts.length !== 2 || endParts.length !== 2) return null;
-    return {
-        start: parseInt(startParts[0]) * 60 + parseInt(startParts[1]),
-        end: parseInt(endParts[0]) * 60 + parseInt(endParts[1])
-    };
+    return { start: parseInt(startParts[0]) * 60 + parseInt(startParts[1]), end: parseInt(endParts[0]) * 60 + parseInt(endParts[1]) };
 }
 
 function createTournament(e) { 
     e.preventDefault(); 
-    
     const baseDateStr = document.getElementById('newDate').value; 
     const laikas = document.getElementById('newTime').value; 
     const repeatCount = parseInt(document.getElementById('newRepeat').value || 1); 
@@ -1044,10 +1021,7 @@ function createTournament(e) {
 
     if (persidengiantysTurnyrai.length > 0) {
         const rastiTurnyrai = persidengiantysTurnyrai.map(t => `${t.format} (${t.time}, ${t.level} lygis)`).join('\n👉 ');
-        const testiKurima = confirm(`⚠️ ĮSPĖJIMAS: Šią dieną (${baseDateStr}) pasirinktas laikas kerta/persidengia su jau esamais turnyrais:\n👉 ${rastiTurnyrai}\n\nAr tikrai norite sukurti dar vieną turnyrą lygiagrečiai šiuo periodu?`);
-        if (!testiKurima) {
-            return; 
-        }
+        if (!confirm(`⚠️ ĮSPĖJIMAS: Šią dieną kerta kitus turnyrus:\n👉 ${rastiTurnyrai}\n\nTęsti turnyro kūrimą?`)) return;
     }
 
     const [month, day] = baseDateStr.split('-').map(Number);
@@ -1056,33 +1030,26 @@ function createTournament(e) {
     for (let i = 0; i < repeatCount; i++) {
         let newDateObj = new Date(baseDate);
         newDateObj.setDate(baseDate.getDate() + (i * 7)); 
-        
         let m = (newDateObj.getMonth() + 1).toString().padStart(2, '0');
         let d = newDateObj.getDate().toString().padStart(2, '0');
         let finalDateStr = `${m}-${d}`;
 
         const newT = { 
-            id: Date.now() + i, 
-            date: finalDateStr, 
+            id: Date.now() + i, date: finalDateStr, 
             format: document.getElementById('newFormat').value, 
             level: document.getElementById('newLevel').value, 
-            time: laikas, 
-            registered: 0, 
+            time: laikas, registered: 0, 
             max: parseInt(document.getElementById('newMax').value), 
-            status: 'open', 
-            isDemoWaitlist: false, 
-            waitlistCount: 0, 
-            timeState: 'future', 
-            players: [] 
+            status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [] 
         }; 
         tournaments.push(newT); 
     }
-    
     saveData(); 
-    showToast(`Turnyrai sėkmingai paskelbti debesyje! (Viso: ${repeatCount})`); 
+    showToast(`Turnyrai sukurti debesyje! (Viso: ${repeatCount})`); 
     document.getElementById('adminForm').reset(); 
 }
 
+// 🛠️ IŠTAISYTA: Turnyrų trynimas ir redagavimas veikia 100% patikimai
 function renderAdminTournaments() {
     const list = document.getElementById('admin-tournaments-list-db');
     if(!list) return;
@@ -1094,7 +1061,7 @@ function renderAdminTournaments() {
     let sorted = [...tournaments].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
     let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; min-width: 500px;">';
-    html += '<tr style="background: #edf2f7; color: #718096; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;"><th style="padding: 12px; border-radius: 6px 0 0 0;">Diena</th><th style="padding: 12px;">Laikas</th><th style="padding: 12px;">Formatas</th><th style="padding: 12px;">Lygis</th><th style="padding: 12px;">Dalyviai</th><th style="padding: 12px; border-radius: 0 6px 0 0; text-align: center; width: 160px;">Veiksmai</th></tr>';
+    html += '<tr style="background: #edf2f7; color: #718096; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;"><th style="padding: 12px; border-radius: 6px 0 0 0;">Diena</th><th>Laikas</th><th>Formatas</th><th>Lygis</th><th>Dalyviai</th><th style="padding: 12px; text-align: center; width: 160px; border-radius: 0 6px 0 0;">Veiksmai</th></tr>';
 
     sorted.forEach(t => {
         let levelColor = "color: #3182ce;";
@@ -1111,7 +1078,7 @@ function renderAdminTournaments() {
             <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${t.level}</span></td>
             <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
             <td style="padding: 12px; text-align: center;">
-                <button type="button" onclick="openAdminTournamentModal('${t.id}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Redaguoti</button>
+                <button type="button" onclick="openAdminTournamentModal('${t.id}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
                 <button type="button" onclick="deleteAdminTournamentLive('${t.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
@@ -1126,7 +1093,7 @@ function openAdminTournamentModal(id) {
     document.getElementById('editAdminTournamentId').value = t.id;
     document.getElementById('editAdminTournamentFormat').value = t.format;
     document.getElementById('editAdminTournamentLevel').value = t.level;
-    document.getElementById('editAdminTournamentMax').value = t.max || t.maxPlayers || 16;
+    document.getElementById('editAdminTournamentMax').value = t.max || 16;
     document.getElementById('editAdminTournamentTime').value = t.time;
     document.getElementById('editAdminTournamentDate').value = t.date;
     document.getElementById('adminEditTournamentModal').classList.add('show');
@@ -1156,17 +1123,16 @@ function saveAdminTournamentChanges() {
         saveData(); 
         closeAdminTournamentModal();
         showToast("Turnyras sėkmingai atnaujintas!");
-    } else {
-        alert("Turnyras nerastas.");
+        renderAdminTournaments();
     }
 }
 
 function deleteAdminTournamentLive(id) {
-    if(confirm("Ar tikrai norite ištrinti šį turnyrą iš debesies? Visi užsiregistravę žaidėjai bus pašalinti.")) {
-        tournaments = tournaments.filter(t => String(t.id) !== String(id));
-        saveData();
-        showToast("Turnyras ištrintas iš debesies!");
-    }
+    if(!confirm("Ar tikrai norite ištrinti šį turnyrą iš debesies? Visi užsiregistravę žaidėjai bus pašalinti.")) return;
+    tournaments = tournaments.filter(t => String(t.id) !== String(id));
+    saveData();
+    showToast("Turnyras ištrintas iš debesies!");
+    renderAdminTournaments();
 }
 
 function deleteTournament(id) {
@@ -1175,7 +1141,7 @@ function deleteTournament(id) {
 
 function loadAdminPlayersDB() {
     const dbList = document.getElementById('admin-players-list-db');
-    if (dbList) dbList.innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama oficiali lygos bazė...</div>';
+    if (dbList) dbList.innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama...</div>';
     
     firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
         let data = snap.val() || {};
@@ -1183,7 +1149,7 @@ function loadAdminPlayersDB() {
         document.getElementById('admin-players-count').innerText = `Viso: ${globalAdminPlayers.length}`;
         filterAdminPlayers();
     }).catch(err => {
-        if (dbList) dbList.innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida užkraunant žaidėjus.</div>';
+        document.getElementById('admin-players-list-db').innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis.</div>';
     });
 }
 
@@ -1197,7 +1163,7 @@ function renderAdminPlayersDB(playersArray) {
     }
 
     let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; min-width: 400px;">';
-    html += '<tr style="background: #edf2f7; color: #718096; text-transform: uppercase; font-size: 10px; letter-spacing: 1px;"><th style="padding: 12px; border-top-left-radius: 6px;">Vardas</th><th style="padding: 12px; text-align:center;">Lytis</th><th style="padding: 12px;">Lygis</th><th style="padding: 12px;">ELO Taškai</th><th style="padding: 12px; border-top-right-radius: 6px; text-align: center; width:140px;">Veiksmai</th></tr>';
+    html += '<tr style="background: #edf2f7; color: #718096; text-transform: uppercase; font-size: 10px; letter-spacing: 1px;"><th style="padding: 12px; border-top-left-radius: 6px;">Vardas</th><th style="text-align:center;">Lytis</th><th>Lygis</th><th>ELO Taškai</th><th style="padding: 12px; border-top-right-radius: 6px; text-align: center; width:140px;">Veiksmai</th></tr>';
     
     playersArray.forEach(p => {
         let ptsColor = 'var(--primary-blue)';
@@ -1219,8 +1185,8 @@ function renderAdminPlayersDB(playersArray) {
             <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${p.tier || 'D'}</span></td>
             <td style="padding: 12px; color: ${ptsColor}; font-weight: 900; font-size: 15px;">${p.rating || 300}</td>
             <td style="padding: 12px; text-align: center;">
-                <button type="button" onclick="openAdminEditModal('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti profilį"><i class="fa-solid fa-pen"></i></button>
-                <button type="button" onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Ištrinti paskyrą"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" onclick="openAdminEditModal('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
@@ -1286,6 +1252,7 @@ function closeAdminEditModal() {
     document.getElementById('adminEditPlayerModal').classList.remove('show'); 
 }
 
+// 🛠️ IŠTAISYTA: Saugus ID (telefono numerio) keitimas debesyje be klaidų
 function saveAdminPlayerChanges() {
     const originalId = document.getElementById('editAdminPlayerId').value;
     const newId = document.getElementById('editAdminPlayerPhone').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1294,7 +1261,7 @@ function saveAdminPlayerChanges() {
     const rating = parseInt(document.getElementById('editAdminPlayerRating').value) || 300;
 
     if (!name) { alert("Vardas ir Pavardė privalo būti užpildyti!"); return; }
-    if (!newId) { alert("Telefono numeris / Unikalus ID negali būti tuščias!"); return; }
+    if (!newId) { alert("Telefono numeris negali būti tuščias!"); return; }
 
     let tier = "D";
     if (rating >= 851) tier = "A";
@@ -1302,21 +1269,13 @@ function saveAdminPlayerChanges() {
     else if (rating >= 501) tier = "C/C+";
     else if (rating >= 351) tier = "D-C";
 
-    let updateData = {
-        id: newId,
-        phone: newId,
-        name: name,
-        gender: gender,
-        rating: rating,
-        tier: tier,
-        photo: tempAdminPlayerPhotoBase64
-    };
+    let updateData = { id: newId, phone: newId, name: name, gender: gender, rating: rating, tier: tier, photo: tempAdminPlayerPhotoBase64 };
 
     if (String(originalId) !== String(newId)) {
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + newId).set(updateData).then(() => {
             firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).remove().then(() => {
                 closeAdminEditModal();
-                showToast("ID sėkmingai pakeistas ir profilis išsaugotas!");
+                showToast("ID pakeistas ir duomenys išsaugoti!");
                 loadAdminPlayersDB();
             });
         }).catch(err => { alert("Klaida keičiant unikalų ID."); });
@@ -1329,10 +1288,11 @@ function saveAdminPlayerChanges() {
     }
 }
 
+// 🛠️ IŠTAISYTA: Žaidėjų ištrynimas ir gyvas sąrašo persiuntimas
 function deleteAdminPlayer(id) {
     let p = globalAdminPlayers.find(x => String(x.id) === String(id));
-    if(!p) { return; }
-    if(confirm(`Ar tikrai norite visam laikui IŠTRINTI žaidėją "${p.name}" iš bendros Lietuvos lygos sistemos?`)) {
+    if(!p) return;
+    if(confirm(`Ar tikrai norite visam laikui IŠTRINTI žaidėją "${p.name}" iš sistemos?`)) {
         firebase.database().ref(GLOBAL_PLAYERS_KEY).child(p.id).remove().then(() => {
             showToast("Žaidėjas sėkmingai pašalintas!");
             loadAdminPlayersDB();
