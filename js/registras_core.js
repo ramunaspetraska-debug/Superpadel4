@@ -13,10 +13,10 @@ const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments";
 const GLOBAL_ARCHIVE_KEY = "padelio_archive_turnyrai"; 
 const GLOBAL_FRIENDLIES_KEY = "padelio_global_friendlies"; 
 
-// 🌟 VIENAS TEISYBĖS ŠALTINIS: Visi lygiai suvienodinti visai sistemai
 const LEAGUE_LEVELS = ['Atviras', 'A', 'B-/B', 'C/C+', 'D-C', 'D', 'Privatus'];
 
 let liveDbRef = null; 
+let casualPlayersRef = null; // 🛠️ Saugiklis dubliuojantiems Firebase klausikliams išjungti
 let currentLiveMatches = []; 
 let activeLiveCourt = 1;
 let eRefAuthenticated = false; 
@@ -28,7 +28,6 @@ let friendlyMatches = [];
 let globalAdminPlayers = [];
 let tempAdminPlayerPhotoBase64 = null;
 
-// Helper: Saugus teksto išvalymas HTMLXSS prevencijai
 function esc(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
@@ -107,6 +106,7 @@ function processAuth() {
 
 function updateAuthUI() {
     let btn = document.getElementById('authBtn');
+    if(!btn) return;
     if(currentUser) {
         let shortName = currentUser.name.split(' ')[0];
         btn.innerHTML = `<i class="fa-solid fa-user-check"></i> ${shortName}`;
@@ -444,6 +444,7 @@ function connectLiveRoom() {
 
 function renderLiveCourtFilters() { 
     const container = document.getElementById('liveCourtsContainer'); 
+    if(!container) return;
     container.innerHTML = ''; 
     let courts = [...new Set(currentLiveMatches.map(m => m.court))].sort((a,b) => a-b); 
     courts.forEach(courtNum => { 
@@ -452,7 +453,6 @@ function renderLiveCourtFilters() {
     }); 
 }
 
-// Žiūrovų taškų valdymas gyvai
 function changeLiveCourt(courtNum) { 
     activeLiveCourt = courtNum; 
     renderLiveCourtFilters(); 
@@ -490,6 +490,7 @@ function changeLiveScore(matchId, teamNum, change) {
 
 function renderLiveScoreboard() { 
     const container = document.getElementById('liveScoreBoxContainer'); 
+    if(!container) return;
     const match = currentLiveMatches.find(m => m.court == activeLiveCourt); 
     if(!match) { container.innerHTML = "<p>Klaida kraunant mačą.</p>"; return; } 
     
@@ -527,6 +528,7 @@ let activeDate = dynamicDates.find(d => d.isToday).dateKey;
 
 function initDates() { 
     const carousel = document.getElementById('dateCarousel');
+    if(!carousel) return;
     const adminSelect = document.getElementById('newDate'); 
     carousel.innerHTML = ''; 
     if(adminSelect) adminSelect.innerHTML = '';
@@ -574,7 +576,7 @@ function initDates() {
 
 function handleCarouselWheel(e) {
     const carousel = document.getElementById('dateCarousel');
-    if (e.deltaY !== 0) {
+    if (carousel && e.deltaY !== 0) {
         e.preventDefault();
         carousel.scrollLeft += e.deltaY * 1.5; 
     }
@@ -660,7 +662,8 @@ function initTournamentsDB() {
         
         renderTournaments();
         
-        if (document.getElementById('page-profile').classList.contains('active')) {
+        const profilePage = document.getElementById('page-profile');
+        if (profilePage && profilePage.classList.contains('active')) {
             renderUserProfile();
         }
         
@@ -687,9 +690,9 @@ function renderTournaments() {
     const list = document.getElementById('scheduleList'); 
     if(!list) return;
 
-    const formatFilter = document.getElementById('filterFormat').value; 
-    const levelFilter = document.getElementById('filterLevel').value; 
-    const playerFilter = (document.getElementById('filterPlayer').value || "").toLowerCase().trim(); 
+    const formatFilter = document.getElementById('filterFormat')?.value || 'all'; 
+    const levelFilter = document.getElementById('filterLevel')?.value || 'all'; 
+    const playerFilter = (document.getElementById('filterPlayer')?.value || "").toLowerCase().trim(); 
     list.innerHTML = '';
     
     let filtered = tournaments.filter(t => { 
@@ -759,9 +762,9 @@ function renderTournaments() {
 function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
-function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; document.getElementById('filterPlayer').value = ''; renderTournaments(); }
+function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; let pFilter = document.getElementById('filterPlayer'); if(pFilter) pFilter.value = ''; renderTournaments(); }
 
-const modal = document.getElementById('actionModal'); const modalTitle = document.getElementById('modalTitle'); const modalBody = document.getElementById('modalBody'); const modalActions = document.getElementById('modalActions'); function closeModal() { modal.classList.remove('show'); }
+const modal = document.getElementById('actionModal'); const modalTitle = document.getElementById('modalTitle'); const modalBody = document.getElementById('modalBody'); const modalActions = document.getElementById('modalActions'); function closeModal() { if(modal) modal.classList.remove('show'); }
 
 function openRegisterModal(id) { 
     if(!currentUser) { 
@@ -867,8 +870,9 @@ function confirmCancel(id) {
     t.status = 'open';
     saveData(); 
     closeModal(); 
-    document.getElementById('notifBadge').style.display = 'none'; 
-    showToast("Registracija sėkmingai atšaukta."); 
+    let notifBadge = document.getElementById('notifBadge');
+    if(notifBadge) notifBadge.style.display = 'none'; 
+    showToast("Registracija sėkmingai atšauktą."); 
     renderUserProfile();
 }
 
@@ -876,10 +880,16 @@ function openWaitlistCancelModal(id) { let t = tournaments.find(x => x.id === id
 function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); closeModal(); showToast("Išbraukta iš rezervo."); }
 
 let currentPushId = null; 
-function simulateSpotOpening(e, id) { e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); document.getElementById('pushFormatName').innerText = `${t.format}`; document.getElementById('notifBadge').style.display = 'flex'; document.getElementById('pushNotification').style.top = '20px'; setTimeout(() => { document.getElementById('pushNotification').style.top = '-100px'; }, 8000); }
-function closePush() { document.getElementById('pushNotification').style.top = '-100px'; } 
+function simulateSpotOpening(e, id) { 
+    e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); 
+    let pushFormat = document.getElementById('pushFormatName'); if(pushFormat) pushFormat.innerText = `${t.format}`;
+    let notif = document.getElementById('notifBadge'); if(notif) notif.style.display = 'flex'; 
+    let pushContainer = document.getElementById('pushNotification'); if(pushContainer) pushContainer.style.top = '20px'; 
+    setTimeout(() => { if(pushContainer) pushContainer.style.top = '-100px'; }, 8000); 
+}
+function closePush() { let p = document.getElementById('pushNotification'); if(p) p.style.top = '-100px'; } 
 function manageReservation() { closePush(); openCancelModal(currentPushId); } 
-function showToast(text) { const toast = document.getElementById('toastMsg'); toast.innerText = text; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
+function showToast(text) { const toast = document.getElementById('toastMsg'); if(!toast) return; toast.innerText = text; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
 
 // ==========================================
 // 4. PASAULINIAI REITINGAI (TIER LEAGUES)
@@ -893,16 +903,20 @@ function changeLeague(league) {
 }
 
 function loadAutomatedRatings(leagueLevel = 'all') {
-    document.getElementById('ratingsContent').style.display = 'none';
-    document.getElementById('ratingsLoader').style.display = 'block';
+    let rContent = document.getElementById('ratingsContent');
+    let rLoader = document.getElementById('ratingsLoader');
+    if(rContent) rContent.style.display = 'none';
+    if(rLoader) rLoader.style.display = 'block';
 
     const spinner = document.getElementById('loaderSpinner');
-    if (leagueLevel === 'all') spinner.style.color = 'var(--primary-blue)';
-    else if (leagueLevel === 'D') spinner.style.color = 'var(--lvl-d)';
-    else if (leagueLevel === 'D-C') spinner.style.color = 'var(--lvl-d-c)';
-    else if (leagueLevel === 'C/C+') spinner.style.color = 'var(--lvl-c)';
-    else if (leagueLevel === 'B-/B') spinner.style.color = 'var(--lvl-b)';
-    else if (leagueLevel === 'A') spinner.style.color = 'var(--lvl-a)';
+    if (spinner) {
+        if (leagueLevel === 'all') spinner.style.color = 'var(--primary-blue)';
+        else if (leagueLevel === 'D') spinner.style.color = 'var(--lvl-d)';
+        else if (leagueLevel === 'D-C') spinner.style.color = 'var(--lvl-d-c)';
+        else if (leagueLevel === 'C/C+') spinner.style.color = 'var(--lvl-c)';
+        else if (leagueLevel === 'B-/B') spinner.style.color = 'var(--lvl-b)';
+        else if (leagueLevel === 'A') spinner.style.color = 'var(--lvl-a)';
+    }
 
     firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
         let allPlayers = Object.values(snap.val() || {});
@@ -914,26 +928,33 @@ function loadAutomatedRatings(leagueLevel = 'all') {
         dataPool.sort((a,b) => (b.rating || 0) - (a.rating || 0));
         let mappedPool = dataPool.map(p => ({ name: p.name, points: p.rating || 0 }));
 
+        let p1 = document.getElementById('pod1-name'), p1p = document.getElementById('pod1-pts');
+        let p2 = document.getElementById('pod2-name'), p2p = document.getElementById('pod2-pts');
+        let p3 = document.getElementById('pod3-name'), p3p = document.getElementById('pod3-pts');
+
         if(mappedPool.length >= 3) {
-            document.getElementById('pod1-name').innerText = mappedPool[0].name; document.getElementById('pod1-pts').innerText = mappedPool[0].points + " pts";
-            document.getElementById('pod2-name').innerText = mappedPool[1].name; document.getElementById('pod2-pts').innerText = mappedPool[1].points + " pts";
-            document.getElementById('pod3-name').innerText = mappedPool[2].name; document.getElementById('pod3-pts').innerText = mappedPool[2].points + " pts";
+            if(p1) p1.innerText = mappedPool[0].name; if(p1p) p1p.innerText = mappedPool[0].points + " pts";
+            if(p2) p2.innerText = mappedPool[1].name; if(p2p) p2p.innerText = mappedPool[1].points + " pts";
+            if(p3) p3.innerText = mappedPool[2].name; if(p3p) p3p.innerText = mappedPool[2].points + " pts";
         } else {
-            document.getElementById('pod1-name').innerText = mappedPool[0]?.name || "-"; document.getElementById('pod1-pts').innerText = mappedPool[0] ? mappedPool[0].points + " pts" : "-";
-            document.getElementById('pod2-name').innerText = mappedPool[1]?.name || "-"; document.getElementById('pod2-pts').innerText = mappedPool[1] ? mappedPool[1].points + " pts" : "-";
-            document.getElementById('pod3-name').innerText = "-"; document.getElementById('pod3-pts').innerText = "-";
+            if(p1) p1.innerText = mappedPool[0]?.name || "-"; if(p1p) p1p.innerText = mappedPool[0] ? mappedPool[0].points + " pts" : "-";
+            if(p2) p2.innerText = mappedPool[1]?.name || "-"; if(p2p) p2p.innerText = mappedPool[1] ? mappedPool[1].points + " pts" : "-";
+            if(p3) p3.innerText = "-"; if(p3p) p3p.innerText = "-";
         }
 
-        const tbody = document.getElementById('ratingsTableBody'); tbody.innerHTML = '';
-        mappedPool.forEach((player, index) => {
-            let rankNum = index + 1;
-            let rankClass = index === 0 ? 'color: #d69e2e; font-size: 18px; font-weight: 900;' : index === 1 ? 'color: #a0aec0; font-weight: 800;' : index === 2 ? 'color: #dd6b20; font-weight: 800;' : 'color: var(--text-grey);';
-            
-            let ptsColor = 'var(--primary-blue)';
-            tbody.innerHTML += `<tr><td style="text-align: center; ${rankClass}">${rankNum}</td><td>${player.name}</td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
-        });
+        const tbody = document.getElementById('ratingsTableBody'); 
+        if(tbody) {
+            tbody.innerHTML = '';
+            mappedPool.forEach((player, index) => {
+                let rankNum = index + 1;
+                let rankClass = index === 0 ? 'color: #d69e2e; font-size: 18px; font-weight: 900;' : index === 1 ? 'color: #a0aec0; font-weight: 800;' : index === 2 ? 'color: #dd6b20; font-weight: 800;' : 'color: var(--text-grey);';
+                let ptsColor = 'var(--primary-blue)';
+                tbody.innerHTML += `<tr><td style="text-align: center; ${rankClass}">${rankNum}</td><td>${esc(player.name)}</td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
+            });
+        }
 
-        document.getElementById('ratingsLoader').style.display = 'none'; document.getElementById('ratingsContent').style.display = 'block';
+        if(rLoader) rLoader.style.display = 'none'; 
+        if(rContent) rContent.style.display = 'block';
     }).catch(err => { console.error(err); });
 }
 
@@ -941,22 +962,33 @@ function switchTab(pageId, element) {
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active')); if(element) element.classList.add('active'); 
     document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active')); const page = document.getElementById(pageId); if(page) page.classList.add('active'); 
     
-    if(pageId === 'page-cam') { document.getElementById('mainHeader').style.display = 'none'; startCamera(); } else { document.getElementById('mainHeader').style.display = 'flex'; stopCamera(); }
-    if(pageId === 'page-trophy') { document.querySelectorAll('.league-tab').forEach(el => el.classList.remove('active')); document.querySelector('.league-tab[data-league="all"]').classList.add('active'); loadAutomatedRatings('all'); }
+    if(pageId === 'page-cam') { 
+        let mH = document.getElementById('mainHeader'); if(mH) mH.style.display = 'none'; 
+        startCamera(); 
+    } else { 
+        let mH = document.getElementById('mainHeader'); if(mH) mH.style.display = 'flex'; 
+        stopCamera(); 
+    }
+    if(pageId === 'page-trophy') { 
+        document.querySelectorAll('.league-tab').forEach(el => el.classList.remove('active')); 
+        let lTab = document.querySelector('.league-tab[data-league="all"]');
+        if(lTab) lTab.classList.add('active'); 
+        loadAutomatedRatings('all'); 
+    }
     if(pageId === 'page-profile') { renderUserProfile(); }
 }
-function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); switchTab('page-calendar', calendarBtn); }
+function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); if(calendarBtn) switchTab('page-calendar', calendarBtn); }
 
 // ==========================================
 // 5. IŠMANIOJI KAMERA IR DI HIGHLIGHTS
 // ==========================================
 
 let cameraStream = null; let isRecording = false; let timerIntervalCam = null; let secondsRecord = 0;        
-async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
-function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; document.getElementById('cameraFeed').srcObject = null; } }
-function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; btn.classList.add('recording'); indicator.style.display = 'flex'; aiPanel.style.display = 'none'; infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); document.getElementById('recTimer').innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; btn.classList.remove('recording'); indicator.style.display = 'none'; clearInterval(timerIntervalCam); btn.style.display = 'none'; infoText.style.display = 'none'; aiPanel.style.display = 'block'; setTimeout(() => { document.getElementById('recTimer').innerText = `00:00:00`; }, 1000); } }
-function startAiProcessing() { document.getElementById('startAiBtn').style.display = 'none'; document.getElementById('aiProgress').style.display = 'block'; document.getElementById('aiStatusText').style.display = 'block'; let fill = document.getElementById('aiFill'); let status = document.getElementById('aiStatusText'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; fill.style.width = width + '%'; if(width < 40) status.innerText = `Analizuojama... (${Math.floor(width)}%)`; else if(width < 80) status.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else status.innerText = `Baigiama... (${Math.floor(width)}%)`; if(width >= 100) { clearInterval(interval); document.getElementById('aiProgress').style.display = 'none'; document.getElementById('aiStatusText').style.display = 'none'; document.getElementById('generatedVideo').style.display = 'block'; showToast("Highlights sugeneruoti!"); } }, 500); }
-function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { document.getElementById('generatedVideo').innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Nuoroda</button></div>`; }, 2000); }
+async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (!videoElement || cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
+function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; let vFeed = document.getElementById('cameraFeed'); if(vFeed) vFeed.srcObject = null; } }
+function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; if(btn) btn.classList.add('recording'); if(indicator) indicator.style.display = 'flex'; if(aiPanel) aiPanel.style.display = 'none'; if(infoText) infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); let recTimer = document.getElementById('recTimer'); if(recTimer) recTimer.innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; if(btn) btn.classList.remove('recording'); if(indicator) indicator.style.display = 'none'; clearInterval(timerIntervalCam); if(btn) btn.style.display = 'none'; if(infoText) infoText.style.display = 'none'; if(aiPanel) aiPanel.style.display = 'block'; setTimeout(() => { let recTimer = document.getElementById('recTimer'); if(recTimer) recTimer.innerText = `00:00:00`; }, 1000); } }
+function startAiProcessing() { let sBtn = document.getElementById('startAiBtn'); if(sBtn) sBtn.style.display = 'none'; let aiProg = document.getElementById('aiProgress'); if(aiProg) aiProg.style.display = 'block'; let aiStat = document.getElementById('aiStatusText'); if(aiStat) aiStat.style.display = 'block'; let fill = document.getElementById('aiFill'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; if(fill) fill.style.width = width + '%'; if(aiStat) { if(width < 40) aiStat.innerText = `Analizuojama... (${Math.floor(width)}%)`; else if(width < 80) aiStat.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else aiStat.innerText = `Baigiama... (${Math.floor(width)}%)`; } if(width >= 100) { clearInterval(interval); if(aiProg) aiProg.style.display = 'none'; if(aiStat) aiStat.style.display = 'none'; let gVid = document.getElementById('generatedVideo'); if(gVid) gVid.style.display = 'block'; showToast("Highlights sugeneruoti!"); } }, 500); }
+function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { let gVid = document.getElementById('generatedVideo'); if(gVid) gVid.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Nuoroda</button></div>`; }, 2000); }
 
 // ==========================================
 // 6. ADMNISTRATORIAUS VALDYMO PLATFORMA
@@ -971,6 +1003,7 @@ function promptAdmin() {
 function toggleMode() {
     const app = document.getElementById('appMode'); 
     const admin = document.getElementById('adminMode');
+    if(!app || !admin) return;
     if (isAppMode) { 
         app.style.display = 'none'; 
         admin.style.display = 'block'; 
@@ -999,6 +1032,7 @@ function adminNav(element, viewId) {
 }
 
 function parseTimeStr(timeStr) {
+    if(!timeStr) return null;
     const parts = timeStr.split('-'); if (parts.length !== 2) return null;
     const startParts = parts[0].trim().split(':'); const endParts = parts[1].trim().split(':');
     if (startParts.length !== 2 || endParts.length !== 2) return null;
@@ -1049,7 +1083,6 @@ function createTournament(e) {
     document.getElementById('adminForm').reset(); 
 }
 
-// 🛠️ IŠTAISYTA: Turnyrų trynimas ir redagavimas veikia 100% patikimai
 function renderAdminTournaments() {
     const list = document.getElementById('admin-tournaments-list-db');
     if(!list) return;
@@ -1146,10 +1179,11 @@ function loadAdminPlayersDB() {
     firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
         let data = snap.val() || {};
         globalAdminPlayers = Object.values(data).sort((a,b) => (b.rating || 0) - (a.rating || 0));
-        document.getElementById('admin-players-count').innerText = `Viso: ${globalAdminPlayers.length}`;
+        let countEl = document.getElementById('admin-players-count');
+        if(countEl) countEl.innerText = `Viso: ${globalAdminPlayers.length}`;
         filterAdminPlayers();
     }).catch(err => {
-        document.getElementById('admin-players-list-db').innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis.</div>';
+        if(dbList) dbList.innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida kraunant duomenis.</div>';
     });
 }
 
@@ -1195,9 +1229,9 @@ function renderAdminPlayersDB(playersArray) {
 }
 
 function filterAdminPlayers() {
-    let query = document.getElementById('adminPlayerSearch').value.toLowerCase().trim();
-    let gender = document.getElementById('adminFilterGender').value;
-    let tier = document.getElementById('adminFilterTier').value;
+    let query = document.getElementById('adminPlayerSearch')?.value.toLowerCase().trim() || '';
+    let gender = document.getElementById('adminFilterGender')?.value || 'all';
+    let tier = document.getElementById('adminFilterTier')?.value || 'all';
 
     let filtered = globalAdminPlayers.filter(p => {
         let nameMatch = (p.name || "").toLowerCase().includes(query) || String(p.id || "").toLowerCase().includes(query);
@@ -1220,7 +1254,8 @@ function handleAdminPlayerPhotoUpload(e) {
             tempAdminPlayerPhotoBase64 = c.toDataURL('image/jpeg', 0.82);
             const pr = document.getElementById('editAdminPlayerPhotoPreview');
             if(pr) { pr.src = tempAdminPlayerPhotoBase64; pr.style.display = 'block'; }
-            document.getElementById('editAdminPlayerPhotoPlaceholder').style.display = 'none';
+            let placeholder = document.getElementById('editAdminPlayerPhotoPlaceholder');
+            if(placeholder) placeholder.style.display = 'none';
         };
         img.src = ev.target.result;
     };
@@ -1240,9 +1275,11 @@ function openAdminEditModal(id) {
     const pr = document.getElementById('editAdminPlayerPhotoPreview');
     const ph = document.getElementById('editAdminPlayerPhotoPlaceholder');
     if(tempAdminPlayerPhotoBase64 && tempAdminPlayerPhotoBase64 !== "null" && tempAdminPlayerPhotoBase64 !== "") {
-        pr.src = tempAdminPlayerPhotoBase64; pr.style.display = 'block'; ph.style.display = 'none';
+        if(pr) { pr.src = tempAdminPlayerPhotoBase64; pr.style.display = 'block'; }
+        if(ph) ph.style.display = 'none';
     } else {
-        pr.src = ''; pr.style.display = 'none'; ph.style.display = 'block';
+        if(pr) { pr.src = ''; pr.style.display = 'none'; }
+        if(ph) ph.style.display = 'block';
     }
     document.getElementById('editAdminPlayerPhotoInput').value = '';
     document.getElementById('adminEditPlayerModal').classList.add('show');
@@ -1252,7 +1289,6 @@ function closeAdminEditModal() {
     document.getElementById('adminEditPlayerModal').classList.remove('show'); 
 }
 
-// 🛠️ IŠTAISYTA: Saugus ID (telefono numerio) keitimas debesyje be klaidų
 function saveAdminPlayerChanges() {
     const originalId = document.getElementById('editAdminPlayerId').value;
     const newId = document.getElementById('editAdminPlayerPhone').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1288,7 +1324,6 @@ function saveAdminPlayerChanges() {
     }
 }
 
-// 🛠️ IŠTAISYTA: Žaidėjų ištrynimas ir gyvas sąrašo persiuntimas
 function deleteAdminPlayer(id) {
     let p = globalAdminPlayers.find(x => String(x.id) === String(id));
     if(!p) return;
@@ -1304,11 +1339,11 @@ function initFriendliesDB() {
     firebase.database().ref(GLOBAL_FRIENDLIES_KEY).on('value', snap => {
         let data = snap.val();
         friendlyMatches = data ? Object.values(data) : [];
-        if (document.getElementById('page-profile').classList.contains('active')) {
+        const profilePage = document.getElementById('page-profile');
+        if (profilePage && profilePage.classList.contains('active')) {
             renderUserProfile();
         }
     });
 }
 
-// Inicializacija užkrovus puslapį
 window.onload = () => { initDates(); initTournamentsDB(); initFriendliesDB(); updateAuthUI(); };
