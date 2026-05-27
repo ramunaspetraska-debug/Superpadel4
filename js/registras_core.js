@@ -25,7 +25,7 @@ let friendlyMatches = [];
 let globalAdminPlayers = [];
 let tempAdminPlayerPhotoBase64 = null;
 
-// Helper: Saugus teksto išvalymas
+// Saugus teksto išvalymas HTMLXSS prevencijai
 function esc(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
@@ -742,7 +742,13 @@ function renderTournaments() {
         let avatar1 = (t.players && t.players[0]) ? t.players[0].substring(0,2) : 'AŽ'; 
         let avatar2 = (t.players && t.players[1]) ? t.players[1].substring(0,2) : 'MK';
         
-        let cardHTML = `<div class="schedule-card level-${t.level.toLowerCase().replace('/','-').replace('+','') || 'atviras'} ${cardClassModifier}" onclick="handleCardClick(${t.id})"><div class="card-date-square"><div class="num">${dayNum}</div><div class="name">${dayName}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${t.format}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${displayLevel} Lygis</div>${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${t.time}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(t.status !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
+        // Dinaminis pritaikymas CSS stiliams be klaidų
+        let lvlClass = t.level.toLowerCase();
+        if (lvlClass === 'b-/b') lvlClass = 'b';
+        if (lvlClass === 'c/c+') lvlClass = 'c';
+        if (lvlClass === 'd-c') lvlClass = 'd-c';
+
+        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${t.id})"><div class="card-date-square"><div class="num">${dayNum}</div><div class="name">${dayName}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${t.format}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${displayLevel} Lygis</div>${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${t.time}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(t.status !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
         list.innerHTML += cardHTML;
     });
 }
@@ -762,7 +768,8 @@ function openRegisterModal(id) {
         return; 
     }
     let t = tournaments.find(x => x.id === id); 
-    let displayLevel = t.level;
+    let displayLevel = t.level; 
+    if (t.level === 'Privatus') displayLevel = 'Draugų';
     modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
 }
 
@@ -1105,8 +1112,8 @@ function renderAdminTournaments() {
             <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${t.level}</span></td>
             <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
             <td style="padding: 12px; text-align: center;">
-                <button type="button" onclick="openAdminTournamentModal('${t.id}', '${t.format}', '${t.level}', ${t.max || 16}, '${t.time}', '${t.date}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Redaguoti</button>
-                <button type="button" onclick="deleteTournament Live('${t.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" onclick="openAdminTournamentModal('${t.id}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Redaguoti</button>
+                <button type="button" onclick="deleteAdminTournamentLive('${t.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
@@ -1114,11 +1121,13 @@ function renderAdminTournaments() {
     list.innerHTML = html;
 }
 
-function openAdminTournamentModal(id, format, level, max, time, date) {
-    document.getElementById('editAdminTournamentId').value = id;
+function openAdminTournamentModal(id) {
+    let t = tournaments.find(x => String(x.id) === String(id));
+    if(!t) return;
+    document.getElementById('editAdminTournamentId').value = t.id;
     document.getElementById('editAdminTournamentFormat').value = format;
     document.getElementById('editAdminTournamentLevel').value = level;
-    document.getElementById('editAdminTournamentMax').value = max;
+    document.getElementById('editAdminTournamentMax').value = max || 16;
     document.getElementById('editAdminTournamentTime').value = time;
     document.getElementById('editAdminTournamentDate').value = date;
     document.getElementById('adminEditTournamentModal').classList.add('show');
@@ -1169,11 +1178,13 @@ function loadAdminPlayersDB() {
     const dbList = document.getElementById('admin-players-list-db');
     if (dbList) dbList.innerHTML = '<div style="text-align:center; padding:20px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama oficiali lygos bazė...</div>';
     
-    firebase.database().ref(GLOBAL_PLAYERS_KEY).on('value', snap => {
+    firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
         let data = snap.val() || {};
         globalAdminPlayers = Object.values(data).sort((a,b) => (b.rating || 0) - (a.rating || 0));
         document.getElementById('admin-players-count').innerText = `Viso: ${globalAdminPlayers.length}`;
         filterAdminPlayers();
+    }).catch(err => {
+        if (dbList) dbList.innerHTML = '<div style="color:red; text-align:center; padding: 20px;">Klaida užkraunant žaidėjus.</div>';
     });
 }
 
@@ -1209,7 +1220,7 @@ function renderAdminPlayersDB(playersArray) {
             <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${p.tier || 'D'}</span></td>
             <td style="padding: 12px; color: ${ptsColor}; font-weight: 900; font-size: 15px;">${p.rating || 300}</td>
             <td style="padding: 12px; text-align: center;">
-                <button type="button" onclick="openAdminEditModal('${p.id}', '${p.name.replace(/'/g, "\\'")}', '${p.gender}', ${p.rating || 300}, '${p.phone || p.id}', '${p.photo || ''}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti profilį"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" onclick="openAdminEditModal('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Redaguoti profilį"><i class="fa-solid fa-pen"></i></button>
                 <button type="button" onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Ištrinti paskyrą"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
@@ -1228,7 +1239,7 @@ function filterAdminPlayers() {
         let genderMatch = (gender === "all") || (p.gender === gender);
         let tierMatch = (tier === "all") || (p.tier === tier);
         return nameMatch && genderMatch && tierMatch;
-            });
+    });
     renderAdminPlayersDB(filtered);
 }
 
@@ -1251,14 +1262,16 @@ function handleAdminPlayerPhotoUpload(e) {
     r.readAsDataURL(file);
 }
 
-function openAdminEditModal(id, name, gender, rating, phone, photo) {
-    document.getElementById('editAdminPlayerId').value = id;
-    document.getElementById('editAdminPlayerName').value = name;
-    document.getElementById('editAdminPlayerGender').value = gender;
-    document.getElementById('editAdminPlayerRating').value = rating;
-    document.getElementById('editAdminPlayerPhone').value = phone;
+function openAdminEditModal(id) {
+    let p = globalAdminPlayers.find(x => String(x.id) === String(id));
+    if(!p) return;
+    document.getElementById('editAdminPlayerId').value = p.id;
+    document.getElementById('editAdminPlayerName').value = p.name;
+    document.getElementById('editAdminPlayerGender').value = p.gender;
+    document.getElementById('editAdminPlayerRating').value = p.rating || 300;
+    document.getElementById('editAdminPlayerPhone').value = p.phone || p.id;
     
-    tempAdminPlayerPhotoBase64 = photo || null;
+    tempAdminPlayerPhotoBase64 = p.photo || null;
     const pr = document.getElementById('editAdminPlayerPhotoPreview');
     const ph = document.getElementById('editAdminPlayerPhotoPlaceholder');
     if(tempAdminPlayerPhotoBase64 && tempAdminPlayerPhotoBase64 !== "null" && tempAdminPlayerPhotoBase64 !== "") {
@@ -1308,10 +1321,6 @@ function deleteAdminPlayer(id) {
             showToast("Žaidėjas sėkmingai pašalintas!");
         }).catch(err => { alert("Klaida trintant žaidėją."); });
     }
-}
-
-function editAdminPlayer(id) {
-    // Ši funkcija dabar valdoma per openAdminEditModal tiesiogiai iš lentelės
 }
 
 function initFriendliesDB() {
