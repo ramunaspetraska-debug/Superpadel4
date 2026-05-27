@@ -370,20 +370,28 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
 
-            // 🌟 Sinchronizuojame casual mačų statistiką į globalų profilį (be ELO pokyčio)
+            // 🌟 Sinchronizuojame casual statistiką į globalų profilį naudojant portal_links
             const syncCasualToGlobal = (p, isWin) => {
-                globalRef.child(p.id).once('value').then(gSnap => {
-                    const gData = gSnap.val();
-                    if (!gData) return; // sinchronizuojame tik jei žaidėjas jau turi globalų profilį
-                    globalRef.child(p.id).update({
-                        casual_matches: (gData.casual_matches || 0) + 1,
-                        casual_wins: (gData.casual_wins || 0) + (isWin ? 1 : 0),
-                        last_played: Date.now()
+                // Tikriname ar žaidėjas susiejęs savo profilį su šiuo kambariu
+                firebase.database().ref(`${DB_KEY}/${roomName}/portal_links`).once('value').then(linksSnap => {
+                    const links = linksSnap.val() || {};
+                    // Randame phoneId pagal roomPlayerId
+                    const phoneId = Object.keys(links).find(pid => links[pid] === p.id);
+                    if (!phoneId) return; // žaidėjas neprisijungęs prie portalo
+
+                    firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).once('value').then(gSnap => {
+                        const gData = gSnap.val();
+                        if (!gData) return;
+                        firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
+                            casual_matches: (gData.casual_matches || 0) + 1,
+                            casual_wins: (gData.casual_wins || 0) + (isWin ? 1 : 0),
+                            last_played: Date.now()
+                        });
                     });
-                }).catch(err => console.error("Casual global sync error:", err));
+                }).catch(err => console.error("Portal link sync error:", err));
             };
-            t1Players.forEach(p => syncCasualToGlobal(p, out1 > out2));
-            t2Players.forEach(p => syncCasualToGlobal(p, out2 > out1));
+            t1Players.forEach(p => syncCasualToGlobal(p, s1 > s2));
+            t2Players.forEach(p => syncCasualToGlobal(p, s2 > s1));
 
             if (typeof savePlayers === 'function') savePlayers(); 
             if (typeof renderPlayers === 'function') renderPlayers();
