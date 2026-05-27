@@ -667,7 +667,6 @@ function initTournamentsDB() {
     });
 }
 
-// Globalus atnaujinimas
 function saveData() { 
     firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(tournaments);
 }
@@ -719,7 +718,7 @@ function renderTournaments() {
         let statusHTML = ''; let timeStateBadge = ''; let cardClassModifier = '';
         
         if (t.timeState === 'past') { 
-            timeStateBadge = `<div class="status-badge-time badge-past">` + "ĮVYKO" + `</div>`; 
+            timeStateBadge = `<div class="status-badge-time badge-past">ĮVYKO</div>`; 
             cardClassModifier = 'card-past'; 
             statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><div class="edit-badge"><i class="fa-solid fa-list-ol"></i> Rezultatai</div>`; 
         } else if (t.timeState === 'live') { 
@@ -1355,4 +1354,3 @@ function initFriendliesDB() {
 
 // Inicializacija užkrovus puslapį
 window.onload = () => { initDates(); initTournamentsDB(); initFriendliesDB(); updateAuthUI(); };
-}
