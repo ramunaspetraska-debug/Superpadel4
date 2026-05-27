@@ -132,7 +132,8 @@ function autoSave(fullSync = false) {
             const idx = savedTournaments.findIndex(x => x.id === currentTid); 
             if(idx > -1) { 
                 const tF = el('tournament-name-field');
-                if (tF && el('view-setup').classList.contains('active')) savedTournaments[idx].name = tF.value || "Turnyras";
+                let setupView = el('view-setup');
+                if (tF && setupView && setupView.classList.contains('active')) savedTournaments[idx].name = tF.value || "Turnyras";
                 savedTournaments[idx].players = players; savedTournaments[idx].matches = matches; savedTournaments[idx].settings = settings; savedTournaments[idx].lastUpdate = Date.now(); 
             } 
         } 
@@ -184,12 +185,14 @@ function initFirebaseConnection() {
 
     safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room); 
     
-    const qrC = el('qrcode'); if(qrC) { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
+    const qrC = el('qrcode'); if(qrC && typeof QRCode !== 'undefined') { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
     
-    dbPhotosRef.once('value').then(snap => {
-        const cloudPhotos = snap.val();
-        if(cloudPhotos) { photoBank = { ...photoBank, ...cloudPhotos }; setStore('photos', photoBank); render(); }
-    }).catch(e => console.error("Cloud Photo Load Error:", e));
+    if(dbPhotosRef) {
+        dbPhotosRef.once('value').then(snap => {
+            const cloudPhotos = snap.val();
+            if(cloudPhotos) { photoBank = { ...photoBank, ...cloudPhotos }; setStore('photos', photoBank); render(); }
+        }).catch(e => console.error("Cloud Photo Load Error:", e));
+    }
 
     dbRef.on('value', snap => { 
         const d = snap.val(); 
@@ -241,7 +244,6 @@ function updateGlobalRatingsFromMatches() {
     if (!isCloud || !globalPlayersRef) return;
     
     matches.filter(m => m.finished && !m.globalSyncDone).forEach(m => {
-        // BLOKUOJAME ELO SKAIČIAVIMĄ JEI TAI PRIVATUS TURNYRAS
         if (settings && settings.level !== 'Privatus') {
             if (typeof processGlobalEloForMatch === 'function') {
                 processGlobalEloForMatch(m, globalPlayersData, globalPlayersRef);
