@@ -370,13 +370,11 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
 
-            // 🌟 Sinchronizuojame casual statistiką į globalų profilį naudojant portal_links
+            // 🌟 Sinchronizuojame casual statistiką į globalų profilį
+            // Naudojame portal_links_reverse/{roomPlayerId} = phoneId (tiesioginis paieška)
             const syncCasualToGlobal = (p, isWin) => {
-                // Tikriname ar žaidėjas susiejęs savo profilį su šiuo kambariu
-                firebase.database().ref(`${DB_KEY}/${roomName}/portal_links`).once('value').then(linksSnap => {
-                    const links = linksSnap.val() || {};
-                    // Randame phoneId pagal roomPlayerId
-                    const phoneId = Object.keys(links).find(pid => links[pid] === p.id);
+                firebase.database().ref(`${DB_KEY}/${roomName}/portal_links_reverse/${p.id}`).once('value').then(snap => {
+                    const phoneId = snap.val();
                     if (!phoneId) return; // žaidėjas neprisijungęs prie portalo
 
                     firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).once('value').then(gSnap => {
@@ -388,7 +386,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                             last_played: Date.now()
                         });
                     });
-                }).catch(err => console.error("Portal link sync error:", err));
+                }).catch(err => console.error("Casual global sync error:", err));
             };
             t1Players.forEach(p => syncCasualToGlobal(p, s1 > s2));
             t2Players.forEach(p => syncCasualToGlobal(p, s2 > s1));
