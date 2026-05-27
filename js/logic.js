@@ -370,20 +370,35 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             t1Players.forEach(p => updatePlayer(p, delta1));
             t2Players.forEach(p => updatePlayer(p, delta2));
 
-            // 🌟 Sinchronizuojame casual statistiką į globalų profilį
-            // Naudojame portal_links_reverse/{roomPlayerId} = phoneId (tiesioginis paieška)
+            // 🌟 Sinchronizuojame casual statistiką į globalų profilį (dvigubas metodas)
             const syncCasualToGlobal = (p, isWin) => {
-                firebase.database().ref(`${DB_KEY}/${roomName}/portal_links_reverse/${p.id}`).once('value').then(snap => {
-                    const phoneId = snap.val();
-                    if (!phoneId) return; // žaidėjas neprisijungęs prie portalo
+                if (!p.id) return;
 
-                    firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).once('value').then(gSnap => {
-                        const gData = gSnap.val();
-                        if (!gData) return;
-                        firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
+                // 1 metodas: tiesioginis — veikia jei žaidėjas turi telefono numerio ID
+                firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${p.id}`).once('value').then(snap => {
+                    if (snap.val()) {
+                        const gData = snap.val();
+                        firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${p.id}`).update({
                             casual_matches: (gData.casual_matches || 0) + 1,
                             casual_wins: (gData.casual_wins || 0) + (isWin ? 1 : 0),
                             last_played: Date.now()
+                        });
+                        return; // rastas — baigta
+                    }
+
+                    // 2 metodas: atsarginis — ieškome per portal_links
+                    firebase.database().ref(`${DB_KEY}/${roomName}/portal_links`).once('value').then(linksSnap => {
+                        const links = linksSnap.val() || {};
+                        const phoneId = Object.keys(links).find(pid => links[pid] === p.id);
+                        if (!phoneId) return;
+                        firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).once('value').then(gSnap => {
+                            const gData = gSnap.val();
+                            if (!gData) return;
+                            firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
+                                casual_matches: (gData.casual_matches || 0) + 1,
+                                casual_wins: (gData.casual_wins || 0) + (isWin ? 1 : 0),
+                                last_played: Date.now()
+                            });
                         });
                     });
                 }).catch(err => console.error("Casual global sync error:", err));
