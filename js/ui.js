@@ -6,8 +6,8 @@ function esc(str) {
 }
 
 document.addEventListener('click', e => {
-    const el = e.target.closest('[data-player]');
-    if (el) openPlayerCard(el.dataset.player);
+    const elPlayer = e.target.closest('[data-player]');
+    if (elPlayer) openPlayerCard(elPlayer.dataset.player);
 });
 
 function el(id) { return document.getElementById(id); }
@@ -93,7 +93,6 @@ function addPlayer(e) {
         const newId = uid();
         if (curPh) { photoBank[newId] = curPh; setStore('photos', photoBank); trimPhotoBankIfNeeded(); }
         
-        // Pagal numatymą suteikiamas pradinis 300 reitingas kambariui
         players.push({ id: newId, name: n, gender: tempGender, rating: 300, tier: "D" }); 
         if(f) f.value = ''; curPh = null; 
         const pr = el('photo-preview'); if(pr) { pr.classList.add('hidden'); pr.src = ''; } 
@@ -107,7 +106,6 @@ function addPlayer(e) {
 
 function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
 
-/* 🔄 ATNAUJINTA: Žaidėjų bankas dabar kraunasi TIESIAI iš aktyvaus debesies kambario šakos! */
 function openPlayerBank() {
     try {
         const roomName = document.getElementById('fb-room')?.value?.trim();
@@ -117,7 +115,8 @@ function openPlayerBank() {
         }
 
         safeHTML('bank-list', '<p class="text-xs text-slate-400 text-center py-4">Kraunama kambario DB...</p>');
-        el('modal-bank').style.display = 'flex';
+        let modalBank = el('modal-bank');
+        if(modalBank) modalBank.style.display = 'flex';
 
         firebase.database().ref("padelio_rooms/" + roomName + "/casual_players").once('value').then(snap => {
             const data = snap.val();
@@ -132,17 +131,17 @@ function openPlayerBank() {
                     html = '<p class="text-xs text-slate-400 text-center py-4">Visi šio kambario žaidėjai jau yra pridėti.</p>';
                 } else {
                     available.sort((a,b) => a.name.localeCompare(b.name)).forEach(p => {
-                        let htmlGenderBg = p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500';
+                        let htmlGenderBg = p.gender === 'F' ? 'bg-pink-500' : 'bg-blue-500';
                         html += `
                             <div class="flex justify-between items-center bg-white p-2 rounded-xl border border-slate-100 mb-1 shadow-sm">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full ${htmlGenderBg} flex items-center justify-center text-xs font-bold text-white">${p.gender==='M'?'V':'M'}</div>
+                                    <div class="w-8 h-8 rounded-full ${htmlGenderBg} flex items-center justify-center text-xs font-bold text-white">${p.gender==='F'?'M':'V'}</div>
                                     <div>
                                         <span class="font-bold text-sm text-slate-700 block leading-tight">${esc(p.name)}</span>
                                         <span class="text-[9px] font-black text-slate-400 uppercase">ELO: ${p.rating || 300} (${p.tier || 'D'})</span>
                                     </div>
                                 </div>
-                                <button onclick="addFromCloudBank('${p.id}', '${esc(p.name)}', '${p.gender}', ${p.rating||300}, '${p.tier||'D'}')" class="bg-green-100 text-green-600 hover:bg-green-200 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"><i class="fa-solid fa-plus"></i></button>
+                                <button onclick="addFromCloudBank('${esc(p.id)}', '${esc(p.name)}', '${esc(p.gender||'M')}', ${p.rating||300}, '${esc(p.tier||'D')}')" class="bg-green-100 text-green-600 hover:bg-green-200 px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors"><i class="fa-solid fa-plus"></i></button>
                             </div>`;
                     });
                 }
@@ -155,7 +154,6 @@ function openPlayerBank() {
     } catch (e) { console.error("openPlayerBank Error:", e); }
 }
 
-/* 🔄 ATNAUJINTA: Žaidėjas įmetamas į turnyrą išlaikant visus jo istorinius taškus ir lytį */
 function addFromCloudBank(id, name, gender, rating, tier) {
     try {
         if (!players.find(x => x.id === id || x.name.trim().toLowerCase() === name.trim().toLowerCase())) {
@@ -173,9 +171,10 @@ function openEditModal(id) {
         safeVal('edit-player-name', p.name); setEditGender(p.gender);
         
         const pr = el('edit-photo-preview'), pl = el('edit-photo-placeholder');
-        if(tempEditPhoto) { pr.src = tempEditPhoto; pr.classList.remove('hidden'); pl.classList.add('hidden'); } 
-        else { pr.classList.add('hidden'); pr.src = ''; pl.classList.remove('hidden'); }
-        el('modal-edit').style.display = 'flex';
+        if(tempEditPhoto) { if(pr) pr.src = tempEditPhoto; pr?.classList.remove('hidden'); pl?.classList.add('hidden'); } 
+        else { pr?.classList.add('hidden'); if(pr) pr.src = ''; pl?.classList.remove('hidden'); }
+        let modalEdit = el('modal-edit');
+        if(modalEdit) modalEdit.style.display = 'flex';
     } catch(e) { console.error("openEditModal Error:", e); }
 }
 
@@ -183,7 +182,8 @@ function savePlayerEdit() {
     try {
         const p = players.find(x => x.id === editingPlayerId);
         if(p) { 
-            p.name = el('edit-player-name').value.trim() || p.name; p.gender = tempEditGender; 
+            let nameField = el('edit-player-name');
+            p.name = nameField ? (nameField.value.trim() || p.name) : p.name; p.gender = tempEditGender; 
             if (tempEditPhoto) { photoBank[p.id] = tempEditPhoto; setStore('photos', photoBank); trimPhotoBankIfNeeded(); }
             matches.forEach(m => {
                 if(m.team1) m.team1.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
@@ -217,15 +217,12 @@ function openPlayerCard(name) {
         }
         
         let globalRating = 300;
-        let globalMatches = 0;
         let tierName = "D (Naujokas)";
         let barColor = "bg-green-500";
         let textColor = "text-green-600";
 
         let localP = players.find(x => x.name === name);
-        if (localP && localP.rating) {
-            globalRating = localP.rating;
-        }
+        if (localP && localP.rating) { globalRating = localP.rating; }
 
         if (globalRating >= 851) { tierName = "A (Ekspertas)"; barColor = "bg-gradient-to-r from-red-500 to-red-600"; textColor = "text-red-600"; }
         else if (globalRating >= 671) { tierName = "B (Patyręs)"; barColor = "bg-gradient-to-r from-purple-500 to-purple-600"; textColor = "text-purple-600"; }
@@ -234,7 +231,7 @@ function openPlayerCard(name) {
         else { tierName = "D (Naujokas)"; barColor = "bg-gradient-to-r from-green-400 to-green-500"; textColor = "text-green-600"; }
 
         let pPhoto = photoBank[stats.id] || null;
-        let av = pPhoto ? `<img src="${pPhoto}" class="w-24 h-24 rounded-full object-cover border-4 ${stats.gender==='M'?'border-blue-500':'border-pink-500'} mx-auto mb-4 shadow-lg">` : `<div class="w-24 h-24 rounded-full ${stats.gender==='M'?'bg-blue-500':'bg-pink-500'} mx-auto mb-4 flex items-center justify-center text-3xl font-black text-white shadow-lg">${stats.gender==='M'?'V':'M'}</div>`;
+        let av = pPhoto ? `<img src="${pPhoto}" class="w-24 h-24 rounded-full object-cover border-4 ${stats.gender==='F'?'border-pink-500':'border-blue-500'} mx-auto mb-4 shadow-lg">` : `<div class="w-24 h-24 rounded-full ${stats.gender==='F'?'bg-pink-500':'bg-blue-500'} mx-auto mb-4 flex items-center justify-center text-3xl font-black text-white shadow-lg">${stats.gender==='F'?'M':'V'}</div>`;
         let winPerc = stats.mp > 0 ? Math.round((stats.w / stats.mp) * 100) : 0;
         
         let html = `
@@ -251,7 +248,7 @@ function openPlayerCard(name) {
                 <div class="flex justify-center gap-6 mb-6 font-bold text-sm"><div class="text-center"><span class="block text-green-600 text-xl">${stats.w}</span><span class="text-[9px] text-slate-400 uppercase">Laimėta</span></div><div class="text-center"><span class="block text-slate-400 text-xl">${stats.t}</span><span class="text-[9px] text-slate-400 uppercase">Lygios</span></div><div class="text-center"><span class="block text-red-500 text-xl">${stats.l}</span><span class="text-[9px] text-slate-400 uppercase">Pralaimėta</span></div></div>
                 <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100"><div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Geriausias Partneris</div><div class="font-bold text-indigo-900">${bestPartner} <span class="text-xs text-indigo-500 font-normal">${maxText}</span></div></div>
             </div>`;
-        safeHTML('card-content', html); el('modal-card').style.display = 'flex';
+        safeHTML('card-content', html); let mCard = el('modal-card'); if(mCard) mCard.style.display = 'flex';
     } catch(e) { console.error("openPlayerCard Error:", e); }
 }
 
@@ -271,7 +268,7 @@ function render() {
 }
 
 function renderLeaderboard() {
-    const isF = settings.format === 'fixed'; 
+    const isF = (typeof settings !== 'undefined' && settings.format === 'fixed'); 
     const table = calculateResults(matches, players, isF); 
     const podiumContainer = el('podium-container');
     const finishedFinals = safeArr(matches).filter(m => m.isFinal && m.finished);
@@ -305,11 +302,11 @@ function renderLeaderboard() {
         let av = ''; 
         if (!isF) { 
             let pPhoto = photoBank[s.id];
-            let bg = s.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = s.gender === 'M' ? 'V' : 'M'; 
-            av = pPhoto ? `<div class="relative w-8 h-8 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover shadow-sm ${s.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
-                        : `<div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${s.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
+            let bg = s.gender === 'F' ? 'bg-pink-600' : 'bg-blue-600', bt = s.gender === 'F' ? 'M' : 'V'; 
+            av = pPhoto ? `<div class="relative w-8 h-8 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover shadow-sm ${s.gender === 'F' ? 'avatar-frame-f' : 'avatar-frame-m'}"><div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center text-[7px] text-white font-black ${bg}">${bt}</div></div>` 
+                        : `<div class="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${s.gender === 'F' ? 'bg-pink-500' : 'bg-blue-500'}">${bt}</div>`;
         }
-        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-100 last:border-0"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div ${isF ? '' : `data-player="${esc(s.name)}"`} class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${esc(s.name)} <span class="text-[9px] font-black text-slate-400 ml-1">(${s.rating || 300} pts)</span></div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${settings.rankingMode==='wins'?s.lp:s.sw}</div></div>`;
+        return `<div class="flex items-center px-3 py-3 text-xs bg-white border-b border-slate-100 last:border-0"><div class="w-6 font-bold text-slate-400 text-[10px]">${i+1}</div><div ${isF ? '' : `data-player="${esc(s.name)}"`} class="flex-1 flex items-center gap-2 truncate font-bold text-slate-800 ${isF ? '' : 'clickable-name'}">${av}${esc(s.name)} <span class="text-[9px] font-black text-slate-400 ml-1">(${s.rating || 300} pts)</span></div><div class="stat-col text-green-600">${s.w}</div><div class="stat-col text-slate-300">${s.t}</div><div class="stat-col text-red-400">${s.l}</div><div class="stat-col ${s.dif>=0?'text-slate-600':'text-red-500'}">${s.dif>0?'+':''}${s.dif}</div><div class="stat-col-wide text-slate-900">${(typeof settings !== 'undefined' && settings.rankingMode==='wins')?s.lp:s.sw}</div></div>`;
     }).join('');
     safeHTML('leaderboard-body', html);
 }
@@ -317,24 +314,24 @@ function renderLeaderboard() {
 function renderPlayersList() {
     let html = safeArr(players).map((p, idx) => {
         let pPhoto = photoBank[p.id];
-        let bg = p.gender === 'M' ? 'bg-blue-600' : 'bg-pink-600', bt = p.gender === 'M' ? 'V' : 'M'; 
-        let av = pPhoto ? `<div class="relative w-10 h-10 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover shadow-sm ${p.gender === 'M' ? 'avatar-frame-m' : 'avatar-frame-f'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black border border-white ${bg}">${bt}</div></div>`
-                        : `<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-sm ${p.gender === 'M' ? 'bg-blue-500' : 'bg-pink-500'}">${bt}</div>`;
+        let bg = p.gender === 'F' ? 'bg-pink-600' : 'bg-blue-600', bt = p.gender === 'F' ? 'M' : 'V'; 
+        let av = pPhoto ? `<div class="relative w-10 h-10 shrink-0"><img src="${pPhoto}" class="w-full h-full rounded-full object-cover shadow-sm ${p.gender === 'F' ? 'avatar-frame-f' : 'avatar-frame-m'}"><div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] text-white font-black border border-white ${bg}">${bt}</div></div>`
+                        : `<div class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-sm ${p.gender === 'F' ? 'bg-pink-500' : 'bg-blue-500'}">${bt}</div>`;
         return `<div class="flex justify-between items-center bg-white p-2.5 rounded-2xl border border-slate-100 shadow-sm"><div class="flex items-center gap-3 flex-1 cursor-pointer hover:bg-slate-50 p-1 rounded-xl transition-colors" onclick="openEditModal('${p.id}')"><span class="text-[10px] font-black text-slate-300 w-4 text-center">${idx + 1}</span>${av}<div class="font-bold text-slate-800 text-sm">${esc(p.name)} <span class="text-xs text-slate-400 font-normal">(${p.rating || 300} pts)</span></div></div><button type="button" onclick="removePlayer('${p.id}')" class="text-slate-300 hover:text-red-500 text-lg px-3 py-2 active:scale-90 transition-colors" aria-label="Pašalinti žaidėją"><i class="fa-solid fa-trash-can"></i></button></div>`;
     }).join('');
     safeHTML('players-list', html);
 }
 
 function renderTimerAndSettings() {
-    const isSc = settings.winCondition === 'score'; 
+    const isSc = (typeof settings !== 'undefined' && settings.winCondition === 'score'); 
     safeClass('mode-time', !isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase hover:text-slate-600"); 
     safeClass('mode-score', isSc ? "flex-1 py-1.5 text-[10px] font-black rounded-md bg-white shadow text-slate-900 uppercase" : "flex-1 py-1.5 text-[10px] font-bold text-slate-400 uppercase hover:text-slate-600"); 
     safeDisplay('control-duration', !isSc ? 'block' : 'none'); safeDisplay('control-points', !isSc ? 'none' : 'block'); safeDisplay('score-mode-text', isSc ? 'block' : 'none'); safeDisplay('timer-controls', isSc ? 'none' : 'flex');
-    if(isSc) safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
+    if(isSc && typeof settings !== 'undefined') safeText('score-mode-text', `IKI ${settings.maxPoints} TAŠKŲ`);
     
     const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0'); 
-    safeText('timer-display', `${m}:${sec}`); safeText('val-duration', settings.matchDuration); safeText('val-points', settings.maxPoints); safeText('player-count', "Viso: " + players.length); 
-    safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode);
+    safeText('timer-display', `${m}:${sec}`); safeText('val-duration', typeof settings !== 'undefined' ? settings.matchDuration : 12); safeText('val-points', typeof settings !== 'undefined' ? settings.maxPoints : 21); safeText('player-count', "Viso: " + players.length); 
+    if(typeof settings !== 'undefined') { safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode); }
 
     const btnFinals = el('btn-generate-finals');
     if(btnFinals) btnFinals.className = (safeArr(matches).some(m => m.finished)) ? "px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase" : "hidden";
@@ -363,8 +360,10 @@ function renderMatches() {
 
 function shareResultsAsImage() {
     try {
-        el('loading-overlay').style.display = 'flex'; safeText('loading-text', "Kuriama HD nuotrauka...");
-        const target = el('leaderboard-capture-target'); const title = el('tournament-name-field').value || "Turnyro Rezultatai";
+        let overlay = el('loading-overlay'); if(overlay) overlay.style.display = 'flex'; 
+        safeText('loading-text', "Kuriama HD nuotrauka...");
+        const target = el('leaderboard-capture-target'); const title = el('tournament-name-field')?.value || "Turnyro Rezultatai";
+        if(!target) { if(overlay) overlay.style.display = 'none'; return; }
         const wrapper = document.createElement('div');
         wrapper.style.position = 'absolute'; wrapper.style.left = '-9999px'; wrapper.style.top = '0'; wrapper.style.width = '450px'; wrapper.style.padding = '20px'; wrapper.style.background = '#f8fafc'; 
         const header = document.createElement('div'); header.style.textAlign = 'center'; header.style.marginBottom = '20px'; 
@@ -374,17 +373,19 @@ function shareResultsAsImage() {
         wrapper.appendChild(header); wrapper.appendChild(content); wrapper.appendChild(footer); document.body.appendChild(wrapper);
 
         setTimeout(() => {
-            html2canvas(wrapper, { scale: 3, backgroundColor: "#f8fafc", useCORS: true, logging: false }).then(canvas => {
-                document.body.removeChild(wrapper); el('loading-overlay').style.display = 'none'; safeText('loading-text', "Kraunama..."); 
-                const imgData = canvas.toDataURL('image/png', 1.0);
-                if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
-                    canvas.toBlob(blob => { const file = new File([blob], `${title.replace(/\s+/g, '_')}_rezultatai.png`, { type: "image/png" }); navigator.share({ files: [file], title: title }).catch(e => console.error("Share error:", e)); });
-                } else {
-                    const link = document.createElement('a'); link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; link.href = imgData; link.click();
-                }
-            }).catch(err => { if(document.body.contains(wrapper)) document.body.removeChild(wrapper); el('loading-overlay').style.display = 'none'; alert("Klaida generuojant vaizdą: " + err); });
+            if(typeof html2canvas !== 'undefined') {
+                html2canvas(wrapper, { scale: 3, backgroundColor: "#f8fafc", useCORS: true, logging: false }).then(canvas => {
+                    document.body.removeChild(wrapper); if(overlay) overlay.style.display = 'none'; safeText('loading-text', "Kraunama..."); 
+                    const imgData = canvas.toDataURL('image/png', 1.0);
+                    if (navigator.share && /Mobi|Android/i.test(navigator.userAgent)) {
+                        canvas.toBlob(blob => { const file = new File([blob], `${title.replace(/\s+/g, '_')}_rezultatai.png`, { type: "image/png" }); navigator.share({ files: [file], title: title }).catch(e => console.error("Share error:", e)); });
+                    } else {
+                        const link = document.createElement('a'); link.download = `${title.replace(/\s+/g, '_')}_rezultatai.png`; link.href = imgData; link.click();
+                    }
+                }).catch(err => { if(document.body.contains(wrapper)) document.body.removeChild(wrapper); if(overlay) overlay.style.display = 'none'; alert("Klaida generuojant vaizdą: " + err); });
+            } else { if(document.body.contains(wrapper)) document.body.removeChild(wrapper); if(overlay) overlay.style.display = 'none'; alert("html2canvas nerastas!"); }
         }, 250);
-    } catch(e) { console.error("shareResultsAsImage Error:", e); el('loading-overlay').style.display = 'none'; }
+    } catch(e) { console.error("shareResultsAsImage Error:", e); let overlay = el('loading-overlay'); if(overlay) overlay.style.display = 'none'; }
 }
 
 function renderGlobalStats() {
@@ -425,10 +426,10 @@ function renderGlobalStats() {
     } catch(e) { console.error("renderGlobalStats Error:", e); }
 }
 
-function setMode(m) { settings.winCondition = m; resetTimer(); autoSave(true); }
-function changeSetting(k, v) { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(true); }
-function changeFormat(v) { settings.format = v; preGeneratedTournament = []; setStore('pregen', []); autoSave(true); }
-function changeRanking(v) { settings.rankingMode = v; autoSave(true); }
+function setMode(m) { if(typeof settings !== 'undefined') settings.winCondition = m; resetTimer(); autoSave(true); }
+function changeSetting(k, v) { if(typeof settings !== 'undefined') { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(true); } }
+function changeFormat(v) { if(typeof settings !== 'undefined') { settings.format = v; preGeneratedTournament = []; setStore('pregen', []); autoSave(true); } }
+function changeRanking(v) { if(typeof settings !== 'undefined') { settings.rankingMode = v; autoSave(true); } }
 
 function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
 
@@ -504,7 +505,7 @@ function triggerAlarm() {
 }
 
 function toggleTimer() { 
-    if(settings.winCondition==='score') return; 
+    if(typeof settings !== 'undefined' && settings.winCondition==='score') return; 
     if(alarmInterval) { clearInterval(alarmInterval); alarmInterval=null; if(alarmTimeout) { clearTimeout(alarmTimeout); alarmTimeout = null; } resetTimer(); return; } 
     if(isRunning) { clearInterval(timerInterval); isRunning=false; } 
     else {
@@ -536,7 +537,7 @@ function updateTimerUI() {
 }
 
 function resetTimer() { 
-    timeLeft = settings.matchDuration * 60; isRunning = false; 
+    timeLeft = (typeof settings !== 'undefined' ? settings.matchDuration : 12) * 60; isRunning = false; 
     if(timerInterval) clearInterval(timerInterval); 
     if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; }
     if(alarmTimeout) { clearTimeout(alarmTimeout); alarmTimeout = null; }
