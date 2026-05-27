@@ -238,7 +238,7 @@ function renderUserProfile() {
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01);">
                 <div style="font-size: 10px; font-weight: bold; color: var(--text-grey);">Turnyrai</div>
-                <div style="font-size: 20px; font-weight: 900; color: var(--text-dark);">${myPastTournaments.length}</div>
+                <div style="font-size: 20px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
             </div>
         </div>
 
