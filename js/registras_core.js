@@ -25,7 +25,7 @@ let friendlyMatches = [];
 let globalAdminPlayers = [];
 let tempAdminPlayerPhotoBase64 = null;
 
-// Saugus teksto išvalymas HTMLXSS prevencijai
+// Helper: Saugus teksto išvalymas HTMLXSS prevencijai
 function esc(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
@@ -667,6 +667,7 @@ function initTournamentsDB() {
     });
 }
 
+// Globalus atnaujinimas
 function saveData() { 
     firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(tournaments);
 }
@@ -718,7 +719,7 @@ function renderTournaments() {
         let statusHTML = ''; let timeStateBadge = ''; let cardClassModifier = '';
         
         if (t.timeState === 'past') { 
-            timeStateBadge = `<div class="status-badge-time badge-past">ĮVYKO</div>`; 
+            timeStateBadge = `<div class="status-badge-time badge-past">` + "ĮVYKO" + `</div>`; 
             cardClassModifier = 'card-past'; 
             statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><div class="edit-badge"><i class="fa-solid fa-list-ol"></i> Rezultatai</div>`; 
         } else if (t.timeState === 'live') { 
@@ -742,7 +743,6 @@ function renderTournaments() {
         let avatar1 = (t.players && t.players[0]) ? t.players[0].substring(0,2) : 'AŽ'; 
         let avatar2 = (t.players && t.players[1]) ? t.players[1].substring(0,2) : 'MK';
         
-        // Dinaminis pritaikymas CSS stiliams be klaidų
         let lvlClass = t.level.toLowerCase();
         if (lvlClass === 'b-/b') lvlClass = 'b';
         if (lvlClass === 'c/c+') lvlClass = 'c';
@@ -1118,18 +1118,18 @@ function renderAdminTournaments() {
         </tr>`;
     });
     html += '</table>';
-    list.innerHTML = html;
+    container.innerHTML = html;
 }
 
 function openAdminTournamentModal(id) {
     let t = tournaments.find(x => String(x.id) === String(id));
     if(!t) return;
     document.getElementById('editAdminTournamentId').value = t.id;
-    document.getElementById('editAdminTournamentFormat').value = format;
-    document.getElementById('editAdminTournamentLevel').value = level;
-    document.getElementById('editAdminTournamentMax').value = max || 16;
-    document.getElementById('editAdminTournamentTime').value = time;
-    document.getElementById('editAdminTournamentDate').value = date;
+    document.getElementById('editAdminTournamentFormat').value = t.format;
+    document.getElementById('editAdminTournamentLevel').value = t.level;
+    document.getElementById('editAdminTournamentMax').value = t.max || t.maxPlayers || 16;
+    document.getElementById('editAdminTournamentTime').value = t.time;
+    document.getElementById('editAdminTournamentDate').value = t.date;
     document.getElementById('adminEditTournamentModal').classList.add('show');
 }
 
@@ -1288,12 +1288,14 @@ function closeAdminEditModal() {
 }
 
 function saveAdminPlayerChanges() {
-    const id = document.getElementById('editAdminPlayerId').value;
+    const originalId = document.getElementById('editAdminPlayerId').value;
+    const newId = document.getElementById('editAdminPlayerPhone').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const name = document.getElementById('editAdminPlayerName').value.trim();
     const gender = document.getElementById('editAdminPlayerGender').value;
     const rating = parseInt(document.getElementById('editAdminPlayerRating').value) || 300;
 
     if (!name) { alert("Vardas ir Pavardė privalo būti užpildyti!"); return; }
+    if (!newId) { alert("Telefono numeris / Unikalus ID negali būti tuščias!"); return; }
 
     let tier = "D";
     if (rating >= 851) tier = "A";
@@ -1301,16 +1303,33 @@ function saveAdminPlayerChanges() {
     else if (rating >= 501) tier = "C/C+";
     else if (rating >= 351) tier = "D-C";
 
-    firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + id).update({
+    let updateData = {
+        id: newId,
+        phone: newId,
         name: name,
         gender: gender,
         rating: rating,
         tier: tier,
         photo: tempAdminPlayerPhotoBase64
-    }).then(() => {
-        closeAdminEditModal();
-        showToast("Profilio keitimai sėkmingai išsaugoti!");
-    }).catch(err => { console.error(err); alert("Klaida debesyje."); });
+    };
+
+    if (String(originalId) !== String(newId)) {
+        // Jei ID pasikeitė, sukuriam naują įrašą ir ištrinam senąjį
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + newId).set(updateData).then(() => {
+            firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).remove().then(() => {
+                closeAdminEditModal();
+                showToast("ID sėkmingai pakeistas ir profilis išsaugotas!");
+                loadAdminPlayersDB();
+            });
+        }).catch(err => { alert("Klaida keičiant unikalų ID."); });
+    } else {
+        // Jei ID nepakeistas, tiesiog atnaujinam mazgą
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).update(updateData).then(() => {
+            closeAdminEditModal();
+            showToast("Profilio keitimai sėkmingai išsaugoti!");
+            loadAdminPlayersDB();
+        }).catch(err => { alert("Klaida išsaugant."); });
+    }
 }
 
 function deleteAdminPlayer(id) {
@@ -1319,6 +1338,7 @@ function deleteAdminPlayer(id) {
     if(confirm(`Ar tikrai norite visam laikui IŠTRINTI žaidėją "${p.name}" iš bendros Lietuvos lygos sistemos?`)) {
         firebase.database().ref(GLOBAL_PLAYERS_KEY).child(p.id).remove().then(() => {
             showToast("Žaidėjas sėkmingai pašalintas!");
+            loadAdminPlayersDB();
         }).catch(err => { alert("Klaida trintant žaidėją."); });
     }
 }
@@ -1335,3 +1355,4 @@ function initFriendliesDB() {
 
 // Inicializacija užkrovus puslapį
 window.onload = () => { initDates(); initTournamentsDB(); initFriendliesDB(); updateAuthUI(); };
+}
