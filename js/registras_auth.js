@@ -490,9 +490,13 @@ function openRoomJoinModal(roomName) {
 function confirmJoinRoom(roomName, roomPlayerId) {
     if (!currentUser) return;
 
+    const nameKey = currentUser.name.toLowerCase().trim().replace(/\s+/g, '_');
+
     const updates = {};
     updates[`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`] = roomPlayerId;
     updates[`${DB_KEY}/${roomName}/portal_links_reverse/${roomPlayerId}`] = currentUser.id;
+    // Stabilus ryšys pagal vardą — veikia net kai keičiasi žaidėjo ID naujuose turnyruose
+    updates[`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`] = currentUser.id;
 
     firebase.database().ref().update(updates).then(() => {
         closeModal();
@@ -504,14 +508,14 @@ function confirmJoinRoom(roomName, roomPlayerId) {
                 showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
                 return;
             }
-            calculateRetroactiveStats(roomName, roomPlayerId, currentUser.id);
+            calculateRetroactiveStats(roomName, roomPlayerId, currentUser.id, currentUser.name);
         });
     }).catch(() => {
         showToast("Klaida jungiantis prie kambario.");
     });
 }
 
-function calculateRetroactiveStats(roomName, roomPlayerId, phoneId) {
+function calculateRetroactiveStats(roomName, roomPlayerId, phoneId, playerName) {
     showToast(`⏳ Tikrinami praeities mačai...`);
 
     firebase.database().ref(`${DB_KEY}/${roomName}`).once('value').then(snap => {
@@ -526,8 +530,12 @@ function calculateRetroactiveStats(roomName, roomPlayerId, phoneId) {
 
         const processMatch = (match, isOfficialTournament) => {
             if (!match || !match.finished || isOfficialTournament) return;
-            const inTeam1 = (match.team1 || []).some(p => p && p.id === roomPlayerId);
-            const inTeam2 = (match.team2 || []).some(p => p && p.id === roomPlayerId);
+            const matchesPlayer = (p) => p && (
+                p.id === roomPlayerId || 
+                (playerName && p.name && p.name.toLowerCase().trim() === playerName.toLowerCase().trim())
+            );
+            const inTeam1 = (match.team1 || []).some(matchesPlayer);
+            const inTeam2 = (match.team2 || []).some(matchesPlayer);
             if (!inTeam1 && !inTeam2) return;
             const s1 = parseInt(match.score1 || 0);
             const s2 = parseInt(match.score2 || 0);
