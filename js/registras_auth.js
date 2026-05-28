@@ -465,7 +465,7 @@ function openRoomJoinModal(roomName) {
                 : '';
 
             bodyHtml += `
-                <div onclick="confirmJoinRoom('${esc(roomName)}', '${esc(p.id)}')" style="${highlight} border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                <div onclick="confirmJoinRoom('${esc(roomName)}', '${esc(p.id)}', '${esc(p.name)}')" style="${highlight} border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                     <div>
                         <span style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${esc(p.name)}</span>
                         ${badge}
@@ -487,21 +487,20 @@ function openRoomJoinModal(roomName) {
     });
 }
 
-function confirmJoinRoom(roomName, roomPlayerId) {
+function confirmJoinRoom(roomName, roomPlayerId, roomPlayerName) {
     if (!currentUser) return;
 
-    const nameKey = currentUser.name.toLowerCase().trim().replace(/\s+/g, '_');
+    // SVARBU: ryšį pagal vardą saugome pagal KAMBARIO žaidėjo vardą (tą kurį pasirinko sąraše),
+    // ne pagal portalo profilio vardą. Generatoriuje žaidėjas gali būti "Ramūnas",
+    // o portale "Ramūnas Petreaška" — todėl naudojame kambario vardą sutapimui.
+    const nameKey = (roomPlayerName || currentUser.name).toLowerCase().trim().replace(/\s+/g, '_');
 
     const updates = {};
     updates[`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`] = roomPlayerId;
     updates[`${DB_KEY}/${roomName}/portal_links_reverse/${roomPlayerId}`] = currentUser.id;
-    // Stabilus ryšys pagal vardą — veikia net kai keičiasi žaidėjo ID naujuose turnyruose
     updates[`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`] = currentUser.id;
 
-    console.log("💾 PRISIJUNGIMAS: išsaugau ryšius:", JSON.stringify(updates));
-
     firebase.database().ref().update(updates).then(() => {
-        console.log("✅ PRISIJUNGIMAS išsaugotas. nameKey=" + nameKey + " currentUser.id=" + currentUser.id);
         closeModal();
         loadActiveRooms();
 
@@ -511,7 +510,7 @@ function confirmJoinRoom(roomName, roomPlayerId) {
                 showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
                 return;
             }
-            calculateRetroactiveStats(roomName, roomPlayerId, currentUser.id, currentUser.name);
+            calculateRetroactiveStats(roomName, roomPlayerId, currentUser.id, roomPlayerName || currentUser.name);
         });
     }).catch(() => {
         showToast("Klaida jungiantis prie kambario.");
