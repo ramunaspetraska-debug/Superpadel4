@@ -602,7 +602,10 @@ function switchTab(pageId, element) {
         if(lTab) lTab.classList.add('active'); 
         loadAutomatedRatings('all'); 
     }
-    if(pageId === 'page-profile') { renderUserProfile(); }
+    if(pageId === 'page-profile') { 
+        renderUserProfile(); 
+        if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
+    }
 }
 function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); if(calendarBtn) switchTab('page-calendar', calendarBtn); }
 
