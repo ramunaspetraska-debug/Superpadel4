@@ -348,4 +348,6 @@ window.onload = () => {
     initTournamentsDB(); 
     initFriendliesDB(); 
     updateAuthUI(); 
+    // Perskaitome šviežius vartotojo duomenis iš Firebase (statistika, reitingas)
+    if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
 };
