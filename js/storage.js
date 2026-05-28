@@ -215,7 +215,14 @@ function disconnectFirebase() {
 function syncPlayersToGlobalDB() {
     if (!isCloud || !globalPlayersRef) return;
     
+    // Tikriname ar ID yra tikras telefono numeris (vien skaitmenys, 7+ ženklų),
+    // o ne atsitiktinis UUID (su brūkšneliais). Tik tokiems kuriame globalų profilį,
+    // kad neprikurtume "šešėlinių" profilių neregistruotiems žaidėjams.
+    const isRealPhoneId = (id) => /^[0-9]{7,}$/.test(String(id));
+
     players.forEach(p => {
+        if (!isRealPhoneId(p.id)) return; // praleidžiame UUID žaidėjus
+
         const globalP = globalPlayersData[p.id];
         if (!globalP) {
             globalPlayersRef.child(p.id).set({
