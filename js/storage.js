@@ -243,6 +243,7 @@ function syncPlayersToGlobalDB() {
 function updateGlobalRatingsFromMatches() {
     if (!isCloud || !globalPlayersRef) return;
     
+    let syncedAny = false;
     matches.filter(m => m.finished && !m.globalSyncDone).forEach(m => {
         if (settings && settings.level !== 'Privatus') {
             if (typeof processGlobalEloForMatch === 'function') {
@@ -250,7 +251,15 @@ function updateGlobalRatingsFromMatches() {
             }
         }
         m.globalSyncDone = true;
+        syncedAny = true;
     });
     
     setStore('m', matches);
+
+    // SVARBU: iškart išsaugome globalSyncDone žymę į debesį,
+    // kad dbRef.on('value') neperrašytų matches sena versija ir neskaičiuotų antrą kartą
+    if (syncedAny && isCloud && dbRef) {
+        window.lastCloudUpdate = Date.now();
+        dbRef.update({ matches: matches, lastUpdate: window.lastCloudUpdate });
+    }
 }
