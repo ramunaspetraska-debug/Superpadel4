@@ -393,24 +393,18 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 // 1 metodas (PIRMAS): portalo ryšys pagal vardą — tikras telefono profilis
                 if (p.name) {
                     const nameKey = p.name.toLowerCase().trim().replace(/\s+/g, '_');
-                    const path1 = `${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`;
-                    console.log(`🔍 [${p.name}] Ieškau nameKey="${nameKey}" kelyje: ${path1}`);
-                    firebase.database().ref(path1).once('value').then(nameSnap => {
-                        if (nameSnap.val()) { console.log(`✅ [${p.name}] 1-VARDAS rado phoneId=${nameSnap.val()}`); doUpdate(nameSnap.val()); return; }
-                        console.log(`⏭️ [${p.name}] 1-VARDAS nerado. Bandau portal_links...`);
+                    firebase.database().ref(`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`).once('value').then(nameSnap => {
+                        if (nameSnap.val()) { doUpdate(nameSnap.val()); return; }
 
                         // 2 metodas: portal_links skenavimas pagal žaidėjo ID
                         firebase.database().ref(`${DB_KEY}/${roomName}/portal_links`).once('value').then(linksSnap => {
                             const links = linksSnap.val() || {};
-                            console.log(`📋 [${p.name}] portal_links =`, JSON.stringify(links));
                             const phoneId = Object.keys(links).find(pid => links[pid] === p.id);
-                            if (phoneId) { console.log(`✅ [${p.name}] 2-LINKS rado phoneId=${phoneId}`); doUpdate(phoneId); return; }
-                            console.log(`⏭️ [${p.name}] 2-LINKS nerado (žaidėjo ID=${p.id}). Bandau UUID...`);
+                            if (phoneId) { doUpdate(phoneId); return; }
 
                             // 3 metodas (PASKUTINIS): UUID šešėlinis profilis — tik jei nėra portalo ryšio
                             firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${p.id}`).once('value').then(snap => {
-                                if (snap.val()) { console.log(`⚠️ [${p.name}] 3-UUID šešėlinis profilis rastas, rašau ten ID=${p.id}`); doUpdate(p.id); }
-                                else { console.log(`❌ [${p.name}] NIEKAS NERADO. Žaidėjas niekur nesusietas.`); }
+                                if (snap.val()) doUpdate(p.id);
                             });
                         });
                     }).catch(err => console.error("Casual global sync error:", err));
