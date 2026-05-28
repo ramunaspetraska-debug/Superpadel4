@@ -498,7 +498,10 @@ function confirmJoinRoom(roomName, roomPlayerId) {
     // Stabilus ryšys pagal vardą — veikia net kai keičiasi žaidėjo ID naujuose turnyruose
     updates[`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`] = currentUser.id;
 
+    console.log("💾 PRISIJUNGIMAS: išsaugau ryšius:", JSON.stringify(updates));
+
     firebase.database().ref().update(updates).then(() => {
+        console.log("✅ PRISIJUNGIMAS išsaugotas. nameKey=" + nameKey + " currentUser.id=" + currentUser.id);
         closeModal();
         loadActiveRooms();
 
