@@ -138,6 +138,19 @@ function updateAuthUI() {
     renderUserProfile();
 }
 
+// Perskaito šviežius vartotojo duomenis iš Firebase ir atnaujina profilį.
+// Tai užtikrina kad statistika rodoma iš karto, ne sena kešuota versija.
+function refreshCurrentUserFromFirebase() {
+    if (!currentUser || !currentUser.id) return;
+    firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${currentUser.id}`).once('value').then(snap => {
+        const fresh = snap.val();
+        if (!fresh) return;
+        currentUser = fresh;
+        localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
+        renderUserProfile(); // perpiešiame su šviežiais duomenimis
+    }).catch(err => console.error("refreshCurrentUser error:", err));
+}
+
 function renderUserProfile() {
     const container = document.getElementById('page-profile');
     if (!container) return;
