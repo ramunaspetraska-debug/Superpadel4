@@ -280,6 +280,10 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
         let delta2 = K * mov * (out2 - e2);
         
         const updatePlayer = (p, delta) => {
+            // Tik registruotiems žaidėjams (telefono numeris kaip ID) rašome globalų ELO.
+            // UUID žaidėjai (neregistruoti) negauna globalaus profilio.
+            if (!/^[0-9]{7,}$/.test(String(p.id))) return;
+
             let g = getP(p);
             let oldR = g.rating;
             let newR = Math.round(oldR + delta);
