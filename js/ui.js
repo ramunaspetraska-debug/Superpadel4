@@ -438,9 +438,8 @@ function finM(id) {
     if(m){ 
         m.finished = true; 
         liveUpdateMatches(); 
-        if (typeof processGlobalEloForMatch === 'function' && typeof settings !== 'undefined' && settings.level !== 'Privatus') {
-            processGlobalEloForMatch(m, typeof globalPlayersData !== 'undefined' ? globalPlayersData : {}, typeof globalPlayersRef !== 'undefined' ? globalPlayersRef : null);
-        }
+        // SVARBU: processGlobalEloForMatch jau iškviečiamas iš liveUpdateMatches → 
+        // updateGlobalRatingsFromMatches. Antras iškvietimas čia būtų DVIGUBAS skaičiavimas.
     } 
 }
 
