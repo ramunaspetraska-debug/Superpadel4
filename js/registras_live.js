@@ -2,12 +2,77 @@
 // 2. TIESIOGIAI (LIVE) MAČŲ STEBĖJIMAS TV
 // ==========================================
 
+// --- YouTube Live transliacijos valdymas ---
+
+let currentLiveRoomName = null;
+
+function extractYouTubeId(url) {
+    if (!url) return null;
+    const patterns = [
+        /youtu\.be\/([a-zA-Z0-9_-]{6,})/,
+        /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{6,})/,
+        /youtube\.com\/live\/([a-zA-Z0-9_-]{6,})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{6,})/
+    ];
+    for (const p of patterns) {
+        const m = url.match(p);
+        if (m) return m[1];
+    }
+    return null;
+}
+
+function loadLiveStream(roomName) {
+    const frame = document.getElementById('liveYtFrame');
+    const placeholder = document.getElementById('liveYtPlaceholder');
+    if (!frame) return;
+    firebase.database().ref(`${DB_KEY}/${roomName}/youtube_live`).once('value').then(snap => {
+        const videoId = snap.val();
+        if (videoId) {
+            frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
+            frame.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+        } else {
+            frame.src = '';
+            frame.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+        }
+    });
+}
+
+function setLiveStreamLink() {
+    if (!currentLiveRoomName) { showToast("Pirmiausia prisijunkite prie kambario."); return; }
+    openInputModal(
+        '<i class="fa-brands fa-youtube" style="color: #ff0000;"></i> YouTube transliacija',
+        'Įklijuokite nuorodą',
+        'Išsaugoti',
+        (url) => {
+            if (!url || url.trim() === '') {
+                firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/youtube_live`).remove().then(() => {
+                    loadLiveStream(currentLiveRoomName);
+                    showToast("Transliacija pašalinta.");
+                });
+                return;
+            }
+            const videoId = extractYouTubeId(url.trim());
+            if (!videoId) { showToast("Neatpažinta YouTube nuoroda."); return; }
+            firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/youtube_live`).set(videoId).then(() => {
+                loadLiveStream(currentLiveRoomName);
+                showToast("📺 Transliacija pridėta!");
+            });
+        },
+        'url'
+    );
+}
+
 function connectLiveRoom() {
     const roomInput = document.getElementById('liveRoomInput').value.trim();
     if (!roomInput) { showToast("Įveskite kambario pavadinimą!"); return; }
     document.getElementById('fbStatusIcon').style.color = "var(--status-orange)"; 
     document.getElementById('fbStatusText').innerText = `Jungiamasi prie "${roomInput}"...`;
     
+    currentLiveRoomName = roomInput.toUpperCase();
+    loadLiveStream(currentLiveRoomName);
+
     if (liveDbRef) { liveDbRef.off(); }
     liveDbRef = firebase.database().ref(DB_KEY + '/' + roomInput.toUpperCase());
     
@@ -98,14 +163,22 @@ function changeLiveCourt(courtNum) {
 function changeLiveScore(matchId, teamNum, change) {
     if (!currentFirebaseData || !currentFirebaseData.settings?.eReferee) return;
     if (!eRefAuthenticated) { 
-        const pin = prompt("Įveskite E-Teisėjavimo PIN kodą:"); 
-        if (pin === currentFirebaseData.settings.eRefereePin) { 
-            eRefAuthenticated = true; 
-            showToast("Sėkmingai prisijungėte!"); 
-        } else { 
-            showToast("Neteisingas PIN kodas!"); 
-            return; 
-        } 
+        openInputModal(
+            '<i class="fa-solid fa-gavel" style="color: var(--primary-blue);"></i> E-Teisėjas',
+            'PIN kodas',
+            'Patvirtinti',
+            (pin) => {
+                if (pin === currentFirebaseData.settings.eRefereePin) {
+                    eRefAuthenticated = true;
+                    showToast("Sėkmingai prisijungėte!");
+                    changeLiveScore(matchId, teamNum, change);
+                } else if (pin) {
+                    showToast("Neteisingas PIN kodas!");
+                }
+            },
+            'tel'
+        );
+        return;
     }
     const matchIndex = currentFirebaseData.matches.findIndex(m => m.id === matchId); 
     if (matchIndex === -1) return;
