@@ -4,8 +4,16 @@
 
 function promptAdmin() {
     if (!isAppMode) { toggleMode(); return; }
-    const code = prompt("Įveskite administratoriaus kodą:");
-    if (code === "7030") { toggleMode(); } else if (code !== null) { showToast("Neteisingas kodas!"); }
+    openInputModal(
+        '<i class="fa-solid fa-lock" style="color: var(--primary-blue);"></i> Administratoriaus prieiga',
+        'Įveskite kodą',
+        'Prisijungti',
+        (code) => {
+            if (code === "7030") { toggleMode(); }
+            else if (code) { showToast("Neteisingas kodas!"); }
+        },
+        'password'
+    );
 }
 
 function toggleMode() {
@@ -119,7 +127,7 @@ function renderAdminTournaments() {
             <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${t.level}</span></td>
             <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
             <td style="padding: 12px; text-align: center;">
-                <button type="button" onclick="openAdminTournamentModal('${t.id}')" style="background: #ebf8ff; color: #2b6cb0; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
+                <button type="button" onclick="openAdminTournamentModal('${t.id}')" style="background: #f0fdf4; color: #15803d; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
                 <button type="button" onclick="deleteAdminTournamentLive('${t.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
@@ -212,7 +220,7 @@ function renderAdminPlayersDB(playersArray) {
         else ptsColor = 'var(--lvl-d)';
 
         let genderBadge = p.gender === 'M' ? 
-            '<span style="background: #ebf8ff; color: #2b6cb0; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900;">V</span>' : 
+            '<span style="background: #f0fdf4; color: #15803d; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900;">V</span>' : 
             '<span style="background: #fff5f5; color: #c53030; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900;">M</span>';
 
         let av = p.photo ? `<img src="${p.photo}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:8px; border:1px solid #cbd5e0;">` : `<div style="width:26px; height:26px; border-radius:50%; background:#e2e8f0; display:inline-block; vertical-align:middle; margin-right:8px; text-align:center; line-height:26px; font-size:10px; color:#718096; font-weight:bold;">${p.gender==='M'?'V':'M'}</div>`;
@@ -346,8 +354,5 @@ function deleteAdminPlayer(id) {
 window.onload = () => { 
     initDates(); 
     initTournamentsDB(); 
-    initFriendliesDB(); 
     updateAuthUI(); 
-    // Perskaitome šviežius vartotojo duomenis iš Firebase (statistika, reitingas)
-    if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
 };
