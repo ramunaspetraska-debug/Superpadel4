@@ -166,7 +166,7 @@ function genInputModal(title, placeholder, defaultVal, onConfirm) {
             <input id="gen-input-field" type="text" placeholder="${placeholder}" value="${defaultVal || ''}" style="width:100%;padding:13px;border:2px solid #cbd5e1;border-radius:10px;font-weight:bold;font-size:15px;outline:none;box-sizing:border-box;" autocomplete="off" />
             <div style="display:flex;gap:8px;margin-top:14px;">
                 <button id="gen-input-cancel" style="flex:1;padding:12px;border:1px solid #cbd5e1;background:white;color:#64748b;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Atšaukti</button>
-                <button id="gen-input-ok" style="flex:1;padding:12px;border:none;background:#16a34a;color:white;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Gerai</button>
+                <button id="gen-input-ok" style="flex:1;padding:12px;border:none;background:#2563eb;color:white;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Gerai</button>
             </div>
         </div>`;
     document.body.appendChild(wrap);
@@ -268,3 +268,99 @@ setTimeout(function() {
         };
     }
 }, 500);
+
+// ==========================================
+// REGISTRUOTŲ ŽAIDĖJŲ IMPORTAS IŠ GLOBALIOS DB
+// ==========================================
+// Importuoja žaidėjus su TIKRAIS telefono ID — jų statistika
+// automatiškai keliaus į portalo profilius be papildomo prisijungimo.
+
+function openGlobalImportModal() {
+    if (typeof firebase === 'undefined') { alert("Pirmiausia prisijunkite prie debesies kambario."); return; }
+    if (typeof ensureFirebaseInit === 'function') ensureFirebaseInit();
+
+    const old = document.getElementById('global-import-modal');
+    if (old) old.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'global-import-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    wrap.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+            <div style="font-weight:900;font-size:15px;color:#1e293b;margin-bottom:4px;"><i class="fa-solid fa-users" style="color:#2563eb;"></i> Registruoti žaidėjai</div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:10px;">Pažymėkite dalyvaujančius — jų statistika skaičiuosis automatiškai.</div>
+            <input id="gi-search" type="text" placeholder="Paieška..." oninput="filterGlobalImportList()" style="width:100%;padding:10px;border:2px solid #cbd5e1;border-radius:10px;font-weight:bold;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:10px;" autocomplete="off"/>
+            <div id="gi-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;min-height:120px;">
+                <div style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama...</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button onclick="document.getElementById('global-import-modal').remove()" style="flex:1;padding:12px;border:1px solid #cbd5e1;background:white;color:#64748b;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Atšaukti</button>
+                <button id="gi-confirm" onclick="confirmGlobalImport()" style="flex:1;padding:12px;border:none;background:#2563eb;color:white;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Pridėti (0)</button>
+            </div>
+        </div>`;
+    document.body.appendChild(wrap);
+
+    firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
+        const data = snap.val() || {};
+        window._giPlayers = Object.values(data)
+            .filter(p => p && p.name && /^[0-9]{7,}$/.test(String(p.id)))
+            .sort((a, b) => a.name.localeCompare(b.name, 'lt'));
+        window._giSelected = new Set();
+        renderGlobalImportList(window._giPlayers);
+    }).catch(() => {
+        document.getElementById('gi-list').innerHTML = '<div style="color:#ef4444;font-size:12px;text-align:center;padding:20px;">Nepavyko įkelti žaidėjų.</div>';
+    });
+}
+
+function renderGlobalImportList(list) {
+    const box = document.getElementById('gi-list');
+    if (!box) return;
+    const currNames = (typeof players !== 'undefined' ? players : []).map(p => p.name.toLowerCase().trim());
+    if (list.length === 0) { box.innerHTML = '<div style="color:#94a3b8;font-size:12px;text-align:center;padding:20px;">Žaidėjų nerasta.</div>'; return; }
+    box.innerHTML = list.map(p => {
+        const already = currNames.includes(p.name.toLowerCase().trim());
+        const checked = window._giSelected.has(p.id) ? 'checked' : '';
+        const dis = already ? 'disabled' : '';
+        const style = already ? 'opacity:0.45;' : 'cursor:pointer;';
+        return `<label style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid #e2e8f0;border-radius:10px;${style}">
+            <input type="checkbox" ${checked} ${dis} onchange="toggleGiSelect('${p.id}')" style="width:17px;height:17px;accent-color:#2563eb;">
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:800;font-size:13px;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.name}${already ? ' <span style=\'font-size:9px;color:#94a3b8;\'>(jau sąraše)</span>' : ''}</div>
+                <div style="font-size:10px;color:#64748b;">${p.gender === 'F' ? 'Moteris' : 'Vyras'} • ${p.tier || 'D'} • ELO ${p.rating || 300}</div>
+            </div>
+        </label>`;
+    }).join('');
+}
+
+function filterGlobalImportList() {
+    const q = (document.getElementById('gi-search')?.value || '').toLowerCase().trim();
+    renderGlobalImportList((window._giPlayers || []).filter(p => p.name.toLowerCase().includes(q)));
+}
+
+function toggleGiSelect(id) {
+    if (window._giSelected.has(id)) window._giSelected.delete(id);
+    else window._giSelected.add(id);
+    const btn = document.getElementById('gi-confirm');
+    if (btn) btn.innerText = `Pridėti (${window._giSelected.size})`;
+}
+
+function confirmGlobalImport() {
+    const sel = window._giSelected;
+    if (!sel || sel.size === 0) { document.getElementById('global-import-modal').remove(); return; }
+    let added = 0;
+    (window._giPlayers || []).forEach(gp => {
+        if (!sel.has(gp.id)) return;
+        if (players.some(p => p.name.toLowerCase().trim() === gp.name.toLowerCase().trim())) return;
+        players.push({
+            id: gp.id, name: gp.name, gender: gp.gender || 'M', photo: null,
+            rating: gp.rating || 300, tier: gp.tier || 'D',
+            wins: 0, losses: 0, draws: 0, points: 0, diff: 0, history: []
+        });
+        added++;
+    });
+    document.getElementById('global-import-modal').remove();
+    if (typeof savePlayers === 'function') savePlayers();
+    if (typeof renderPlayers === 'function') renderPlayers();
+    if (typeof updatePlayerCount === 'function') updatePlayerCount();
+    if (typeof autoSave === 'function') autoSave(true);
+    alert(`Pridėti ${added} žaidėjai. Jų statistika skaičiuosis automatiškai!`);
+}
