@@ -263,6 +263,20 @@ const modalBody = document.getElementById('modalBody');
 const modalActions = document.getElementById('modalActions'); 
 function closeModal() { if(modal) modal.classList.remove('show'); }
 
+// Universalus įvedimo modalas — pakeičia naršyklės prompt() langelius
+function openInputModal(titleHtml, placeholder, confirmLabel, onConfirm, inputType) {
+    modalTitle.innerHTML = titleHtml;
+    modalBody.innerHTML = `<input id="genericModalInput" type="${inputType || 'text'}" placeholder="${placeholder}" autocomplete="off" style="width:100%; padding:14px; border:2px solid #cbd5e0; border-radius:10px; font-weight:bold; font-size:15px; outline:none; box-sizing:border-box; margin-top:8px;" />`;
+    modalActions.innerHTML = `<button type="button" class="modal-btn primary" id="genericModalOk" style="width:100%; margin-bottom:8px;">${confirmLabel}</button><button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>`;
+    const okBtn = document.getElementById('genericModalOk');
+    const input = document.getElementById('genericModalInput');
+    const submit = () => { const v = input.value; closeModal(); onConfirm(v); };
+    okBtn.onclick = submit;
+    input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+    modal.classList.add('show');
+    setTimeout(() => input.focus(), 150);
+}
+
 function openRegisterModal(id) { 
     if(!currentUser) { 
         pendingTournamentId = id; 
@@ -605,18 +619,3 @@ function switchTab(pageId, element) {
     if(pageId === 'page-profile') { renderUserProfile(); }
 }
 function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); if(calendarBtn) switchTab('page-calendar', calendarBtn); }
-
-// ==========================================
-// DRAUGIŠKI MAČAI
-// ==========================================
-
-function initFriendliesDB() {
-    firebase.database().ref(GLOBAL_FRIENDLIES_KEY).on('value', snap => {
-        let data = snap.val();
-        friendlyMatches = data ? Object.values(data) : [];
-        const profilePage = document.getElementById('page-profile');
-        if (profilePage && profilePage.classList.contains('active')) {
-            renderUserProfile();
-        }
-    });
-}
