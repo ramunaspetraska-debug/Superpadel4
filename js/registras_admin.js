@@ -355,4 +355,21 @@ window.onload = () => {
     initDates(); 
     initTournamentsDB(); 
     updateAuthUI(); 
+    if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
+
+    // QR srautas: registras?room=KAMBARYS — iškart atidarome prisijungimą prie kambario
+    const qrRoom = new URLSearchParams(window.location.search).get('room');
+    if (qrRoom) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        const profileBtn = document.querySelector('.nav-item[onclick*="page-profile"]');
+        switchTab('page-profile', profileBtn);
+        setTimeout(() => {
+            if (currentUser) {
+                openRoomJoinModal(qrRoom.toUpperCase());
+            } else {
+                showToast("Prisijunkite, kad galėtumėte jungtis prie kambario " + qrRoom.toUpperCase());
+                openAuthModal();
+            }
+        }, 600);
+    }
 };
