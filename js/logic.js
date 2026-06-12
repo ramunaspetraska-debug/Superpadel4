@@ -250,6 +250,9 @@ function generateFixedRound(safePool) {
 }
 
 function processGlobalEloForMatch(match, globalData, globalRef) {
+    // Komandų vardai mačų istorijai
+    const t1Names = (match.team1 || []).map(x => x && x.name ? x.name.split(' ')[0] : '?').join(' / ');
+    const t2Names = (match.team2 || []).map(x => x && x.name ? x.name.split(' ')[0] : '?').join(' / ');
     if (typeof isCloud === 'undefined' || !isCloud || !globalRef) return;
     if (typeof settings !== 'undefined' && settings.level === 'Privatus') return;
     if (!match || !match.team1 || !match.team2) return;
@@ -281,9 +284,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
         
         const updatePlayer = (p, delta) => {
             // Tik registruotiems žaidėjams (telefono numeris kaip ID) rašome globalų ELO.
-            // UUID žaidėjai (neregistruoti) negauna globalaus profilio.
             if (!/^[0-9]{7,}$/.test(String(p.id))) return;
-
             let g = getP(p);
             let oldR = g.rating;
             let newR = Math.round(oldR + delta);
@@ -297,11 +298,17 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             else if (newR >= 501) tier = "C/C+";
             else if (newR >= 351) tier = "D-C";
             
+            // Mačų istorija (paskutiniai 10)
+            let hist = (g.recent_matches || []).slice();
+            hist.unshift({ d: Date.now(), t1: t1Names, t2: t2Names, s1: s1, s2: s2, win: delta > 0, official: true });
+            hist = hist.slice(0, 10);
+
             globalRef.child(p.id).update({
                 rating: newR,
                 tier: tier,
                 total_matches: newMatches,
-                last_played: Date.now()
+                last_played: Date.now(),
+                recent_matches: hist
             });
             if(globalData[p.id]) {
                 globalData[p.id].rating = newR;
@@ -386,10 +393,14 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                     firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).once('value').then(gSnap => {
                         const gData = gSnap.val();
                         if (!gData) return;
+                        let hist = (gData.recent_matches || []).slice();
+                        hist.unshift({ d: Date.now(), t1: t1Names, t2: t2Names, s1: s1, s2: s2, win: isWin, official: false });
+                        hist = hist.slice(0, 10);
                         firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
                             casual_matches: (gData.casual_matches || 0) + 1,
                             casual_wins: (gData.casual_wins || 0) + (isWin ? 1 : 0),
-                            last_played: Date.now()
+                            last_played: Date.now(),
+                            recent_matches: hist
                         });
                     });
                 };
@@ -397,18 +408,24 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 // 1 metodas (PIRMAS): portalo ryšys pagal vardą — tikras telefono profilis
                 if (p.name) {
                     const nameKey = p.name.toLowerCase().trim().replace(/\s+/g, '_');
-                    firebase.database().ref(`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`).once('value').then(nameSnap => {
-                        if (nameSnap.val()) { doUpdate(nameSnap.val()); return; }
+                    const path1 = `${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`;
+                    console.log(`🔍 [${p.name}] Ieškau nameKey="${nameKey}" kelyje: ${path1}`);
+                    firebase.database().ref(path1).once('value').then(nameSnap => {
+                        if (nameSnap.val()) { console.log(`✅ [${p.name}] 1-VARDAS rado phoneId=${nameSnap.val()}`); doUpdate(nameSnap.val()); return; }
+                        console.log(`⏭️ [${p.name}] 1-VARDAS nerado. Bandau portal_links...`);
 
                         // 2 metodas: portal_links skenavimas pagal žaidėjo ID
                         firebase.database().ref(`${DB_KEY}/${roomName}/portal_links`).once('value').then(linksSnap => {
                             const links = linksSnap.val() || {};
+                            console.log(`📋 [${p.name}] portal_links =`, JSON.stringify(links));
                             const phoneId = Object.keys(links).find(pid => links[pid] === p.id);
-                            if (phoneId) { doUpdate(phoneId); return; }
+                            if (phoneId) { console.log(`✅ [${p.name}] 2-LINKS rado phoneId=${phoneId}`); doUpdate(phoneId); return; }
+                            console.log(`⏭️ [${p.name}] 2-LINKS nerado (žaidėjo ID=${p.id}). Bandau UUID...`);
 
                             // 3 metodas (PASKUTINIS): UUID šešėlinis profilis — tik jei nėra portalo ryšio
                             firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${p.id}`).once('value').then(snap => {
-                                if (snap.val()) doUpdate(p.id);
+                                if (snap.val()) { console.log(`⚠️ [${p.name}] 3-UUID šešėlinis profilis rastas, rašau ten ID=${p.id}`); doUpdate(p.id); }
+                                else { console.log(`❌ [${p.name}] NIEKAS NERADO. Žaidėjas niekur nesusietas.`); }
                             });
                         });
                     }).catch(err => console.error("Casual global sync error:", err));
