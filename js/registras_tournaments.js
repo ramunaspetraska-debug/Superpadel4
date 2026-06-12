@@ -277,6 +277,66 @@ function openInputModal(titleHtml, placeholder, confirmLabel, onConfirm, inputTy
     setTimeout(() => input.focus(), 150);
 }
 
+// ==========================================
+// ŽAIDĖJO PROFILIO KORTELĖ
+// ==========================================
+
+function openPlayerCard(playerId) {
+    const p = (window._ratingsPool || []).find(x => String(x.id) === String(playerId));
+    if (!p) return;
+
+    let tierColor = 'var(--lvl-d)';
+    if (p.tier === 'A') tierColor = 'var(--lvl-a)';
+    else if (p.tier === 'B-/B') tierColor = 'var(--lvl-b)';
+    else if (p.tier === 'C/C+') tierColor = 'var(--lvl-c)';
+    else if (p.tier === 'D-C') tierColor = 'var(--lvl-d-c)';
+
+    const casualM = p.casual_matches || 0;
+    const casualWinRate = casualM > 0 ? Math.round(((p.casual_wins || 0) / casualM) * 100) : 0;
+    const lastPlayed = p.last_played ? new Date(p.last_played).toLocaleDateString('lt-LT') : '—';
+    const initials = esc(p.name.substring(0, 2).toUpperCase());
+
+    modalTitle.innerHTML = `<i class="fa-solid fa-user" style="color: var(--primary-blue);"></i> Žaidėjo kortelė`;
+    modalBody.innerHTML = `
+        <div style="text-align: center; padding: 10px 0;">
+            <div id="playerCardAvatar" style="width: 72px; height: 72px; border-radius: 50%; background: #f0fdf4; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; border: 3px solid ${tierColor}; margin: 0 auto 12px auto; overflow: hidden;">${initials}</div>
+            <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${esc(p.name)}</div>
+            <span style="background: ${tierColor}; color: white; padding: 4px 12px; border-radius: 14px; font-weight: 900; font-size: 11px; text-transform: uppercase; display: inline-block; margin-top: 6px;">${p.tier || 'D'} Lyga</span>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; text-align: center;">
+                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">ELO Reitingas</div>
+                    <div style="font-size: 22px; font-weight: 900; color: ${tierColor};">${p.rating || 300}</div>
+                </div>
+                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">Oficialūs mačai</div>
+                    <div style="font-size: 22px; font-weight: 900; color: var(--text-dark);">${p.total_matches || 0}</div>
+                </div>
+                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">Draugiški mačai</div>
+                    <div style="font-size: 22px; font-weight: 900; color: var(--text-dark);">${casualM}</div>
+                </div>
+                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">Laimėta</div>
+                    <div style="font-size: 22px; font-weight: 900; color: var(--status-green);">${casualWinRate}%</div>
+                </div>
+            </div>
+            <div style="font-size: 11px; color: var(--text-grey); margin-top: 12px;"><i class="fa-regular fa-clock"></i> Paskutinį kartą žaidė: ${lastPlayed}</div>
+        </div>
+    `;
+    modalActions.innerHTML = `<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width: 100%;">Uždaryti</button>`;
+    modal.classList.add('show');
+
+    // Nuotrauka užkraunama fone jei yra
+    if (p.hasPhoto) {
+        firebase.database().ref('padelio_global_players_photos/' + p.id).once('value').then(snap => {
+            const photo = snap.val();
+            const av = document.getElementById('playerCardAvatar');
+            if (photo && av) av.innerHTML = `<img src="${photo}" style="width:100%; height:100%; object-fit:cover;">`;
+        });
+    }
+}
+
 function openRegisterModal(id) { 
     if(!currentUser) { 
         pendingTournamentId = id; 
@@ -563,7 +623,8 @@ function loadAutomatedRatings(leagueLevel = 'all') {
         else { dataPool = allPlayers.filter(p => p.tier === leagueLevel); }
 
         dataPool.sort((a,b) => (b.rating || 0) - (a.rating || 0));
-        let mappedPool = dataPool.map(p => ({ name: p.name, points: p.rating || 0 }));
+        let mappedPool = dataPool.map(p => ({ id: p.id, name: p.name, points: p.rating || 0 }));
+        window._ratingsPool = dataPool;
 
         let p1 = document.getElementById('pod1-name'), p1p = document.getElementById('pod1-pts');
         let p2 = document.getElementById('pod2-name'), p2p = document.getElementById('pod2-pts');
@@ -586,7 +647,7 @@ function loadAutomatedRatings(leagueLevel = 'all') {
                 let rankNum = index + 1;
                 let rankClass = index === 0 ? 'color: #d69e2e; font-size: 18px; font-weight: 900;' : index === 1 ? 'color: #a0aec0; font-weight: 800;' : index === 2 ? 'color: #dd6b20; font-weight: 800;' : 'color: var(--text-grey);';
                 let ptsColor = 'var(--primary-blue)';
-                tbody.innerHTML += `<tr><td style="text-align: center; ${rankClass}">${rankNum}</td><td>${esc(player.name)}</td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
+                tbody.innerHTML += `<tr onclick="openPlayerCard('${esc(player.id)}')" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'"><td style="text-align: center; ${rankClass}">${rankNum}</td><td>${esc(player.name)} <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: #cbd5e0; margin-left: 4px;"></i></td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
             });
         }
 
@@ -616,6 +677,9 @@ function switchTab(pageId, element) {
         if(lTab) lTab.classList.add('active'); 
         loadAutomatedRatings('all'); 
     }
-    if(pageId === 'page-profile') { renderUserProfile(); }
+    if(pageId === 'page-profile') { 
+        renderUserProfile(); 
+        if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
+    }
 }
 function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); if(calendarBtn) switchTab('page-calendar', calendarBtn); }
