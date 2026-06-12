@@ -14,7 +14,6 @@ const DB_KEY = "padelio_pro_master";
 const GLOBAL_PLAYERS_KEY = "padelio_global_players";
 const GLOBAL_TOURNAMENTS_KEY = "padelio_global_tournaments"; 
 const GLOBAL_ARCHIVE_KEY = "padelio_archive_turnyrai"; 
-const GLOBAL_FRIENDLIES_KEY = "padelio_global_friendlies"; 
 
 const LEAGUE_LEVELS = ['Atviras', 'A', 'B-/B', 'C/C+', 'D-C', 'D', 'Privatus'];
 
@@ -31,7 +30,6 @@ let currentFirebaseData = null;
 let currentUser = JSON.parse(localStorage.getItem('sp_current_user')) || null;
 let isAppMode = true; 
 let pendingTournamentId = null; 
-let friendlyMatches = []; 
 let globalAdminPlayers = [];
 let tempAdminPlayerPhotoBase64 = null;
 
@@ -131,24 +129,11 @@ function updateAuthUI() {
         };
     } else {
         btn.innerHTML = `Prisijungti`;
-        btn.style.background = '#ebf8ff';
+        btn.style.background = '#f0fdf4';
         btn.style.color = 'var(--primary-blue)';
         btn.onclick = () => { pendingTournamentId = null; openAuthModal(); }; 
     }
     renderUserProfile();
-}
-
-// Perskaito šviežius vartotojo duomenis iš Firebase ir atnaujina profilį.
-// Tai užtikrina kad statistika rodoma iš karto, ne sena kešuota versija.
-function refreshCurrentUserFromFirebase() {
-    if (!currentUser || !currentUser.id) return;
-    firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${currentUser.id}`).once('value').then(snap => {
-        const fresh = snap.val();
-        if (!fresh) return;
-        currentUser = fresh;
-        localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
-        renderUserProfile(); // perpiešiame su šviežiais duomenimis
-    }).catch(err => console.error("refreshCurrentUser error:", err));
 }
 
 function renderUserProfile() {
@@ -191,7 +176,7 @@ function renderUserProfile() {
 
     let html = `
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ebf8ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #f0fdf4; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
                 ${currentUser.name.substring(0,2)}
             </div>
             <div style="flex: 1;">
@@ -228,7 +213,7 @@ function renderUserProfile() {
         </div>
 
         <a href="/index.html" style="text-decoration: none; display: block; margin-bottom: 25px;">
-            <div style="background: linear-gradient(to right, var(--primary-blue), #2b6cb0); color: white; border-radius: 10px; padding: 14px; font-size: 13px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(49,130,206,0.2); display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <div style="background: linear-gradient(to right, var(--primary-blue), #15803d); color: white; border-radius: 10px; padding: 14px; font-size: 13px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(49,130,206,0.2); display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <i class="fa-solid fa-table-tennis-paddle-ball"></i> Paleisti Mačų Skaičiuoklę / Generatorių
             </div>
         </a>
@@ -471,14 +456,14 @@ function openRoomJoinModal(roomName) {
         sorted.forEach(p => {
             const isMe = exactMatch && exactMatch.id === p.id;
             const highlight = isMe
-                ? 'border: 2px solid var(--primary-blue); background: #ebf8ff;'
+                ? 'border: 2px solid var(--primary-blue); background: #f0fdf4;'
                 : 'border: 1px solid #e2e8f0; background: white;';
             const badge = isMe
                 ? `<span style="font-size: 9px; background: var(--primary-blue); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px;">SUTAMPA</span>`
                 : '';
 
             bodyHtml += `
-                <div onclick="confirmJoinRoom('${esc(roomName)}', '${esc(p.id)}', '${esc(p.name)}')" style="${highlight} border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                <div onclick="confirmJoinRoom('${esc(roomName)}', '${esc(p.id)}')" style="${highlight} border-radius: 10px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: 0.15s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
                     <div>
                         <span style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${esc(p.name)}</span>
                         ${badge}
@@ -500,20 +485,21 @@ function openRoomJoinModal(roomName) {
     });
 }
 
-function confirmJoinRoom(roomName, roomPlayerId, roomPlayerName) {
+function confirmJoinRoom(roomName, roomPlayerId) {
     if (!currentUser) return;
 
-    // SVARBU: ryšį pagal vardą saugome pagal KAMBARIO žaidėjo vardą (tą kurį pasirinko sąraše),
-    // ne pagal portalo profilio vardą. Generatoriuje žaidėjas gali būti "Ramūnas",
-    // o portale "Ramūnas Petreaška" — todėl naudojame kambario vardą sutapimui.
-    const nameKey = (roomPlayerName || currentUser.name).toLowerCase().trim().replace(/\s+/g, '_');
+    const nameKey = currentUser.name.toLowerCase().trim().replace(/\s+/g, '_');
 
     const updates = {};
     updates[`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`] = roomPlayerId;
     updates[`${DB_KEY}/${roomName}/portal_links_reverse/${roomPlayerId}`] = currentUser.id;
+    // Stabilus ryšys pagal vardą — veikia net kai keičiasi žaidėjo ID naujuose turnyruose
     updates[`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`] = currentUser.id;
 
+    console.log("💾 PRISIJUNGIMAS: išsaugau ryšius:", JSON.stringify(updates));
+
     firebase.database().ref().update(updates).then(() => {
+        console.log("✅ PRISIJUNGIMAS išsaugotas. nameKey=" + nameKey + " currentUser.id=" + currentUser.id);
         closeModal();
         loadActiveRooms();
 
@@ -523,7 +509,7 @@ function confirmJoinRoom(roomName, roomPlayerId, roomPlayerName) {
                 showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
                 return;
             }
-            calculateRetroactiveStats(roomName, roomPlayerId, currentUser.id, roomPlayerName || currentUser.name);
+            calculateRetroactiveStats(roomName, roomPlayerId, currentUser.id, currentUser.name);
         });
     }).catch(() => {
         showToast("Klaida jungiantis prie kambario.");
