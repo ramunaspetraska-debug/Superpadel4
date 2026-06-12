@@ -299,7 +299,7 @@ function openPlayerCard(playerId) {
     modalTitle.innerHTML = `<i class="fa-solid fa-user" style="color: var(--primary-blue);"></i> Žaidėjo kortelė`;
     modalBody.innerHTML = `
         <div style="text-align: center; padding: 10px 0;">
-            <div id="playerCardAvatar" style="width: 72px; height: 72px; border-radius: 50%; background: #f0fdf4; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; border: 3px solid ${tierColor}; margin: 0 auto 12px auto; overflow: hidden;">${initials}</div>
+            <div id="playerCardAvatar" style="width: 72px; height: 72px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; border: 3px solid ${tierColor}; margin: 0 auto 12px auto; overflow: hidden;">${initials}</div>
             <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${esc(p.name)}</div>
             <span style="background: ${tierColor}; color: white; padding: 4px 12px; border-radius: 14px; font-weight: 900; font-size: 11px; text-transform: uppercase; display: inline-block; margin-top: 6px;">${p.tier || 'D'} Lyga</span>
 
@@ -417,7 +417,7 @@ function setPartnerModalGender(g) {
     if (!btnM || !btnF) return;
     
     if (g === 'M') {
-        btnM.style.background = '#f0fdf4'; btnM.style.borderColor = '#16a34a'; btnM.style.color = '#16a34a';
+        btnM.style.background = '#eff6ff'; btnM.style.borderColor = '#2563eb'; btnM.style.color = '#2563eb';
         btnF.style.background = '#fff'; btnF.style.borderColor = '#cbd5e0'; btnF.style.color = '#718096';
     } else {
         btnM.style.background = '#fff'; btnM.style.borderColor = '#cbd5e0'; btnM.style.color = '#718096';
