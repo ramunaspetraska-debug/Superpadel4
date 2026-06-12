@@ -343,7 +343,7 @@ function setPartnerModalGender(g) {
     if (!btnM || !btnF) return;
     
     if (g === 'M') {
-        btnM.style.background = '#ebf8ff'; btnM.style.borderColor = '#009fe3'; btnM.style.color = '#009fe3';
+        btnM.style.background = '#f0fdf4'; btnM.style.borderColor = '#16a34a'; btnM.style.color = '#16a34a';
         btnF.style.background = '#fff'; btnF.style.borderColor = '#cbd5e0'; btnF.style.color = '#718096';
     } else {
         btnM.style.background = '#fff'; btnM.style.borderColor = '#cbd5e0'; btnM.style.color = '#718096';
@@ -602,27 +602,9 @@ function switchTab(pageId, element) {
         if(lTab) lTab.classList.add('active'); 
         loadAutomatedRatings('all'); 
     }
-    if(pageId === 'page-profile') { 
-        renderUserProfile(); 
-        if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
-    }
+    if(pageId === 'page-profile') { renderUserProfile(); }
 }
 function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); if(calendarBtn) switchTab('page-calendar', calendarBtn); }
-
-// ==========================================
-// 5. IŠMANIOJI KAMERA IR AI HIGHLIGHTS
-// ==========================================
-
-let cameraStream = null; 
-let isRecording = false; 
-let timerIntervalCam = null; 
-let secondsRecord = 0;        
-
-async function startCamera() { try { const videoElement = document.getElementById('cameraFeed'); if (!videoElement || cameraStream) return; if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Kameros klaida."); return; } const constraints = { video: { facingMode: 'environment', width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } } }; const stream = await navigator.mediaDevices.getUserMedia(constraints); videoElement.srcObject = stream; cameraStream = stream; } catch (err) { } }
-function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(track => track.stop()); cameraStream = null; let vFeed = document.getElementById('cameraFeed'); if(vFeed) vFeed.srcObject = null; } }
-function toggleRecording() { const btn = document.getElementById('recordBtn'); const indicator = document.getElementById('recIndicator'); const infoText = document.getElementById('camInfoText'); const aiPanel = document.getElementById('aiPanel'); if (!isRecording) { isRecording = true; if(btn) btn.classList.add('recording'); if(indicator) indicator.style.display = 'flex'; if(aiPanel) aiPanel.style.display = 'none'; if(infoText) infoText.innerHTML = "Filmuojama... Vaizdas įrašomas."; secondsRecord = 0; timerIntervalCam = setInterval(() => { secondsRecord++; let m = Math.floor(secondsRecord / 60).toString().padStart(2, '0'); let s = (secondsRecord % 60).toString().padStart(2, '0'); let recTimer = document.getElementById('recTimer'); if(recTimer) recTimer.innerText = `00:${m}:${s}`; }, 1000); } else { isRecording = false; if(btn) btn.classList.remove('recording'); if(indicator) indicator.style.display = 'none'; clearInterval(timerIntervalCam); if(btn) btn.style.display = 'none'; if(infoText) infoText.style.display = 'none'; if(aiPanel) aiPanel.style.display = 'block'; setTimeout(() => { let recTimer = document.getElementById('recTimer'); if(recTimer) recTimer.innerText = `00:00:00`; }, 1000); } }
-function startAiProcessing() { let sBtn = document.getElementById('startAiBtn'); if(sBtn) sBtn.style.display = 'none'; let aiProg = document.getElementById('aiProgress'); if(aiProg) aiProg.style.display = 'block'; let aiStat = document.getElementById('aiStatusText'); if(aiStat) aiStat.style.display = 'block'; let fill = document.getElementById('aiFill'); let width = 0; let interval = setInterval(() => { width += Math.random() * 15; if(width >= 100) width = 100; if(fill) fill.style.width = width + '%'; if(aiStat) { if(width < 40) aiStat.innerText = `Analizuojama... (${Math.floor(width)}%)`; else if(width < 80) aiStat.innerText = `Karpomas vaizdas... (${Math.floor(width)}%)`; else aiStat.innerText = `Baigiama... (${Math.floor(width)}%)`; } if(width >= 100) { clearInterval(interval); if(aiProg) aiProg.style.display = 'none'; if(aiStat) aiStat.style.display = 'none'; let gVid = document.getElementById('generatedVideo'); if(gVid) gVid.style.display = 'block'; showToast("Highlights sugeneruoti!"); } }, 500); }
-function uploadToYT() { showToast("Įkeliama fone... Netrukus atsiras SuperPadel TV skiltyje!"); setTimeout(() => { let gVid = document.getElementById('generatedVideo'); if(gVid) gVid.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--status-green);"><i class="fa-solid fa-check-circle" style="font-size: 30px; margin-bottom: 10px;"></i><br>Sėkmingai įkelta!<br><button type="button" class="modal-btn secondary" style="margin-top: 15px; width: 100%;" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i> Nuoroda</button></div>`; }, 2000); }
 
 // ==========================================
 // DRAUGIŠKI MAČAI
