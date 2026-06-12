@@ -218,3 +218,14 @@ function renderLiveScoreboard() {
     }
     container.innerHTML = `<div class="score-box"><div style="background: #1a202c; color: white; padding: 6px 15px; font-size: 10px; font-weight: bold; letter-spacing: 1px;">${headerTitle}</div><div class="team-row"><div class="team-names">${team1Names}</div>${score1Html}</div><div class="team-row" style="border-bottom: none; background: #f8f9fb;"><div class="team-names">${team2Names}</div>${score2Html}</div></div>`; 
 }
+
+// ==========================================
+// LIVE MODALINIS LANGAS (Stebėti mygtukas)
+// ==========================================
+function openLiveModal(e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    document.getElementById('liveModal')?.classList.add('show');
+}
+function closeLiveModal() {
+    document.getElementById('liveModal')?.classList.remove('show');
+}
