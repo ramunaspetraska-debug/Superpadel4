@@ -147,11 +147,12 @@
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Formatas</label><select id="select-format" onchange="changeFormat(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-[11px]"><option value="americano">Americano</option><option value="fixed">Fiksuotos poros</option><option value="mix_americano">Mix Americano</option></select></div>
                     <div><label class="text-[9px] font-bold text-slate-400 uppercase block mb-1">Lygis</label><select id="select-level" onchange="if(typeof settings !== 'undefined') { settings.level = this.value; if(typeof autoSave === 'function') autoSave(true); }" class="w-full bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 font-bold text-[11px]"><option value="Atviras">Atviras (Visi lygiai)</option><option value="A">A (Ekspertai)</option><option value="B">B-/B (Patyrę)</option><option value="C">C/C+ (Pažengę)</option><option value="D-C">D/C- (Pradedantieji)</option><option value="D">D (Naujokai)</option><option value="Privatus">Privatus (Nereitinguojamas)</option></select></div>
                 </div>
-                <div id="ereferee-container" class="hidden"><div class="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg flex items-center justify-between"><div class="flex items-center gap-2"><input type="checkbox" id="setting-ereferee" onchange="toggleERef()" class="w-4 h-4 accent-indigo-600 cursor-pointer"><label for="setting-ereferee" class="text-[10px] font-black text-indigo-900 uppercase tracking-widest cursor-pointer">E-Teisėjas (Žaidėjai veda taškus)</label></div><input type="text" id="setting-ereferee-pin" onchange="updateERefPin()" placeholder="PIN (pvz. 1234)" class="hidden w-24 text-[10px] p-1.5 border border-indigo-200 rounded text-center font-bold text-indigo-900 focus:outline-none"></div></div>
+                
             </div>
 
             <div id="players-list" class="space-y-2 mb-10"></div>
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
+                <button onclick="openGlobalImportModal()" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest mb-2"><i class="fa-solid fa-users"></i> IMPORTUOTI REGISTRUOTUS ŽAIDĖJUS</button>
                 <a href="registras.html" target="_blank" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest"><i class="fa-solid fa-earth-europe"></i> Atidaryti Žaidėjų Portalą</a>
                 <button type="button" onclick="resetScores()" class="w-full py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 shadow-sm"><i class="fa-solid fa-folder-plus"></i> Naujas Turnyras</button>
             </div>
@@ -191,6 +192,7 @@
                             <option value="true">🏆 Official (Lygos ELO)</option>
                         </select>
                     </div>
+                    <div id="ereferee-container"><div class="mt-3 bg-indigo-50 border border-indigo-100 p-2 rounded-lg flex items-center justify-between"><div class="flex items-center gap-2"><input type="checkbox" id="setting-ereferee" onchange="toggleERef()" class="w-4 h-4 accent-indigo-600 cursor-pointer"><label for="setting-ereferee" class="text-[10px] font-black text-indigo-900 uppercase tracking-widest cursor-pointer">E-Teisėjas (Žaidėjai veda taškus)</label></div><input type="text" id="setting-ereferee-pin" onchange="updateERefPin()" placeholder="PIN (pvz. 1234)" class="hidden w-24 text-[10px] p-1.5 border border-indigo-200 rounded text-center font-bold text-indigo-900 focus:outline-none"></div></div>
                 </div>
                 <div class="bg-white p-4 rounded-2xl border border-slate-200"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Turnyrai</h3><div id="admin-tournaments-list" class="space-y-2"></div></div>
                 <div class="bg-white p-4 rounded-2xl border border-slate-200"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Žaidėjai</h3><div id="admin-players-list" class="space-y-1 divide-y divide-slate-50"></div></div>
