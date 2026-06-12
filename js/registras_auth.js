@@ -129,7 +129,7 @@ function updateAuthUI() {
         };
     } else {
         btn.innerHTML = `Prisijungti`;
-        btn.style.background = '#f0fdf4';
+        btn.style.background = '#eff6ff';
         btn.style.color = 'var(--primary-blue)';
         btn.onclick = () => { pendingTournamentId = null; openAuthModal(); }; 
     }
@@ -188,7 +188,7 @@ function renderUserProfile() {
 
     let html = `
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-            <div style="width: 50px; height: 50px; border-radius: 50%; background: #f0fdf4; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
                 ${currentUser.name.substring(0,2)}
             </div>
             <div style="flex: 1;">
@@ -247,7 +247,7 @@ function renderUserProfile() {
         </div>
 
         <a href="/index.html" style="text-decoration: none; display: block; margin-bottom: 25px;">
-            <div style="background: linear-gradient(to right, var(--primary-blue), #15803d); color: white; border-radius: 10px; padding: 14px; font-size: 13px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(49,130,206,0.2); display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <div style="background: linear-gradient(to right, var(--primary-blue), #1d4ed8); color: white; border-radius: 10px; padding: 14px; font-size: 13px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(49,130,206,0.2); display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <i class="fa-solid fa-table-tennis-paddle-ball"></i> Paleisti Mačų Skaičiuoklę / Generatorių
             </div>
         </a>
@@ -492,7 +492,7 @@ function openRoomJoinModal(roomName) {
         sorted.forEach(p => {
             const isMe = exactMatch && exactMatch.id === p.id;
             const highlight = isMe
-                ? 'border: 2px solid var(--primary-blue); background: #f0fdf4;'
+                ? 'border: 2px solid var(--primary-blue); background: #eff6ff;'
                 : 'border: 1px solid #e2e8f0; background: white;';
             const badge = isMe
                 ? `<span style="font-size: 9px; background: var(--primary-blue); color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 6px;">SUTAMPA</span>`
