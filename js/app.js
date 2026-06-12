@@ -153,9 +153,45 @@ function listenToCasualPlayers() {
     });
 }
 
+// Generatoriaus įvedimo modalas (Tailwind stilius, kuriamas dinamiškai)
+function genInputModal(title, placeholder, defaultVal, onConfirm) {
+    const old = document.getElementById('gen-input-modal');
+    if (old) old.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'gen-input-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
+    wrap.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:24px;width:100%;max-width:340px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+            <div style="font-weight:900;font-size:15px;color:#1e293b;margin-bottom:14px;">${title}</div>
+            <input id="gen-input-field" type="text" placeholder="${placeholder}" value="${defaultVal || ''}" style="width:100%;padding:13px;border:2px solid #cbd5e1;border-radius:10px;font-weight:bold;font-size:15px;outline:none;box-sizing:border-box;" autocomplete="off" />
+            <div style="display:flex;gap:8px;margin-top:14px;">
+                <button id="gen-input-cancel" style="flex:1;padding:12px;border:1px solid #cbd5e1;background:white;color:#64748b;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Atšaukti</button>
+                <button id="gen-input-ok" style="flex:1;padding:12px;border:none;background:#16a34a;color:white;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Gerai</button>
+            </div>
+        </div>`;
+    document.body.appendChild(wrap);
+    const input = document.getElementById('gen-input-field');
+    const submit = () => { const v = input.value; wrap.remove(); onConfirm(v); };
+    document.getElementById('gen-input-ok').onclick = submit;
+    document.getElementById('gen-input-cancel').onclick = () => wrap.remove();
+    input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+    setTimeout(() => input.focus(), 100);
+}
+
 async function importFromPortal() {
     if (typeof firebase === 'undefined') return;
-    const tDate = prompt("Turnyro data (MM-DD):", "05-23"); if (!tDate) return;
+    genInputModal('<i class="fa-solid fa-calendar"></i> Turnyro data', 'MM-DD', getDefaultImportDate(), (tDate) => {
+        if (!tDate) return;
+        runPortalImport(tDate);
+    });
+}
+
+function getDefaultImportDate() {
+    const d = new Date();
+    return `${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+}
+
+async function runPortalImport(tDate) {
     document.getElementById('loading-overlay').style.display = 'flex';
     
     firebase.database().ref("padelio_global_tournaments").once('value').then(snap => {
