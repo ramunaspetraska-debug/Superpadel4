@@ -136,6 +136,18 @@ function updateAuthUI() {
     renderUserProfile();
 }
 
+// Perskaito šviežius vartotojo duomenis iš Firebase ir atnaujina profilį.
+function refreshCurrentUserFromFirebase() {
+    if (!currentUser || !currentUser.id) return;
+    firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${currentUser.id}`).once('value').then(snap => {
+        const fresh = snap.val();
+        if (!fresh) return;
+        currentUser = fresh;
+        localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
+        renderUserProfile();
+    }).catch(err => console.error("refreshCurrentUser error:", err));
+}
+
 function renderUserProfile() {
     const container = document.getElementById('page-profile');
     if (!container) return;
@@ -210,6 +222,28 @@ function renderUserProfile() {
                 <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
                 <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${casualWinRate}%</div>
             </div>
+        </div>
+
+        <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Paskutiniai mačai</div>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+            ${(currentUser.recent_matches && currentUser.recent_matches.length > 0) ? currentUser.recent_matches.map(m => {
+                const badge = m.win
+                    ? '<span style="font-size: 9px; background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LAIMĖTA</span>'
+                    : (m.s1 === m.s2
+                        ? '<span style="font-size: 9px; background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LYGIOSIOS</span>'
+                        : '<span style="font-size: 9px; background: #fed7d7; color: #742a2a; padding: 2px 8px; border-radius: 4px; font-weight: bold;">PRALAIMĖTA</span>');
+                const typeBadge = m.official
+                    ? '<i class="fa-solid fa-trophy" style="color: #d69e2e; font-size: 10px;" title="Oficialus"></i>'
+                    : '<i class="fa-solid fa-user-group" style="color: #a0aec0; font-size: 10px;" title="Draugiškas"></i>';
+                const dateStr = new Date(m.d).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' });
+                return `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${typeBadge} ${esc(m.t1)} <span style="font-weight: normal; color: #a0aec0;">vs</span> ${esc(m.t2)}</div>
+                        <div style="font-size: 10px; color: var(--text-grey); margin-top: 2px;">${dateStr} • <strong style="color: var(--text-dark);">${m.s1}:${m.s2}</strong></div>
+                    </div>
+                    <div style="margin-left: 8px;">${badge}</div>
+                </div>`;
+            }).join('') : '<div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 11px;">Mačų istorija tuščia.</div>'}
         </div>
 
         <a href="/index.html" style="text-decoration: none; display: block; margin-bottom: 25px;">
@@ -385,9 +419,10 @@ function renderRoomCards(container, roomCards) {
                         </div>
                         <div style="font-size: 10px; color: var(--text-grey); margin-top: 2px;">${playerCountText}</div>
                     </div>
-                    <button type="button" onclick="disconnectFromRoom('${esc(roomName)}')" style="background: #fff; border: 1px solid #fed7d7; color: var(--status-red); padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; white-space: nowrap;">
-                        Atsijungti
-                    </button>
+                    <div style="display:flex; gap:6px;">
+                    <button type="button" onclick="showRoomQR('${esc(roomName)}')" style="background: #fff; border: 1px solid #cbd5e0; color: var(--text-dark); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 13px;"><i class="fa-solid fa-qrcode"></i></button>
+                    <button type="button" onclick="disconnectFromRoom('${esc(roomName)}')" style="background: #fff; border: 1px solid #fed7d7; color: var(--status-red); padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer; white-space: nowrap;">Atsijungti</button>
+                    </div>
                 </div>
             `;
         } else {
@@ -398,9 +433,10 @@ function renderRoomCards(container, roomCards) {
                         <div style="font-weight: 900; color: var(--text-dark); font-size: 14px;">${esc(roomName)}</div>
                         <div style="font-size: 10px; color: var(--text-grey); margin-top: 3px;">${playerCountText} · statistika neskaičiuojama</div>
                     </div>
-                    <button type="button" onclick="openRoomJoinModal('${esc(roomName)}')" style="background: var(--primary-blue); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap;">
-                        <i class="fa-solid fa-link"></i> Prisijungti
-                    </button>
+                    <div style="display:flex; gap:6px;">
+                    <button type="button" onclick="showRoomQR('${esc(roomName)}')" style="background: #fff; border: 1px solid #cbd5e0; color: var(--text-dark); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 13px;"><i class="fa-solid fa-qrcode"></i></button>
+                    <button type="button" onclick="openRoomJoinModal('${esc(roomName)}')" style="background: var(--primary-blue); color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; white-space: nowrap;"><i class="fa-solid fa-link"></i> Prisijungti</button>
+                    </div>
                 </div>
             `;
         }
@@ -613,4 +649,31 @@ function disconnectFromRoom(roomName) {
     }).catch(() => {
         showToast("Klaida atsijungiant.");
     });
+}
+
+// ==========================================
+// KAMBARIO QR KODAS
+// ==========================================
+// Organizatorius parodo QR — žaidėjai nuskenuoja telefonu ir iškart
+// patenka į portalą su atidarytu to kambario prisijungimo langu.
+
+function showRoomQR(roomName) {
+    const modalEl = document.getElementById('actionModal');
+    const link = window.location.origin + '/registras?room=' + encodeURIComponent(roomName);
+
+    document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-qrcode" style="color: var(--primary-blue);"></i> ${esc(roomName)}`;
+    document.getElementById('modalBody').innerHTML = `
+        <div style="text-align: center; padding: 10px 0;">
+            <div id="roomQrBox" style="display: inline-block; padding: 14px; background: white; border: 2px solid #e2e8f0; border-radius: 12px;"></div>
+            <div style="font-size: 12px; color: var(--text-grey); margin-top: 12px; line-height: 1.5;">Žaidėjai nuskenuoja kodą telefonu ir<br>iškart prisijungia prie kambario statistikai.</div>
+        </div>
+    `;
+    document.getElementById('modalActions').innerHTML = `<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width: 100%;">Uždaryti</button>`;
+    modalEl.classList.add('show');
+
+    if (typeof QRCode !== 'undefined') {
+        new QRCode(document.getElementById('roomQrBox'), { text: link, width: 180, height: 180 });
+    } else {
+        document.getElementById('roomQrBox').innerHTML = `<div style="font-size:11px; padding:20px; color:var(--text-grey); word-break:break-all;">${link}</div>`;
+    }
 }
