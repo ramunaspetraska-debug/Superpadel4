@@ -294,9 +294,10 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             
             let tier = "D";
             if (newR >= 851) tier = "A";
-            else if (newR >= 671) tier = "B-/B";
-            else if (newR >= 501) tier = "C/C+";
-            else if (newR >= 351) tier = "D-C";
+            else if (newR >= 701) tier = "B-/B";
+            else if (newR >= 551) tier = "C/C+";
+            else if (newR >= 451) tier = "C-/C";
+            else if (newR >= 351) tier = "D/C-";
             
             // Mačų istorija (paskutiniai 10)
             let hist = (g.recent_matches || []).slice();
@@ -358,9 +359,10 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 
                 let tier = "D";
                 if (newR >= 851) tier = "A";
-                else if (newR >= 671) tier = "B-/B";
-                else if (newR >= 501) tier = "C/C+";
-                else if (newR >= 351) tier = "D-C";
+                else if (newR >= 701) tier = "B-/B";
+                else if (newR >= 551) tier = "C/C+";
+                else if (newR >= 451) tier = "C-/C";
+                else if (newR >= 351) tier = "D/C-";
                 
                 casualRef.child(p.id).update({
                     id: p.id,
