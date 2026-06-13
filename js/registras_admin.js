@@ -55,21 +55,6 @@ function parseTimeStr(timeStr) {
     return { start: parseInt(startParts[0]) * 60 + parseInt(startParts[1]), end: parseInt(endParts[0]) * 60 + parseInt(endParts[1]) };
 }
 
-// Mix Americano reikalauja V+M poros — kategorija užrakinama į "Mix"
-function onAdminFormatChange() {
-    const fmt = document.getElementById('newFormat').value;
-    const catSel = document.getElementById('newCategory');
-    if (!catSel) return;
-    if (fmt === 'Mix Americano') {
-        catSel.value = 'Mix';
-        catSel.disabled = true;
-        catSel.style.opacity = '0.6';
-    } else {
-        catSel.disabled = false;
-        catSel.style.opacity = '1';
-    }
-}
-
 function createTournament(e) { 
     e.preventDefault(); 
     const baseDateStr = document.getElementById('newDate').value; 
