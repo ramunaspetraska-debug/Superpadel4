@@ -331,7 +331,7 @@ function renderTimerAndSettings() {
     
     const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), sec = (timeLeft%60).toString().padStart(2,'0'); 
     safeText('timer-display', `${m}:${sec}`); safeText('val-duration', typeof settings !== 'undefined' ? settings.matchDuration : 12); safeText('val-points', typeof settings !== 'undefined' ? settings.maxPoints : 21); safeText('player-count', "Viso: " + players.length); 
-    if(typeof settings !== 'undefined') { safeVal('select-format', settings.format); safeVal('select-ranking', settings.rankingMode); }
+    if(typeof settings !== 'undefined') { safeVal('select-format', settings.baseFormat || 'americano'); safeVal('select-category', settings.category || 'Atviras'); safeVal('select-ranking', settings.rankingMode); }
 
     const btnFinals = el('btn-generate-finals');
     if(btnFinals) btnFinals.className = (safeArr(matches).some(m => m.finished)) ? "px-4 py-3 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 text-white font-black shadow-lg shadow-amber-200 text-[10px] active:scale-95 transition-transform tracking-widest uppercase" : "hidden";
@@ -428,7 +428,35 @@ function renderGlobalStats() {
 
 function setMode(m) { if(typeof settings !== 'undefined') settings.winCondition = m; resetTimer(); autoSave(true); }
 function changeSetting(k, v) { if(typeof settings !== 'undefined') { settings[k] = Math.max(1, (settings[k]||0)+v); if(k==='matchDuration') resetTimer(); autoSave(true); } }
-function changeFormat(v) { if(typeof settings !== 'undefined') { settings.format = v; preGeneratedTournament = []; setStore('pregen', []); autoSave(true); } }
+// Bazinis formatas (americano/fixed/mexicano/king/cup) + kategorija → tikrasis variklis.
+// "americano" + kategorija "Mix" → aktyvuoja Mix Americano variklį (mix_americano).
+function resolveEngine() {
+    if (typeof settings === 'undefined') return 'americano';
+    const base = settings.baseFormat || 'americano';
+    const cat = settings.category || 'Atviras';
+    if (base === 'americano' && cat === 'Mix') return 'mix_americano';
+    if (base === 'fixed') return 'fixed';
+    // Mexicano/King/Taurė kol kas naudoja Americano variklį
+    return 'americano';
+}
+
+function changeFormat(v) {
+    if (typeof settings === 'undefined') return;
+    settings.baseFormat = v;
+    settings.format = resolveEngine();
+    preGeneratedTournament = [];
+    setStore('pregen', []);
+    autoSave(true);
+}
+
+function changeCategory(v) {
+    if (typeof settings === 'undefined') return;
+    settings.category = v;
+    settings.format = resolveEngine();
+    preGeneratedTournament = [];
+    setStore('pregen', []);
+    autoSave(true);
+}
 function changeRanking(v) { if(typeof settings !== 'undefined') { settings.rankingMode = v; autoSave(true); } }
 
 function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
@@ -438,8 +466,9 @@ function finM(id) {
     if(m){ 
         m.finished = true; 
         liveUpdateMatches(); 
-        // SVARBU: processGlobalEloForMatch jau iškviečiamas iš liveUpdateMatches → 
-        // updateGlobalRatingsFromMatches. Antras iškvietimas čia būtų DVIGUBAS skaičiavimas.
+        if (typeof processGlobalEloForMatch === 'function' && typeof settings !== 'undefined' && settings.level !== 'Privatus') {
+            processGlobalEloForMatch(m, typeof globalPlayersData !== 'undefined' ? globalPlayersData : {}, typeof globalPlayersRef !== 'undefined' ? globalPlayersRef : null);
+        }
     } 
 }
 
