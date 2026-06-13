@@ -194,6 +194,10 @@ function renderUserProfile() {
         ? Math.round(((currentUser.casual_wins || 0) / currentUser.casual_matches) * 100)
         : 0;
 
+    const officialWinRate = (currentUser.total_matches || 0) > 0
+        ? Math.round(((currentUser.official_wins || 0) / currentUser.total_matches) * 100)
+        : 0;
+
     let html = `
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
@@ -209,26 +213,34 @@ function renderUserProfile() {
         </div>
 
         <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Oficiali Lyga</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px;">
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
-                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey);">ELO Reitingas</div>
-                <div style="font-size: 20px; font-weight: 900; color: ${ptsColor};">${currentUser.rating || 300}</div>
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">ELO Reitingas</div>
+                <div style="font-size: 18px; font-weight: 900; color: ${ptsColor};">${currentUser.rating || 300}</div>
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
-                <div style="font-size: 10px; font-weight: bold; color: var(--text-grey);">Oficialūs mačai</div>
-                <div style="font-size: 20px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Mačai</div>
+                <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${currentUser.total_matches || 0}</div>
+            </div>
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
+                <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${officialWinRate}%</div>
             </div>
         </div>
 
         <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Mėgėjų Lyga</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px;">
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
-                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Draugiški mačai</div>
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Mačai</div>
                 <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${currentUser.casual_matches || 0}</div>
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
                 <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
                 <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${casualWinRate}%</div>
+            </div>
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Pergalės</div>
+                <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${currentUser.casual_wins || 0}</div>
             </div>
         </div>
 
