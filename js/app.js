@@ -400,3 +400,45 @@ function confirmGlobalImport() {
     if (typeof autoSave === 'function') autoSave(true);
     alert(`Pridėti ${added} žaidėjai. Jų statistika skaičiuosis automatiškai!`);
 }
+
+// ==========================================
+// FORMATO + KATEGORIJOS LOGIKA (Mix Americano aktyvacija)
+// ==========================================
+// Mix Americano variklis aktyvuojamas per derinį: Americano + kategorija Mix.
+// Vidinis settings.format tampa 'mix_americano', bet naudotojas mato Americano+Mix.
+
+function changeCategory(cat) {
+    if (typeof settings === 'undefined') return;
+    settings.category = cat;
+    applyFormatCategoryEngine();
+    preGeneratedTournament = [];
+    if (typeof setStore === 'function') setStore('pregen', []);
+    if (typeof autoSave === 'function') autoSave(true);
+}
+
+// Perrašome changeFormat, kad jis taip pat įvertintų kategoriją
+function changeFormat(v) {
+    if (typeof settings === 'undefined') return;
+    settings.baseFormat = v; // išsaugome pasirinktą formatą atskirai
+    applyFormatCategoryEngine();
+    preGeneratedTournament = [];
+    if (typeof setStore === 'function') setStore('pregen', []);
+    if (typeof autoSave === 'function') autoSave(true);
+}
+
+function applyFormatCategoryEngine() {
+    const baseFmt = settings.baseFormat || document.getElementById('select-format')?.value || 'americano';
+    const cat = settings.category || document.getElementById('select-category')?.value || 'Atviras';
+
+    // Americano + Mix → tavo specialus Mix Americano variklis (8/16 matrica)
+    if (baseFmt === 'americano' && cat === 'Mix') {
+        settings.format = 'mix_americano';
+    } else if (baseFmt === 'fixed') {
+        settings.format = 'fixed';
+    } else if (baseFmt === 'americano') {
+        settings.format = 'americano';
+    } else {
+        // Mexicano / King / Taurė — kol kas naudoja Americano variklį
+        settings.format = 'americano';
+    }
+}
