@@ -1,8 +1,8 @@
-const APP_VERSION = 'v193';
+const APP_VERSION = 'v196';
 const DB_KEY = "padelio_pro_master"; 
 const REG_KEY = "padelio_pro_master_rooms"; 
 
-const ds = { matchDuration: 12, maxPoints: 21, winCondition: 'time', format: 'americano', rankingMode: 'points' };
+const ds = { matchDuration: 12, maxPoints: 21, winCondition: 'time', format: 'americano', baseFormat: 'americano', category: 'Atviras', rankingMode: 'points' };
 
 let players = [];
 let matches = [];
