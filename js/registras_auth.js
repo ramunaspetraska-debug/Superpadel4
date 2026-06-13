@@ -38,6 +38,12 @@ let selectedPartnerData = null;
 let tempPartnerGender = 'M';
 let partnerLookupTimeout = null;
 
+// Pašalina "|lytis" priesagą nuo žaidėjo vardo (saugomo formatu "Vardas|M")
+function cleanName(s) {
+    if (!s) return '';
+    return String(s).split('|')[0].trim();
+}
+
 function esc(str) {
     if (!str) return '';
     return String(str).replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
@@ -179,6 +185,8 @@ function renderUserProfile() {
     if (currentUser.tier === 'A') ptsColor = 'var(--lvl-a)';
     else if (currentUser.tier === 'B-/B') ptsColor = 'var(--lvl-b)';
     else if (currentUser.tier === 'C/C+') ptsColor = 'var(--lvl-c)';
+    else if (currentUser.tier === 'C-/C') ptsColor = 'var(--lvl-c2)';
+    else if (currentUser.tier === 'D/C-') ptsColor = 'var(--lvl-d-c)';
     else if (currentUser.tier === 'D-C') ptsColor = 'var(--lvl-d-c)';
     else ptsColor = 'var(--lvl-d)';
 
@@ -284,8 +292,8 @@ function renderUserProfile() {
             let hasPartner = teamStr.includes('/');
 
             if (hasPartner) {
-                let parts = teamStr.split('/');
-                let pName = parts[0].trim().toLowerCase() === currentUser.name.toLowerCase() ? parts[1].trim() : parts[0].trim();
+                let parts = teamStr.split('/').map(cleanName);
+                let pName = parts[0].toLowerCase() === currentUser.name.toLowerCase() ? parts[1] : parts[0];
                 partnerInfo = `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 3px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-group"></i> ${pName}</div>`;
             } else {
                 actionButtons += `
