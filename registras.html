@@ -104,9 +104,10 @@
                         <option value="Atviras">Atviras (Visi lygiai)</option>
                         <option value="A">A (Ekspertai)</option>
                         <option value="B-/B">B-/B (Patyrę)</option>
-                        <option value="C/C+">C/C+ (Pažengę)</option>
-                        <option value="D-C">D/C- (Pradedantieji)</option>
-                        <option value="D">D (Naujokai)</option>
+                        <option value="C/C+">C/C+</option>
+                        <option value="C-/C">C-/C</option>
+                        <option value="D/C-">D/C-</option>
+                        <option value="D">D</option>
                         <option value="Privatus">Privatus (Nereitinguojamas)</option>
                     </select>
                 </div>
@@ -195,16 +196,17 @@
                         <option value="Atviras">Atviras (Visi lygiai)</option>
                         <option value="A">A (Ekspertai)</option>
                         <option value="B-/B">B-/B (Patyrę)</option>
-                        <option value="C/C+">C/C+ (Pažengę)</option>
-                        <option value="D-C">D/C- (Pradedantieji)</option>
-                        <option value="D">D (Naujokai)</option>
+                        <option value="C/C+">C/C+</option>
+                        <option value="C-/C">C-/C</option>
+                        <option value="D/C-">D/C-</option>
+                        <option value="D">D</option>
                         <option value="Privatus">Privatus (Nereitinguojamas)</option>
                     </select>
                 </div>
                 <div class="filter-group full-width"><div class="search-wrapper"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="filterPlayer" placeholder="Ieškoti žaidėjo (pvz. Marius)" onkeyup="renderTournaments()"></div></div>
             </div>
             <div class="date-carousel" id="dateCarousel"></div>
-            <div style="padding: 0 20px; text-align: right; margin-bottom: 5px;"><span style="font-size: 12px; color: var(--primary-blue); cursor: pointer; text-decoration: underline;" onclick="resetLocalStorage()">Atstatyti gamyklinius duomenis</span></div>
+
             <div id="scheduleList" class="schedule-list"></div>
         </div>
 
@@ -235,11 +237,12 @@
                 <h2>Lygų Reitingai</h2>
                 <div class="league-tabs">
                     <button type="button" class="league-tab active" data-league="all" onclick="changeLeague('all')">Visi</button>
-                    <button type="button" class="league-tab" data-league="D" onclick="changeLeague('D')">D (Naujokai)</button>
-                    <button type="button" class="league-tab" data-league="D-C" onclick="changeLeague('D-C')">D/C- (Pradedantieji)</button>
-                    <button type="button" class="league-tab" data-league="C/C+" onclick="changeLeague('C/C+')">C/C+ (Pažengę)</button>
-                    <button type="button" class="league-tab" data-league="B-/B" onclick="changeLeague('B-/B')">B-/B (Patyrę)</button>
-                    <button type="button" class="league-tab" data-league="A" onclick="changeLeague('A')">A (Ekspertai)</button>
+                    <button type="button" class="league-tab" data-league="D" onclick="changeLeague('D')">D</button>
+                    <button type="button" class="league-tab" data-league="D/C-" onclick="changeLeague('D/C-')">D/C-</button>
+                    <button type="button" class="league-tab" data-league="C-/C" onclick="changeLeague('C-/C')">C-/C</button>
+                    <button type="button" class="league-tab" data-league="C/C+" onclick="changeLeague('C/C+')">C/C+</button>
+                    <button type="button" class="league-tab" data-league="B-/B" onclick="changeLeague('B-/B')">B-/B</button>
+                    <button type="button" class="league-tab" data-league="A" onclick="changeLeague('A')">A</button>
                 </div>
             </div>
             <div class="ratings-wrapper">
