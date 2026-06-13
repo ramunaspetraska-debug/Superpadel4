@@ -1,4 +1,5 @@
-:root { --primary-blue: #2563eb; --bg-light: #ffffff; --card-bg: #f8f9fb; --text-dark: #1a202c; --text-grey: #718096; --status-green: #00b85c; --status-red: #e53e3e; --status-orange: #dd6b20; --nav-bg: #1e1e1e; --lvl-d: #48bb78; --lvl-d-c: #38b2ac; --lvl-c: #3182ce; --lvl-b: #805ad5; --lvl-a: #e53e3e; --admin-bg: #f4f7f6; --admin-sidebar: #1e1e1e; }
+:root { --primary-blue: #2563eb; --bg-light: #ffffff; --card-bg: #f8f9fb; --text-dark: #1a202c; --text-grey: #718096; --status-green: #00b85c; --status-red: #e53e3e; --status-orange: #dd6b20; --nav-bg: #1e1e1e; --lvl-d: #48bb78; --lvl-d-c: #38b2ac; --lvl-c: #3182ce;
+    --lvl-c2: #0ea5e9; --lvl-b: #805ad5; --lvl-a: #e53e3e; --admin-bg: #f4f7f6; --admin-sidebar: #1e1e1e; }
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-x: hidden; }
 
