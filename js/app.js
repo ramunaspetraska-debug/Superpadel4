@@ -153,90 +153,119 @@ function listenToCasualPlayers() {
     });
 }
 
-// Generatoriaus įvedimo modalas (Tailwind stilius, kuriamas dinamiškai)
-function genInputModal(title, placeholder, defaultVal, onConfirm) {
-    const old = document.getElementById('gen-input-modal');
+// ==========================================
+// TURNYRŲ IMPORTAS IŠ PORTALO (automatinis pasirinkimas)
+// ==========================================
+// Užkrauna aktyvius turnyrus iš Firebase, leidžia pasirinkti vieną,
+// ir automatiškai užpildo generatorių to turnyro užregistruotais žaidėjais.
+
+function importFromPortal() {
+    if (typeof firebase === 'undefined') { alert("Pirmiausia prisijunkite prie debesies."); return; }
+    if (typeof ensureFirebaseInit === 'function') ensureFirebaseInit();
+
+    const old = document.getElementById('portal-import-modal');
     if (old) old.remove();
     const wrap = document.createElement('div');
-    wrap.id = 'gen-input-modal';
+    wrap.id = 'portal-import-modal';
     wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;';
     wrap.innerHTML = `
-        <div style="background:white;border-radius:16px;padding:24px;width:100%;max-width:340px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
-            <div style="font-weight:900;font-size:15px;color:#1e293b;margin-bottom:14px;">${title}</div>
-            <input id="gen-input-field" type="text" placeholder="${placeholder}" value="${defaultVal || ''}" style="width:100%;padding:13px;border:2px solid #cbd5e1;border-radius:10px;font-weight:bold;font-size:15px;outline:none;box-sizing:border-box;" autocomplete="off" />
-            <div style="display:flex;gap:8px;margin-top:14px;">
-                <button id="gen-input-cancel" style="flex:1;padding:12px;border:1px solid #cbd5e1;background:white;color:#64748b;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Atšaukti</button>
-                <button id="gen-input-ok" style="flex:1;padding:12px;border:none;background:#2563eb;color:white;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Gerai</button>
+        <div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:400px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+            <div style="font-weight:900;font-size:15px;color:#1e293b;margin-bottom:4px;"><i class="fa-solid fa-calendar-check" style="color:#2563eb;"></i> Importuoti iš turnyro</div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:12px;">Pasirinkite turnyrą — žaidėjai bus įkelti automatiškai.</div>
+            <div id="pi-list" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:120px;">
+                <div style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami turnyrai...</div>
             </div>
+            <button onclick="document.getElementById('portal-import-modal').remove()" style="margin-top:12px;padding:12px;border:1px solid #cbd5e1;background:white;color:#64748b;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Uždaryti</button>
         </div>`;
     document.body.appendChild(wrap);
-    const input = document.getElementById('gen-input-field');
-    const submit = () => { const v = input.value; wrap.remove(); onConfirm(v); };
-    document.getElementById('gen-input-ok').onclick = submit;
-    document.getElementById('gen-input-cancel').onclick = () => wrap.remove();
-    input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
-    setTimeout(() => input.focus(), 100);
-}
 
-async function importFromPortal() {
-    if (typeof firebase === 'undefined') return;
-    genInputModal('<i class="fa-solid fa-calendar"></i> Turnyro data', 'MM-DD', getDefaultImportDate(), (tDate) => {
-        if (!tDate) return;
-        runPortalImport(tDate);
-    });
-}
-
-function getDefaultImportDate() {
-    const d = new Date();
-    return `${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
-}
-
-async function runPortalImport(tDate) {
-    document.getElementById('loading-overlay').style.display = 'flex';
-    
     firebase.database().ref("padelio_global_tournaments").once('value').then(snap => {
-        const data = snap.val(); 
-        document.getElementById('loading-overlay').style.display = 'none';
-        if (!data) return;
-        
-        const target = Object.values(data).find(t => t && t.date === tDate);
-        if (!target || !target.players) return;
-        
-        let c = 0;
-        target.players.forEach(row => {
-            row.split('/').forEach(rawName => {
-                const name = rawName.trim(); if (!name) return;
-                
-                if (!players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-                    let globalMatch = typeof globalPlayersData !== 'undefined' ? Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase() === name.toLowerCase()) : null;
-                    let pGender = globalMatch ? (globalMatch.gender || "M") : "M";
-                    let pRating = globalMatch ? (globalMatch.rating || 300) : 300;
-                    let pTier = globalMatch ? (globalMatch.tier || "D") : "D";
-
-                    players.push({ 
-                        id: globalMatch ? globalMatch.id : (Date.now() + Math.random()).toString(36), 
-                        name: name, 
-                        gender: pGender, 
-                        photo: null, 
-                        rating: pRating, 
-                        tier: pTier, 
-                        wins: 0, 
-                        losses: 0, 
-                        draws: 0, 
-                        points: 0, 
-                        diff: 0, 
-                        history: [] 
-                    });
-                    c++;
-                }
-            });
-        });
-        
-        if (typeof savePlayers === 'function') savePlayers(); 
-        if (typeof renderPlayers === 'function') renderPlayers(); 
-        if (typeof autoSave === 'function') autoSave(true);
-        alert(`Sėkmingai importuoti ${c} žaidėjai! Jų lytis bei reitingai automatiškai sinchronizuoti iš debesies.`);
+        const data = snap.val() || {};
+        const list = (Array.isArray(data) ? data : Object.values(data))
+            .filter(t => t && t.players && t.players.length > 0);
+        renderPortalImportList(list);
+    }).catch(() => {
+        const box = document.getElementById('pi-list');
+        if (box) box.innerHTML = '<div style="color:#ef4444;font-size:12px;text-align:center;padding:20px;">Nepavyko įkelti turnyrų.</div>';
     });
+}
+
+function renderPortalImportList(list) {
+    const box = document.getElementById('pi-list');
+    if (!box) return;
+    if (list.length === 0) {
+        box.innerHTML = '<div style="color:#94a3b8;font-size:12px;text-align:center;padding:20px;">Turnyrų su žaidėjais nerasta.</div>';
+        return;
+    }
+    window._piTournaments = {};
+    box.innerHTML = list.map(t => {
+        window._piTournaments[t.id] = t;
+        const cat = t.category ? ` • ${t.category}` : '';
+        return `<div onclick="selectPortalTournament('${t.id}')" style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;cursor:pointer;" onmouseover="this.style.background='#f8f9fb'" onmouseout="this.style.background='white'">
+            <div style="font-weight:800;font-size:13px;color:#1e293b;">${t.format || 'Turnyras'}<span style="font-weight:normal;color:#64748b;font-size:11px;">${cat}</span></div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;"><i class="fa-regular fa-calendar"></i> ${t.date} • ${t.time || ''} • ${t.level || ''} • ${t.players.length} dalyviai</div>
+        </div>`;
+    }).join('');
+}
+
+function selectPortalTournament(tid) {
+    const t = window._piTournaments[tid];
+    if (!t) return;
+    document.getElementById('portal-import-modal')?.remove();
+
+    // Formatas lemia kaip skaidyti poras:
+    // Fiksuotos poros → "A / B" lieka kartu (pora). Kiti → kiekvienas atskirai.
+    const isFixedPairs = (t.format === 'Fiksuotos poros');
+
+    // Sinchronizuojame generatoriaus formatą su turnyro formatu
+    if (typeof settings !== 'undefined') {
+        if (t.format === 'Mix Americano') settings.format = 'mix_americano';
+        else if (t.format === 'Fiksuotos poros') settings.format = 'fixed';
+        else if (t.format === 'Americano') settings.format = 'americano';
+        else settings.format = 'americano'; // Mexicano/King/Taurė kol kas naudoja Americano variklį
+        if (typeof safeVal === 'function') safeVal('select-format', settings.format);
+    }
+
+    let added = 0;
+    const addPlayer = (rawEntry) => {
+        // Įrašas gali būti "Vardas|lytis" arba tik "Vardas"
+        const parts = rawEntry.split('|');
+        const name = parts[0].trim();
+        const savedGender = parts[1] ? parts[1].trim() : null;
+        if (!name) return;
+        if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) return;
+
+        let globalMatch = (typeof globalPlayersData !== 'undefined')
+            ? Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase() === name.toLowerCase())
+            : null;
+
+        players.push({
+            id: globalMatch ? globalMatch.id : (Date.now() + Math.random()).toString(36),
+            name: name,
+            gender: savedGender || (globalMatch ? (globalMatch.gender || "M") : "M"),
+            photo: null,
+            rating: globalMatch ? (globalMatch.rating || 300) : 300,
+            tier: globalMatch ? (globalMatch.tier || "D") : "D",
+            wins: 0, losses: 0, draws: 0, points: 0, diff: 0, history: []
+        });
+        added++;
+    };
+
+    t.players.forEach(row => {
+        if (isFixedPairs && row.includes('/')) {
+            // Fiksuota pora: abu žaidėjai, bet poros ryšys svarbus tik fixed variklyje
+            row.split('/').forEach(addPlayer);
+        } else {
+            // Individualus formatas: kiekvienas atskirai (net jei buvo poroje registruoti)
+            row.split('/').forEach(addPlayer);
+        }
+    });
+
+    if (typeof savePlayers === 'function') savePlayers();
+    if (typeof renderPlayers === 'function') renderPlayers();
+    if (typeof updatePlayerCount === 'function') updatePlayerCount();
+    if (typeof autoSave === 'function') autoSave(true);
+    alert(`Importuota ${added} žaidėjų iš turnyro "${t.format}". Statistika skaičiuosis automatiškai!`);
 }
 
 // Globalių paspaudimų sekimas paieškos uždarymui
