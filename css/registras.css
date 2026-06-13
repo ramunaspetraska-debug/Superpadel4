@@ -213,3 +213,7 @@ body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-
 .cam-q-btn.active { background: #2563eb; color: white; border-color: #2563eb; }
 #replayToggleBtn { display: none; }
 #replayToggleBtn.ready { display: flex !important; }
+
+/* Praėjusios kalendoriaus dienos — papilkintos */
+.date-box.date-past { opacity: 0.4; }
+.date-box.date-past.active { opacity: 1; }
