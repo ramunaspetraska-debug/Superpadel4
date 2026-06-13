@@ -11,7 +11,7 @@ for(let i = -3; i <= 30; i++) {
     let m = (d.getMonth() + 1).toString().padStart(2, '0'); 
     let day = d.getDate().toString().padStart(2, '0'); 
     let dateKey = `${m}-${day}`;
-    dynamicDates.push({ fullDate: d, dateKey: dateKey, dayNumStr: d.getDate().toString(), dayNameStr: daysArr[d.getDay()], isToday: i === 0 }); 
+    dynamicDates.push({ fullDate: d, dateKey: dateKey, dayNumStr: d.getDate().toString(), dayNameStr: daysArr[d.getDay()], isToday: i === 0, isPast: i < 0 }); 
 }
 let activeDate = dynamicDates.find(d => d.isToday).dateKey; 
 
@@ -25,7 +25,8 @@ function initDates() {
     dynamicDates.forEach(d => { 
         let activeCls = d.dateKey === activeDate ? 'active' : ''; 
         let idAttr = d.isToday ? 'id="today-date-box"' : ''; 
-        carousel.innerHTML += `<div ${idAttr} class="date-box ${activeCls}" onclick="selectDate('${d.dateKey}', this)"><div class="day-num">${d.dayNumStr}</div><div class="day-name">${d.dayNameStr}</div></div>`; 
+        let pastCls = d.isPast ? 'date-past' : '';
+        carousel.innerHTML += `<div ${idAttr} class="date-box ${activeCls} ${pastCls}" onclick="selectDate('${d.dateKey}', this)"><div class="day-num">${d.dayNumStr}</div><div class="day-name">${d.dayNameStr}</div></div>`; 
         let selected = d.isToday ? 'selected' : ''; 
         if(adminSelect) adminSelect.innerHTML += `<option value="${d.dateKey}" ${selected}>${d.dayNumStr} d. (${d.dayNameStr})</option>`; 
     }); 
@@ -608,7 +609,8 @@ function loadAutomatedRatings(leagueLevel = 'all') {
     if (spinner) {
         if (leagueLevel === 'all') spinner.style.color = 'var(--primary-blue)';
         else if (leagueLevel === 'D') spinner.style.color = 'var(--lvl-d)';
-        else if (leagueLevel === 'D-C') spinner.style.color = 'var(--lvl-d-c)';
+        else if (leagueLevel === 'D/C-') spinner.style.color = 'var(--lvl-d-c)';
+        else if (leagueLevel === 'C-/C') spinner.style.color = 'var(--lvl-c2)';
         else if (leagueLevel === 'C/C+') spinner.style.color = 'var(--lvl-c)';
         else if (leagueLevel === 'B-/B') spinner.style.color = 'var(--lvl-b)';
         else if (leagueLevel === 'A') spinner.style.color = 'var(--lvl-a)';
