@@ -55,6 +55,21 @@ function parseTimeStr(timeStr) {
     return { start: parseInt(startParts[0]) * 60 + parseInt(startParts[1]), end: parseInt(endParts[0]) * 60 + parseInt(endParts[1]) };
 }
 
+// Mix Americano reikalauja V+M poros — kategorija užrakinama į "Mix"
+function onAdminFormatChange() {
+    const fmt = document.getElementById('newFormat').value;
+    const catSel = document.getElementById('newCategory');
+    if (!catSel) return;
+    if (fmt === 'Mix Americano') {
+        catSel.value = 'Mix';
+        catSel.disabled = true;
+        catSel.style.opacity = '0.6';
+    } else {
+        catSel.disabled = false;
+        catSel.style.opacity = '1';
+    }
+}
+
 function createTournament(e) { 
     e.preventDefault(); 
     const baseDateStr = document.getElementById('newDate').value; 
@@ -87,6 +102,7 @@ function createTournament(e) {
         const newT = { 
             id: Date.now() + i, date: finalDateStr, 
             format: document.getElementById('newFormat').value, 
+            category: document.getElementById('newCategory').value,
             level: document.getElementById('newLevel').value, 
             time: laikas, registered: 0, 
             max: parseInt(document.getElementById('newMax').value), 
@@ -216,6 +232,8 @@ function renderAdminPlayersDB(playersArray) {
         if (p.tier === 'A') ptsColor = 'var(--lvl-a)';
         else if (p.tier === 'B-/B') ptsColor = 'var(--lvl-b)';
         else if (p.tier === 'C/C+') ptsColor = 'var(--lvl-c)';
+        else if (p.tier === 'C-/C') ptsColor = 'var(--lvl-c2)';
+        else if (p.tier === 'D/C-') ptsColor = 'var(--lvl-d-c)';
         else if (p.tier === 'D-C') ptsColor = 'var(--lvl-d-c)';
         else ptsColor = 'var(--lvl-d)';
 
@@ -313,9 +331,10 @@ function saveAdminPlayerChanges() {
 
     let tier = "D";
     if (rating >= 851) tier = "A";
-    else if (rating >= 671) tier = "B-/B";
-    else if (rating >= 501) tier = "C/C+";
-    else if (rating >= 351) tier = "D-C";
+    else if (rating >= 701) tier = "B-/B";
+    else if (rating >= 551) tier = "C/C+";
+    else if (rating >= 451) tier = "C-/C";
+    else if (rating >= 351) tier = "D/C-";
 
     let updateData = { id: newId, phone: newId, name: name, gender: gender, rating: rating, tier: tier, photo: tempAdminPlayerPhotoBase64 };
 
