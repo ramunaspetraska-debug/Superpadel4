@@ -243,7 +243,7 @@ function renderTournaments() {
         if (lvlClass === 'c/c+') lvlClass = 'c';
         if (lvlClass === 'd-c') lvlClass = 'd-c';
 
-        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${t.id})"><div class="card-date-square"><div class="num">${dayNum}</div><div class="name">${dayName}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${t.format}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${displayLevel} Lygis</div>${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${t.time}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(t.status !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
+        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${t.id})"><div class="card-date-square"><div class="num">${dayNum}</div><div class="name">${dayName}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${t.format}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${displayLevel}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${t.category}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${t.time}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(t.status !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
         list.innerHTML += cardHTML;
     });
 }
@@ -289,6 +289,8 @@ function openPlayerCard(playerId) {
     if (p.tier === 'A') tierColor = 'var(--lvl-a)';
     else if (p.tier === 'B-/B') tierColor = 'var(--lvl-b)';
     else if (p.tier === 'C/C+') tierColor = 'var(--lvl-c)';
+    else if (p.tier === 'C-/C') tierColor = 'var(--lvl-c2)';
+    else if (p.tier === 'D/C-') tierColor = 'var(--lvl-d-c)';
     else if (p.tier === 'D-C') tierColor = 'var(--lvl-d-c)';
 
     const casualM = p.casual_matches || 0;
@@ -354,17 +356,12 @@ function confirmRegistration(id, withPartner) {
     let t = tournaments.find(x => x.id === id); 
     if (!t) return;
 
-    const formatUpper = t.format.toUpperCase();
-    if (currentUser && currentUser.gender) {
-        if (formatUpper.includes("MOTERŲ") && currentUser.gender === "M") {
-            if (!confirm(`⚠️ ĮSPĖJIMAS: Skirta MOTERIMS (${t.format}), o jūsų lytis – Vyras.\n\nTęsti registraciją?`)) {
-                return; 
-            }
+    if (currentUser && currentUser.gender && t.category) {
+        if (t.category === "Moterys" && currentUser.gender === "M") {
+            if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras skirtas MOTERIMS, o jūsų lytis – Vyras.\n\nTęsti registraciją?`)) return;
         }
-        if (formatUpper.includes("VYRŲ") && currentUser.gender === "F") {
-            if (!confirm(`⚠️ ĮSPĖJIMAS: Skirta VYRAMS (${t.format}), o jūsų lytis – Moteris.\n\nTęsti registraciją?`)) {
-                return; 
-            }
+        if (t.category === "Vyrai" && currentUser.gender === "F") {
+            if (!confirm(`⚠️ ĮSPĖJIMAS: Šis turnyras skirtas VYRAMS, o jūsų lytis – Moteris.\n\nTęsti registraciją?`)) return;
         }
     }
 
@@ -401,7 +398,7 @@ function confirmRegistration(id, withPartner) {
         if (!t.players) t.players = [];
         t.status = 'registered';
         t.registered += 1;
-        t.players.push(currentUser.name);
+        t.players.push(currentUser.name + '|' + (currentUser.gender || 'M'));
         saveData();
         closeModal();
         showToast("Jūs sėkmingai užregistruoti!");
@@ -506,7 +503,7 @@ function submitSmartPartner(tournamentId) {
     if (safeId.startsWith('06') && safeId.length === 9) safeId = '370' + safeId.substring(1);
 
     if (selectedPartnerData) {
-        completePairRegistration(t, currentUser.name, selectedPartnerData.name);
+        completePairRegistration(t, currentUser.name, selectedPartnerData.name, currentUser.gender, selectedPartnerData.gender);
     } else {
         const nameInput = document.getElementById('partnerNameInput');
         let pName = nameInput ? nameInput.value.trim() : "";
@@ -531,16 +528,18 @@ function submitSmartPartner(tournamentId) {
         document.getElementById('submitPartnerBtn').innerText = "Saugoma...";
         
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).set(newPartnerUser).then(() => {
-            completePairRegistration(t, currentUser.name, newPartnerUser.name);
+            completePairRegistration(t, currentUser.name, newPartnerUser.name, currentUser.gender, newPartnerUser.gender);
         });
     }
 }
 
-function completePairRegistration(tournament, player1, player2) {
+function completePairRegistration(tournament, player1, player2, gender1, gender2) {
     if (!tournament.players) tournament.players = [];
     tournament.status = 'registered';
     tournament.registered += 2;
-    tournament.players.push(`${player1} / ${player2}`);
+    const p1 = player1 + '|' + (gender1 || 'M');
+    const p2 = player2 + '|' + (gender2 || 'M');
+    tournament.players.push(`${p1} / ${p2}`);
     saveData();
     closeModal();
     showToast(`Sėkmingai užregistruota pora: ${player1} ir ${player2}!`);
