@@ -308,6 +308,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 rating: newR,
                 tier: tier,
                 total_matches: newMatches,
+                official_wins: (g.official_wins || 0) + (delta > 0 ? 1 : 0),
                 last_played: Date.now(),
                 recent_matches: hist
             });
