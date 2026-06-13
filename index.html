@@ -155,7 +155,6 @@
 
             <div id="players-list" class="space-y-2 mb-10"></div>
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
-                <button onclick="openGlobalImportModal()" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest mb-2"><i class="fa-solid fa-users"></i> IMPORTUOTI REGISTRUOTUS ŽAIDĖJUS</button>
                 <a href="registras.html" target="_blank" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest"><i class="fa-solid fa-earth-europe"></i> Atidaryti Žaidėjų Portalą</a>
                 <button type="button" onclick="resetScores()" class="w-full py-3 text-orange-600 bg-white hover:bg-orange-50 rounded-xl font-bold text-[10px] uppercase border border-orange-200 shadow-sm"><i class="fa-solid fa-folder-plus"></i> Naujas Turnyras</button>
             </div>
@@ -187,7 +186,8 @@
             <div class="space-y-4">
                 <div class="bg-white p-4 rounded-2xl border-2 border-green-200 shadow-sm bg-gradient-to-br from-white to-green-50/30">
                     <h3 class="text-[10px] font-black uppercase text-green-600 mb-1 tracking-widest"><i class="fa-solid fa-cloud-arrow-down"></i> Duomenų Sinchronizacija</h3>
-                    <button type="button" onclick="importFromPortal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2 mb-3"><i class="fa-solid fa-users-gear"></i> Importuoti iš Portalo</button>
+                    <button type="button" onclick="importFromPortal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2 mb-2"><i class="fa-solid fa-calendar-check"></i> Importuoti iš Turnyro</button>
+                    <button type="button" onclick="openGlobalImportModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2 mb-3"><i class="fa-solid fa-users"></i> Importuoti registruotus žaidėjus</button>
                     <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-green-100 shadow-inner">
                         <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Reitingavimo režimas:</span>
                         <select id="admin-is-official" onchange="toggleAdminOfficial(this.value)" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-black text-slate-700 focus:outline-none">
