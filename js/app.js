@@ -217,14 +217,21 @@ function selectPortalTournament(tid) {
     // Fiksuotos poros → "A / B" lieka kartu (pora). Kiti → kiekvienas atskirai.
     const isFixedPairs = (t.format === 'Fiksuotos poros');
 
-    // Sinchronizuojame generatoriaus formatą su turnyro formatu
+    // Sinchronizuojame generatoriaus formatą + kategoriją su turnyru
     if (typeof settings !== 'undefined') {
-        if (t.format === 'Mix Americano') settings.format = 'mix_americano';
-        else if (t.format === 'Fiksuotos poros') settings.format = 'fixed';
-        else if (t.format === 'Americano') settings.format = 'americano';
-        else settings.format = 'americano'; // Mexicano/King/Taurė kol kas naudoja Americano variklį
-        if (typeof safeVal === 'function') safeVal('select-format', settings.format);
+        const fmtMap = { 'Americano': 'americano', 'Fiksuotos poros': 'fixed', 'Mexicano': 'mexicano', 'King of the court': 'king', 'Taurė': 'cup' };
+        settings.baseFormat = fmtMap[t.format] || 'americano';
+        settings.category = t.category || 'Atviras';
+        // Tikrasis variklis: Americano + Mix → mix_americano
+        if (settings.baseFormat === 'americano' && settings.category === 'Mix') settings.format = 'mix_americano';
+        else if (settings.baseFormat === 'fixed') settings.format = 'fixed';
+        else settings.format = 'americano';
+        if (typeof safeVal === 'function') {
+            safeVal('select-format', settings.baseFormat);
+            safeVal('select-category', settings.category);
+        }
     }
+    const isFixedPairsCheck = (t.format === 'Fiksuotos poros');
 
     let added = 0;
     const addPlayer = (rawEntry) => {
