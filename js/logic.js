@@ -389,7 +389,7 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
             // 🌟 Sinchronizuojame casual statistiką į globalų profilį
             // SVARBU: portalo ryšys (telefono nr.) tikrinamas PIRMAS.
             // UUID "šešėlinis" profilis naudojamas tik jei žaidėjas NEturi portalo ryšio.
-            const syncCasualToGlobal = (p, isWin) => {
+            const syncCasualToGlobal = (p, isWin, delta) => {
                 if (!p.id && !p.name) return;
 
                 const doUpdate = (phoneId) => {
@@ -399,9 +399,24 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                         let hist = (gData.recent_matches || []).slice();
                         hist.unshift({ d: Date.now(), t1: t1Names, t2: t2Names, s1: s1, s2: s2, win: isWin, official: false });
                         hist = hist.slice(0, 10);
+
+                        // Mėgėjų lygos ELO — atskiras nuo oficialaus, skaičiuojamas pagal casual mačus
+                        const curCasualElo = gData.casual_rating || 300;
+                        let newCasualElo = Math.round(curCasualElo + delta);
+                        if (newCasualElo < 0) newCasualElo = 0;
+                        if (newCasualElo > 1000) newCasualElo = 1000;
+                        let casualTier = "D";
+                        if (newCasualElo >= 851) casualTier = "A";
+                        else if (newCasualElo >= 701) casualTier = "B-/B";
+                        else if (newCasualElo >= 551) casualTier = "C/C+";
+                        else if (newCasualElo >= 451) casualTier = "C-/C";
+                        else if (newCasualElo >= 351) casualTier = "D/C-";
+
                         firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
                             casual_matches: (gData.casual_matches || 0) + 1,
                             casual_wins: (gData.casual_wins || 0) + (isWin ? 1 : 0),
+                            casual_rating: newCasualElo,
+                            casual_tier: casualTier,
                             last_played: Date.now(),
                             recent_matches: hist
                         });
@@ -439,8 +454,8 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                     });
                 }
             };
-            t1Players.forEach(p => syncCasualToGlobal(p, s1 > s2));
-            t2Players.forEach(p => syncCasualToGlobal(p, s2 > s1));
+            t1Players.forEach(p => syncCasualToGlobal(p, s1 > s2, delta1));
+            t2Players.forEach(p => syncCasualToGlobal(p, s2 > s1, delta2));
 
             if (typeof savePlayers === 'function') savePlayers(); 
             if (typeof renderPlayers === 'function') renderPlayers();
