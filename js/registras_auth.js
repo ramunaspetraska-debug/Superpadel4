@@ -6,7 +6,8 @@ const firebaseConfig = {
     apiKey: "AIzaSyC_Z6srTcBfOWjG0aUKIoLD74ucozLUBHc", 
     authDomain: "padelio-turnyrai.firebaseapp.com", 
     databaseURL: "https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app", 
-    projectId: "padelio-turnyrai" 
+    projectId: "padelio-turnyrai",
+    storageBucket: "padelio-turnyrai.appspot.com"
 };
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 
@@ -198,6 +199,15 @@ function renderUserProfile() {
         ? Math.round(((currentUser.official_wins || 0) / currentUser.total_matches) * 100)
         : 0;
 
+    // Mėgėjų lygos ELO spalva pagal casual_tier
+    let casualPtsColor = 'var(--lvl-d)';
+    const ct = currentUser.casual_tier;
+    if (ct === 'A') casualPtsColor = 'var(--lvl-a)';
+    else if (ct === 'B-/B') casualPtsColor = 'var(--lvl-b)';
+    else if (ct === 'C/C+') casualPtsColor = 'var(--lvl-c)';
+    else if (ct === 'C-/C') casualPtsColor = 'var(--lvl-c2)';
+    else if (ct === 'D/C-') casualPtsColor = 'var(--lvl-d-c)';
+
     let html = `
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
@@ -231,16 +241,16 @@ function renderUserProfile() {
         <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Mėgėjų Lyga</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px;">
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
+                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">ELO Reitingas</div>
+                <div style="font-size: 18px; font-weight: 900; color: ${casualPtsColor};">${currentUser.casual_rating || 300}</div>
+            </div>
+            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
                 <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Mačai</div>
                 <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${currentUser.casual_matches || 0}</div>
             </div>
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
                 <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
                 <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${casualWinRate}%</div>
-            </div>
-            <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
-                <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Pergalės</div>
-                <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${currentUser.casual_wins || 0}</div>
             </div>
         </div>
 
