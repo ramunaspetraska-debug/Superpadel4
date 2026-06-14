@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <link rel="stylesheet" href="/css/registras.css?v=8">
@@ -177,7 +178,7 @@
         </div>
 
         <div class="app-header" id="mainHeader">
-            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.0.9</span></div>
+            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.1.0</span></div>
             <div class="header-actions">
                 <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
                 <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
@@ -215,19 +216,23 @@
             <div class="recording-indicator" id="recIndicator"><div class="dot"></div> <span id="recTimer">00:00:00</span></div>
             <div class="cam-viewfinder" id="viewFinder">
                 <video id="cameraFeed" autoplay playsinline muted></video>
-                <video id="delayedFeed" playsinline muted></video>
-                <div id="replayBadge" style="display:none; position:absolute; top:12px; left:12px; background:rgba(237,137,54,0.95); color:white; padding:5px 12px; border-radius:20px; font-size:11px; font-weight:900; align-items:center; gap:6px; z-index:5;"><i class="fa-solid fa-backward"></i> PERŽIŪRA −15 s</div>
+                <div id="rallyStatusBadge" style="display:none; position:absolute; top:12px; left:12px; background:rgba(15,23,42,0.85); color:white; padding:6px 12px; border-radius:20px; font-size:11px; font-weight:800; align-items:center; gap:8px; z-index:5;">
+                    <span id="rallyStatusDot" style="width:9px; height:9px; border-radius:50%; background:#22c55e; display:inline-block;"></span>
+                    <span id="rallyStatusText">Pauzė</span>
+                    <span style="opacity:0.5;">|</span>
+                    <i class="fa-solid fa-fire" style="color:#ef4444;"></i> <span id="liveHighlightCount">0</span>
+                </div>
                 <div class="court-hint" id="cameraHintText">Pritvirtinkite telefoną laikiklyje už korto.<br>Filmuokite iš viršaus, kad matytųsi visas kortas.</div>
             </div>
             <div class="cam-controls" id="camControls">
-                <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 13px;">Įrašykite visą mačą. Kilus ginčui — spauskite „Ginčų peržiūra" ir pamatysite, kas vyko prieš 15 sekundžių.</div>
-                <button type="button" id="replayToggleBtn" onclick="toggleReplayView()" style="display:none; margin: 0 auto 12px auto; background:#1a202c; color:#ed8936; border:1px solid #ed8936; padding:10px 20px; border-radius:25px; font-weight:bold; font-size:12px; cursor:pointer; align-items:center; gap:8px;"><i class="fa-solid fa-backward"></i> Ginčų peržiūra (−15 s)</button>
+                <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 13px;">DI automatiškai atpažins ralius ir sukurs geriausių momentų klipus. Tiesiog paspauskite įrašymą.</div>
                 <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
                 <div class="ai-result-panel" id="camResultPanel" style="display:none;">
-                    <h3 style="margin-bottom: 6px; color: #fff;">Įrašas paruoštas!</h3>
-                    <div id="camResultInfo" style="font-size:12px; color:#a0aec0; margin-bottom:14px;"></div>
-                    <button type="button" class="modal-btn primary" style="width:100%; margin-bottom:8px; font-size:14px;" onclick="downloadRecording()"><i class="fa-solid fa-download"></i> Atsisiųsti įrašą</button>
-                    <button type="button" id="camShareBtn" class="modal-btn primary" style="width:100%; background:#ff0000; font-size:14px; display:none;" onclick="shareRecording()"><i class="fa-brands fa-youtube"></i> Dalintis (YouTube)</button>
+                    <h3 style="margin-bottom: 6px; color: #fff;">Mačas baigtas!</h3>
+                    <div id="camResultInfo" style="font-size:12px; color:#a0aec0; margin-bottom:16px;"></div>
+                    <button type="button" class="modal-btn primary" style="width:100%; margin-bottom:8px; font-size:14px;" onclick="downloadFullMatch()"><i class="fa-solid fa-film"></i> Atsisiųsti pilną įrašą</button>
+                    <button type="button" class="modal-btn primary" style="width:100%; margin-bottom:8px; font-size:14px; background:#2563eb;" onclick="playMatchNoPauses()"><i class="fa-solid fa-bolt"></i> Mačas be prastovų</button>
+                    <button type="button" class="modal-btn primary" style="width:100%; font-size:14px; background:#ef4444;" onclick="showHighlightsList()"><i class="fa-solid fa-fire"></i> Turnyro Highlights (<span id="highlightCounter">0</span>)</button>
                 </div>
             </div>
         </div>
@@ -272,7 +277,7 @@
     <div id="adminMode">
         <div class="admin-layout">
             <div class="admin-sidebar">
-                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.0.9</span></span></div>
+                <div class="logo" style="padding: 20px; font-size: 22px; font-weight: 900; color:white;"><span>SUPER</span>PADEL <br><span style="font-size: 14px; font-weight: normal; color: #a0aec0;">Administratorius <span style="font-size: 10px; opacity: 0.4; font-weight: normal; letter-spacing: 0;">v1.1.0</span></span></div>
                 <ul class="nav-menu">
                     <li onclick="adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
                     <li class="active" onclick="adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
