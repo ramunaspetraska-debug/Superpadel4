@@ -31,6 +31,11 @@ let clipRecorder = null;
 let clipChunks = [];
 let clipStartTs = 0;
 
+// Pre-roll buferis — nuolat sukasi, laiko paskutines ~4s, kad pagautume servą
+let bufferRecorder = null;
+let bufferChunks = [];        // [{ blob, ts }]
+let bufferHeaderChunk = null; // pirmas gabaliukas su WebM antrašte (būtinas atkūrimui)
+
 let motionCanvas = null;
 let motionCtx = null;
 let motionPrevFrame = null;
@@ -51,13 +56,15 @@ let camTournamentId = null;
 let camTournamentPlayers = [];
 
 // ---------- KONSTANTOS (derinama pagal kortą/apšvietimą) ----------
-const MOTION_PIXEL_DELTA = 28;
-const MOTION_RATIO_TRIGGER = 0.045;
+const MOTION_PIXEL_DELTA = 24;       // mažesnis = jautresnis judesiui
+const MOTION_RATIO_TRIGGER = 0.035;  // mažesnis = lengviau aptinka ralį
 const MOTION_FPS = 10;
-const RALLY_START_FRAMES = 3;
-const RALLY_END_MS = 2000;
-const CLIP_MIN_MS = 4000;
-const CLIP_MAX_MS = 30000;
+const RALLY_START_FRAMES = 2;        // greičiau pradeda ralį
+const RALLY_END_MS = 2500;           // ilgesnė pauzė prieš užbaigiant (ralis nepertrūksta)
+const CLIP_MIN_MS = 3000;
+const CLIP_MAX_MS = 35000;
+const PREROLL_SEC = 3;               // kiek sekundžių prieš ralį įtraukti (servui)
+const PREBUFFER_CHUNK_MS = 1000;     // buferio gabaliuko dydis
 
 // ==========================================
 // KAMEROS PALEIDIMAS / SUSTABDYMAS
@@ -162,6 +169,31 @@ function startSmartRecording() {
     fullRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunks.push(e.data); };
     fullRecorder.start(2000);
 
+    // Pre-roll buferis — atskira sesija su 1s gabaliukais, laikoma tik paskutinė kelių sekundžių istorija
+    bufferChunks = [];
+    bufferHeaderChunk = null;
+    try {
+        const br = camQuality === '1080' ? 3500000 : 2200000;
+        bufferRecorder = new MediaRecorder(camStream, { mimeType: camMimeType, videoBitsPerSecond: br });
+        bufferRecorder.ondataavailable = (e) => {
+            if (!e.data || e.data.size === 0) return;
+            // Pirmas gabaliukas turi WebM antraštę — saugome atskirai
+            if (!bufferHeaderChunk) {
+                bufferHeaderChunk = e.data;
+            } else {
+                bufferChunks.push({ blob: e.data, ts: Date.now() });
+                // Laikome tik paskutinių PREROLL_SEC+2 sekundžių gabaliukus
+                const cutoff = Date.now() - (PREROLL_SEC + 2) * 1000;
+                while (bufferChunks.length > 0 && bufferChunks[0].ts < cutoff) {
+                    bufferChunks.shift();
+                }
+            }
+        };
+        bufferRecorder.start(PREBUFFER_CHUNK_MS);
+    } catch (e) {
+        bufferRecorder = null;
+    }
+
     recordingActive = true;
     recStartTime = Date.now();
 
@@ -192,6 +224,14 @@ function stopSmartRecording() {
     if (clipRecorder && clipRecorder.state !== 'inactive') {
         finalizeClip();
     }
+
+    // Sustabdome pre-roll buferį
+    if (bufferRecorder && bufferRecorder.state !== 'inactive') {
+        try { bufferRecorder.stop(); } catch (e) {}
+    }
+    bufferRecorder = null;
+    bufferChunks = [];
+    bufferHeaderChunk = null;
 
     if (fullRecorder && fullRecorder.state !== 'inactive') {
         fullRecorder.onstop = onFullRecordingStopped;
@@ -321,6 +361,15 @@ function startClip() {
     if (!camStream || clipRecorder) return;
     clipChunks = [];
     clipStartTs = Date.now();
+
+    // Į klipą iškart įdedame pre-roll buferį (servas prieš ralį):
+    // antraštės gabaliukas + paskutinių ~3s gabaliukai
+    if (bufferHeaderChunk) {
+        clipChunks.push(bufferHeaderChunk);
+        const cutoff = Date.now() - PREROLL_SEC * 1000;
+        bufferChunks.forEach(c => { if (c.ts >= cutoff) clipChunks.push(c.blob); });
+    }
+
     try {
         const br = camQuality === '1080' ? 3500000 : 2200000;
         clipRecorder = new MediaRecorder(camStream, { mimeType: camMimeType, videoBitsPerSecond: br });
@@ -339,10 +388,11 @@ function finalizeClip() {
 }
 
 function onClipReady() {
-    const durationMs = Date.now() - clipStartTs;
+    const rallyMs = Date.now() - clipStartTs;
     clipRecorder = null;
 
-    if (durationMs < CLIP_MIN_MS || clipChunks.length === 0) {
+    // Atmetame per trumpus ralius (rallyMs — be pre-roll)
+    if (rallyMs < CLIP_MIN_MS || clipChunks.length === 0) {
         clipChunks = [];
         return;
     }
@@ -352,7 +402,7 @@ function onClipReady() {
     const url = URL.createObjectURL(blob);
     const entry = {
         blob, url,
-        durationSec: Math.round(durationMs / 1000),
+        durationSec: Math.round((rallyMs / 1000) + PREROLL_SEC), // + pre-roll
         ts: Date.now(),
         uploaded: false
     };
@@ -398,12 +448,12 @@ function downloadFullMatch() {
 }
 
 function playMatchNoPauses() {
-    if (highlightClips.length === 0) { showToast("Highlight'ų nerasta."); return; }
-    openClipPlayer(highlightClips, 0, "Mačas be prastovų");
+    if (highlightClips.length === 0) { showToast("DI neaptiko ralių. Pabandykite filmuoti su ryškesniais judesiais."); return; }
+    openClipPlayer(highlightClips, 0, "Mačas be prastovų", true);
 }
 
 function showHighlightsList() {
-    if (highlightClips.length === 0) { showToast("Highlight'ų nerasta."); return; }
+    if (highlightClips.length === 0) { showToast("DI neaptiko ralių. Pabandykite filmuoti su ryškesniais judesiais."); return; }
     renderHighlightsModal();
 }
 
@@ -425,7 +475,7 @@ function triggerDownload(blob, prefix) {
 // KLIPŲ GROTUVAS (sekvencinė peržiūra)
 // ==========================================
 
-function openClipPlayer(clips, startIdx, title) {
+function openClipPlayer(clips, startIdx, title, continuous) {
     const old = document.getElementById('clip-player-modal');
     if (old) old.remove();
     const wrap = document.createElement('div');
@@ -435,8 +485,9 @@ function openClipPlayer(clips, startIdx, title) {
         <div style="position:absolute;top:14px;left:0;right:0;text-align:center;color:white;font-weight:800;font-size:15px;">${title}</div>
         <div style="position:absolute;top:42px;left:0;right:0;text-align:center;color:#94a3b8;font-size:12px;" id="clipPlayerCounter"></div>
         <video id="clipPlayerVideo" playsinline autoplay controls style="max-width:100%;max-height:70vh;border-radius:12px;background:black;"></video>
-        <div style="display:flex;gap:10px;margin-top:18px;">
+        <div style="display:flex;gap:10px;margin-top:18px;align-items:center;">
             <button id="clipPlayerPrev" style="background:#1a202c;color:white;border:1px solid #4a5568;width:48px;height:48px;border-radius:50%;font-size:16px;cursor:pointer;"><i class="fa-solid fa-backward-step"></i></button>
+            <div style="color:#94a3b8;font-size:11px;min-width:90px;text-align:center;">${continuous ? '<i class="fa-solid fa-play"></i> Auto-grojimas' : ''}</div>
             <button id="clipPlayerNext" style="background:#1a202c;color:white;border:1px solid #4a5568;width:48px;height:48px;border-radius:50%;font-size:16px;cursor:pointer;"><i class="fa-solid fa-forward-step"></i></button>
         </div>
         <button onclick="document.getElementById('clip-player-modal').remove()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);color:white;border:none;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;">&times;</button>
@@ -453,7 +504,15 @@ function openClipPlayer(clips, startIdx, title) {
         video.play().catch(() => {});
         if (counter) counter.innerText = `Ralis ${idx + 1} iš ${clips.length} \u2022 ${clips[idx].durationSec}s`;
     };
-    video.onended = () => { if (clips.length > 1) load(idx + 1); };
+    // Vientisas grojimas: kitas ralis prasideda automatiškai (be pauzės tarp jų)
+    video.onended = () => {
+        if (continuous) {
+            if (idx < clips.length - 1) load(idx + 1);
+            // Pasiekus paskutinį — sustojam (nesikartoja)
+        } else if (clips.length > 1) {
+            load(idx + 1);
+        }
+    };
     document.getElementById('clipPlayerNext').onclick = () => load(idx + 1);
     document.getElementById('clipPlayerPrev').onclick = () => load(idx - 1);
     load(startIdx);
