@@ -217,3 +217,21 @@ body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-
 /* Praėjusios kalendoriaus dienos — papilkintos */
 .date-box.date-past { opacity: 0.4; }
 .date-box.date-past.active { opacity: 1; }
+
+/* === Viršutinės juostos responsyvumas (mobile) === */
+.app-header { gap: 8px; flex-wrap: nowrap; }
+.header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.logo { flex-shrink: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+#authBtn { white-space: nowrap; }
+
+@media (max-width: 480px) {
+    .app-header { padding: 10px 12px; }
+    .logo { font-size: 17px; letter-spacing: -0.5px; }
+    .header-actions { gap: 4px; }
+    .header-actions > span { margin-left: 4px !important; }
+    .bell-icon { transform: scale(0.9); }
+}
+@media (max-width: 360px) {
+    .logo { font-size: 15px; }
+}
+@media (max-width: 480px) { .version-label { display: none; } }
