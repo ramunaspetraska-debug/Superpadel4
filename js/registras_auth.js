@@ -267,7 +267,6 @@ function renderUserProfile() {
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
             <div onclick="document.getElementById('profilePhotoInput').click()" style="position: relative; width: 50px; height: 50px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase; cursor: pointer; overflow: hidden; flex-shrink: 0;" id="profileAvatar">
                 ${currentUser.photo ? `<img src="${currentUser.photo}" style="width:100%;height:100%;object-fit:cover;">` : currentUser.name.substring(0,2)}
-                <div style="position:absolute; bottom:-2px; right:-2px; background:var(--primary-blue); color:white; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; border:2px solid white;"><i class="fa-solid fa-camera"></i></div>
             </div>
             <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;" onchange="uploadProfilePhoto(event)">
             <div style="flex: 1;">
