@@ -178,7 +178,7 @@
         </div>
 
         <div class="app-header" id="mainHeader">
-            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.1.0</span></div>
+            <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span class="version-label" style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.1.0</span></div>
             <div class="header-actions">
                 <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
                 <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
@@ -212,7 +212,7 @@
         </div>
 
         <div id="page-cam" class="page-view">
-            <div class="cam-header"><i class="fa-solid fa-bolt" style="font-size: 20px;"></i><div class="cam-title">SuperPadel Cam</div><div style="display:flex; gap:6px;"><button type="button" id="camQ720" class="cam-q-btn active" onclick="setCamQuality('720')">720p</button><button type="button" id="camQ1080" class="cam-q-btn" onclick="setCamQuality('1080')">1080p</button></div></div>
+            
             <div class="recording-indicator" id="recIndicator"><div class="dot"></div> <span id="recTimer">00:00:00</span></div>
             <div class="cam-viewfinder" id="viewFinder">
                 <video id="cameraFeed" autoplay playsinline muted></video>
@@ -226,6 +226,10 @@
             </div>
             <div class="cam-controls" id="camControls">
                 <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 13px;">DI automatiškai atpažins ralius ir sukurs geriausių momentų klipus. Tiesiog paspauskite įrašymą.</div>
+                <div style="display:flex; justify-content:center; gap:8px; margin-bottom:14px;">
+                    <button type="button" id="camQ720" class="cam-q-btn active" onclick="setCamQuality('720')">720p HD</button>
+                    <button type="button" id="camQ1080" class="cam-q-btn" onclick="setCamQuality('1080')">1080p Full HD</button>
+                </div>
                 <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
                 <div class="ai-result-panel" id="camResultPanel" style="display:none;">
                     <h3 style="margin-bottom: 6px; color: #fff;">Mačas baigtas!</h3>
