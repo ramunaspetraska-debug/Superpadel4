@@ -173,6 +173,7 @@ function initFirebaseConnection() {
     if(globalPlayersRef) { globalPlayersRef.off(); }
     
     ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
+    saveToMyRooms(room);
     
     firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
     dbRef = firebase.database().ref(DB_KEY + '/' + room); 
@@ -210,6 +211,93 @@ function disconnectFirebase() {
     dbPhotosRef = null;
     localStorage.removeItem('sp_active_room_master'); 
     location.reload(); 
+}
+
+// Ištrina visą kambarį iš Firebase (kambario duomenis, nuotraukas, registracijos žymą).
+// SVARBU: žaidėjų globali statistika (padelio_global_players) NETRINAMA —
+// ji saugoma atskirai ir lieka žaidėjų profiliuose net ištrynus kambarį.
+function deleteCurrentRoom() {
+    if (!isCloud || !activeRoom) { alert("Nesate prisijungę prie kambario."); return; }
+    if (!confirm(`⚠️ DĖMESIO!\n\nIštrinsite kambarį "${activeRoom}" VISIEMS dalyviams.\n\nKas bus ištrinta:\n• Kambario žaidėjų sąrašas ir mačai\n• Kambario nuotraukos\n\nKas IŠLIKS:\n• Žaidėjų ELO reitingai ir statistika profiliuose\n\nTęsti?`)) return;
+    if (!confirm(`Ar tikrai? Šio veiksmo atšaukti negalėsite.`)) return;
+
+    const room = activeRoom;
+    const updates = {};
+    updates[`${DB_KEY}/${room}`] = null;
+    updates[`${DB_KEY}/${room}_photos`] = null;
+    updates[`${REG_KEY}/${room}`] = null;
+    updates[`padelio_rooms/${room}`] = null;
+
+    firebase.database().ref().update(updates).then(() => {
+        if(dbRef) { dbRef.off(); dbRef = null; }
+        if(globalPlayersRef) { globalPlayersRef.off(); globalPlayersRef = null; }
+        dbPhotosRef = null;
+        localStorage.removeItem('sp_active_room_master');
+        alert("Kambarys ištrintas. Žaidėjų statistika profiliuose išliko.");
+        location.reload();
+    }).catch(err => {
+        console.error("Room delete error:", err);
+        alert("Klaida trinant kambarį. Bandykite dar kartą.");
+    });
+}
+
+// ==========================================
+// "MANO KAMBARIAI" — išsaugotų kambarių sąrašas greitam prisijungimui
+// ==========================================
+// Kai prisijungiama prie kambario, jo pavadinimas išsaugomas localStorage.
+// Vėliau (pvz. kitą savaitę) galima prisijungti vienu paspaudimu,
+// net jei kambarys dingo iš "Aktyvūs kambariai" sąrašo.
+
+function getMyRooms() {
+    try { return JSON.parse(localStorage.getItem('sp_my_rooms') || '[]'); }
+    catch (e) { return []; }
+}
+
+function saveToMyRooms(room) {
+    if (!room) return;
+    let rooms = getMyRooms();
+    // Pašaliname jei jau yra (kad atnaujintume datą), įdedame į priekį
+    rooms = rooms.filter(r => r.name !== room);
+    rooms.unshift({ name: room, lastUsed: Date.now() });
+    rooms = rooms.slice(0, 10); // laikome iki 10 paskutinių
+    localStorage.setItem('sp_my_rooms', JSON.stringify(rooms));
+}
+
+function removeFromMyRooms(room) {
+    let rooms = getMyRooms().filter(r => r.name !== room);
+    localStorage.setItem('sp_my_rooms', JSON.stringify(rooms));
+    renderMyRooms();
+}
+
+function quickConnectRoom(room) {
+    const field = el('fb-room');
+    if (field) field.value = room;
+    initFirebaseConnection();
+}
+
+function renderMyRooms() {
+    const box = el('my-rooms-list');
+    if (!box) return;
+    const rooms = getMyRooms();
+    if (rooms.length === 0) {
+        box.innerHTML = '';
+        return;
+    }
+    box.innerHTML = `
+        <div class="text-[10px] font-black uppercase text-slate-400 mb-2 tracking-widest mt-4"><i class="fa-solid fa-clock-rotate-left"></i> Mano kambariai</div>
+        <div class="space-y-2">
+            ${rooms.map(r => `
+                <div class="flex items-center gap-2 bg-slate-50 rounded-xl p-2 border border-slate-100">
+                    <button type="button" onclick="quickConnectRoom('${r.name.replace(/'/g, "\\'")}')" class="flex-1 text-left px-2 py-1">
+                        <div class="font-bold text-slate-700 text-sm">${r.name}</div>
+                        <div class="text-[10px] text-slate-400">${new Date(r.lastUsed).toLocaleDateString('lt-LT')}</div>
+                    </button>
+                    <button type="button" onclick="quickConnectRoom('${r.name.replace(/'/g, "\\'")}')" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap"><i class="fa-solid fa-wifi"></i> Jungtis</button>
+                    <button type="button" onclick="removeFromMyRooms('${r.name.replace(/'/g, "\\'")}')" class="text-slate-300 hover:text-red-500 px-2 py-2"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `).join('')}
+        </div>
+    `;
 }
 
 function syncPlayersToGlobalDB() {
