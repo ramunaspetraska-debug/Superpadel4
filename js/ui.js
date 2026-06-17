@@ -466,15 +466,12 @@ function finM(id) {
     if(m){ 
         m.finished = true; 
         liveUpdateMatches(); 
-        if (typeof processGlobalEloForMatch === 'function' && typeof settings !== 'undefined' && settings.level !== 'Privatus') {
-            processGlobalEloForMatch(m, typeof globalPlayersData !== 'undefined' ? globalPlayersData : {}, typeof globalPlayersRef !== 'undefined' ? globalPlayersRef : null);
-        }
     } 
 }
 
 function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }
 function resetScores() { if(confirm("Pradėti NAUJĄ turnyrą ir išsaugoti šį į istoriją?")) { currentTid = null; matches = []; players = []; preGeneratedTournament = []; setStore('pregen', []); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); autoSave(true); switchView('setup'); } }
-function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyrą iš istorijos?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); const tF=el('tournament-name-field'); if(tF) tF.value=''; ensureTournamentId(); switchView('setup'); } autoSave(true); renderHistoryList(); } }
+function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyrą iš istorijos?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); if(currentTid===id){ currentTid=null; matches=[]; players=[]; preGeneratedTournament=[]; setStore('pregen',[]); setStore('tid', null); const tF=el('tournament-name-field'); if(tF) tF.value=''; } autoSave(true); renderHistoryList(); } }
 function toggleMute() { isMuted = !isMuted; localStorage.setItem('sp_is_muted', isMuted.toString()); render(); }
 
 let globalAudioCtx = null;
@@ -578,7 +575,7 @@ function switchView(n) {
     document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
     document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active')); 
     el('view-' + n)?.classList.add('active'); el('nav-' + n)?.classList.add('active'); 
-    if(n==='stats') renderGlobalStats(); else if(n==='history') renderHistoryList(); else if(n==='admin') renderAdmin(); else if(n==='superadmin') loadSuperAdmin(); else render(); 
+    if(n==='stats') renderGlobalStats(); else if(n==='history') renderHistoryList(); else if(n==='admin') renderAdmin(); else if(n==='superadmin') loadSuperAdmin(); else if(n==='cloud') { renderMyRooms(); render(); } else render(); 
 }
 
 function renderHistoryList() { 
