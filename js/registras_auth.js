@@ -143,15 +143,70 @@ function updateAuthUI() {
     renderUserProfile();
 }
 
+// Nuotraukos įkėlimas į profilį — sumažina ir išsaugo Firebase.
+// Nuotrauka automatiškai susiejama: matoma profilyje, generatoriuje, žaidėjo kortelėje.
+function uploadProfilePhoto(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file || !currentUser) return;
+    showToast("Apdorojama nuotrauka...");
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            // Sumažiname iki 200x200 (kvadratu, iškerpame centrą) — taupo vietą
+            const size = 200;
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+
+            // Išsaugome lokaliai ir Firebase
+            currentUser.photo = dataUrl;
+            currentUser.hasPhoto = true;
+            localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
+
+            if (typeof firebase !== 'undefined') {
+                // 1. Globalus profilis — žyma hasPhoto
+                firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${currentUser.id}`).update({ hasPhoto: true });
+                // 2. Nuotrauka į photos lentelę (čia ieško generatorius ir žaidėjo kortelė)
+                firebase.database().ref(`${GLOBAL_PLAYERS_KEY}_photos/${currentUser.id}`).set(dataUrl);
+            }
+
+            renderUserProfile();
+            showToast("✅ Nuotrauka išsaugota!");
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 // Perskaito šviežius vartotojo duomenis iš Firebase ir atnaujina profilį.
 function refreshCurrentUserFromFirebase() {
     if (!currentUser || !currentUser.id) return;
+    const savedPhoto = currentUser.photo; // išsaugome lokalią nuotrauką
     firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${currentUser.id}`).once('value').then(snap => {
         const fresh = snap.val();
         if (!fresh) return;
         currentUser = fresh;
+        if (savedPhoto) currentUser.photo = savedPhoto; // grąžiname nuotrauką
         localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
         renderUserProfile();
+        // Jei profilis pažymėtas hasPhoto, bet nuotraukos nėra lokaliai — užkrauname iš Firebase
+        if (fresh.hasPhoto && !currentUser.photo) {
+            firebase.database().ref(`${GLOBAL_PLAYERS_KEY}_photos/${currentUser.id}`).once('value').then(pSnap => {
+                const photo = pSnap.val();
+                if (photo) {
+                    currentUser.photo = photo;
+                    localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
+                    renderUserProfile();
+                }
+            });
+        }
     }).catch(err => console.error("refreshCurrentUser error:", err));
 }
 
@@ -210,9 +265,11 @@ function renderUserProfile() {
 
     let html = `
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-            <div style="width: 50px; height: 50px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase;">
-                ${currentUser.name.substring(0,2)}
+            <div onclick="document.getElementById('profilePhotoInput').click()" style="position: relative; width: 50px; height: 50px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase; cursor: pointer; overflow: hidden; flex-shrink: 0;" id="profileAvatar">
+                ${currentUser.photo ? `<img src="${currentUser.photo}" style="width:100%;height:100%;object-fit:cover;">` : currentUser.name.substring(0,2)}
+                <div style="position:absolute; bottom:-2px; right:-2px; background:var(--primary-blue); color:white; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; border:2px solid white;"><i class="fa-solid fa-camera"></i></div>
             </div>
+            <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;" onchange="uploadProfilePhoto(event)">
             <div style="flex: 1;">
                 <div style="font-size: 16px; font-weight: 900; color: var(--text-dark);">${currentUser.name}</div>
                 <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 3px;"><i class="fa-solid fa-id-badge" style="margin-right:4px;"></i> ID: ${currentUser.id}</div>
