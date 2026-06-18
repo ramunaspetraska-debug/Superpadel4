@@ -150,7 +150,7 @@
         <div class="yt-container" style="position:relative;">
             <iframe class="yt-iframe" id="liveYtFrame" src="" style="display:none;" allow="autoplay; encrypted-media" allowfullscreen></iframe>
             <div id="liveYtPlaceholder" style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#718096; gap:10px;">
-                <i class="fa-brands fa-youtube" style="font-size:40px; color:#4a5568;"></i>
+                <i class="fa-solid fa-tower-broadcast" style="font-size:40px; color:#4a5568;"></i>
                 <div style="font-size:12px; font-weight:600;">Transliacijos nėra</div>
                 <button type="button" onclick="setLiveStreamLink()" style="background:#1a202c; color:#fff; border:1px solid #4a5568; padding:8px 16px; border-radius:20px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-plus"></i> Pridėti transliaciją</button>
             </div>
@@ -160,6 +160,7 @@
             <input type="text" id="liveRoomInput" placeholder="Kambario ID">
             <button type="button" onclick="connectLiveRoom()"><i class="fa-solid fa-link"></i> Jungtis</button>
         </div>
+        <div id="liveActiveStreamsList" style="padding: 0 12px;"></div>
         <div class="live-filters" id="liveCourtsContainer"><div class="live-filter-btn">Laukiama prisijungimo...</div></div>
         <div class="live-score-area">
             <div class="live-score-title" id="fbStatusTitleContainer"><i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span></div>
