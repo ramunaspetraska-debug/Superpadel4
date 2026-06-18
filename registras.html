@@ -232,6 +232,9 @@
                     <button type="button" id="camQ1080" class="cam-q-btn" onclick="setCamQuality('1080')">1080p Full HD</button>
                 </div>
                 <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
+                <div style="display:flex; justify-content:center; gap:8px; margin-top:14px;">
+                    <button type="button" onclick="rtcAskBroadcastType()" style="background:#0f172a; color:white; border:1px solid #334155; padding:10px 16px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-tower-broadcast" style="color:#ef4444;"></i> Transliuoti tiesiogiai</button>
+                </div>
                 <div class="ai-result-panel" id="camResultPanel" style="display:none;">
                     <h3 style="margin-bottom: 6px; color: #fff;">Mačas baigtas!</h3>
                     <div id="camResultInfo" style="font-size:12px; color:#a0aec0; margin-bottom:16px;"></div>
@@ -420,6 +423,7 @@
 <script src="/js/registras_live.js"></script>
 <script src="/js/registras_tournaments.js"></script>
 <script src="/js/registras_cam.js"></script>
+<script src="/js/registras_webrtc.js"></script>
 <script src="/js/registras_admin.js"></script>
 </body>
 </html>
