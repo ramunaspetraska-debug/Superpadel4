@@ -178,6 +178,14 @@ function initFirebaseConnection() {
     firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
     dbRef = firebase.database().ref(DB_KEY + '/' + room); 
     dbPhotosRef = firebase.database().ref(DB_KEY + '/' + room + '_photos');
+
+    // Savininko nustatymas: jei kambarys NAUJAS (neturi savininko), dabartinis vartotojas tampa savininku.
+    // Hibridas: jei prisijungęs prie profilio → profilio ID, kitaip → įrenginio ID.
+    firebase.database().ref(`${DB_KEY}/${room}/owner`).once('value').then(ownerSnap => {
+        if (!ownerSnap.exists()) {
+            firebase.database().ref(`${DB_KEY}/${room}/owner`).set(getCurrentOwnerId());
+        }
+    });
     
     globalPlayersRef = firebase.database().ref(GLOBAL_PLAYERS_KEY);
     globalPlayersRef.on('value', snap => {
@@ -185,6 +193,12 @@ function initFirebaseConnection() {
     });
 
     safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room); 
+
+    // Minkšta apsauga: trynimo mygtukas rodomas TIK savininkui
+    isRoomOwner(room).then(isOwner => {
+        const delBtn = el('deleteRoomBtn');
+        if (delBtn) delBtn.style.display = isOwner ? 'block' : 'none';
+    });
     
     const qrC = el('qrcode'); if(qrC && typeof QRCode !== 'undefined') { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
     
@@ -205,6 +219,33 @@ function initFirebaseConnection() {
     }); 
 }
 
+// Grąžina dabartinio vartotojo "savininko" ID.
+// Hibridas: jei prisijungęs prie profilio (telefono ID) → naudojam jį; kitaip → įrenginio ID.
+function getCurrentOwnerId() {
+    // Profilis (jei prisijungęs portale ir ID matomas generatoriuje)
+    try {
+        const u = JSON.parse(localStorage.getItem('sp_current_user') || 'null');
+        if (u && u.id) return 'user_' + u.id;
+    } catch(e) {}
+    // Įrenginio ID (sukuriamas vieną kartą, lieka naršyklėje)
+    let devId = localStorage.getItem('sp_device_id');
+    if (!devId) {
+        devId = 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem('sp_device_id', devId);
+    }
+    return devId;
+}
+
+// Patikrina ar dabartinis vartotojas yra šio kambario savininkas.
+// Grąžina Promise<boolean>.
+function isRoomOwner(room) {
+    return firebase.database().ref(`${DB_KEY}/${room}/owner`).once('value').then(snap => {
+        const owner = snap.val();
+        if (!owner) return true; // senas kambarys be savininko — leidžiam (atgalinis suderinamumas)
+        return owner === getCurrentOwnerId();
+    }).catch(() => false);
+}
+
 function disconnectFirebase() { 
     if(dbRef) { dbRef.off(); dbRef = null; } 
     if(globalPlayersRef) { globalPlayersRef.off(); globalPlayersRef = null; }
@@ -218,6 +259,18 @@ function disconnectFirebase() {
 // ji saugoma atskirai ir lieka žaidėjų profiliuose net ištrynus kambarį.
 function deleteCurrentRoom() {
     if (!isCloud || !activeRoom) { alert("Nesate prisijungę prie kambario."); return; }
+
+    // Patikriname ar esate savininkas (arba senas kambarys be savininko)
+    isRoomOwner(activeRoom).then(isOwner => {
+        if (!isOwner) {
+            alert("⛔ Tik kambarį sukūręs žaidėjas gali jį ištrinti.\n\nJūs galite atsijungti, bet kambario neištrinsite.");
+            return;
+        }
+        proceedDeleteRoom();
+    });
+}
+
+function proceedDeleteRoom() {
     if (!confirm(`⚠️ DĖMESIO!\n\nIštrinsite kambarį "${activeRoom}" VISIEMS dalyviams.\n\nKas bus ištrinta:\n• Kambario žaidėjų sąrašas ir mačai\n• Kambario nuotraukos\n\nKas IŠLIKS:\n• Žaidėjų ELO reitingai ir statistika profiliuose\n\nTęsti?`)) return;
     if (!confirm(`Ar tikrai? Šio veiksmo atšaukti negalėsite.`)) return;
 
