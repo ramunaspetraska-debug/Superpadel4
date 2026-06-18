@@ -6,17 +6,59 @@
 
 let currentLiveRoomName = null;
 
-function extractYouTubeId(url) {
+// ==========================================
+// UNIVERSALI TRANSLIACIJŲ LOGIKA (YouTube + Twitch + Facebook)
+// ==========================================
+// Saugoma Firebase: { platform: 'youtube'|'twitch'|'facebook', id: '...', url: '...' }
+// Video srautas NEINA per Firebase — tik nuoroda. Visas srautas platformos pusėje.
+
+// Atpažįsta platformą ir ištraukia reikiamą ID/nuorodą iš bet kokios transliacijos nuorodos
+function parseStreamUrl(url) {
     if (!url) return null;
-    const patterns = [
+    url = url.trim();
+
+    // YouTube
+    const ytPatterns = [
         /youtu\.be\/([a-zA-Z0-9_-]{6,})/,
         /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{6,})/,
         /youtube\.com\/live\/([a-zA-Z0-9_-]{6,})/,
         /youtube\.com\/embed\/([a-zA-Z0-9_-]{6,})/
     ];
-    for (const p of patterns) {
+    for (const p of ytPatterns) {
         const m = url.match(p);
-        if (m) return m[1];
+        if (m) return { platform: 'youtube', id: m[1], url: url };
+    }
+
+    // Twitch — kanalo vardas (twitch.tv/vardas)
+    const twMatch = url.match(/twitch\.tv\/([a-zA-Z0-9_]{3,30})/);
+    if (twMatch) return { platform: 'twitch', id: twMatch[1], url: url };
+
+    // Facebook — visa nuoroda reikalinga FB plugin'ui
+    if (/facebook\.com\/|fb\.watch\//.test(url)) {
+        return { platform: 'facebook', id: '', url: url };
+    }
+
+    return null;
+}
+
+// Senas pavadinimas — kad nesugriūtų kitos vietos, kurios jį kviečia
+function extractYouTubeId(url) {
+    const r = parseStreamUrl(url);
+    return (r && r.platform === 'youtube') ? r.id : null;
+}
+
+// Sukuria įterpiamą (embed) nuorodą pagal platformą
+function buildEmbedUrl(stream) {
+    if (!stream || !stream.platform) return null;
+    const host = (typeof location !== 'undefined') ? location.hostname : 'www.superpadel.lt';
+    if (stream.platform === 'youtube') {
+        return `https://www.youtube.com/embed/${stream.id}?autoplay=1&mute=1&playsinline=1`;
+    }
+    if (stream.platform === 'twitch') {
+        return `https://player.twitch.tv/?channel=${stream.id}&parent=${host}&autoplay=true&muted=true`;
+    }
+    if (stream.platform === 'facebook') {
+        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(stream.url)}&autoplay=true&mute=1`;
     }
     return null;
 }
@@ -25,44 +67,115 @@ function loadLiveStream(roomName) {
     const frame = document.getElementById('liveYtFrame');
     const placeholder = document.getElementById('liveYtPlaceholder');
     if (!frame) return;
-    firebase.database().ref(`${DB_KEY}/${roomName}/youtube_live`).once('value').then(snap => {
-        const videoId = snap.val();
-        if (videoId) {
-            frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`;
-            frame.style.display = 'block';
-            if (placeholder) placeholder.style.display = 'none';
-        } else {
-            frame.src = '';
-            frame.style.display = 'none';
-            if (placeholder) placeholder.style.display = 'flex';
+    firebase.database().ref(`${DB_KEY}/${roomName}/live_stream`).once('value').then(snap => {
+        let stream = snap.val();
+        // Atgalinis suderinamumas: sena versija saugojo tik youtube_live = videoId (tekstas)
+        if (!stream) {
+            const legacy = null;
+            firebase.database().ref(`${DB_KEY}/${roomName}/youtube_live`).once('value').then(legSnap => {
+                const vid = legSnap.val();
+                if (vid) {
+                    const s = { platform: 'youtube', id: vid, url: '' };
+                    showStreamFrame(s, frame, placeholder);
+                } else {
+                    hideStreamFrame(frame, placeholder);
+                }
+            });
+            return;
         }
+        showStreamFrame(stream, frame, placeholder);
     });
 }
 
+function showStreamFrame(stream, frame, placeholder) {
+    const embed = buildEmbedUrl(stream);
+    if (embed) {
+        frame.src = embed;
+        frame.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+    } else {
+        hideStreamFrame(frame, placeholder);
+    }
+}
+
+function hideStreamFrame(frame, placeholder) {
+    frame.src = '';
+    frame.style.display = 'none';
+    if (placeholder) placeholder.style.display = 'flex';
+}
+
+// Transliacijos nustatymas — platformos pasirinkimas + nuoroda
 function setLiveStreamLink() {
     if (!currentLiveRoomName) { showToast("Pirmiausia prisijunkite prie kambario."); return; }
-    openInputModal(
-        '<i class="fa-brands fa-youtube" style="color: #ff0000;"></i> YouTube transliacija',
-        'Įklijuokite nuorodą',
-        'Išsaugoti',
-        (url) => {
-            if (!url || url.trim() === '') {
-                firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/youtube_live`).remove().then(() => {
-                    loadLiveStream(currentLiveRoomName);
-                    showToast("Transliacija pašalinta.");
-                });
-                return;
-            }
-            const videoId = extractYouTubeId(url.trim());
-            if (!videoId) { showToast("Neatpažinta YouTube nuoroda."); return; }
-            firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/youtube_live`).set(videoId).then(() => {
-                loadLiveStream(currentLiveRoomName);
-                showToast("📺 Transliacija pridėta!");
-            });
-        },
-        'url'
-    );
+    openStreamSetupModal();
 }
+
+function openStreamSetupModal() {
+    const old = document.getElementById('stream-setup-modal');
+    if (old) old.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'stream-setup-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.75);z-index:10001;display:flex;align-items:center;justify-content:center;padding:18px;';
+    wrap.innerHTML = `
+        <div style="background:white;border-radius:18px;padding:22px;width:100%;max-width:420px;">
+            <div style="font-weight:900;font-size:16px;color:#1e293b;margin-bottom:4px;"><i class="fa-solid fa-tower-broadcast" style="color:#2563eb;"></i> Pradėti transliaciją</div>
+            <div style="font-size:12px;color:#64748b;margin-bottom:16px;">Transliuokite per pasirinktą platformą, tada įklijuokite nuorodą čia. Žiūrovai matys ją tiesiai SuperPadel'e.</div>
+
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
+                    <div style="font-weight:800;font-size:13px;color:#9146FF;margin-bottom:4px;"><i class="fa-brands fa-twitch"></i> Twitch <span style="background:#dcfce7;color:#16a34a;font-size:9px;padding:2px 6px;border-radius:4px;margin-left:4px;">Be apribojimų</span></div>
+                    <div style="font-size:11px;color:#64748b;">Nereikia prenumeratorių. Transliuokite per Twitch programėlę, įklijuokite kanalo nuorodą.</div>
+                </div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;">
+                    <div style="font-weight:800;font-size:13px;color:#1877F2;margin-bottom:4px;"><i class="fa-brands fa-facebook"></i> Facebook Live</div>
+                    <div style="font-size:11px;color:#64748b;">Transliuokite per Facebook, įklijuokite įrašo nuorodą.</div>
+                </div>
+                <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;opacity:0.6;">
+                    <div style="font-weight:800;font-size:13px;color:#ff0000;margin-bottom:4px;"><i class="fa-brands fa-youtube"></i> YouTube <span style="background:#fef3c7;color:#92400e;font-size:9px;padding:2px 6px;border-radius:4px;margin-left:4px;">Reikia 50 prenumeratorių</span></div>
+                    <div style="font-size:11px;color:#64748b;">Veikia, jei jūsų kanalas turi 50+ prenumeratorių.</div>
+                </div>
+            </div>
+
+            <input type="text" id="streamUrlInput" placeholder="Įklijuokite transliacijos nuorodą..." style="width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font-size:13px;margin-bottom:12px;box-sizing:border-box;">
+            <div style="display:flex;gap:8px;">
+                <button onclick="document.getElementById('stream-setup-modal').remove()" style="flex:1;padding:12px;border:1px solid #cbd5e1;background:white;color:#64748b;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Atšaukti</button>
+                <button onclick="saveStreamFromModal()" style="flex:2;padding:12px;border:none;background:#2563eb;color:white;border-radius:10px;font-weight:bold;font-size:13px;cursor:pointer;">Pradėti transliaciją</button>
+            </div>
+            <button onclick="removeStream()" style="width:100%;margin-top:8px;padding:10px;border:none;background:transparent;color:#ef4444;font-size:12px;font-weight:bold;cursor:pointer;">Sustabdyti esamą transliaciją</button>
+        </div>
+    `;
+    document.body.appendChild(wrap);
+}
+
+function saveStreamFromModal() {
+    const input = document.getElementById('streamUrlInput');
+    const url = input ? input.value.trim() : '';
+    if (!url) { showToast("Įklijuokite nuorodą."); return; }
+    const stream = parseStreamUrl(url);
+    if (!stream) { showToast("Neatpažinta nuoroda. Naudokite Twitch, Facebook arba YouTube."); return; }
+
+    firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/live_stream`).set(stream).then(() => {
+        // Pažymime turnyrą kaip LIVE (kad portale matytųsi 🔴)
+        firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/is_live`).set(true);
+        document.getElementById('stream-setup-modal')?.remove();
+        loadLiveStream(currentLiveRoomName);
+        const labels = { youtube: 'YouTube', twitch: 'Twitch', facebook: 'Facebook' };
+        showToast(`📺 ${labels[stream.platform]} transliacija pradėta!`);
+    });
+}
+
+function removeStream() {
+    if (!currentLiveRoomName) return;
+    firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/live_stream`).remove();
+    firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/youtube_live`).remove();
+    firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/is_live`).remove();
+    document.getElementById('stream-setup-modal')?.remove();
+    loadLiveStream(currentLiveRoomName);
+    showToast("Transliacija sustabdyta.");
+}
+
+// Senas pavadinimas suderinamumui
+function setLiveStreamLink_legacy() { setLiveStreamLink(); }
 
 function connectLiveRoom() {
     const roomInput = document.getElementById('liveRoomInput').value.trim();
@@ -220,11 +333,62 @@ function renderLiveScoreboard() {
 }
 
 // ==========================================
+// Parodo visus aktyvius LIVE turnyrus — žiūrovas paspaudžia ir prisijungia
+function renderActiveStreams() {
+    const box = document.getElementById('liveActiveStreamsList');
+    if (!box) return;
+    box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;"><i class="fa-solid fa-spinner fa-spin"></i> Ieškoma transliacijų...</div>';
+
+    firebase.database().ref(DB_KEY).once('value').then(snap => {
+        const data = snap.val() || {};
+        const liveRooms = [];
+        Object.keys(data).forEach(roomName => {
+            const room = data[roomName];
+            if (room && room.is_live && room.live_stream) {
+                liveRooms.push({
+                    name: roomName,
+                    platform: room.live_stream.platform,
+                    format: (room.settings && room.settings.format) || 'Turnyras'
+                });
+            }
+        });
+
+        if (liveRooms.length === 0) {
+            box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;">Šiuo metu nėra aktyvių transliacijų.</div>';
+            return;
+        }
+
+        const platIcon = { youtube: '<i class="fa-brands fa-youtube" style="color:#ff0000;"></i>', twitch: '<i class="fa-brands fa-twitch" style="color:#9146FF;"></i>', facebook: '<i class="fa-brands fa-facebook" style="color:#1877F2;"></i>' };
+        box.innerHTML = `
+            <div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0;"><i class="fa-solid fa-circle" style="color:#ef4444;font-size:7px;"></i> Tiesiogiai dabar</div>
+            ${liveRooms.map(r => `
+                <div onclick="watchLiveRoom('${r.name.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;">
+                    <div style="font-size:18px;">${platIcon[r.platform] || '<i class="fa-solid fa-video"></i>'}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:800;font-size:13px;color:white;">${r.name}</div>
+                        <div style="font-size:10px;color:#94a3b8;">${r.format}</div>
+                    </div>
+                    <div style="background:#ef4444;color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:4px;">🔴 LIVE</div>
+                </div>
+            `).join('')}
+        `;
+    }).catch(() => {
+        box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;">Nepavyko įkelti transliacijų.</div>';
+    });
+}
+
+function watchLiveRoom(roomName) {
+    const input = document.getElementById('liveRoomInput');
+    if (input) input.value = roomName;
+    connectLiveRoom();
+}
+
 // LIVE MODALINIS LANGAS (Stebėti mygtukas)
 // ==========================================
 function openLiveModal(e) {
     if (e && e.stopPropagation) e.stopPropagation();
     document.getElementById('liveModal')?.classList.add('show');
+    if (typeof renderActiveStreams === 'function') renderActiveStreams();
 }
 function closeLiveModal() {
     document.getElementById('liveModal')?.classList.remove('show');
