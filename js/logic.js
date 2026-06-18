@@ -321,7 +321,10 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
         t1Players.forEach(p => updatePlayer(p, delta1));
         t2Players.forEach(p => updatePlayer(p, delta2));
     } else {
-        const roomName = document.getElementById('fb-room')?.value?.trim();
+        // SVARBU: naudojame activeRoom (globalų kintamąjį), NE įvesties laukelį.
+        // Po puslapio perkrovimo + auto-prisijungimo laukelis 'fb-room' būna tuščias,
+        // todėl ankstesnė versija nerasdavo kambario ir sinchronizacija neveikdavo.
+        const roomName = (typeof activeRoom !== 'undefined' && activeRoom) ? activeRoom : (document.getElementById('fb-room')?.value?.trim() || '');
         if (!roomName) return; 
         const casualRef = firebase.database().ref("padelio_rooms/" + roomName + "/casual_players");
         
