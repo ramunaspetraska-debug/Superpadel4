@@ -342,11 +342,12 @@ function renderUserProfile() {
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
             <i class="fa-solid fa-door-open" style="color: var(--primary-blue); font-size: 13px;"></i> Aktyvūs kambariai
         </div>
-        <div id="profile-rooms-container" style="margin-bottom: 25px;">
+        <div id="profile-rooms-container" style="margin-bottom: 12px;">
             <div style="text-align: center; padding: 15px; color: var(--text-grey); font-size: 12px;">
                 <i class="fa-solid fa-spinner fa-spin"></i> Ieškoma aktyvių kambarių...
             </div>
         </div>
+        <button type="button" onclick="recomputeMyStats()" style="width:100%; background:#eff6ff; color:var(--primary-blue); border:1px solid #bfdbfe; border-radius:10px; padding:10px; font-size:12px; font-weight:bold; cursor:pointer; margin-bottom:25px; display:flex; align-items:center; justify-content:center; gap:6px;"><i class="fa-solid fa-rotate"></i> Atnaujinti mano statistiką</button>
 
         <!-- MANO TURNYRAI -->
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
@@ -658,12 +659,21 @@ function calculateRetroactiveStats(roomName, roomPlayerId, phoneId, playerName) 
         let foundMatches = 0;
         let foundWins = 0;
 
+        const _fullName = (playerName || '').toLowerCase().trim();
+        const _firstName = _fullName.split(/\s+/)[0];
+        const matchesPlayer = (p) => {
+            if (!p) return false;
+            if (p.id === roomPlayerId) return true;
+            // Vardas saugomas formatu "Vardas|lytis" — nuvalome priesagą
+            const pName = (p.name ? String(p.name).split('|')[0] : '').toLowerCase().trim();
+            if (!pName) return false;
+            if (_fullName && pName === _fullName) return true;            // pilnas vardas
+            if (_firstName && pName.split(/\s+/)[0] === _firstName) return true; // tik vardas
+            return false;
+        };
+
         const processMatch = (match, isOfficialTournament) => {
             if (!match || !match.finished || isOfficialTournament) return;
-            const matchesPlayer = (p) => p && (
-                p.id === roomPlayerId || 
-                (playerName && p.name && p.name.toLowerCase().trim() === playerName.toLowerCase().trim())
-            );
             const inTeam1 = (match.team1 || []).some(matchesPlayer);
             const inTeam2 = (match.team2 || []).some(matchesPlayer);
             if (!inTeam1 && !inTeam2) return;
@@ -721,6 +731,91 @@ function calculateRetroactiveStats(roomName, roomPlayerId, phoneId, playerName) 
         console.error("Retroactive stats error:", err);
         showToast(`✅ Prisijungta! Statistika pradės skaičiuotis.`);
     });
+}
+
+// ==========================================
+// RANKINIS STATISTIKOS PERSKAIČIAVIMAS
+// ==========================================
+// Patikimas būdas: perskaičiuoja casual mačus IŠ NAUJO pagal visus kambarius,
+// kuriuose vartotojas prisijungęs. Sutapimas pagal pilną IR tik vardą.
+// Nustato (ne prideda) reikšmes — todėl dvigubo skaičiavimo nėra.
+function recomputeMyStats() {
+    if (!currentUser || !currentUser.id) { showToast("Pirmiausia prisijunkite."); return; }
+    showToast("⏳ Perskaičiuojama statistika...");
+
+    const phoneId = currentUser.id;
+    const fullName = (currentUser.name || '').toLowerCase().trim();
+    const firstName = fullName.split(/\s+/)[0];
+
+    const matchesPlayer = (p, roomPlayerId) => {
+        if (!p) return false;
+        if (roomPlayerId && p.id === roomPlayerId) return true;
+        const pName = (p.name ? String(p.name).split('|')[0] : '').toLowerCase().trim();
+        if (!pName) return false;
+        if (fullName && pName === fullName) return true;
+        if (firstName && pName.split(/\s+/)[0] === firstName) return true;
+        return false;
+    };
+
+    firebase.database().ref('padelio_pro_master_rooms').once('value').then(roomsSnap => {
+        const roomsData = roomsSnap.val() || {};
+        const roomNames = Object.keys(roomsData);
+        if (roomNames.length === 0) { showToast("Aktyvių kambarių nerasta."); return; }
+
+        let totalMatches = 0;
+        let totalWins = 0;
+        let checked = 0;
+
+        const finish = () => {
+            firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
+                casual_matches: totalMatches,
+                casual_wins: totalWins,
+                last_played: Date.now()
+            }).then(() => {
+                currentUser.casual_matches = totalMatches;
+                currentUser.casual_wins = totalWins;
+                localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
+                renderUserProfile();
+                if (totalMatches > 0) {
+                    showToast(`✅ Atnaujinta: ${totalMatches} mačai, ${totalWins} laimėti!`);
+                } else {
+                    showToast(`Mačų nerasta. Įsitikinkite, kad prisijungę prie kambario ir mačai baigti.`);
+                }
+            }).catch(() => showToast("Klaida saugant statistiką."));
+        };
+
+        roomNames.forEach(roomName => {
+            // Tikriname ar vartotojas prisijungęs prie šio kambario
+            firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${phoneId}`).once('value').then(linkSnap => {
+                const roomPlayerId = linkSnap.val();
+                if (!roomPlayerId) { checked++; if (checked === roomNames.length) finish(); return; }
+
+                firebase.database().ref(`${DB_KEY}/${roomName}`).once('value').then(snap => {
+                    const roomData = snap.val() || {};
+                    const processMatch = (match, isOfficial) => {
+                        if (!match || !match.finished || isOfficial) return;
+                        const inT1 = (match.team1 || []).some(p => matchesPlayer(p, roomPlayerId));
+                        const inT2 = (match.team2 || []).some(p => matchesPlayer(p, roomPlayerId));
+                        if (!inT1 && !inT2) return;
+                        const s1 = parseInt(match.score1 || 0);
+                        const s2 = parseInt(match.score2 || 0);
+                        totalMatches++;
+                        if ((inT1 && s1 > s2) || (inT2 && s2 > s1)) totalWins++;
+                    };
+                    const savedT = Array.isArray(roomData.savedTournaments) ? roomData.savedTournaments : Object.values(roomData.savedTournaments || {});
+                    savedT.forEach(t => {
+                        if (!t || !t.matches) return;
+                        const tM = Array.isArray(t.matches) ? t.matches : Object.values(t.matches);
+                        tM.forEach(m => processMatch(m, t.settings && t.settings.isOfficial === true));
+                    });
+                    const curM = Array.isArray(roomData.matches) ? roomData.matches : Object.values(roomData.matches || {});
+                    curM.forEach(m => processMatch(m, roomData.settings && roomData.settings.isOfficial === true));
+
+                    checked++; if (checked === roomNames.length) finish();
+                }).catch(() => { checked++; if (checked === roomNames.length) finish(); });
+            }).catch(() => { checked++; if (checked === roomNames.length) finish(); });
+        });
+    }).catch(() => showToast("Klaida perskaičiuojant."));
 }
 
 function disconnectFromRoom(roomName) {
