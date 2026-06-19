@@ -1,4 +1,12 @@
 // ==========================================
+// VERSIJA: v1.2.0 (2026-06-19)
+// Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
+//           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
+//           processAuth su .catch + prisijungimas iš atminties,
+//           vardo rakto pataisymai (pilnas + tik vardas), firstNameKey.
+// ==========================================
+
+// ==========================================
 // FIREBASE KONFIGŪRACIJA IR INICIALIZACIJA
 // ==========================================
 
