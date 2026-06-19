@@ -383,6 +383,7 @@ function confirmGlobalImport() {
     const sel = window._giSelected;
     if (!sel || sel.size === 0) { document.getElementById('global-import-modal').remove(); return; }
     let added = 0;
+    const photoFetches = [];
     (window._giPlayers || []).forEach(gp => {
         if (!sel.has(gp.id)) return;
         if (players.some(p => p.name.toLowerCase().trim() === gp.name.toLowerCase().trim())) return;
@@ -392,9 +393,29 @@ function confirmGlobalImport() {
             wins: 0, losses: 0, draws: 0, points: 0, diff: 0, history: []
         });
         added++;
+        // Jei žaidėjas turi profilio nuotrauką — atsiunčiame ją ir parodome generatoriuje + kambaryje
+        if (gp.hasPhoto && typeof firebase !== 'undefined') {
+            photoFetches.push(
+                firebase.database().ref(`${GLOBAL_PLAYERS_KEY}_photos/${gp.id}`).once('value').then(pSnap => {
+                    const photo = pSnap.val();
+                    if (photo) {
+                        photoBank[gp.id] = photo;
+                        if (typeof uploadPhotoToRoom === 'function') uploadPhotoToRoom(gp.id, photo);
+                    }
+                }).catch(() => {})
+            );
+        }
     });
     document.getElementById('global-import-modal').remove();
     if (typeof savePlayers === 'function') savePlayers();
+
+    // Kai nuotraukos atsisiųstos — išsaugome ir perpiešiame
+    Promise.all(photoFetches).then(() => {
+        if (typeof setStore === 'function') setStore('photos', photoBank);
+        if (typeof renderPlayers === 'function') renderPlayers();
+        if (typeof render === 'function') render();
+    });
+
     if (typeof renderPlayers === 'function') renderPlayers();
     if (typeof updatePlayerCount === 'function') updatePlayerCount();
     if (typeof autoSave === 'function') autoSave(true);
