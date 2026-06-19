@@ -429,10 +429,18 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                 // 1 metodas (PIRMAS): portalo ryšys pagal vardą — tikras telefono profilis
                 if (p.name) {
                     const nameKey = p.name.toLowerCase().trim().replace(/\s+/g, '_');
-                    const path1 = `${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`;
-                    console.log(`🔍 [${p.name}] Ieškau nameKey="${nameKey}" kelyje: ${path1}`);
-                    firebase.database().ref(path1).once('value').then(nameSnap => {
-                        if (nameSnap.val()) { console.log(`✅ [${p.name}] 1-VARDAS rado phoneId=${nameSnap.val()}`); doUpdate(nameSnap.val()); return; }
+                    const firstName = p.name.toLowerCase().trim().split(/\s+/)[0];
+                    const path1 = `${DB_KEY}/${roomName}/portal_links_by_name`;
+                    console.log(`🔍 [${p.name}] Ieškau nameKey="${nameKey}" (arba vardo "${firstName}") kelyje: ${path1}`);
+                    firebase.database().ref(path1).once('value').then(byNameSnap => {
+                        const byName = byNameSnap.val() || {};
+                        // 1a. Tikslus atitikimas (pilnas vardas)
+                        if (byName[nameKey]) { console.log(`✅ [${p.name}] 1-VARDAS (tikslus) rado phoneId=${byName[nameKey]}`); doUpdate(byName[nameKey]); return; }
+                        // 1b. Atitikimas pagal vardą (be pavardės)
+                        if (byName[firstName]) { console.log(`✅ [${p.name}] 1-VARDAS (vardas) rado phoneId=${byName[firstName]}`); doUpdate(byName[firstName]); return; }
+                        // 1c. Skenuojam visus raktus — jei kurio nors raktas prasideda žaidėjo vardu
+                        const matchKey = Object.keys(byName).find(k => k === firstName || k.split('_')[0] === firstName);
+                        if (matchKey) { console.log(`✅ [${p.name}] 1-VARDAS (skenavimas "${matchKey}") rado phoneId=${byName[matchKey]}`); doUpdate(byName[matchKey]); return; }
                         console.log(`⏭️ [${p.name}] 1-VARDAS nerado. Bandau portal_links...`);
 
                         // 2 metodas: portal_links skenavimas pagal žaidėjo ID
