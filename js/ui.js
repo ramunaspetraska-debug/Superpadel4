@@ -91,7 +91,7 @@ function addPlayer(e) {
         const n = f ? f.value.trim() : ''; 
         if(!n) return false; 
         const newId = uid();
-        if (curPh) { photoBank[newId] = curPh; setStore('photos', photoBank); trimPhotoBankIfNeeded(); }
+        if (curPh) { photoBank[newId] = curPh; setStore('photos', photoBank); trimPhotoBankIfNeeded(); if (typeof uploadPhotoToRoom === 'function') uploadPhotoToRoom(newId, curPh); }
         
         players.push({ id: newId, name: n, gender: tempGender, rating: 300, tier: "D" }); 
         if(f) f.value = ''; curPh = null; 
@@ -184,7 +184,7 @@ function savePlayerEdit() {
         if(p) { 
             let nameField = el('edit-player-name');
             p.name = nameField ? (nameField.value.trim() || p.name) : p.name; p.gender = tempEditGender; 
-            if (tempEditPhoto) { photoBank[p.id] = tempEditPhoto; setStore('photos', photoBank); trimPhotoBankIfNeeded(); }
+            if (tempEditPhoto) { photoBank[p.id] = tempEditPhoto; setStore('photos', photoBank); trimPhotoBankIfNeeded(); if (typeof uploadPhotoToRoom === 'function') uploadPhotoToRoom(p.id, tempEditPhoto); }
             matches.forEach(m => {
                 if(m.team1) m.team1.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
                 if(m.team2) m.team2.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
