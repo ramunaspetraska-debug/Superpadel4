@@ -1,5 +1,5 @@
-// Kešo versija suderinta su programos versija (v193)
-const CACHE_NAME = 'superpadel-cache-v196';
+// Kešo versija suderinta su programos versija (v197 — 2026-06-19)
+const CACHE_NAME = 'superpadel-cache-v197';
 
 // Visi ekosistemos resursai, kurie privalo veikti neprisijungus prie interneto
 const ASSETS = [
@@ -19,6 +19,7 @@ const ASSETS = [
     '/js/registras_tournaments.js',
     '/js/registras_admin.js',
     '/js/registras_cam.js',
+    '/js/registras_webrtc.js',
     '/manifest.json'
 ];
 
