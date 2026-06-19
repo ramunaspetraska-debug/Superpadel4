@@ -78,6 +78,8 @@ function processAuth() {
         safeId = '370' + safeId.substring(1); 
     }
 
+    showToast("⏳ Jungiamasi...");
+
     firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
         let user = snap.val();
         if(user) {
@@ -112,8 +114,26 @@ function processAuth() {
                         pendingTournamentId = null; 
                         handleCardClick(targetId);
                     }
+                }).catch(err => {
+                    console.error("Registracijos klaida:", err);
+                    showToast("⚠️ Nepavyko išsaugoti profilio. Patikrinkite internetą.");
                 });
             }
+        }
+    }).catch(err => {
+        // SVARBU: jei Firebase skaitymas nepavyksta (silpnas internetas), prisijungimas
+        // anksčiau tyliai nutrūkdavo. Dabar parodome klaidą ir, jei yra išsaugotas
+        // profilis su tuo pačiu ID, prisijungiame iš atminties (veikia be interneto).
+        console.error("Prisijungimo klaida:", err);
+        let cached = null;
+        try { cached = JSON.parse(localStorage.getItem('sp_current_user') || 'null'); } catch(e) {}
+        if (cached && cached.id === safeId) {
+            currentUser = cached;
+            showToast(`Prisijungta iš atminties (${cached.name}). Internetas neprieinamas.`);
+            updateAuthUI();
+            closeAuthModal();
+        } else {
+            showToast("⚠️ Nepavyko prisijungti. Patikrinkite internetą ir bandykite dar kartą.");
         }
     });
 }
