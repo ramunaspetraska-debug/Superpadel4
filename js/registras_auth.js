@@ -65,6 +65,21 @@ function closeAuthModal() {
     document.getElementById('authModal').classList.remove('show'); 
 }
 
+// Po prisijungimo NEATIDARYTI atšaukimo lango automatiškai.
+// Jei vartotojas jau registruotas turnyre — parodome žinutę ir nukreipiame į profilį,
+// o ne atidarome bauginantį "Atšaukti dalyvavimą" langą.
+function handlePostLoginCard(id) {
+    if (typeof tournaments === 'undefined') return;
+    const t = tournaments.find(x => x.id === id);
+    if (!t) { if (typeof switchTab === 'function') switchTab('page-profile'); return; }
+    if (t.status === 'registered') {
+        showToast("Jūs jau užsiregistravęs šiame turnyre.");
+        if (typeof switchTab === 'function') switchTab('page-profile');
+        return;
+    }
+    if (typeof handleCardClick === 'function') handleCardClick(id);
+}
+
 function processAuth() {
     let inputId = document.getElementById('authInput').value.trim().toLowerCase();
     if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
@@ -91,7 +106,7 @@ function processAuth() {
             if (pendingTournamentId) {
                 const targetId = pendingTournamentId;
                 pendingTournamentId = null; 
-                handleCardClick(targetId);
+                handlePostLoginCard(targetId);
             }
         } else {
             let regFields = document.getElementById('registerFields');
@@ -112,7 +127,7 @@ function processAuth() {
                     if (pendingTournamentId) {
                         const targetId = pendingTournamentId;
                         pendingTournamentId = null; 
-                        handleCardClick(targetId);
+                        handlePostLoginCard(targetId);
                     }
                 }).catch(err => {
                     console.error("Registracijos klaida:", err);
