@@ -611,12 +611,19 @@ function confirmJoinRoom(roomName, roomPlayerId) {
     if (!currentUser) return;
 
     const nameKey = currentUser.name.toLowerCase().trim().replace(/\s+/g, '_');
+    // Generatoriuje žaidėjai dažnai vadinami tik VARDU (pvz. "Ramūnas"), o profilis turi
+    // pilną vardą ("Ramūnas Petraška"). Todėl saugome ryšį pagal ABU variantus,
+    // kad statistika susietų nepriklausomai nuo to, kaip žaidėjas pavadintas generatoriuje.
+    const firstNameKey = currentUser.name.toLowerCase().trim().split(/\s+/)[0];
 
     const updates = {};
     updates[`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`] = roomPlayerId;
     updates[`${DB_KEY}/${roomName}/portal_links_reverse/${roomPlayerId}`] = currentUser.id;
     // Stabilus ryšys pagal vardą — veikia net kai keičiasi žaidėjo ID naujuose turnyruose
     updates[`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`] = currentUser.id;
+    if (firstNameKey && firstNameKey !== nameKey) {
+        updates[`${DB_KEY}/${roomName}/portal_links_by_name/${firstNameKey}`] = currentUser.id;
+    }
 
     console.log("💾 PRISIJUNGIMAS: išsaugau ryšius:", JSON.stringify(updates));
 
