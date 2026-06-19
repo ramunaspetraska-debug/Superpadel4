@@ -240,14 +240,15 @@ function selectPortalTournament(tid) {
         const name = parts[0].trim();
         const savedGender = parts[1] ? parts[1].trim() : null;
         if (!name) return;
-        if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) return;
+        if (players.some(p => p.name.toLowerCase().trim() === name.toLowerCase().trim())) return;
 
         let globalMatch = (typeof globalPlayersData !== 'undefined')
-            ? Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase() === name.toLowerCase())
+            ? Object.values(globalPlayersData || {}).find(gp => gp && gp.name && gp.name.toLowerCase().trim() === name.toLowerCase().trim())
             : null;
 
+        const newPlayerId = globalMatch ? globalMatch.id : (Date.now() + Math.random()).toString(36);
         players.push({
-            id: globalMatch ? globalMatch.id : (Date.now() + Math.random()).toString(36),
+            id: newPlayerId,
             name: name,
             gender: savedGender || (globalMatch ? (globalMatch.gender || "M") : "M"),
             photo: null,
@@ -255,6 +256,18 @@ function selectPortalTournament(tid) {
             tier: globalMatch ? (globalMatch.tier || "D") : "D",
             wins: 0, losses: 0, draws: 0, points: 0, diff: 0, history: []
         });
+        // Jei žaidėjas (ar partneris) turi profilio nuotrauką — atsiunčiame ją ir parodome
+        if (globalMatch && globalMatch.hasPhoto && typeof firebase !== 'undefined') {
+            firebase.database().ref(`${GLOBAL_PLAYERS_KEY}_photos/${newPlayerId}`).once('value').then(pSnap => {
+                const photo = pSnap.val();
+                if (photo) {
+                    photoBank[newPlayerId] = photo;
+                    if (typeof setStore === 'function') setStore('photos', photoBank);
+                    if (typeof uploadPhotoToRoom === 'function') uploadPhotoToRoom(newPlayerId, photo);
+                    if (typeof render === 'function') render();
+                }
+            }).catch(() => {});
+        }
         added++;
     };
 
