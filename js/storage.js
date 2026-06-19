@@ -203,10 +203,15 @@ function initFirebaseConnection() {
     const qrC = el('qrcode'); if(qrC && typeof QRCode !== 'undefined') { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
     
     if(dbPhotosRef) {
-        dbPhotosRef.once('value').then(snap => {
+        // GYVAS klausymas — kai bet kuris žaidėjas prideda nuotrauką, ją iškart mato visi
+        dbPhotosRef.on('value', snap => {
             const cloudPhotos = snap.val();
-            if(cloudPhotos) { photoBank = { ...photoBank, ...cloudPhotos }; setStore('photos', photoBank); render(); }
-        }).catch(e => console.error("Cloud Photo Load Error:", e));
+            if(cloudPhotos) {
+                photoBank = { ...photoBank, ...cloudPhotos };
+                setStore('photos', photoBank);
+                render();
+            }
+        });
     }
 
     dbRef.on('value', snap => { 
@@ -351,6 +356,15 @@ function renderMyRooms() {
             `).join('')}
         </div>
     `;
+}
+
+// Įkelia žaidėjo nuotrauką į kambario debesį, kad ją matytų visi prisijungę žaidėjai.
+// Kviečiama kai pridedama/pakeičiama nuotrauka generatoriuje.
+function uploadPhotoToRoom(playerId, photo) {
+    if (!isCloud || !dbPhotosRef || !playerId || !photo) return;
+    try {
+        dbPhotosRef.child(playerId).set(photo);
+    } catch(e) { console.error("uploadPhotoToRoom error:", e); }
 }
 
 function syncPlayersToGlobalDB() {
