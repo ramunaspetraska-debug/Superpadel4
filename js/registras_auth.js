@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.6 (2026-06-19)
+// VERSIJA: v1.2.7 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -473,7 +473,13 @@ function loadActiveRooms(retryCount) {
         container.innerHTML = `<div style="background:${isError ? '#fff5f5' : '#f8f9fb'}; border:1px dashed ${isError ? '#feb2b2' : '#e2e8f0'}; border-radius:8px; padding:15px; text-align:center; color:${isError ? 'var(--status-red)' : 'var(--text-grey)'}; font-size:12px;">${msg}${isError ? '<br><button type="button" onclick="loadActiveRooms()" style="margin-top:8px; background:var(--primary-blue); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;">Bandyti vėl</button>' : ''}</div>`;
     };
 
-    setStatus('<i class="fa-solid fa-spinner fa-spin"></i> Skaitau kambarius...');
+    // Jei jau turim įkeltus kambarius — rodom IŠKART (be mirgėjimo / "Skaitau..." ciklo).
+    // Net jei renderUserProfile kviečiamas pakartotinai, kambariai matomi nuolat.
+    if (loadActiveRooms._cache && loadActiveRooms._cache.length) {
+        renderRoomCards(container, loadActiveRooms._cache);
+    } else {
+        setStatus('<i class="fa-solid fa-spinner fa-spin"></i> Skaitau kambarius...');
+    }
 
     // Pakartojimas TIK kambarių sąrašo skaitymui (kol Firebase prisijungia).
     let settled = false;
@@ -510,10 +516,12 @@ function loadActiveRooms(retryCount) {
         console.log(`📋 padelio_pro_master_rooms: viso ${allNames.length}, aktyvių ${activeRoomNames.length}`);
 
         if (activeRoomNames.length === 0) {
+            loadActiveRooms._cache = null;
             const msg = allNames.length === 0
                 ? 'Šiuo metu aktyvių kambarių nėra.<br><span style="font-size:10px;">(Sukurkite kambarį generatoriuje)</span>'
                 : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 4 val.)</span>`;
-            container.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
+            const c = document.getElementById('profile-rooms-container') || container;
+            c.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
             return;
         }
 
@@ -535,7 +543,10 @@ function loadActiveRooms(retryCount) {
             });
         })).then(results => {
             const roomCards = results.filter(r => r.status === 'fulfilled').map(r => r.value);
-            renderRoomCards(container, roomCards);
+            loadActiveRooms._cache = roomCards; // išsaugom — kiti perpaišymai rodys iškart
+            // Paimam DABARTINĮ konteinerį (jei renderUserProfile perpaišė, senasis nebematomas)
+            const freshContainer = document.getElementById('profile-rooms-container') || container;
+            renderRoomCards(freshContainer, roomCards);
         });
     }).catch((err) => {
         console.error('loadActiveRooms klaida (bandymas ' + (retryCount + 1) + '):', err);
