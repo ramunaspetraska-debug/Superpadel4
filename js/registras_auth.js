@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.1 (2026-06-19)
+// VERSIJA: v1.2.2 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -465,77 +465,83 @@ function loadActiveRooms() {
 
     const cutoff = Date.now() - (4 * 60 * 60 * 1000); // paskutinės 4 valandos
 
-    // Diagnostika ekrane — matysime, kur sustoja
     const setStatus = (msg, isError) => {
         container.innerHTML = `<div style="background:${isError ? '#fff5f5' : '#f8f9fb'}; border:1px dashed ${isError ? '#feb2b2' : '#e2e8f0'}; border-radius:8px; padding:15px; text-align:center; color:${isError ? 'var(--status-red)' : 'var(--text-grey)'}; font-size:12px;">${msg}${isError ? '<br><button type="button" onclick="loadActiveRooms()" style="margin-top:8px; background:var(--primary-blue); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;">Bandyti vėl</button>' : ''}</div>`;
     };
 
     setStatus('<i class="fa-solid fa-spinner fa-spin"></i> Skaitau kambarius...');
 
-    // Laiko limitas: jei Firebase neatsako per 10 sek, nerodome amžino "Ieškoma"
-    let finished = false;
-    const timeout = setTimeout(() => {
-        if (!finished) {
-            finished = true;
-            setStatus('⏱️ Užtruko per ilgai. Patikrinkite internetą.', true);
-        }
-    }, 10000);
+    // VIENAS laiko limitas DENGIA VISKĄ (ir sąrašą, ir kiekvieno kambario skaitymą).
+    // Išvalomas TIK kai galutinai parodom rezultatą. Todėl niekada nestrigs amžinai.
+    let done = false;
+    const overall = setTimeout(() => {
+        if (done) return;
+        done = true;
+        setStatus('⏱️ Kambariai kraunasi per lėtai (silpnas ryšys).', true);
+    }, 12000);
 
-    firebase.database().ref('padelio_pro_master_rooms').once('value').then(snap => {
-        if (finished) return;
-        finished = true; clearTimeout(timeout);
+    const finish = (fn) => { if (done) return; done = true; clearTimeout(overall); fn(); };
+
+    // Pagalbinė: skaitymas su savo laiko limitu (kad vienas užstrigęs kambarys nestabdytų visko)
+    const readWithTimeout = (ref, ms) => Promise.race([
+        ref.once('value'),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+    ]);
+
+    readWithTimeout(firebase.database().ref('padelio_pro_master_rooms'), 11000).then(snap => {
+        if (done) return;
 
         const roomsData = snap.val() || {};
         const allNames = Object.keys(roomsData);
         const activeRoomNames = Object.entries(roomsData)
-            .filter(([, timestamp]) => typeof timestamp === 'number' && timestamp > cutoff)
+            .filter(([, ts]) => typeof ts === 'number' && ts > cutoff)
             .map(([name]) => name);
 
-        console.log(`📋 padelio_pro_master_rooms: viso ${allNames.length}, aktyvių (per 4h) ${activeRoomNames.length}`, roomsData);
+        console.log(`📋 padelio_pro_master_rooms: viso ${allNames.length}, aktyvių ${activeRoomNames.length}`, roomsData);
 
         if (activeRoomNames.length === 0) {
-            // Parodome diagnostiką: ar visai nėra, ar tik seni
-            const msg = allNames.length === 0
-                ? 'Šiuo metu aktyvių kambarių nėra.<br><span style="font-size:10px;">(Sukurkite kambarį generatoriuje)</span>'
-                : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 4 val.)</span>`;
-            container.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
+            finish(() => {
+                const msg = allNames.length === 0
+                    ? 'Šiuo metu aktyvių kambarių nėra.<br><span style="font-size:10px;">(Sukurkite kambarį generatoriuje)</span>'
+                    : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 4 val.)</span>`;
+                container.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
+            });
             return;
         }
 
-        // Nuskaitome kiekvieno kambario duomenis
-        let loaded = 0;
-        let roomCards = [];
+        // Rodome skaičių, kad matytum progresą
+        setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> Rasta ${activeRoomNames.length} kambarių, kraunu...`);
 
-        activeRoomNames.forEach(roomName => {
+        // allSettled VISADA užbaigia — net jei kuris kambarys neperskaitomas
+        Promise.allSettled(activeRoomNames.map(roomName =>
             Promise.all([
-                firebase.database().ref(`${DB_KEY}/${roomName}/players`).once('value'),
-                firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`).once('value')
+                readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/players`), 8000),
+                readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`), 8000)
             ]).then(([playersSnap, linkSnap]) => {
                 const playersRaw = playersSnap.val();
                 const roomPlayers = playersRaw
                     ? (Array.isArray(playersRaw) ? playersRaw : Object.values(playersRaw)).filter(p => p && p.name)
                     : [];
-                const linkedRoomPlayerId = linkSnap.val(); // null arba roomPlayerId
-
-                roomCards.push({ roomName, roomPlayers, linkedRoomPlayerId });
-                loaded++;
-
-                if (loaded === activeRoomNames.length) {
-                    renderRoomCards(container, roomCards);
-                }
-            }).catch(() => {
-                loaded++;
-                if (loaded === activeRoomNames.length) {
+                return { roomName, roomPlayers, linkedRoomPlayerId: linkSnap.val() };
+            })
+        )).then(results => {
+            finish(() => {
+                const roomCards = results
+                    .filter(r => r.status === 'fulfilled')
+                    .map(r => r.value);
+                if (roomCards.length === 0) {
+                    setStatus('Nepavyko įkelti kambarių duomenų.', true);
+                } else {
                     renderRoomCards(container, roomCards);
                 }
             });
         });
     }).catch((err) => {
-        if (finished) return;
-        finished = true; clearTimeout(timeout);
-        console.error('loadActiveRooms klaida:', err);
-        const reason = (err && err.message) ? err.message : 'nežinoma klaida';
-        setStatus('Nepavyko įkelti kambarių.<br><span style="font-size:10px;">Priežastis: ' + reason + '</span>', true);
+        finish(() => {
+            console.error('loadActiveRooms klaida:', err);
+            const reason = (err && err.message) ? err.message : 'nežinoma klaida';
+            setStatus('Nepavyko įkelti kambarių.<br><span style="font-size:10px;">Priežastis: ' + reason + '</span>', true);
+        });
     });
 }
 
@@ -830,6 +836,7 @@ function recomputeMyStats() {
         let totalMatches = 0;
         let totalWins = 0;
         let checked = 0;
+        let linkedRooms = 0;
 
         const finish = () => {
             firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
@@ -843,8 +850,10 @@ function recomputeMyStats() {
                 renderUserProfile();
                 if (totalMatches > 0) {
                     showToast(`✅ Atnaujinta: ${totalMatches} mačai, ${totalWins} laimėti!`);
+                } else if (linkedRooms === 0) {
+                    showToast(`⚠️ Nesate prisijungę prie kambario. Pirma prisijunkite prie kambario sąraše "Aktyvūs kambariai" (pasirinkite save).`);
                 } else {
-                    showToast(`Mačų nerasta. Įsitikinkite, kad prisijungę prie kambario ir mačai baigti.`);
+                    showToast(`Prisijungę prie ${linkedRooms} kamb., bet baigtų mačų nerasta. Ar mačai pažymėti kaip baigti?`);
                 }
             }).catch(() => showToast("Klaida saugant statistiką."));
         };
@@ -854,6 +863,7 @@ function recomputeMyStats() {
             firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${phoneId}`).once('value').then(linkSnap => {
                 const roomPlayerId = linkSnap.val();
                 if (!roomPlayerId) { checked++; if (checked === roomNames.length) finish(); return; }
+                linkedRooms++;
 
                 firebase.database().ref(`${DB_KEY}/${roomName}`).once('value').then(snap => {
                     const roomData = snap.val() || {};
