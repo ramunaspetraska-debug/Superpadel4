@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.4 (2026-06-19)
+// VERSIJA: v1.2.5 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -353,28 +353,6 @@ function renderUserProfile() {
             </div>
         </div>
 
-        <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Paskutiniai mačai</div>
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
-            ${(currentUser.recent_matches && currentUser.recent_matches.length > 0) ? currentUser.recent_matches.map(m => {
-                const badge = m.win
-                    ? '<span style="font-size: 9px; background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LAIMĖTA</span>'
-                    : (m.s1 === m.s2
-                        ? '<span style="font-size: 9px; background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LYGIOSIOS</span>'
-                        : '<span style="font-size: 9px; background: #fed7d7; color: #742a2a; padding: 2px 8px; border-radius: 4px; font-weight: bold;">PRALAIMĖTA</span>');
-                const typeBadge = m.official
-                    ? '<i class="fa-solid fa-trophy" style="color: #d69e2e; font-size: 10px;" title="Oficialus"></i>'
-                    : '<i class="fa-solid fa-user-group" style="color: #a0aec0; font-size: 10px;" title="Draugiškas"></i>';
-                const dateStr = new Date(m.d).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' });
-                return `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-weight: 800; color: var(--text-dark); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${typeBadge} ${esc(m.t1)} <span style="font-weight: normal; color: #a0aec0;">vs</span> ${esc(m.t2)}</div>
-                        <div style="font-size: 10px; color: var(--text-grey); margin-top: 2px;">${dateStr} • <strong style="color: var(--text-dark);">${m.s1}:${m.s2}</strong></div>
-                    </div>
-                    <div style="margin-left: 8px;">${badge}</div>
-                </div>`;
-            }).join('') : '<div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 11px;">Mačų istorija tuščia.</div>'}
-        </div>
-
         <a href="/index.html" style="text-decoration: none; display: block; margin-bottom: 25px;">
             <div style="background: linear-gradient(to right, var(--primary-blue), #1d4ed8); color: white; border-radius: 10px; padding: 14px; font-size: 13px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(49,130,206,0.2); display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <i class="fa-solid fa-table-tennis-paddle-ball"></i> Paleisti Mačų Skaičiuoklę / Generatorių
@@ -449,6 +427,31 @@ function renderUserProfile() {
         html += `</div>`;
     }
 
+    // PASKUTINIAI MAČAI — perkelta į apačią
+    html += `
+        <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Paskutiniai mačai</div>
+        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+            ${(currentUser.recent_matches && currentUser.recent_matches.length > 0) ? currentUser.recent_matches.map(m => {
+                const badge = m.win
+                    ? '<span style="font-size: 9px; background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LAIMĖTA</span>'
+                    : (m.s1 === m.s2
+                        ? '<span style="font-size: 9px; background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LYGIOSIOS</span>'
+                        : '<span style="font-size: 9px; background: #fed7d7; color: #742a2a; padding: 2px 8px; border-radius: 4px; font-weight: bold;">PRALAIMĖTA</span>');
+                const typeBadge = m.official
+                    ? '<i class="fa-solid fa-trophy" style="color: #d69e2e; font-size: 10px;" title="Oficialus"></i>'
+                    : '<i class="fa-solid fa-user-group" style="color: #a0aec0; font-size: 10px;" title="Draugiškas"></i>';
+                const dateStr = new Date(m.d).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' });
+                return `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${typeBadge} ${esc(m.t1)} <span style="font-weight: normal; color: #a0aec0;">vs</span> ${esc(m.t2)}</div>
+                        <div style="font-size: 10px; color: var(--text-grey); margin-top: 2px;">${dateStr} • <strong style="color: var(--text-dark);">${m.s1}:${m.s2}</strong></div>
+                    </div>
+                    <div style="margin-left: 8px;">${badge}</div>
+                </div>`;
+            }).join('') : '<div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 11px;">Mačų istorija tuščia.</div>'}
+        </div>
+    `;
+
     container.innerHTML = html;
 
     // Užkrauname aktyvius kambarius dinamiškai
@@ -459,7 +462,8 @@ function renderUserProfile() {
 // 2. AKTYVIŲ KAMBARIŲ SISTEMA
 // ==========================================
 
-function loadActiveRooms() {
+function loadActiveRooms(retryCount) {
+    retryCount = retryCount || 0;
     const container = document.getElementById('profile-rooms-container');
     if (!container || !currentUser) return;
 
@@ -471,14 +475,22 @@ function loadActiveRooms() {
 
     setStatus('<i class="fa-solid fa-spinner fa-spin"></i> Skaitau kambarius...');
 
-    // VIENAS laiko limitas DENGIA VISKĄ (ir sąrašą, ir kiekvieno kambario skaitymą).
-    // Išvalomas TIK kai galutinai parodom rezultatą. Todėl niekada nestrigs amžinai.
     let done = false;
-    const overall = setTimeout(() => {
+
+    // Automatinis pakartojimas: pradinis Firebase užkrovimas būna lėtas, kol prisijungia.
+    // Vietoj klaidos — bandom dar kartą (iki 4 kartų), tada parodom mygtuką.
+    const retryOrFail = (reason) => {
         if (done) return;
         done = true;
-        setStatus('⏱️ Kambariai kraunasi per lėtai (silpnas ryšys).', true);
-    }, 12000);
+        if (retryCount < 4) {
+            setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> Jungiamasi prie Firebase... (${retryCount + 2})`);
+            setTimeout(() => loadActiveRooms(retryCount + 1), 700);
+        } else {
+            setStatus('Nepavyko įkelti kambarių.<br><span style="font-size:10px;">' + (reason || 'silpnas ryšys') + '</span>', true);
+        }
+    };
+
+    const overall = setTimeout(() => retryOrFail('per ilgai'), 6000);
 
     const finish = (fn) => { if (done) return; done = true; clearTimeout(overall); fn(); };
 
@@ -488,7 +500,7 @@ function loadActiveRooms() {
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
     ]);
 
-    readWithTimeout(firebase.database().ref('padelio_pro_master_rooms'), 11000).then(snap => {
+    readWithTimeout(firebase.database().ref('padelio_pro_master_rooms'), 5500).then(snap => {
         if (done) return;
 
         const roomsData = snap.val() || {};
@@ -534,11 +546,9 @@ function loadActiveRooms() {
             });
         });
     }).catch((err) => {
-        finish(() => {
-            console.error('loadActiveRooms klaida:', err);
-            const reason = (err && err.message) ? err.message : 'nežinoma klaida';
-            setStatus('Nepavyko įkelti kambarių.<br><span style="font-size:10px;">Priežastis: ' + reason + '</span>', true);
-        });
+        console.error('loadActiveRooms klaida (bandymas ' + (retryCount + 1) + '):', err);
+        const reason = (err && err.message) ? err.message : 'nežinoma klaida';
+        retryOrFail(reason);
     });
 }
 
