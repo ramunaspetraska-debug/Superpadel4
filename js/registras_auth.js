@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.5 (2026-06-19)
+// VERSIJA: v1.2.6 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -475,13 +475,11 @@ function loadActiveRooms(retryCount) {
 
     setStatus('<i class="fa-solid fa-spinner fa-spin"></i> Skaitau kambarius...');
 
-    let done = false;
-
-    // Automatinis pakartojimas: pradinis Firebase užkrovimas būna lėtas, kol prisijungia.
-    // Vietoj klaidos — bandom dar kartą (iki 4 kartų), tada parodom mygtuką.
+    // Pakartojimas TIK kambarių sąrašo skaitymui (kol Firebase prisijungia).
+    let settled = false;
     const retryOrFail = (reason) => {
-        if (done) return;
-        done = true;
+        if (settled) return;
+        settled = true;
         if (retryCount < 4) {
             setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> Jungiamasi prie Firebase... (${retryCount + 2})`);
             setTimeout(() => loadActiveRooms(retryCount + 1), 700);
@@ -490,18 +488,18 @@ function loadActiveRooms(retryCount) {
         }
     };
 
-    const overall = setTimeout(() => retryOrFail('per ilgai'), 6000);
+    // Laiko limitas DENGIA TIK sąrašo skaitymą (ne kiekvieno kambario)
+    const listTimeout = setTimeout(() => retryOrFail('per ilgai'), 8000);
 
-    const finish = (fn) => { if (done) return; done = true; clearTimeout(overall); fn(); };
-
-    // Pagalbinė: skaitymas su savo laiko limitu (kad vienas užstrigęs kambarys nestabdytų visko)
     const readWithTimeout = (ref, ms) => Promise.race([
         ref.once('value'),
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
     ]);
 
-    readWithTimeout(firebase.database().ref('padelio_pro_master_rooms'), 5500).then(snap => {
-        if (done) return;
+    readWithTimeout(firebase.database().ref('padelio_pro_master_rooms'), 7000).then(snap => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(listTimeout); // sąrašas perskaitytas — JOKIO pakartojimo daugiau, ciklas neįmanomas
 
         const roomsData = snap.val() || {};
         const allNames = Object.keys(roomsData);
@@ -509,27 +507,25 @@ function loadActiveRooms(retryCount) {
             .filter(([, ts]) => typeof ts === 'number' && ts > cutoff)
             .map(([name]) => name);
 
-        console.log(`📋 padelio_pro_master_rooms: viso ${allNames.length}, aktyvių ${activeRoomNames.length}`, roomsData);
+        console.log(`📋 padelio_pro_master_rooms: viso ${allNames.length}, aktyvių ${activeRoomNames.length}`);
 
         if (activeRoomNames.length === 0) {
-            finish(() => {
-                const msg = allNames.length === 0
-                    ? 'Šiuo metu aktyvių kambarių nėra.<br><span style="font-size:10px;">(Sukurkite kambarį generatoriuje)</span>'
-                    : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 4 val.)</span>`;
-                container.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
-            });
+            const msg = allNames.length === 0
+                ? 'Šiuo metu aktyvių kambarių nėra.<br><span style="font-size:10px;">(Sukurkite kambarį generatoriuje)</span>'
+                : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 4 val.)</span>`;
+            container.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
             return;
         }
 
         // Rodome skaičių, kad matytum progresą
         setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> Rasta ${activeRoomNames.length} kambarių, kraunu...`);
 
-        // Kiekvieno kambario skaitymai NEPRIVALOMI — jei nepavyksta, kambarys vis tiek rodomas.
-        // Taip "kraunu..." niekada neužstrigs, net jei žaidėjų skaitymas lėtas.
+        // Kiekvieno kambario skaitymai NEPRIVALOMI (allSettled visada baigiasi).
+        // JOKIO bendro laiko limito — kambariai užsikraus ir LIKS (be pakartojimo).
         Promise.allSettled(activeRoomNames.map(roomName => {
-            const playersP = readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/players`), 5000)
+            const playersP = readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/players`), 6000)
                 .then(s => s.val()).catch(() => null);
-            const linkP = readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`), 5000)
+            const linkP = readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`), 6000)
                 .then(s => s.val()).catch(() => null);
             return Promise.all([playersP, linkP]).then(([playersRaw, link]) => {
                 const roomPlayers = playersRaw
@@ -538,17 +534,12 @@ function loadActiveRooms(retryCount) {
                 return { roomName, roomPlayers, linkedRoomPlayerId: link };
             });
         })).then(results => {
-            finish(() => {
-                const roomCards = results
-                    .filter(r => r.status === 'fulfilled')
-                    .map(r => r.value);
-                renderRoomCards(container, roomCards);
-            });
+            const roomCards = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+            renderRoomCards(container, roomCards);
         });
     }).catch((err) => {
         console.error('loadActiveRooms klaida (bandymas ' + (retryCount + 1) + '):', err);
-        const reason = (err && err.message) ? err.message : 'nežinoma klaida';
-        retryOrFail(reason);
+        retryOrFail((err && err.message) ? err.message : 'klaida');
     });
 }
 
