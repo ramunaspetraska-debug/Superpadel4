@@ -244,11 +244,14 @@ function getCurrentOwnerId() {
 // Patikrina ar dabartinis vartotojas yra šio kambario savininkas.
 // Grąžina Promise<boolean>.
 function isRoomOwner(room) {
-    return firebase.database().ref(`${DB_KEY}/${room}/owner`).once('value').then(snap => {
+    // LAIKINAI IŠJUNGTA (vartotojo prašymu prieš testą): trynimo mygtukas matomas visiems.
+    // Norint grąžinti savininko apsaugą — atkomentuoti žemiau esantį bloką ir ištrinti šią eilutę.
+    return Promise.resolve(true);
+    /* return firebase.database().ref(`${DB_KEY}/${room}/owner`).once('value').then(snap => {
         const owner = snap.val();
         if (!owner) return true; // senas kambarys be savininko — leidžiam (atgalinis suderinamumas)
         return owner === getCurrentOwnerId();
-    }).catch(() => false);
+    }).catch(() => false); */
 }
 
 function disconnectFirebase() { 
