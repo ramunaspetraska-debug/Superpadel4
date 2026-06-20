@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.3 (2026-06-19)
+// VERSIJA: v1.2.4 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -463,10 +463,6 @@ function loadActiveRooms() {
     const container = document.getElementById('profile-rooms-container');
     if (!container || !currentUser) return;
 
-    // Apsauga: jei jau kraunama, nepaleidžiam antro karto (kad skaitymai nesikauptų)
-    if (loadActiveRooms._running) return;
-    loadActiveRooms._running = true;
-
     const cutoff = Date.now() - (4 * 60 * 60 * 1000); // paskutinės 4 valandos
 
     const setStatus = (msg, isError) => {
@@ -481,11 +477,10 @@ function loadActiveRooms() {
     const overall = setTimeout(() => {
         if (done) return;
         done = true;
-        loadActiveRooms._running = false;
         setStatus('⏱️ Kambariai kraunasi per lėtai (silpnas ryšys).', true);
     }, 12000);
 
-    const finish = (fn) => { if (done) return; done = true; clearTimeout(overall); loadActiveRooms._running = false; fn(); };
+    const finish = (fn) => { if (done) return; done = true; clearTimeout(overall); fn(); };
 
     // Pagalbinė: skaitymas su savo laiko limitu (kad vienas užstrigęs kambarys nestabdytų visko)
     const readWithTimeout = (ref, ms) => Promise.race([
