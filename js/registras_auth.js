@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.2 (2026-06-19)
+// VERSIJA: v1.2.3 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -463,6 +463,10 @@ function loadActiveRooms() {
     const container = document.getElementById('profile-rooms-container');
     if (!container || !currentUser) return;
 
+    // Apsauga: jei jau kraunama, nepaleidžiam antro karto (kad skaitymai nesikauptų)
+    if (loadActiveRooms._running) return;
+    loadActiveRooms._running = true;
+
     const cutoff = Date.now() - (4 * 60 * 60 * 1000); // paskutinės 4 valandos
 
     const setStatus = (msg, isError) => {
@@ -477,10 +481,11 @@ function loadActiveRooms() {
     const overall = setTimeout(() => {
         if (done) return;
         done = true;
+        loadActiveRooms._running = false;
         setStatus('⏱️ Kambariai kraunasi per lėtai (silpnas ryšys).', true);
     }, 12000);
 
-    const finish = (fn) => { if (done) return; done = true; clearTimeout(overall); fn(); };
+    const finish = (fn) => { if (done) return; done = true; clearTimeout(overall); loadActiveRooms._running = false; fn(); };
 
     // Pagalbinė: skaitymas su savo laiko limitu (kad vienas užstrigęs kambarys nestabdytų visko)
     const readWithTimeout = (ref, ms) => Promise.race([
@@ -512,28 +517,25 @@ function loadActiveRooms() {
         // Rodome skaičių, kad matytum progresą
         setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> Rasta ${activeRoomNames.length} kambarių, kraunu...`);
 
-        // allSettled VISADA užbaigia — net jei kuris kambarys neperskaitomas
-        Promise.allSettled(activeRoomNames.map(roomName =>
-            Promise.all([
-                readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/players`), 8000),
-                readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`), 8000)
-            ]).then(([playersSnap, linkSnap]) => {
-                const playersRaw = playersSnap.val();
+        // Kiekvieno kambario skaitymai NEPRIVALOMI — jei nepavyksta, kambarys vis tiek rodomas.
+        // Taip "kraunu..." niekada neužstrigs, net jei žaidėjų skaitymas lėtas.
+        Promise.allSettled(activeRoomNames.map(roomName => {
+            const playersP = readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/players`), 5000)
+                .then(s => s.val()).catch(() => null);
+            const linkP = readWithTimeout(firebase.database().ref(`${DB_KEY}/${roomName}/portal_links/${currentUser.id}`), 5000)
+                .then(s => s.val()).catch(() => null);
+            return Promise.all([playersP, linkP]).then(([playersRaw, link]) => {
                 const roomPlayers = playersRaw
                     ? (Array.isArray(playersRaw) ? playersRaw : Object.values(playersRaw)).filter(p => p && p.name)
                     : [];
-                return { roomName, roomPlayers, linkedRoomPlayerId: linkSnap.val() };
-            })
-        )).then(results => {
+                return { roomName, roomPlayers, linkedRoomPlayerId: link };
+            });
+        })).then(results => {
             finish(() => {
                 const roomCards = results
                     .filter(r => r.status === 'fulfilled')
                     .map(r => r.value);
-                if (roomCards.length === 0) {
-                    setStatus('Nepavyko įkelti kambarių duomenų.', true);
-                } else {
-                    renderRoomCards(container, roomCards);
-                }
+                renderRoomCards(container, roomCards);
             });
         });
     }).catch((err) => {
