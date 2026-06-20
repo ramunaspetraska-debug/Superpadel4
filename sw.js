@@ -1,5 +1,5 @@
-// Kešo versija suderinta su programos versija (v203 — 2026-06-19)
-const CACHE_NAME = 'superpadel-cache-v203';
+// Kešo versija suderinta su programos versija (v204 — 2026-06-19)
+const CACHE_NAME = 'superpadel-cache-v204';
 
 // Visi ekosistemos resursai, kurie privalo veikti neprisijungus prie interneto
 const ASSETS = [
