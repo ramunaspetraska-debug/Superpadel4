@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.0 (2026-06-19)
+// VERSIJA: v1.2.1 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -465,18 +465,40 @@ function loadActiveRooms() {
 
     const cutoff = Date.now() - (4 * 60 * 60 * 1000); // paskutinės 4 valandos
 
+    // Diagnostika ekrane — matysime, kur sustoja
+    const setStatus = (msg, isError) => {
+        container.innerHTML = `<div style="background:${isError ? '#fff5f5' : '#f8f9fb'}; border:1px dashed ${isError ? '#feb2b2' : '#e2e8f0'}; border-radius:8px; padding:15px; text-align:center; color:${isError ? 'var(--status-red)' : 'var(--text-grey)'}; font-size:12px;">${msg}${isError ? '<br><button type="button" onclick="loadActiveRooms()" style="margin-top:8px; background:var(--primary-blue); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;">Bandyti vėl</button>' : ''}</div>`;
+    };
+
+    setStatus('<i class="fa-solid fa-spinner fa-spin"></i> Skaitau kambarius...');
+
+    // Laiko limitas: jei Firebase neatsako per 10 sek, nerodome amžino "Ieškoma"
+    let finished = false;
+    const timeout = setTimeout(() => {
+        if (!finished) {
+            finished = true;
+            setStatus('⏱️ Užtruko per ilgai. Patikrinkite internetą.', true);
+        }
+    }, 10000);
+
     firebase.database().ref('padelio_pro_master_rooms').once('value').then(snap => {
+        if (finished) return;
+        finished = true; clearTimeout(timeout);
+
         const roomsData = snap.val() || {};
+        const allNames = Object.keys(roomsData);
         const activeRoomNames = Object.entries(roomsData)
-            .filter(([, timestamp]) => timestamp > cutoff)
+            .filter(([, timestamp]) => typeof timestamp === 'number' && timestamp > cutoff)
             .map(([name]) => name);
 
+        console.log(`📋 padelio_pro_master_rooms: viso ${allNames.length}, aktyvių (per 4h) ${activeRoomNames.length}`, roomsData);
+
         if (activeRoomNames.length === 0) {
-            container.innerHTML = `
-                <div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 15px; text-align: center; color: var(--text-grey); font-size: 12px;">
-                    Šiuo metu aktyvių kambarių nėra.
-                </div>
-            `;
+            // Parodome diagnostiką: ar visai nėra, ar tik seni
+            const msg = allNames.length === 0
+                ? 'Šiuo metu aktyvių kambarių nėra.<br><span style="font-size:10px;">(Sukurkite kambarį generatoriuje)</span>'
+                : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 4 val.)</span>`;
+            container.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
             return;
         }
 
@@ -508,12 +530,12 @@ function loadActiveRooms() {
                 }
             });
         });
-    }).catch(() => {
-        container.innerHTML = `
-            <div style="background: #fff5f5; border-radius: 8px; padding: 12px; text-align: center; color: var(--status-red); font-size: 12px;">
-                Nepavyko įkelti kambarių.
-            </div>
-        `;
+    }).catch((err) => {
+        if (finished) return;
+        finished = true; clearTimeout(timeout);
+        console.error('loadActiveRooms klaida:', err);
+        const reason = (err && err.message) ? err.message : 'nežinoma klaida';
+        setStatus('Nepavyko įkelti kambarių.<br><span style="font-size:10px;">Priežastis: ' + reason + '</span>', true);
     });
 }
 
