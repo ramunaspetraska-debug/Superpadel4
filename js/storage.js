@@ -145,6 +145,11 @@ function autoSave(fullSync = false) {
             dbRef.update(p); 
             
             syncPlayersToGlobalDB();
+            // Atnaujinam kambario "gyvumo" laiką (kad liktų portalo aktyvių sąraše), max kas 60s
+            if (activeRoom && (!window._lastRegPing || Date.now() - window._lastRegPing > 60000)) {
+                window._lastRegPing = Date.now();
+                firebase.database().ref(REG_KEY + '/' + activeRoom).set(Date.now());
+            }
         } 
         render(); 
     } catch(e) { console.error("autoSave Error:", e); } 
@@ -160,6 +165,11 @@ function liveUpdateMatches() {
             dbRef.update(upd); 
             
             updateGlobalRatingsFromMatches();
+            // Atnaujinam kambario "gyvumo" laiką (kad liktų portalo aktyvių sąraše), max kas 60s
+            if (activeRoom && (!window._lastRegPing || Date.now() - window._lastRegPing > 60000)) {
+                window._lastRegPing = Date.now();
+                firebase.database().ref(REG_KEY + '/' + activeRoom).set(Date.now());
+            }
         }
         render();
     } catch (e) { console.error("liveUpdateMatches Error:", e); }
