@@ -99,7 +99,13 @@ const defaultTournaments = [
 
 let tournaments = []; 
 
+let _autoArchiveDone = false;
 function runBackgroundAutoArchiving(fetchedTournaments) {
+    // Apsauga: archyvuojame TIK kartą per sesiją. Kitaip archyvavimo įrašas
+    // sukeltų turnyrų listener'į iš naujo → renderUserProfile ciklas → mirgėjimas.
+    if (_autoArchiveDone) return;
+    _autoArchiveDone = true;
+
     let checkDate = new Date();
     let archiveThreshold = new Date();
     archiveThreshold.setDate(checkDate.getDate() - 30); 
@@ -154,7 +160,9 @@ function initTournamentsDB() {
         
         const profilePage = document.getElementById('page-profile');
         if (profilePage && profilePage.classList.contains('active')) {
-            renderUserProfile();
+            // Debounce: jei listener suveikia dažnai, neperpaišom profilio kas kartą
+            if (window._profileRenderTimer) clearTimeout(window._profileRenderTimer);
+            window._profileRenderTimer = setTimeout(() => renderUserProfile(), 800);
         }
         
         let adminTab = document.getElementById('admin-view-turnyrai');
