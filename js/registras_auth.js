@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.9 (2026-06-19)
+// VERSIJA: v1.2.10 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -475,7 +475,7 @@ function loadActiveRooms(retryCount) {
     const container = document.getElementById('profile-rooms-container');
     if (!container || !currentUser) return;
 
-    const cutoff = Date.now() - (4 * 60 * 60 * 1000); // paskutinės 4 valandos
+    const cutoff = Date.now() - (12 * 60 * 60 * 1000); // paskutinės 12 valandų (dienos turnyrai)
 
     const setStatus = (msg, isError) => {
         container.innerHTML = `<div style="background:${isError ? '#fff5f5' : '#f8f9fb'}; border:1px dashed ${isError ? '#feb2b2' : '#e2e8f0'}; border-radius:8px; padding:15px; text-align:center; color:${isError ? 'var(--status-red)' : 'var(--text-grey)'}; font-size:12px;">${msg}${isError ? '<br><button type="button" onclick="loadActiveRooms()" style="margin-top:8px; background:var(--primary-blue); color:white; border:none; padding:6px 14px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer;">Bandyti vėl</button>' : ''}</div>`;
@@ -539,7 +539,7 @@ function loadActiveRooms(retryCount) {
             loadActiveRooms._cache = null;
             const msg = allNames.length === 0
                 ? 'Šiuo metu aktyvių kambarių nėra.<br><span style="font-size:10px;">(Sukurkite kambarį generatoriuje)</span>'
-                : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 4 val.)</span>`;
+                : `Aktyvių kambarių nėra.<br><span style="font-size:10px;">(Rasta ${allNames.length} senų — senesni nei 12 val.)</span>`;
             const c = document.getElementById('profile-rooms-container') || container;
             c.innerHTML = `<div style="background:#f8f9fb; border:1px dashed #e2e8f0; border-radius:8px; padding:15px; text-align:center; color:var(--text-grey); font-size:12px;">${msg}</div>`;
             return;
