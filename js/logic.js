@@ -87,6 +87,11 @@ function generateFinals() {
             const pairCount = Math.min(males.length, females.length);
             if(pairCount < 2) { alert("Trūksta vyrų arba moterų finalinėms poroms suformuoti."); return; }
             for(let i=0; i<pairCount; i++) teams.push([males[i], females[i]]);
+        } else if (typeof settings !== 'undefined' && settings.format === 'fixed') {
+            // Fiksuotos poros: ranked JAU yra komandos (calculateResults su isF=true grąžina poras).
+            // Naudojam jas tiesiogiai — neporuojam iš naujo.
+            // 4 žaid. (2 komandos) → 1 finalas; 8 žaid. (4 komandos) → didysis + mažasis.
+            teams = ranked.map(t => [t.p1, t.p2]).filter(pair => pair[0] && pair[1]);
         } else {
             for(let i=0; i<ranked.length; i+=2) { if (i+1 < ranked.length) teams.push([ranked[i], ranked[i+1]]); }
         }
