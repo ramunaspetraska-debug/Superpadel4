@@ -1,5 +1,5 @@
 // ==========================================
-// VERSIJA: v1.2.7 (2026-06-19)
+// VERSIJA: v1.2.8 (2026-06-19)
 // Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
 //           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
 //           processAuth su .catch + prisijungimas iš atminties,
@@ -475,11 +475,23 @@ function loadActiveRooms(retryCount) {
 
     // Jei jau turim įkeltus kambarius — rodom IŠKART (be mirgėjimo / "Skaitau..." ciklo).
     // Net jei renderUserProfile kviečiamas pakartotinai, kambariai matomi nuolat.
-    if (loadActiveRooms._cache && loadActiveRooms._cache.length) {
+    const hasCache = loadActiveRooms._cache && loadActiveRooms._cache.length;
+    if (hasCache) {
         renderRoomCards(container, loadActiveRooms._cache);
     } else {
         setStatus('<i class="fa-solid fa-spinner fa-spin"></i> Skaitau kambarius...');
     }
+
+    // DEBOUNCE: jei ką tik atnaujinom (< 4s) ir kambariai jau rodomi — NEKARTOJAM skaitymo.
+    // Taip net jei renderUserProfile kviečiamas kas 1-2s, sąrašas nepersikrauna ir nemirga.
+    const nowTs = Date.now();
+    if (hasCache && loadActiveRooms._lastFetch && (nowTs - loadActiveRooms._lastFetch < 4000)) {
+        return; // kambariai jau matomi iš atminties — nieko daugiau nedarom
+    }
+    loadActiveRooms._lastFetch = nowTs;
+
+    // silent = turim cache → atnaujinam fone TYLIAI (nerodom "kraunu...", kambariai lieka)
+    const silent = hasCache;
 
     // Pakartojimas TIK kambarių sąrašo skaitymui (kol Firebase prisijungia).
     let settled = false;
@@ -525,8 +537,10 @@ function loadActiveRooms(retryCount) {
             return;
         }
 
-        // Rodome skaičių, kad matytum progresą
-        setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> Rasta ${activeRoomNames.length} kambarių, kraunu...`);
+        // Rodome "kraunu..." TIK pirmą kartą (be cache). Su cache — atnaujinam tyliai.
+        if (!silent) {
+            setStatus(`<i class="fa-solid fa-spinner fa-spin"></i> Rasta ${activeRoomNames.length} kambarių, kraunu...`);
+        }
 
         // Kiekvieno kambario skaitymai NEPRIVALOMI (allSettled visada baigiasi).
         // JOKIO bendro laiko limito — kambariai užsikraus ir LIKS (be pakartojimo).
