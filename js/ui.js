@@ -578,10 +578,57 @@ function playBuzzer() {
     } catch(e) { console.error("Audio Error:", e); }
 }
 
+// ŠVILPUKAS (teisėjo) — pakeičia seną sireną. Aukšto dažnio tonas su trileliu.
+function playWhistle() {
+    if(isMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        const dur = 1.2;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const lfo = ctx.createOscillator();   // vibrato (švilpuko "burbuliukas")
+        const lfoGain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 3200;
+        lfo.type = 'sine';
+        lfo.frequency.value = 22;             // greitas trilelis
+        lfoGain.gain.value = 160;             // vibrato gylis
+        lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+        osc.connect(gain); gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.03);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + dur - 0.06);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
+        osc.start(); osc.stop(ctx.currentTime + dur);
+        lfo.start(); lfo.stop(ctx.currentTime + dur);
+    } catch(e) { console.error("Audio Error:", e); }
+}
+
+// 3 MIN įspėjimas — kelių sekundžių "skambutis" (kylantys dvigarsiai)
+function play3MinWarning() {
+    if(isMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        const beep = (freq, time, dur) => {
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'triangle'; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, ctx.currentTime + time);
+            gain.gain.linearRampToValueAtTime(0.13, ctx.currentTime + time + 0.02);
+            gain.gain.setValueAtTime(0.13, ctx.currentTime + time + dur - 0.03);
+            gain.gain.linearRampToValueAtTime(0, ctx.currentTime + time + dur);
+            osc.start(ctx.currentTime + time); osc.stop(ctx.currentTime + time + dur);
+        };
+        beep(660, 0.0, 0.25); beep(880, 0.3, 0.35);
+        beep(660, 0.8, 0.25); beep(880, 1.1, 0.35);
+        beep(660, 1.6, 0.25); beep(880, 1.9, 0.55);
+    } catch(e) { console.error("Audio Error:", e); }
+}
+
 function triggerAlarm() { 
     if(alarmInterval) return; 
-    playBuzzer(); alarmInterval = setInterval(playBuzzer, 2000); updateTimerUI(); 
-    alarmTimeout = setTimeout(() => { if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; updateTimerUI(); } }, 5500); 
+    playWhistle(); alarmInterval = setInterval(playWhistle, 1600); updateTimerUI(); 
+    alarmTimeout = setTimeout(() => { if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; updateTimerUI(); } }, 5000); 
 }
 
 function toggleTimer() { 
@@ -596,6 +643,7 @@ function toggleTimer() {
             const d = Math.ceil((endTime - Date.now())/1000); 
             if(d > 0) { 
                 if (d === 300 && timeLeft !== 300) play5MinWarning();
+                if (d === 180 && timeLeft !== 180) play3MinWarning();
                 if (d === 60 && timeLeft !== 60) play1MinWarning();
                 timeLeft = d; updateTimerUI(); 
             } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } 
