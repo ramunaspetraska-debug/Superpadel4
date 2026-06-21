@@ -702,8 +702,8 @@ async function adminClick() {
         try {
             const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
             const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-            if (hashHex === "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3") { switchView('admin'); } 
-            else if (hashHex === "17462c76e27b8782ee20fb26fb66bf0c3b0632cd286958ab453deca95bb8e469") { switchView('superadmin'); loadSuperAdmin(); } 
+            if (hashHex === "f5de9f3a9d0796ce2da39fa5556008d33f18c4769381388a4612e8a371d8f9b0") { switchView('admin'); } 
+            else if (hashHex === "f5de9f3a9d0796ce2da39fa5556008d33f18c4769381388a4612e8a371d8f9b0") { switchView('superadmin'); loadSuperAdmin(); } 
             else { alert("Neteisingas kodas!"); }
         } catch(e) { console.error("Hash error:", e); alert("Klaida tikrinant slaptažodį."); }
         adminClickCount = 0; 
