@@ -392,11 +392,18 @@ function renderGlobalStats() {
     try {
         const tSel = el('stat-tournament'); let tVal = tSel ? tSel.value : 'CURRENT';
         if (tSel) {
-            let opts = `<option value="CURRENT">Dabartinis turnyras</option><option value="ALL">Visi turnyrai (Bendra)</option>` + safeArr(savedTournaments).map(t => `<option value="${t.id}">${esc(t.name)} (${new Date(t.date).toLocaleDateString('lt-LT')})</option>`).join('');
+            let opts = `<option value="CURRENT">Dabartinis turnyras</option><option value="ALL">Visi turnyrai (Bendra)</option><option value="CAREER">⭐ Karjeros (visų kambarių)</option>` + safeArr(savedTournaments).map(t => `<option value="${t.id}">${esc(t.name)} (${new Date(t.date).toLocaleDateString('lt-LT')})</option>`).join('');
             tSel.innerHTML = opts; if(tSel.querySelector(`option[value="${tVal}"]`)) tSel.value = tVal;
         }
         
         const tF = el('stat-tournament')?.value || 'CURRENT'; const gF = el('stat-gender')?.value || 'ALL';
+
+        // ⭐ KARJEROS režimas — globali mėgėjų statistika iš VISŲ kambarių (kaip portale). Async.
+        if (tF === 'CAREER') {
+            renderCareerStats(gF);
+            return;
+        }
+
         let cM = [], cP = [];
         if(tF === 'ALL') { 
             safeArr(savedTournaments).forEach(t => { if (currentTid && t.id === currentTid) return; cM.push(...safeArr(t.matches)); cP.push(...safeArr(t.players)); }); 
@@ -424,6 +431,54 @@ function renderGlobalStats() {
         }
         safeHTML('global-stats-body', html);
     } catch(e) { console.error("renderGlobalStats Error:", e); }
+}
+
+// ⭐ KARJEROS statistika — globalūs mėgėjų (casual) duomenys iš VISŲ kambarių.
+// Rodo tuos pačius skaičius kaip portalo "Mėgėjų lyga" (casual_rating, casual_matches).
+function renderCareerStats(gF) {
+    const bodyId = 'global-stats-body';
+    safeHTML(bodyId, '<div style="padding:24px; text-align:center; color:#94a3b8; font-size:12px;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama karjeros statistika...</div>');
+
+    if (typeof firebase === 'undefined' || !firebase.database) {
+        safeHTML(bodyId, '<div style="padding:24px; text-align:center; color:#ef4444; font-size:12px;">Nėra ryšio su duomenų baze.</div>');
+        return;
+    }
+
+    firebase.database().ref(GLOBAL_PLAYERS_KEY).once('value').then(snap => {
+        const data = snap.val() || {};
+        // Tik žaidėjai, sužaidę bent vieną mėgėjų (casual) mačą
+        let arr = Object.values(data).filter(p => p && p.name && (p.casual_matches || 0) > 0);
+
+        // Lyties filtras
+        arr = arr.filter(p => gF === 'ALL' || (p.gender || 'M') === gF);
+
+        // Žaidėjų filtro sąrašą užpildom iš globalių žaidėjų
+        const pSel = el('stat-player'); let pVal = pSel ? pSel.value : 'ALL';
+        if (pSel) {
+            const names = arr.map(p => p.name).sort((a, b) => a.localeCompare(b));
+            pSel.innerHTML = '<option value="ALL">Visi žaidėjai</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+            if (pSel.querySelector(`option[value="${pVal}"]`)) pSel.value = pVal;
+        }
+        const pF = el('stat-player')?.value || 'ALL';
+        arr = arr.filter(p => pF === 'ALL' || p.name === pF);
+
+        // Rikiuojam pagal mėgėjų ELO (kaip portale)
+        arr.sort((a, b) => (b.casual_rating || 300) - (a.casual_rating || 300));
+
+        let html = arr.map((p, i) => {
+            const mp = p.casual_matches || 0;
+            const w = p.casual_wins || 0;
+            const l = Math.max(0, mp - w);
+            const winPct = mp > 0 ? Math.round((w / mp) * 100) : 0;
+            return `<div class="flex items-center px-3 py-3 text-[11px] bg-white border-b border-slate-100 last:border-0"><div class="w-6 text-slate-400 font-bold">${i + 1}</div><div class="flex-1 truncate font-bold text-slate-800 flex items-center gap-1">${esc(p.name)} <span class="text-[9px] font-black text-blue-500 ml-1">(${p.casual_rating || 300} ELO)</span></div><div class="stat-col text-slate-500">${mp}</div><div class="stat-col text-green-600">${w}</div><div class="stat-col text-slate-300">0</div><div class="stat-col text-red-400">${l}</div><div class="stat-col-wide font-black">${winPct}%</div></div>`;
+        }).join('');
+
+        if (!html) html = '<div style="padding:24px; text-align:center; color:#94a3b8; font-size:12px;">Nėra karjeros duomenų (dar nesužaista mėgėjų mačų).</div>';
+        safeHTML(bodyId, html);
+    }).catch(e => {
+        console.error('renderCareerStats klaida:', e);
+        safeHTML(bodyId, '<div style="padding:24px; text-align:center; color:#ef4444; font-size:12px;">Klaida kraunant karjeros statistiką.<br><span style="font-size:10px;">' + (e && e.message ? e.message : '') + '</span></div>');
+    });
 }
 
 function setMode(m) { if(typeof settings !== 'undefined') settings.winCondition = m; resetTimer(); autoSave(true); }
