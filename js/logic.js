@@ -127,7 +127,11 @@ function requestNextRound() {
         
         let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
         
-        if (preGeneratedTournament.length === 0 || roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]) {
+        // Mix Americano turi FIKSUOTĄ matricą (8→12, 16→16 raundų). Viršijus ją, kartojam ciklu
+        // (dispatchRoundFromPreGen modulo), todėl nepergeneruojam. Americano generuoja po 30 ir tęsiasi.
+        const isMixMatrix = (typeof settings !== 'undefined' && settings.format === 'mix_americano' && (safeP.length === 8 || safeP.length === 16));
+        const needGen = preGeneratedTournament.length === 0 || (!isMixMatrix && (roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]));
+        if (needGen) {
             let overlay = document.getElementById('loading-overlay');
             if(overlay) overlay.style.display = 'flex';
             setTimeout(() => {
@@ -219,9 +223,13 @@ function generateLookaheadTournament(safePool, startRound, countToGenerate) {
 
 function dispatchRoundFromPreGen(roundNum) { 
     try {
-        let roundData = preGeneratedTournament[roundNum - 1]; 
+        let len = safeArr(preGeneratedTournament).length;
+        // BEGALINIAI RAUNDAI: viršijus matricą, kartojam ją ciklu (modulo).
+        // Mix Americano variklis NEKEIČIAMAS — tik pakartojama optimali rotacija.
+        let idx = (len > 0) ? ((roundNum - 1) % len) : (roundNum - 1);
+        let roundData = preGeneratedTournament[idx]; 
         if (roundData) { 
-            let newM = roundData.map((m, idx) => ({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }));
+            let newM = roundData.map((m, ci) => ({ id: uid(), round: roundNum, court: ci + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }));
             matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
         }
     } catch(e) { console.error("dispatchRoundFromPreGen Error:", e); }
