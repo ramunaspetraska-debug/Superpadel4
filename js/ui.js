@@ -200,30 +200,21 @@ function removePlayer(id) {
     catch(e) { console.error("removePlayer Error:", e); }
 }
 
-// Lietuviška daugiskaita: 1 pergalė / 2 pergalės / 5 pergalių / 11 pergalių / 21 pergalė
-function ltPlural(n, one, few, many) {
-    const a100 = Math.abs(n) % 100, a10 = Math.abs(n) % 10;
-    let w;
-    if (a100 >= 11 && a100 <= 19) w = many;
-    else if (a10 === 1) w = one;
-    else if (a10 >= 2 && a10 <= 9) w = few;
-    else w = many;
-    return `${n} ${w}`;
-}
-
-// Geriausias partneris (A variantas): pirmenybė ≥2 mačų poroms; rikiuojama % → pergalės → mačai.
-// matchesArr riboja apimtį (visi turnyrai = karjera; tik dabartinis = šis turnyras). Grąžina {partnerName, text} arba null.
+// Geriausias partneris (Variantas 2): suglodintas rezultatas (w + 0.5·lygiosios + 1) / (mačai + 2)
+//   — vertina pergales IR lygiąsias, švelniai nuvertina 1 mačo atsitiktinumus, NIEKO neišmeta.
+//   Skirtukai: taškų skirtumas (sd) → daugiau mačų. matchesArr riboja apimtį (visi turnyrai = karjera; tik dabartinis = šis turnyras).
+//   Grąžina {partnerName, text} arba null.
 function computeBestPartner(matchesArr, playersArr, name) {
     const list = calculatePairsResults(matchesArr, playersArr).filter(x => x.p1?.name === name || x.p2?.name === name);
     if (list.length === 0) return null;
-    const MIN_MP = 2;
-    const qualified = list.filter(p => p.mp >= MIN_MP);
-    const pool = (qualified.length > 0) ? qualified : list;
-    pool.sort((a,b) => ((b.w / b.mp) - (a.w / a.mp)) || (b.w - a.w) || (b.mp - a.mp));
-    const bp = pool[0];
+    const smooth = p => ((p.w || 0) + 0.5 * (p.t || 0) + 1) / ((p.mp || 0) + 2);
+    list.sort((a,b) => (smooth(b) - smooth(a)) || ((b.sd || 0) - (a.sd || 0)) || (b.mp - a.mp));
+    const bp = list[0];
     const partnerName = esc((bp.p1.name === name) ? bp.p2.name : bp.p1.name);
-    const pct = bp.mp > 0 ? Math.round((bp.w / bp.mp) * 100) : 0;
-    return { partnerName, text: `(${ltPlural(bp.w, 'pergalė', 'pergalės', 'pergalių')} iš ${bp.mp} · ${pct}%)` };
+    const sd = bp.sd || 0;
+    const sdTxt = (sd > 0 ? '+' : '') + sd;
+    const tiesTxt = (bp.t > 0) ? `, ${bp.t} lyg.` : '';
+    return { partnerName, text: `(${bp.w} perg.${tiesTxt} iš ${bp.mp} · ${sdTxt})` };
 }
 
 function openPlayerCard(name) {
