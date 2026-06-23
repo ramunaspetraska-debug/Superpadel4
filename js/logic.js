@@ -138,7 +138,7 @@ function requestNextRound() {
             setTimeout(() => {
                 try {
                     if (typeof settings !== 'undefined' && settings.format === 'mix_americano') {
-                        if (safeP.length === 8) { preGeneratedTournament = generateInterleavedMix8Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
+                        if (safeP.length === 8) { preGeneratedTournament = reorderMix8ForVariety(generateInterleavedMix8Matrix(safeP)); setStore('pregen', preGeneratedTournament); } 
                         else if (safeP.length === 16) { preGeneratedTournament = generatePerfectMix16Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
                         else { generateLookaheadTournament(safeP, roundNum, 30); }
                     } else { generateLookaheadTournament(safeP, roundNum, 30); }
@@ -147,6 +147,14 @@ function requestNextRound() {
             }, 50);
         } else { dispatchRoundFromPreGen(roundNum); }
     } catch(e) { console.error("requestNextRound Error:", e); let overlay = document.getElementById('loading-overlay'); if(overlay) overlay.style.display = 'none'; }
+}
+
+// Permaišo Mix8 raundų EILIŠKUMĄ (ne pačias poras), kad tas pats oponentas nesikartotų 3 kartus iš eilės.
+// Variklio matrica NEKEIČIAMA — perrikiuojama tik jos išvestis. Seka fiksuota: Mix8 struktūra vienoda visiems turnyrams.
+function reorderMix8ForVariety(matrix) {
+    const ORDER = [7, 5, 3, 4, 2, 0, 1, 11, 9, 10, 8, 6];
+    if (!Array.isArray(matrix) || matrix.length !== ORDER.length) return matrix;
+    return ORDER.map(i => matrix[i]);
 }
 
 function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
