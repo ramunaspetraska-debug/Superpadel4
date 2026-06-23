@@ -200,6 +200,32 @@ function removePlayer(id) {
     catch(e) { console.error("removePlayer Error:", e); }
 }
 
+// Lietuviška daugiskaita: 1 pergalė / 2 pergalės / 5 pergalių / 11 pergalių / 21 pergalė
+function ltPlural(n, one, few, many) {
+    const a100 = Math.abs(n) % 100, a10 = Math.abs(n) % 10;
+    let w;
+    if (a100 >= 11 && a100 <= 19) w = many;
+    else if (a10 === 1) w = one;
+    else if (a10 >= 2 && a10 <= 9) w = few;
+    else w = many;
+    return `${n} ${w}`;
+}
+
+// Geriausias partneris (A variantas): pirmenybė ≥2 mačų poroms; rikiuojama % → pergalės → mačai.
+// matchesArr riboja apimtį (visi turnyrai = karjera; tik dabartinis = šis turnyras). Grąžina {partnerName, text} arba null.
+function computeBestPartner(matchesArr, playersArr, name) {
+    const list = calculatePairsResults(matchesArr, playersArr).filter(x => x.p1?.name === name || x.p2?.name === name);
+    if (list.length === 0) return null;
+    const MIN_MP = 2;
+    const qualified = list.filter(p => p.mp >= MIN_MP);
+    const pool = (qualified.length > 0) ? qualified : list;
+    pool.sort((a,b) => ((b.w / b.mp) - (a.w / a.mp)) || (b.w - a.w) || (b.mp - a.mp));
+    const bp = pool[0];
+    const partnerName = esc((bp.p1.name === name) ? bp.p2.name : bp.p1.name);
+    const pct = bp.mp > 0 ? Math.round((bp.w / bp.mp) * 100) : 0;
+    return { partnerName, text: `(${ltPlural(bp.w, 'pergalė', 'pergalės', 'pergalių')} iš ${bp.mp} · ${pct}%)` };
+}
+
 function openPlayerCard(name) {
     try {
         let cM = []; safeArr(savedTournaments).forEach(t => { if(t && t.id !== currentTid && Array.isArray(t.matches)) cM.push(...safeArr(t.matches)); }); cM.push(...safeArr(matches));
@@ -207,14 +233,11 @@ function openPlayerCard(name) {
         const uP = []; const seen = new Set(); cP.forEach(p => { if(p && p.name && !seen.has(p.name)){ seen.add(p.name); uP.push(p); } });
         
         const stats = calculateResults(cM, uP, false).find(x => x.name === name); if(!stats) return;
-        const pairsList = calculatePairsResults(cM, uP).filter(x => x.p1?.name === name || x.p2?.name === name);
-        let bestPartner = "Nėra", maxText = "";
-        if (pairsList.length > 0) {
-            pairsList.sort((a,b) => b.w - a.w || b.mp - a.mp);
-            let bestPair = pairsList[0];
-            bestPartner = esc((bestPair.p1.name === name) ? bestPair.p2.name : bestPair.p1.name);
-            maxText = `(${bestPair.w} pergalės iš ${bestPair.mp})`;
-        }
+        // C variantas: karjeros (visų turnyrų) IR šio turnyro geriausias partneris.
+        const careerBP = computeBestPartner(cM, uP, name);
+        const tournBP = computeBestPartner(safeArr(matches), uP, name);
+        let bestPartner = careerBP ? careerBP.partnerName : "Nėra";
+        let maxText = careerBP ? careerBP.text : "";
         
         let globalRating = 300;
         let tierName = "D (Naujokas)";
@@ -246,7 +269,19 @@ function openPlayerCard(name) {
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-t border-slate-100 pt-4">Vietinė Karjeros Statistika</p>
                 <div class="grid grid-cols-2 gap-4 mb-5"><div class="bg-slate-50 p-4 rounded-2xl border border-slate-100"><div class="text-3xl font-black text-slate-800">${stats.mp}</div><div class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Mačai</div></div><div class="bg-green-50 p-4 rounded-2xl border border-green-100"><div class="text-3xl font-black text-green-600">${winPerc}%</div><div class="text-[9px] font-black text-green-600 uppercase tracking-widest">Pergalės</div></div></div>
                 <div class="flex justify-center gap-6 mb-6 font-bold text-sm"><div class="text-center"><span class="block text-green-600 text-xl">${stats.w}</span><span class="text-[9px] text-slate-400 uppercase">Laimėta</span></div><div class="text-center"><span class="block text-slate-400 text-xl">${stats.t}</span><span class="text-[9px] text-slate-400 uppercase">Lygios</span></div><div class="text-center"><span class="block text-red-500 text-xl">${stats.l}</span><span class="text-[9px] text-slate-400 uppercase">Pralaimėta</span></div></div>
-                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100"><div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Geriausias Partneris</div><div class="font-bold text-indigo-900">${bestPartner} <span class="text-xs text-indigo-500 font-normal">${maxText}</span></div></div>
+                <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                    <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Geriausias Partneris</div>
+                    <div class="space-y-2">
+                        <div class="flex items-baseline justify-between gap-2">
+                            <span class="text-[9px] font-bold text-indigo-300 uppercase tracking-wider">Karjeros</span>
+                            <span class="font-bold text-indigo-900 text-right">${bestPartner} <span class="text-xs text-indigo-500 font-normal">${maxText}</span></span>
+                        </div>
+                        <div class="flex items-baseline justify-between gap-2 pt-2 border-t border-indigo-100">
+                            <span class="text-[9px] font-bold text-indigo-300 uppercase tracking-wider">Šiame turnyre</span>
+                            <span class="font-bold text-indigo-900 text-right">${tournBP ? tournBP.partnerName : "Nėra"} <span class="text-xs text-indigo-500 font-normal">${tournBP ? tournBP.text : ""}</span></span>
+                        </div>
+                    </div>
+                </div>
             </div>`;
         safeHTML('card-content', html); let mCard = el('modal-card'); if(mCard) mCard.style.display = 'flex';
     } catch(e) { console.error("openPlayerCard Error:", e); }
