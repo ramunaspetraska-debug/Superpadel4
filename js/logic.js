@@ -30,11 +30,12 @@ function calculatePairsResults(mArr, pArr) {
                     if (!pairs.has(key)) { 
                         const p1 = safeArr(pArr).find(x => x && (x.id === safeTeam[0].id || x.name === safeTeam[0].name)) || safeTeam[0]; 
                         const p2 = safeArr(pArr).find(x => x && (x.id === safeTeam[1].id || x.name === safeTeam[1].name)) || safeTeam[1]; 
-                        pairs.set(key, { name: `${names[0]} / ${names[1]}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0 }); 
+                        pairs.set(key, { name: `${names[0]} / ${names[1]}`, p1, p2, mp:0, w:0, t:0, l:0, sw:0, sd:0 }); 
                     } 
                     const s = pairs.get(key); 
                     s.mp++; 
                     s.sw += parseInt(myS || 0); 
+                    s.sd += (parseInt(myS || 0) - parseInt(enS || 0)); 
                     if (parseInt(myS || 0) > parseInt(enS || 0)) s.w++; 
                     else if (parseInt(myS || 0) < parseInt(enS || 0)) s.l++; 
                     else s.t++; 
