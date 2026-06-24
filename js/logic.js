@@ -132,6 +132,12 @@ function requestNextRound() {
         // (dispatchRoundFromPreGen modulo), todėl nepergeneruojam. Americano generuoja po 30 ir tęsiasi.
         const isMixMatrix = (typeof settings !== 'undefined' && settings.format === 'mix_americano' && (safeP.length === 8 || safeP.length === 16));
         const needGen = preGeneratedTournament.length === 0 || (!isMixMatrix && (roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]));
+        // APSAUGA: Mix Americano reikia PO LYGIAI vyrų ir moterų, o žaidėjų skaičius turi dalintis iš 4 (4, 8, 12, 16...).
+        if (needGen && typeof settings !== 'undefined' && settings.format === 'mix_americano') {
+            const mc = safeP.filter(p => p && p.gender === 'M').length, wc = safeP.filter(p => p && p.gender === 'F').length;
+            if (mc !== wc) { alert(`Mix Americano reikia PO LYGIAI vyrų ir moterų.\n\nDabar suvesta: ${mc} vyrai ir ${wc} moterys.\nPridėk arba pašalink žaidėjų, kad būtų po lygiai.`); return; }
+            if (mc < 2 || mc % 2 !== 0) { alert(`Mix Americano žaidėjų skaičius turi dalintis iš 4 (pvz. 4, 8, 12, 16).\n\nDabar suvesta: ${safeP.length} žaidėjai.`); return; }
+        }
         if (needGen) {
             let overlay = document.getElementById('loading-overlay');
             if(overlay) overlay.style.display = 'flex';
