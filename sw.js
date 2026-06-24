@@ -1,5 +1,5 @@
 // Kešo versija suderinta su programos versija (v212 — 2026-06-19)
-const CACHE_NAME = 'superpadel-cache-v219';
+const CACHE_NAME = 'superpadel-cache-v220';
 
 // Visi ekosistemos resursai, kurie privalo veikti neprisijungus prie interneto
 const ASSETS = [
@@ -20,7 +20,12 @@ const ASSETS = [
     '/js/registras_admin.js',
     '/js/registras_cam.js',
     '/js/registras_webrtc.js',
-    '/manifest.json'
+    '/manifest.json',
+    '/icon-192.png',
+    '/icon-512.png',
+    '/icon-maskable.png',
+    '/apple-touch-icon.png',
+    '/favicon-64.png'
 ];
 
 // 1. Diegimas (Install) - Atsisiunčiame ir išsaugome pagrindinius failus
