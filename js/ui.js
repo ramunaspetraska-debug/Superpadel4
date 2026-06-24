@@ -570,6 +570,21 @@ function deleteHistory(id) { if(confirm("Ar tikrai norite ištrinti šį turnyr�
 function toggleMute() { isMuted = !isMuted; localStorage.setItem('sp_is_muted', isMuted.toString()); render(); }
 
 let globalAudioCtx = null;
+
+// --- Ekrano "Wake Lock": kol programa atidaryta ir matoma, telefonas NEUŽMIEGA (ne tik laikmačiui veikiant) ---
+// Naršyklė atjungia užraktą paslėpus langą, todėl vėl paimam jį grįžus (visibilitychange) ir per prisilietimą.
+let wakeLock = null;
+async function requestWakeLock() {
+    try {
+        if ('wakeLock' in navigator && document.visibilityState === 'visible' && !wakeLock) {
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+    } catch (e) { /* nepavyko – ne kritiška */ }
+}
+function releaseWakeLock() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+}
 function getAudioCtx() {
     if (!globalAudioCtx) { globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
     return globalAudioCtx;
@@ -678,6 +693,7 @@ function toggleTimer() {
     else {
         if(timeLeft <= 0) return; 
         isRunning = true; endTime = Date.now() + (timeLeft * 1000); 
+        requestWakeLock(); 
         if (!isMuted) { const ctx = getAudioCtx(); if (ctx.state === 'suspended') ctx.resume(); }
         timerInterval = setInterval(() => { 
             const d = Math.ceil((endTime - Date.now())/1000); 
@@ -713,6 +729,24 @@ function resetTimer() {
 }
 
 function adjustTime(s) { if(!isRunning) { timeLeft = Math.max(0, timeLeft + s); updateTimerUI(); } }
+
+// Grįžus į programą (atrakinus telefoną / perjungus atgal): atnaujinam garsą, vėl paimam Wake Lock
+// ir, jei laikmatis jau pasibaigė kol buvom išėję — iškart paleidžiam sireną (o ne laukiam tiksėjimo).
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    requestWakeLock(); // visada vėl paimam – kad ekranas neužmigtų kol programa atidaryta
+    if (!isMuted && globalAudioCtx && globalAudioCtx.state === 'suspended') { try { globalAudioCtx.resume(); } catch(e){} }
+    if (isRunning) {
+        const d = Math.ceil((endTime - Date.now()) / 1000);
+        if (d > 0) { timeLeft = d; updateTimerUI(); }
+        else { timeLeft = 0; if (timerInterval) clearInterval(timerInterval); isRunning = false; triggerAlarm(); }
+    }
+});
+
+// Kad programa NIEKADA neužmigtų kol atidaryta: paimam Wake Lock iškart ir per kiekvieną prisilietimą
+// (kai kurios naršyklės leidžia tik po vartotojo gesto; pakartotinis kvietimas saugus dėl !wakeLock sąlygos).
+requestWakeLock();
+window.addEventListener('pointerdown', () => requestWakeLock());
 
 function switchView(n) { 
     document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
