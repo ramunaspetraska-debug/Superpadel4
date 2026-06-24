@@ -1,6 +1,7 @@
 const GLOBAL_PLAYERS_KEY = "padelio_global_players";
 let globalPlayersRef = null;
 let globalPlayersData = {};
+let localLastUpdate = 0; // paskutinio LOKALAUS pakeitimo laikas (kad debesis neperrašytų naujesnių lokalių duomenų, pvz. finalų)
 
 function getStore(key) { 
     const prefix = isCloud ? `sp_room_${activeRoom}_` : `sp_master_local_`; 
@@ -58,6 +59,7 @@ function loadData() {
         savedTournaments = safeArr(getStore('h')).filter(t => t && t.id); 
         preGeneratedTournament = safeArr(getStore('pregen')); 
         currentTid = getStore('tid'); 
+        localLastUpdate = getStore('lastUpdate') || 0; 
         timeLeft = settings.matchDuration * 60; 
         
         let needsClean = false;
@@ -128,20 +130,21 @@ function trimPhotoBankIfNeeded() {
 
 function autoSave(fullSync = false) { 
     try { 
+        const now = Date.now(); localLastUpdate = now; 
         if(currentTid) { 
             const idx = savedTournaments.findIndex(x => x.id === currentTid); 
             if(idx > -1) { 
                 const tF = el('tournament-name-field');
                 let setupView = el('view-setup');
                 if (tF && setupView && setupView.classList.contains('active')) savedTournaments[idx].name = tF.value || "Turnyras";
-                savedTournaments[idx].players = players; savedTournaments[idx].matches = matches; savedTournaments[idx].settings = settings; savedTournaments[idx].lastUpdate = Date.now(); 
+                savedTournaments[idx].players = players; savedTournaments[idx].matches = matches; savedTournaments[idx].settings = settings; savedTournaments[idx].lastUpdate = now; 
             } 
         } 
-        setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); 
+        setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); setStore('lastUpdate', now); setStore('dataRoom', activeRoom || ''); 
         
         if(isCloud && dbRef && fullSync) { 
-            const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: Date.now() }; 
-            window.lastCloudUpdate = p.lastUpdate; 
+            const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: now }; 
+            window.lastCloudUpdate = now; 
             dbRef.update(p); 
             
             syncPlayersToGlobalDB();
@@ -157,11 +160,12 @@ function autoSave(fullSync = false) {
 
 function liveUpdateMatches() {
     try {
-        setStore('m', matches);
-        let upd = { matches: matches, lastUpdate: Date.now() };
+        const now = Date.now(); localLastUpdate = now;
+        setStore('m', matches); setStore('lastUpdate', now); setStore('dataRoom', activeRoom || '');
+        let upd = { matches: matches, lastUpdate: now };
         if (currentTid) { const idx = savedTournaments.findIndex(x => x.id === currentTid); if (idx > -1) { savedTournaments[idx].matches = matches; setStore('h', savedTournaments); } }
         if (isCloud && dbRef) { 
-            window.lastCloudUpdate = upd.lastUpdate; 
+            window.lastCloudUpdate = now; 
             dbRef.update(upd); 
             
             updateGlobalRatingsFromMatches();
@@ -226,10 +230,25 @@ function initFirebaseConnection() {
 
     dbRef.on('value', snap => { 
         const d = snap.val(); 
-        if(d && d.lastUpdate !== window.lastCloudUpdate) { 
-            window.lastCloudUpdate = d.lastUpdate; 
+        if(!d) return; 
+        const cloudUpdate = d.lastUpdate || 0; 
+        if (cloudUpdate === window.lastCloudUpdate) return;                                  // mūsų pačių echo
+        // Ar lokalūs duomenys priklauso ŠIAM kambariui? (jei ką tik prisijungėm prie kito — debesis viršesnis)
+        const sameRoom = (getStore('dataRoom') === activeRoom); 
+        if (sameRoom && cloudUpdate === (localLastUpdate || 0)) { window.lastCloudUpdate = cloudUpdate; return; } // jau sinchronizuota
+        if (!sameRoom || cloudUpdate > (localLastUpdate || 0)) { 
+            // Debesis viršesnis (naujesnis ARBA kito kambario) → priimam ir įrašom lokaliai
+            window.lastCloudUpdate = cloudUpdate; 
             if(d.photoBank) { photoBank = d.photoBank; setStore('photos', photoBank); }
-            players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings || {...ds}; savedTournaments = safeArr(d.savedTournaments); currentTid = d.currentTid; render(); 
+            players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings || {...ds}; savedTournaments = safeArr(d.savedTournaments); currentTid = d.currentTid; 
+            localLastUpdate = cloudUpdate; 
+            setStore('lastUpdate', localLastUpdate); setStore('dataRoom', activeRoom || ''); setStore('m', matches); setStore('p', players); setStore('h', savedTournaments); setStore('s', settings); setStore('tid', currentTid); 
+            render(); 
+        } else { 
+            // Lokalūs to paties kambario duomenys NAUJESNI (pvz. ką tik sugeneruoti finalai, kurių debesis dar negavo) → NEperrašom; pastumiam į debesį
+            window.lastCloudUpdate = localLastUpdate; 
+            setStore('dataRoom', activeRoom || ''); 
+            if (isCloud && dbRef) dbRef.update({ players, matches, settings, savedTournaments, currentTid, lastUpdate: localLastUpdate }); 
         } 
     }); 
 }
