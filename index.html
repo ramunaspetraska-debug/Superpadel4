@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>SuperPadel.lt | Generatorius</title>
+
+    <!-- PWA: įdiegimas + pilno ekrano (standalone) režimas -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SuperPadel">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -51,7 +62,7 @@
 </head>
 <body class="overflow-x-hidden">
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V210</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V211</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
