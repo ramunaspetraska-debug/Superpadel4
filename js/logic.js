@@ -241,11 +241,28 @@ function generateLookaheadTournament(safePool, startRound, countToGenerate) {
 
 function dispatchRoundFromPreGen(roundNum) { 
     try {
-        let len = safeArr(preGeneratedTournament).length;
-        // BEGALINIAI RAUNDAI: viršijus matricą, kartojam ją ciklu (modulo).
-        // Mix Americano variklis NEKEIČIAMAS — tik pakartojama optimali rotacija.
-        let idx = (len > 0) ? ((roundNum - 1) % len) : (roundNum - 1);
-        let roundData = preGeneratedTournament[idx]; 
+        const pg = safeArr(preGeneratedTournament);
+        let len = pg.length;
+        let idx;
+        if (len > 0) {
+            // TRYNIMUI ATSPARUS dispatch: imam REČIAUSIAI panaudotos matricos eilutės turinį.
+            // Normaliam žaidimui (be trynimo) tai duoda 0,1,2,...,len-1,0,1,... — identiška senam (roundNum-1)%len.
+            // Bet ištrynus VIDURINĮ raundą, kitas raundas užpildo TĄ spragą (atstato porų balansą),
+            // o ne aklai pakartoja R1 turinį. Variklio matrica NEKEIČIAMA.
+            const teamSig = t => safeArr(t).map(p => (p && p.name) ? p.name : '?').sort().join('&');
+            const rSig = (rd, a, b) => safeArr(rd).map(m => [teamSig(m[a]), teamSig(m[b])].sort().join('|')).sort().join('#');
+            const sigToIdx = {};
+            for (let i = 0; i < len; i++) sigToIdx[rSig(pg[i], 't1', 't2')] = i;
+            const counts = new Array(len).fill(0);
+            const byRound = {};
+            safeArr(matches).forEach(m => { if (!m.isFinal) (byRound[m.round] = byRound[m.round] || []).push(m); });
+            Object.keys(byRound).forEach(rn => { const s = rSig(byRound[rn], 'team1', 'team2'); if (s in sigToIdx) counts[sigToIdx[s]]++; });
+            idx = 0; let best = counts[0];
+            for (let i = 1; i < len; i++) { if (counts[i] < best) { best = counts[i]; idx = i; } }
+        } else {
+            idx = (roundNum - 1);
+        }
+        let roundData = pg[idx]; 
         if (roundData) { 
             let newM = roundData.map((m, ci) => ({ id: uid(), round: roundNum, court: ci + 1, finished: false, score1: 0, score2: 0, team1: m.t1, team2: m.t2 }));
             matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
