@@ -155,11 +155,13 @@ function requestNextRound() {
     } catch(e) { console.error("requestNextRound Error:", e); let overlay = document.getElementById('loading-overlay'); if(overlay) overlay.style.display = 'none'; }
 }
 
-// Permaišo Mix8 raundų EILIŠKUMĄ (ne pačias poras): tas pats oponentas nesikartoja 3 kartus iš eilės
-// IR partnerystės tolygiai išsklaidytos (kiekviena pora maždaug kas 4 raundus, ne du kartus per 3 raundus).
+// Permaišo Mix8 raundų EILIŠKUMĄ (ne pačias poras). Subalansuota tvarka:
+//  - tas pats oponentas niekada nesikartoja 3 kartus iš eilės;
+//  - tie patys vyrai niekada nežaidžia vienas prieš kitą dviejuose raunduose iš eilės (min tarpas 2);
+//  - partnerystės tolygiai išsklaidytos (kiekviena pora maždaug kas 4 raundus).
 // Variklio matrica NEKEIČIAMA — perrikiuojama tik jos išvestis. Seka fiksuota: Mix8 struktūra vienoda visiems turnyrams.
 function reorderMix8ForVariety(matrix) {
-    const ORDER = [10, 9, 11, 4, 2, 1, 7, 8, 6, 5, 3, 0];
+    const ORDER = [1, 2, 4, 11, 9, 10, 0, 7, 5, 6, 8, 3];
     if (!Array.isArray(matrix) || matrix.length !== ORDER.length) return matrix;
     return ORDER.map(i => matrix[i]);
 }
