@@ -71,11 +71,12 @@ const PREBUFFER_CHUNK_MS = 1000;     // buferio gabaliuko dydis
 // ==========================================
 
 function getCamConstraints() {
-    const q = camQuality === '1080'
-        ? { width: { ideal: 1920 }, height: { ideal: 1080 } }
-        : { width: { ideal: 1280 }, height: { ideal: 720 } };
+    let q, fps;
+    if (camQuality === '1080') { q = { width: { ideal: 1920 }, height: { ideal: 1080 } }; fps = { ideal: 30, max: 30 }; }
+    else if (camQuality === '480') { q = { width: { ideal: 854 }, height: { ideal: 480 } }; fps = { ideal: 24, max: 30 }; }
+    else { q = { width: { ideal: 1280 }, height: { ideal: 720 } }; fps = { ideal: 30, max: 30 }; }
     return {
-        video: { facingMode: 'environment', frameRate: { ideal: 30, max: 30 }, ...q },
+        video: { facingMode: 'environment', frameRate: fps, ...q },
         audio: true
     };
 }
@@ -113,7 +114,9 @@ function stopCamera() {
 
 function setCamQuality(q) {
     if (recordingActive) { showToast("Kokybės keisti negalima filmuojant!"); return; }
+    if (typeof rtcIsBroadcasting !== 'undefined' && rtcIsBroadcasting) { showToast("Kokybės keisti negalima transliacijos metu — sustabdykite ir pakeiskite."); return; }
     camQuality = q;
+    document.getElementById('camQ480')?.classList.toggle('active', q === '480');
     document.getElementById('camQ720')?.classList.toggle('active', q === '720');
     document.getElementById('camQ1080')?.classList.toggle('active', q === '1080');
     if (camStream) {
@@ -121,7 +124,7 @@ function setCamQuality(q) {
         camStream = null;
         startCamera();
     }
-    showToast(q === '1080' ? "Kokybė: Full HD (1080p)" : "Kokybė: HD (720p)");
+    showToast(q === '1080' ? "Kokybė: Full HD (1080p)" : (q === '480' ? "Kokybė: Duomenų taupymas (480p)" : "Kokybė: HD (720p)"));
 }
 
 function pickMimeType() {
