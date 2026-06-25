@@ -38,6 +38,14 @@ let rtcViewerCount = 0;
 let rtcViewerPC = null;          // žiūrovo peer connection
 let rtcViewerSignalRef = null;
 let rtcViewerId = null;
+// Auto-prisijungimas nutrūkus ryšiui
+let rtcViewerBroadcastId = null;
+let rtcViewerPin = null;
+let rtcViewerShouldReconnect = false;
+let rtcViewerReconnectAttempts = 0;
+let rtcViewerReconnectTimer = null;
+let rtcViewerGraceTimer = null;
+const RTC_MAX_RECONNECT = 10;
 
 const RTC_SIGNAL_KEY = 'padelio_webrtc_signals';
 const RTC_BROADCAST_KEY = 'padelio_webrtc_broadcasts';
@@ -93,6 +101,15 @@ async function startWebRTCBroadcast(isPrivate) {
     rtcShowBroadcastStatus(isPrivate);
 }
 
+// Uždaro vieno žiūrovo ryšį (siuntėjo pusėje) ir išvalo jo signaling mazgą
+function rtcCloseViewerPC(viewerId) {
+    const pc = rtcPeerConnections[viewerId];
+    if (pc) { if (pc._dropTimer) { clearTimeout(pc._dropTimer); pc._dropTimer = null; } try { pc.close(); } catch(e){} delete rtcPeerConnections[viewerId]; }
+    if (rtcBroadcastId) { try { firebase.database().ref(`${RTC_SIGNAL_KEY}/${rtcBroadcastId}/viewers/${viewerId}`).remove(); } catch(e){} }
+    rtcViewerCount = Object.keys(rtcPeerConnections).length;
+    rtcUpdateViewerCount();
+}
+
 // Kai prisijungia žiūrovas — sukuriame jam atskirą peer connection
 async function handleViewerOffer(viewerId, offer) {
     const pc = new RTCPeerConnection(WEBRTC_ICE_SERVERS);
@@ -100,6 +117,17 @@ async function handleViewerOffer(viewerId, offer) {
 
     // Pridedame kameros srautą
     camStream.getTracks().forEach(track => pc.addTrack(track, camStream));
+
+    // Bitrate riba pagal pasirinktą kokybę (duomenų taupymui per mobilų internetą)
+    try {
+        const cap = (typeof camQuality !== 'undefined') ? ({ '480': 700000, '720': 1800000, '1080': 3500000 }[camQuality] || 1800000) : 1800000;
+        pc.getSenders().filter(s => s.track && s.track.kind === 'video').forEach(s => {
+            const p = s.getParameters();
+            if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+            p.encodings[0].maxBitrate = cap;
+            s.setParameters(p).catch(e => console.warn("setParameters:", e));
+        });
+    } catch (e) { console.warn("bitrate cap:", e); }
 
     // Mūsų ICE candidates → žiūrovui
     pc.onicecandidate = (event) => {
@@ -109,16 +137,22 @@ async function handleViewerOffer(viewerId, offer) {
     };
 
     pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') {
+        const st = pc.connectionState;
+        if (st === 'connected') {
+            if (pc._dropTimer) { clearTimeout(pc._dropTimer); pc._dropTimer = null; }
             rtcViewerCount = Object.keys(rtcPeerConnections).filter(id => rtcPeerConnections[id].connectionState === 'connected').length;
             rtcUpdateViewerCount();
-        } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-            if (rtcPeerConnections[viewerId]) {
-                rtcPeerConnections[viewerId].close();
-                delete rtcPeerConnections[viewerId];
+        } else if (st === 'failed') {
+            rtcCloseViewerPC(viewerId);
+        } else if (st === 'disconnected') {
+            // duodam progą ryšiui atsigauti pačiam; jei ne — uždarom
+            if (!pc._dropTimer) {
+                pc._dropTimer = setTimeout(() => {
+                    pc._dropTimer = null;
+                    const cur = rtcPeerConnections[viewerId];
+                    if (cur && (cur.connectionState === 'disconnected' || cur.connectionState === 'failed')) rtcCloseViewerPC(viewerId);
+                }, 6000);
             }
-            rtcViewerCount = Object.keys(rtcPeerConnections).length;
-            rtcUpdateViewerCount();
         }
     };
 
@@ -199,6 +233,18 @@ async function watchWebRTCBroadcast(broadcastId, enteredPin) {
         return;
     }
 
+    // Įsimenam duomenis automatiniam pri(si)jungimui
+    rtcViewerBroadcastId = broadcastId;
+    rtcViewerPin = enteredPin;
+    rtcViewerShouldReconnect = true;
+    rtcViewerReconnectAttempts = 0;
+    rtcViewerConnect();
+}
+
+// Sukuria (arba atkuria po trikdžio) žiūrovo ryšį su nauju viewerId
+function rtcViewerConnect() {
+    const broadcastId = rtcViewerBroadcastId;
+    if (!broadcastId) return;
     rtcViewerId = 'viewer_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     rtcViewerPC = new RTCPeerConnection(WEBRTC_ICE_SERVERS);
 
@@ -210,6 +256,7 @@ async function watchWebRTCBroadcast(broadcastId, enteredPin) {
             video.play().catch(() => {});
             const status = document.getElementById('rtcViewerStatus');
             if (status) status.style.display = 'none';
+            rtcViewerReconnectAttempts = 0; // sėkmingai prisijungta
         }
     };
 
@@ -221,40 +268,104 @@ async function watchWebRTCBroadcast(broadcastId, enteredPin) {
     };
 
     rtcViewerPC.onconnectionstatechange = () => {
-        const status = document.getElementById('rtcViewerStatus');
-        if (rtcViewerPC.connectionState === 'failed') {
-            if (status) status.innerHTML = 'Nepavyko prisijungti.<br><span style="font-size:11px;">Galbūt skirtingi tinklai blokuoja ryšį.</span>';
+        const st = rtcViewerPC ? rtcViewerPC.connectionState : null;
+        if (st === 'connected') {
+            rtcViewerReconnectAttempts = 0;
+            if (rtcViewerGraceTimer) { clearTimeout(rtcViewerGraceTimer); rtcViewerGraceTimer = null; }
+        } else if (st === 'failed') {
+            rtcViewerScheduleReconnect();
+        } else if (st === 'disconnected') {
+            // trumpiems trikdžiams – progą atsigauti; jei ne, perjungiam
+            if (!rtcViewerGraceTimer) {
+                rtcViewerGraceTimer = setTimeout(() => {
+                    rtcViewerGraceTimer = null;
+                    const cur = rtcViewerPC ? rtcViewerPC.connectionState : null;
+                    if (cur === 'disconnected' || cur === 'failed') rtcViewerScheduleReconnect();
+                }, 5000);
+            }
         }
     };
 
-    // Sukuriame offer, siunčiame siuntėjui
-    const offer = await rtcViewerPC.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
-    await rtcViewerPC.setLocalDescription(offer);
-    firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/offer`).set({
-        type: offer.type, sdp: offer.sdp
-    });
+    (async () => {
+        try {
+            const offer = await rtcViewerPC.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
+            await rtcViewerPC.setLocalDescription(offer);
+            firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/offer`).set({ type: offer.type, sdp: offer.sdp });
 
-    // Laukiame siuntėjo answer
-    firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/answer`).on('value', (snap) => {
-        const answer = snap.val();
-        if (answer && rtcViewerPC && !rtcViewerPC.currentRemoteDescription) {
-            rtcViewerPC.setRemoteDescription(new RTCSessionDescription(answer)).catch(e => console.warn("setRemote error:", e));
+            firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/answer`).on('value', (snap) => {
+                const answer = snap.val();
+                if (answer && rtcViewerPC && !rtcViewerPC.currentRemoteDescription) {
+                    rtcViewerPC.setRemoteDescription(new RTCSessionDescription(answer)).catch(e => console.warn("setRemote error:", e));
+                }
+            });
+
+            firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/broadcasterCandidates`).on('child_added', (snap) => {
+                const cand = snap.val();
+                if (cand && rtcViewerPC) rtcViewerPC.addIceCandidate(new RTCIceCandidate(cand)).catch(e => console.warn("ICE add error:", e));
+            });
+
+            rtcViewerSignalRef = firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}`);
+            rtcViewerSignalRef.onDisconnect().remove();
+        } catch (e) {
+            console.warn("viewer connect error:", e);
+            rtcViewerScheduleReconnect();
         }
-    });
+    })();
+}
 
-    // Siuntėjo ICE candidates
-    firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/broadcasterCandidates`).on('child_added', (snap) => {
-        const cand = snap.val();
-        if (cand && rtcViewerPC) rtcViewerPC.addIceCandidate(new RTCIceCandidate(cand)).catch(e => console.warn("ICE add error:", e));
-    });
+// Suplanuoja pakartotinį prisijungimą su didėjančiu laukimu (iki ribos)
+function rtcViewerScheduleReconnect() {
+    if (!rtcViewerShouldReconnect) return;       // vartotojas išėjo
+    if (rtcViewerReconnectTimer) return;          // jau suplanuota
+    const status = document.getElementById('rtcViewerStatus');
+    if (rtcViewerReconnectAttempts >= RTC_MAX_RECONNECT) {
+        if (status) { status.style.display = 'block'; status.innerHTML = 'Ryšys nutrūko.<br><button onclick="rtcViewerManualRetry()" style="margin-top:8px;padding:8px 16px;border:none;border-radius:8px;background:#22c55e;color:white;font-weight:bold;cursor:pointer;">Bandyti dar kartą</button>'; }
+        return;
+    }
+    rtcViewerReconnectAttempts++;
+    const delay = Math.min(1500 * rtcViewerReconnectAttempts, 7000);
+    if (status) { status.style.display = 'block'; status.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Atkuriamas ryšys... (${rtcViewerReconnectAttempts})`; }
+    rtcViewerReconnectTimer = setTimeout(async () => {
+        rtcViewerReconnectTimer = null;
+        // jei transliacija pasibaigė — nebekartojam
+        try {
+            const snap = await firebase.database().ref(`${RTC_BROADCAST_KEY}/${rtcViewerBroadcastId}`).once('value');
+            if (!snap.val()) {
+                rtcViewerShouldReconnect = false;
+                rtcViewerCleanupConnection();
+                const s2 = document.getElementById('rtcViewerStatus');
+                if (s2) { s2.style.display = 'block'; s2.innerHTML = 'Transliacija pasibaigė.'; }
+                return;
+            }
+        } catch (e) {}
+        rtcViewerCleanupConnection();
+        if (rtcViewerShouldReconnect) rtcViewerConnect();
+    }, delay);
+}
 
-    rtcViewerSignalRef = firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}`);
-    rtcViewerSignalRef.onDisconnect().remove();
+function rtcViewerManualRetry() {
+    rtcViewerReconnectAttempts = 0;
+    rtcViewerCleanupConnection();
+    if (rtcViewerShouldReconnect && rtcViewerBroadcastId) rtcViewerConnect();
+}
+
+// Uždaro seną žiūrovo ryšį ir pašalina jo signaling mazgą (prieš atkuriant)
+function rtcViewerCleanupConnection() {
+    if (rtcViewerGraceTimer) { clearTimeout(rtcViewerGraceTimer); rtcViewerGraceTimer = null; }
+    if (rtcViewerPC) { try { rtcViewerPC.close(); } catch(e){} rtcViewerPC = null; }
+    if (rtcViewerSignalRef) { try { rtcViewerSignalRef.off(); rtcViewerSignalRef.remove(); } catch(e){} rtcViewerSignalRef = null; }
+    rtcViewerId = null;
 }
 
 function stopWatchingWebRTC() {
+    rtcViewerShouldReconnect = false;
+    if (rtcViewerReconnectTimer) { clearTimeout(rtcViewerReconnectTimer); rtcViewerReconnectTimer = null; }
+    if (rtcViewerGraceTimer) { clearTimeout(rtcViewerGraceTimer); rtcViewerGraceTimer = null; }
+    rtcViewerReconnectAttempts = 0;
+    rtcViewerBroadcastId = null;
+    rtcViewerPin = null;
     if (rtcViewerPC) { try { rtcViewerPC.close(); } catch(e){} rtcViewerPC = null; }
-    if (rtcViewerSignalRef) { rtcViewerSignalRef.remove(); rtcViewerSignalRef.off(); rtcViewerSignalRef = null; }
+    if (rtcViewerSignalRef) { try { rtcViewerSignalRef.remove(); rtcViewerSignalRef.off(); } catch(e){} rtcViewerSignalRef = null; }
     rtcViewerId = null;
     document.getElementById('rtc-viewer-modal')?.remove();
 }
