@@ -16,6 +16,7 @@
 let courtViewTiles = {};        // { broadcastId: tile }
 let courtBroadcastsRef = null;  // Firebase .on('value') prenumerata
 let courtLastData = {};         // paskutiniai žinomi broadcasts duomenys
+let courtRoomFilter = null;     // jei nustatyta — rodom tik šio kambario (turnyro) kameras
 const COURT_REPLAY_SEC = 15;
 const COURT_MAX_TILES = 4;
 
@@ -26,13 +27,16 @@ const COURT_MAX_TILES = 4;
 function openCourtView() {
     document.getElementById('court-view-modal')?.remove();
     courtViewTiles = {};
+    const hasRoom = (typeof currentLiveRoomName !== 'undefined' && currentLiveRoomName);
+    courtRoomFilter = hasRoom ? currentLiveRoomName : null;
     const wrap = document.createElement('div');
     wrap.id = 'court-view-modal';
     wrap.style.cssText = 'position:fixed;inset:0;background:#0b1220;z-index:10008;display:flex;flex-direction:column;';
     wrap.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;">
             <div style="font-weight:900;font-size:15px;color:white;"><i class="fa-solid fa-table-cells-large" style="color:#22c55e;"></i> Korto peržiūra</div>
             <div style="flex:1;"></div>
+            ${hasRoom ? `<button id="courtFilterBtn" onclick="courtToggleRoomFilter()" style="background:#1e293b;color:#22c55e;border:1px solid #16a34a;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;"><i class="fa-solid fa-filter"></i> <span id="courtFilterLabel">Tik ${currentLiveRoomName}</span></button>` : ''}
             <button onclick="closeCourtView()" style="background:#ef4444;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">Uždaryti</button>
         </div>
         <div id="courtSources" style="display:flex;gap:8px;padding:10px 12px;overflow-x:auto;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;min-height:54px;align-items:center;"></div>
@@ -84,9 +88,12 @@ function courtSetGridEmpty() {
 function courtRenderSources(data) {
     const box = document.getElementById('courtSources');
     if (!box) return;
-    const ids = Object.keys(data || {});
+    let ids = Object.keys(data || {});
+    if (courtRoomFilter) ids = ids.filter(id => (data[id] && data[id].room) === courtRoomFilter);
     if (ids.length === 0) {
-        box.innerHTML = '<div style="color:#64748b;font-size:12px;">Nėra aktyvių kamerų. Įjunkite transliaciją telefone.</div>';
+        box.innerHTML = courtRoomFilter
+            ? '<div style="color:#64748b;font-size:12px;">Šiame turnyre dar nėra kamerų. Bakstelėkite filtrą viršuje, kad matytumėte visas.</div>'
+            : '<div style="color:#64748b;font-size:12px;">Nėra aktyvių kamerų. Įjunkite transliaciją telefone.</div>';
         return;
     }
     box.innerHTML = ids.map(id => {
@@ -102,6 +109,20 @@ function courtRenderSources(data) {
 }
 
 function courtRefreshSources() { courtRenderSources(courtLastData); }
+
+// Perjungia: tik šio turnyro (kambario) kameros <-> visos kameros
+function courtToggleRoomFilter() {
+    if (courtRoomFilter) {
+        courtRoomFilter = null;
+    } else {
+        courtRoomFilter = (typeof currentLiveRoomName !== 'undefined' && currentLiveRoomName) ? currentLiveRoomName : null;
+    }
+    const lbl = document.getElementById('courtFilterLabel');
+    const btn = document.getElementById('courtFilterBtn');
+    if (lbl) lbl.innerText = courtRoomFilter ? ('Tik ' + courtRoomFilter) : 'Visos kameros';
+    if (btn) { btn.style.color = courtRoomFilter ? '#22c55e' : '#94a3b8'; btn.style.borderColor = courtRoomFilter ? '#16a34a' : '#334155'; }
+    courtRefreshSources();
+}
 
 function courtToggleSource(id, name, isPrivate) {
     if (courtViewTiles[id]) { courtRemoveTile(id); courtRefreshSources(); return; }
