@@ -88,6 +88,19 @@ function getCamConstraints() {
     };
 }
 
+// ---------- WAKE LOCK (ekranas neužminga, kol kamera/transliacija aktyvi) ----------
+let camWakeLock = null;
+async function camRequestWakeLock() {
+    try { if ('wakeLock' in navigator && !camWakeLock) { camWakeLock = await navigator.wakeLock.request('screen'); } } catch (e) {}
+}
+function camReleaseWakeLock() {
+    try { if (camWakeLock) { camWakeLock.release(); camWakeLock = null; } } catch (e) {}
+}
+// Užrakinimas automatiškai dingsta, kai puslapis paslepiamas — grįžus atstatom
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && camStream && !camWakeLock) camRequestWakeLock();
+});
+
 async function startCamera() {
     try {
         const videoElement = document.getElementById('cameraFeed');
@@ -103,6 +116,7 @@ async function startCamera() {
         if (hint) hint.style.display = 'block';
         detectTournamentContext();
         if (replayEnabled) { stopReplayBuffer(); startReplayBuffer(); }
+        camRequestWakeLock();
     } catch (err) {
         console.error("Camera error:", err);
         const hint = document.getElementById('cameraHintText');
@@ -111,6 +125,8 @@ async function startCamera() {
 }
 
 function stopCamera() {
+    // Transliacijos metu kameros NESTABDOM — kitaip nutrūktų srautas (pvz. perėjus į kitą skirtuką).
+    if (typeof rtcIsBroadcasting !== 'undefined' && rtcIsBroadcasting) return;
     stopReplayBuffer();
     if (recordingActive) stopSmartRecording();
     if (camStream) {
@@ -119,6 +135,7 @@ function stopCamera() {
         const v = document.getElementById('cameraFeed');
         if (v) v.srcObject = null;
     }
+    camReleaseWakeLock();
 }
 
 function setCamQuality(q) {
