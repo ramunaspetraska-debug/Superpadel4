@@ -134,6 +134,8 @@ function courtToggleSource(id, name, isPrivate) {
     if (isPrivate) {
         pin = prompt(`"${name}" transliacija privati.\n\nĮveskite PIN kodą:`);
         if (!pin) return;
+        const known = courtLastData[id] && courtLastData[id].pin;
+        if (known && pin !== known) { if (typeof showToast === 'function') showToast("Neteisingas PIN kodas."); return; }
     }
     courtAddTile(id, name, pin, isPrivate);
     courtRefreshSources();
