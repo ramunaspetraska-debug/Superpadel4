@@ -235,6 +235,7 @@
                     <i class="fa-solid fa-fire" style="color:#ef4444;"></i> <span id="liveHighlightCount">0</span>
                 </div>
                 <div class="court-hint" id="cameraHintText">Pritvirtinkite telefoną laikiklyje už korto.<br>Filmuokite iš viršaus, kad matytųsi visas kortas.</div>
+                <button type="button" id="instantReplayBtn" onclick="showInstantReplay()" style="display:none; position:absolute; bottom:14px; left:50%; transform:translateX(-50%); background:rgba(34,197,94,0.95); color:white; border:none; padding:12px 22px; border-radius:30px; font-size:14px; font-weight:800; cursor:pointer; z-index:6; box-shadow:0 4px 14px rgba(0,0,0,0.45);"><i class="fa-solid fa-clock-rotate-left"></i> Atsukti 15s</button>
             </div>
             <div class="cam-controls" id="camControls">
                 <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 13px;">DI automatiškai atpažins ralius ir sukurs geriausių momentų klipus. Tiesiog paspauskite įrašymą.</div>
@@ -244,8 +245,9 @@
                     <button type="button" id="camQ1080" class="cam-q-btn" onclick="setCamQuality('1080')">1080p Full HD</button>
                 </div>
                 <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
-                <div style="display:flex; justify-content:center; gap:8px; margin-top:14px;">
+                <div style="display:flex; justify-content:center; gap:8px; margin-top:14px; flex-wrap:wrap;">
                     <button type="button" onclick="rtcAskBroadcastType()" style="background:#0f172a; color:white; border:1px solid #334155; padding:10px 16px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-tower-broadcast" style="color:#ef4444;"></i> Transliuoti tiesiogiai</button>
+                    <button type="button" id="replayToggleBtn" onclick="toggleInstantReplay()" style="background:#0f172a; color:white; border:1px solid #334155; padding:10px 16px; border-radius:20px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-clock-rotate-left"></i> Pakartojimas: IŠJ</button>
                 </div>
                 <div class="ai-result-panel" id="camResultPanel" style="display:none;">
                     <h3 style="margin-bottom: 6px; color: #fff;">Mačas baigtas!</h3>
