@@ -52,6 +52,13 @@ let rallyClipStartedAt = 0;
 
 let highlightClips = [];
 
+// ---------- INSTANT REPLAY (15s atsukimas) ----------
+let replayEnabled = false;
+let replayRecorder = null;
+let replayChunks = [];          // [{ blob, ts }]
+let replayHeader = null;        // pirmas gabaliukas su WebM antrašte
+const REPLAY_SEC = 15;
+
 let camTournamentId = null;
 let camTournamentPlayers = [];
 
@@ -95,6 +102,7 @@ async function startCamera() {
         const hint = document.getElementById('cameraHintText');
         if (hint) hint.style.display = 'block';
         detectTournamentContext();
+        if (replayEnabled) { stopReplayBuffer(); startReplayBuffer(); }
     } catch (err) {
         console.error("Camera error:", err);
         const hint = document.getElementById('cameraHintText');
@@ -103,6 +111,7 @@ async function startCamera() {
 }
 
 function stopCamera() {
+    stopReplayBuffer();
     if (recordingActive) stopSmartRecording();
     if (camStream) {
         camStream.getTracks().forEach(t => t.stop());
@@ -519,6 +528,96 @@ function openClipPlayer(clips, startIdx, title, continuous) {
     document.getElementById('clipPlayerNext').onclick = () => load(idx + 1);
     document.getElementById('clipPlayerPrev').onclick = () => load(idx - 1);
     load(startIdx);
+}
+
+// ==========================================
+// INSTANT REPLAY — 15s ATSUKIMAS (ginčui dėl taško)
+// ==========================================
+
+function toggleInstantReplay() {
+    replayEnabled = !replayEnabled;
+    const btn = document.getElementById('replayToggleBtn');
+    const showBtn = document.getElementById('instantReplayBtn');
+    if (replayEnabled) {
+        if (!camStream) { showToast("Pirmiausia įjunkite kamerą."); replayEnabled = false; return; }
+        startReplayBuffer();
+        if (btn) { btn.style.background = '#16a34a'; btn.style.borderColor = '#16a34a'; btn.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Pakartojimas: ĮJ'; }
+        if (showBtn) showBtn.style.display = 'inline-flex';
+        showToast("Pakartojimas įjungtas — kaupiamos paskutinės " + REPLAY_SEC + "s");
+    } else {
+        stopReplayBuffer();
+        if (btn) { btn.style.background = '#0f172a'; btn.style.borderColor = '#334155'; btn.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Pakartojimas: IŠJ'; }
+        if (showBtn) showBtn.style.display = 'none';
+        showToast("Pakartojimas išjungtas");
+    }
+}
+
+// Nepertraukiamas paskutinių ~17s buferis (atskiras nuo highlight sistemos)
+function startReplayBuffer() {
+    if (!camStream || replayRecorder) return;
+    const mime = camMimeType || pickMimeType();
+    if (!mime) return;
+    camMimeType = mime;
+    replayChunks = [];
+    replayHeader = null;
+    try {
+        const br = camQuality === '1080' ? 3500000 : (camQuality === '480' ? 800000 : 2200000);
+        replayRecorder = new MediaRecorder(camStream, { mimeType: mime, videoBitsPerSecond: br });
+        replayRecorder.ondataavailable = (e) => {
+            if (!e.data || e.data.size === 0) return;
+            // Pirmas gabaliukas turi WebM antraštę — saugome atskirai
+            if (!replayHeader) { replayHeader = e.data; return; }
+            replayChunks.push({ blob: e.data, ts: Date.now() });
+            const cutoff = Date.now() - (REPLAY_SEC + 2) * 1000;
+            while (replayChunks.length > 0 && replayChunks[0].ts < cutoff) replayChunks.shift();
+        };
+        replayRecorder.start(1000);
+    } catch (e) { replayRecorder = null; console.warn("replay buffer:", e); }
+}
+
+function stopReplayBuffer() {
+    if (replayRecorder) { try { replayRecorder.stop(); } catch(e){} replayRecorder = null; }
+    replayChunks = [];
+    replayHeader = null;
+}
+
+function showInstantReplay() {
+    if (!replayEnabled) { showToast("Pirmiausia įjunkite pakartojimą."); return; }
+    if (!replayHeader || replayChunks.length === 0) { showToast("Dar kaupiamas vaizdas — palaukite kelias sekundes."); return; }
+    const cutoff = Date.now() - REPLAY_SEC * 1000;
+    const recent = replayChunks.filter(c => c.ts >= cutoff).map(c => c.blob);
+    if (recent.length === 0) { showToast("Per mažai vaizdo."); return; }
+    const blob = new Blob([replayHeader, ...recent], { type: camMimeType });
+    openReplayPlayer(URL.createObjectURL(blob));
+}
+
+function openReplayPlayer(url) {
+    const old = document.getElementById('replay-player-modal');
+    if (old) old.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'replay-player-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:10005;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
+    wrap.innerHTML = `
+        <div style="position:absolute;top:14px;left:0;right:0;text-align:center;color:white;font-weight:800;font-size:15px;"><i class="fa-solid fa-clock-rotate-left" style="color:#22c55e;"></i> Paskutinės ${REPLAY_SEC}s</div>
+        <video id="replayPlayerVideo" playsinline autoplay controls loop style="max-width:100%;max-height:68vh;border-radius:12px;background:black;"></video>
+        <div style="display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap;justify-content:center;">
+            <button id="replaySpeedBtn" style="background:#1a202c;color:white;border:1px solid #4a5568;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">0.5x lėtai</button>
+            <button id="replayRestartBtn" style="background:#1a202c;color:white;border:1px solid #4a5568;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> Nuo pradžių</button>
+        </div>
+        <button id="replayCloseBtn" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);color:white;border:none;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;">&times;</button>
+    `;
+    document.body.appendChild(wrap);
+    const video = document.getElementById('replayPlayerVideo');
+    video.src = url;
+    video.play().catch(() => {});
+    let slow = false;
+    document.getElementById('replaySpeedBtn').onclick = (e) => {
+        slow = !slow;
+        video.playbackRate = slow ? 0.5 : 1.0;
+        e.currentTarget.innerText = slow ? '1x normaliai' : '0.5x lėtai';
+    };
+    document.getElementById('replayRestartBtn').onclick = () => { video.currentTime = 0; video.play().catch(() => {}); };
+    document.getElementById('replayCloseBtn').onclick = () => { try { URL.revokeObjectURL(url); } catch(e){} wrap.remove(); };
 }
 
 // ==========================================
