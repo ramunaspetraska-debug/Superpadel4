@@ -201,20 +201,34 @@ function rtcUpdateViewerCount() {
 
 function rtcShowBroadcastStatus(isPrivate) {
     document.getElementById('rtc-broadcast-status')?.remove();
+    const joinUrl = `${location.origin}/registras?watch=${rtcBroadcastId}` + (isPrivate && rtcBroadcastPin ? `&pin=${rtcBroadcastPin}` : '');
     const box = document.createElement('div');
     box.id = 'rtc-broadcast-status';
-    box.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#0f172a; color:white; border-radius:14px; padding:14px 18px; z-index:9998; box-shadow:0 10px 30px rgba(0,0,0,0.4); text-align:center; min-width:240px;';
+    box.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#0f172a; color:white; border-radius:14px; padding:14px 18px; z-index:9998; box-shadow:0 10px 30px rgba(0,0,0,0.4); text-align:center; min-width:240px; max-width:300px;';
     box.innerHTML = `
         <div style="font-weight:900; font-size:13px; margin-bottom:6px;"><span style="color:#ef4444;">🔴</span> Transliuojama tiesiogiai</div>
-        ${isPrivate ? `<div style="background:#1e293b; border-radius:8px; padding:8px; margin:8px 0;">
-            <div style="font-size:10px; color:#94a3b8;">PRIVATUS PIN KODAS</div>
-            <div style="font-size:24px; font-weight:900; letter-spacing:4px; color:#22c55e;">${rtcBroadcastPin}</div>
-            <div style="font-size:9px; color:#64748b;">Pasakykite šį kodą žiūrovams</div>
+        <div style="background:white; border-radius:10px; padding:8px; margin:8px auto 6px; width:max-content;"><div id="rtcQrBox"></div></div>
+        <div style="font-size:10px; color:#94a3b8; margin-bottom:6px;">Nuskenuokite — žiūrovas prisijungs iš karto${isPrivate ? '<br>(PIN jau įterptas į kodą)' : ''}</div>
+        ${isPrivate ? `<div style="background:#1e293b; border-radius:8px; padding:8px; margin:6px 0;">
+            <div style="font-size:10px; color:#94a3b8;">arba PIN rankiniam įvedimui</div>
+            <div style="font-size:22px; font-weight:900; letter-spacing:4px; color:#22c55e;">${rtcBroadcastPin}</div>
         </div>` : '<div style="font-size:10px; color:#94a3b8; margin:4px 0;">Vieša transliacija — bet kas gali žiūrėti</div>'}
+        <button id="rtcCopyLinkBtn" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; padding:7px 12px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; width:100%; margin-bottom:8px;"><i class="fa-solid fa-link"></i> Kopijuoti nuorodą</button>
         <div style="font-size:11px; color:#94a3b8; margin-bottom:8px;"><i class="fa-solid fa-eye"></i> Žiūri: <span id="rtcViewerCountDisplay">0</span></div>
         <button onclick="stopWebRTCBroadcast()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; width:100%;">Sustabdyti transliaciją</button>
     `;
     document.body.appendChild(box);
+    // QR kodas (jei biblioteka įkrauta)
+    try {
+        const qEl = document.getElementById('rtcQrBox');
+        if (qEl && typeof QRCode !== 'undefined') {
+            new QRCode(qEl, { text: joinUrl, width: 130, height: 130, correctLevel: QRCode.CorrectLevel.M });
+        } else if (qEl) {
+            qEl.innerHTML = '<div style="font-size:10px;color:#64748b;padding:30px 10px;">QR nepasiekiamas</div>';
+        }
+    } catch (e) { console.warn("QR:", e); }
+    const copyBtn = document.getElementById('rtcCopyLinkBtn');
+    if (copyBtn) copyBtn.onclick = () => rtcCopyJoinLink(joinUrl);
 }
 
 // ==========================================
@@ -440,3 +454,47 @@ function rtcLaunchViewer(broadcastId, pin, broadcasterName) {
     document.body.appendChild(wrap);
     watchWebRTCBroadcast(broadcastId, pin);
 }
+
+// ==========================================
+// QR / NUORODA — kopijavimas ir automatinis prisijungimas
+// ==========================================
+
+function rtcCopyJoinLink(url) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => showToast("Nuoroda nukopijuota")).catch(() => showToast(url));
+    } else {
+        showToast(url);
+    }
+}
+
+// Jei puslapis atidarytas su ?watch=ID (iš QR ar nuorodos) — paleidžiam žiūrovą
+function rtcHandleWatchParam() {
+    let params;
+    try { params = new URLSearchParams(location.search); } catch (e) { return; }
+    const watchId = params.get('watch');
+    if (!watchId) return;
+    const urlPin = params.get('pin');
+    // Išvalom URL — kad perkrovus nesikartotų ir PIN nesimatytų adreso juostoje
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    let tries = 0;
+    const tick = setInterval(() => {
+        tries++;
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+            clearInterval(tick);
+            firebase.database().ref(`${RTC_BROADCAST_KEY}/${watchId}`).once('value').then((snap) => {
+                const b = snap.val();
+                if (!b) { if (typeof showToast === 'function') showToast("Transliacija nerasta arba pasibaigė."); return; }
+                const name = b.broadcaster || 'Transliacija';
+                if (b.isPrivate) {
+                    if (urlPin) rtcLaunchViewer(watchId, urlPin, name);
+                    else openWebRTCViewer(watchId, true, name);   // paprašys PIN rankiniu būdu
+                } else {
+                    rtcLaunchViewer(watchId, null, name);
+                }
+            }).catch(() => {});
+        } else if (tries > 100) { clearInterval(tick); }   // ~10s ir liaujamės
+    }, 100);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', rtcHandleWatchParam);
+else rtcHandleWatchParam();
