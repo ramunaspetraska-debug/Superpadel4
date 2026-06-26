@@ -172,7 +172,8 @@
             <button type="button" onclick="connectLiveRoom()"><i class="fa-solid fa-link"></i> Jungtis</button>
         </div>
         <div id="liveActiveStreamsList" style="padding: 0 12px;"></div>
-        <button type="button" onclick="openCourtView()" style="display:block;width:calc(100% - 24px);margin:6px 12px 8px;background:linear-gradient(135deg,#2563eb,#16a34a);color:white;border:none;padding:12px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-table-cells-large"></i> Korto peržiūra (keli kampai + atsukimas)</button>
+        <button type="button" onclick="startPhoneCameraBroadcast()" style="display:block;width:calc(100% - 24px);margin:6px 12px 4px;background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border:none;padding:12px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-tower-broadcast"></i> Transliuoti šį telefoną tiesiogiai (kamera)</button>
+        <button type="button" onclick="openCourtView()" style="display:block;width:calc(100% - 24px);margin:0 12px 8px;background:linear-gradient(135deg,#2563eb,#16a34a);color:white;border:none;padding:12px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-table-cells-large"></i> Korto peržiūra (keli kampai + atsukimas)</button>
         <div class="live-filters" id="liveCourtsContainer"><div class="live-filter-btn">Laukiama prisijungimo...</div></div>
         <div class="live-score-area">
             <div class="live-score-title" id="fbStatusTitleContainer"><i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-red);"></i> <span id="fbStatusText">Neprisijungta prie Firebase</span></div>
