@@ -205,6 +205,9 @@ function stopWebRTCBroadcast() {
     rtcBroadcastPin = null;
     rtcViewerCount = 0;
     document.getElementById('rtc-broadcast-status')?.remove();
+    // Jei nesame kameros skirtuke — sustabdom kamerą (kitaip liktų įjungta fone).
+    const camPage = document.getElementById('page-cam');
+    if (camPage && !camPage.classList.contains('active') && typeof stopCamera === 'function') stopCamera();
     showToast("Transliacija sustabdyta.");
 }
 
