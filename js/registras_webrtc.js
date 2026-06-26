@@ -59,6 +59,27 @@ function rtcGeneratePin() {
     return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
+// Greitas kelias iš LIVE lango: pereina į kameros skirtuką (kamera pati įsijungia),
+// palaukia kol pasiruoš, ir atidaro transliacijos tipo pasirinkimą.
+function startPhoneCameraBroadcast() {
+    if (typeof closeLiveModal === 'function') closeLiveModal();
+    const camNav = document.querySelector('.nav-cam');
+    if (camNav) camNav.click();
+    else if (typeof switchTab === 'function') switchTab('page-cam', null);
+    if (typeof showToast === 'function') showToast("Įjungiama kamera...");
+    let tries = 0;
+    const t = setInterval(() => {
+        tries++;
+        if (typeof camStream !== 'undefined' && camStream) {
+            clearInterval(t);
+            if (typeof rtcAskBroadcastType === 'function') rtcAskBroadcastType();
+        } else if (tries > 30) {   // ~6s — leidžiam vartotojui pačiam
+            clearInterval(t);
+            if (typeof showToast === 'function') showToast("Įjunkite kamerą ir spauskite „Transliuoti tiesiogiai“.");
+        }
+    }, 200);
+}
+
 // Pradeda WebRTC transliaciją. isPrivate=true → reikalingas PIN.
 async function startWebRTCBroadcast(isPrivate) {
     if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas."); return; }
@@ -98,7 +119,7 @@ async function startWebRTCBroadcast(isPrivate) {
         }
     });
 
-    rtcShowBroadcastStatus(isPrivate);
+    rtcShowBroadcastStatus(isPrivate, roomName);
 }
 
 // Uždaro vieno žiūrovo ryšį (siuntėjo pusėje) ir išvalo jo signaling mazgą
@@ -199,14 +220,19 @@ function rtcUpdateViewerCount() {
 // SIUNTĖJO STATUSO LANGAS
 // ==========================================
 
-function rtcShowBroadcastStatus(isPrivate) {
+function rtcShowBroadcastStatus(isPrivate, room) {
     document.getElementById('rtc-broadcast-status')?.remove();
     const joinUrl = `${location.origin}/registras?watch=${rtcBroadcastId}` + (isPrivate && rtcBroadcastPin ? `&pin=${rtcBroadcastPin}` : '');
+    const roomReal = (room && !String(room).startsWith('profilis_') && room !== 'transliacija' && room !== 'bendri_highlights') ? room : null;
+    const roomHtml = roomReal
+        ? `<div style="background:rgba(22,163,74,0.13); border:1px solid rgba(22,163,74,0.35); border-radius:8px; padding:5px 8px; margin:4px 0 8px; font-size:11px; color:#22c55e; font-weight:bold;"><i class="fa-solid fa-trophy"></i> Turnyras: ${roomReal}</div>`
+        : `<div style="background:rgba(51,65,85,0.2); border-radius:8px; padding:5px 8px; margin:4px 0 8px; font-size:10px; color:#94a3b8;">Neprijungta prie turnyro · bendra transliacija</div>`;
     const box = document.createElement('div');
     box.id = 'rtc-broadcast-status';
     box.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#0f172a; color:white; border-radius:14px; padding:14px 18px; z-index:9998; box-shadow:0 10px 30px rgba(0,0,0,0.4); text-align:center; min-width:240px; max-width:300px;';
     box.innerHTML = `
         <div style="font-weight:900; font-size:13px; margin-bottom:6px;"><span style="color:#ef4444;">🔴</span> Transliuojama tiesiogiai</div>
+        ${roomHtml}
         <div style="background:white; border-radius:10px; padding:8px; margin:8px auto 6px; width:max-content;"><div id="rtcQrBox"></div></div>
         <div style="font-size:10px; color:#94a3b8; margin-bottom:6px;">Nuskenuokite — žiūrovas prisijungs iš karto${isPrivate ? '<br>(PIN jau įterptas į kodą)' : ''}</div>
         ${isPrivate ? `<div style="background:#1e293b; border-radius:8px; padding:8px; margin:6px 0;">
