@@ -106,8 +106,23 @@ function hideStreamFrame(frame, placeholder) {
 
 // Transliacijos nustatymas — platformos pasirinkimas + nuoroda
 function setLiveStreamLink() {
-    if (!currentLiveRoomName) { showToast("Pirmiausia prisijunkite prie kambario."); return; }
-    openStreamSetupModal();
+    if (currentLiveRoomName) { openStreamSetupModal(); return; }
+    if (typeof pickOfficialTournamentForStream === 'function') {
+        pickOfficialTournamentForStream({
+            title: '<i class="fa-solid fa-tower-broadcast" style="color:#2563eb;"></i> Kuriam turnyrui pridėti transliaciją?',
+            subtitle: 'Pasirinkite turnyrą — nuoroda prisikabins prie jo automatiškai.',
+            allowNone: false,
+            onPick: function(room) {
+                if (!room) { showToast("Pasirinkite turnyrą."); return; }
+                const inp = document.getElementById('liveRoomInput');
+                if (inp) inp.value = room;
+                if (typeof connectLiveRoom === 'function') connectLiveRoom();
+                openStreamSetupModal();
+            }
+        });
+    } else {
+        showToast("Pirmiausia prisijunkite prie kambario.");
+    }
 }
 
 function openStreamSetupModal() {
@@ -334,9 +349,10 @@ function renderLiveScoreboard() {
 
 // ==========================================
 // Parodo visus aktyvius LIVE turnyrus — žiūrovas paspaudžia ir prisijungia
-function renderActiveStreams() {
+function renderActiveStreams(filterRoom) {
     const box = document.getElementById('liveActiveStreamsList');
     if (!box) return;
+    const fr = filterRoom ? String(filterRoom).toUpperCase() : null;
     box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;"><i class="fa-solid fa-spinner fa-spin"></i> Ieškoma transliacijų...</div>';
 
     // Įkeliame ABU šaltinius: Twitch/FB/YouTube (DB_KEY) ir WebRTC (broadcasts)
@@ -351,7 +367,7 @@ function renderActiveStreams() {
         // 1. Twitch / FB / YouTube transliacijos
         Object.keys(data).forEach(roomName => {
             const room = data[roomName];
-            if (room && room.is_live && room.live_stream) {
+            if (room && room.is_live && room.live_stream && (!fr || String(roomName).toUpperCase() === fr)) {
                 items.push({
                     type: 'embed',
                     name: roomName,
@@ -364,7 +380,7 @@ function renderActiveStreams() {
         // 2. WebRTC tiesioginės transliacijos
         Object.keys(rtcData).forEach(bid => {
             const b = rtcData[bid];
-            if (b) {
+            if (b && (!fr || String(b.room || '').toUpperCase() === fr)) {
                 items.push({
                     type: 'webrtc',
                     id: bid,
@@ -377,14 +393,14 @@ function renderActiveStreams() {
         });
 
         if (items.length === 0) {
-            box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;">Šiuo metu nėra aktyvių transliacijų.</div>';
+            box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;">' + (fr ? 'Šis turnyras šiuo metu netransliuojamas.' : 'Šiuo metu nėra aktyvių transliacijų.') + '</div>';
             return;
         }
 
         const platIcon = { youtube: '<i class="fa-brands fa-youtube" style="color:#ff0000;"></i>', twitch: '<i class="fa-brands fa-twitch" style="color:#9146FF;"></i>', facebook: '<i class="fa-brands fa-facebook" style="color:#1877F2;"></i>' };
 
         box.innerHTML = `
-            <div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0;"><i class="fa-solid fa-circle" style="color:#ef4444;font-size:7px;"></i> Tiesiogiai dabar</div>
+            <div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0;"><i class="fa-solid fa-circle" style="color:#ef4444;font-size:7px;"></i> ${fr ? 'Šio turnyro transliacija' : 'Tiesiogiai dabar'}</div>
             ${items.map(r => {
                 if (r.type === 'webrtc') {
                     return `<div onclick="openWebRTCViewer('${r.id}', ${r.isPrivate}, '${(r.name||'').replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;">
@@ -421,10 +437,10 @@ function watchLiveRoom(roomName) {
 
 // LIVE MODALINIS LANGAS (Stebėti mygtukas)
 // ==========================================
-function openLiveModal(e) {
+function openLiveModal(e, filterRoom) {
     if (e && e.stopPropagation) e.stopPropagation();
     document.getElementById('liveModal')?.classList.add('show');
-    if (typeof renderActiveStreams === 'function') renderActiveStreams();
+    if (typeof renderActiveStreams === 'function') renderActiveStreams(filterRoom || null);
 }
 function closeLiveModal() {
     document.getElementById('liveModal')?.classList.remove('show');
