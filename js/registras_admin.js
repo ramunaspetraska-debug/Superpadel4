@@ -55,12 +55,37 @@ function parseTimeStr(timeStr) {
     return { start: parseInt(startParts[0]) * 60 + parseInt(startParts[1]), end: parseInt(endParts[0]) * 60 + parseInt(endParts[1]) };
 }
 
-function createTournament(e) { 
-    e.preventDefault(); 
-    const baseDateStr = document.getElementById('newDate').value; 
-    const laikas = document.getElementById('newTime').value; 
-    const repeatCount = parseInt(document.getElementById('newRepeat').value || 1); 
-    
+// Atomiškai rezervuoja unikalius kambarių ID iš monotoninio skaitiklio.
+// Skaitiklis TIK auga — net ištrynus kambarį, jo numeris niekada neatlaisvinamas → jokių dublių.
+async function reserveRoomIds(count) {
+    const seqRef = firebase.database().ref('padelio_room_seq');
+    const ids = [];
+    let guard = 0;
+    while (ids.length < count && guard < 100) {
+        guard++;
+        const res = await seqRef.transaction(cur => (cur || 0) + 1);
+        if (!res.committed) continue;
+        const n = res.snapshot.val();
+        // Saugumo tinklas: jei toks numeris jau egzistuoja (pvz. rankinis kambarys) — praleidžiam, skaitiklis jau pažengė.
+        const snap = await firebase.database().ref(DB_KEY + '/' + n).once('value');
+        if (snap.exists()) continue;
+        ids.push(n);
+    }
+    return ids;
+}
+
+// Atidaro generatorių su jau prijungtu kambariu (generatorius pats palaiko ?room=).
+function openGeneratorRoom(room) {
+    if (!room) { showToast("Šis turnyras neturi kambario ID."); return; }
+    window.open('index.html?room=' + encodeURIComponent(room), '_blank');
+}
+
+async function createTournament(e) {
+    e.preventDefault();
+    const baseDateStr = document.getElementById('newDate').value;
+    const laikas = document.getElementById('newTime').value;
+    const repeatCount = parseInt(document.getElementById('newRepeat').value || 1);
+
     const naujasLaikasObj = parseTimeStr(laikas);
     const persidengiantysTurnyrai = tournaments.filter(t => {
         if (t.date !== baseDateStr) return false;
@@ -74,30 +99,36 @@ function createTournament(e) {
         if (!confirm(`⚠️ ĮSPĖJIMAS: Šią dieną kerta kitus turnyrus:\n👉 ${rastiTurnyrai}\n\nTęsti turnyro kūrimą?`)) return;
     }
 
+    if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas — bandykite vėliau."); return; }
+
+    // Automatiškai priskiriam unikalius kambarių ID (po vieną kiekvienai kartojamai kopijai)
+    const roomIds = await reserveRoomIds(repeatCount);
+    if (roomIds.length < repeatCount) { showToast("Nepavyko priskirti kambarių ID. Bandykite dar kartą."); return; }
+
     const [month, day] = baseDateStr.split('-').map(Number);
     const baseDate = new Date(new Date().getFullYear(), month - 1, day);
 
     for (let i = 0; i < repeatCount; i++) {
         let newDateObj = new Date(baseDate);
-        newDateObj.setDate(baseDate.getDate() + (i * 7)); 
+        newDateObj.setDate(baseDate.getDate() + (i * 7));
         let m = (newDateObj.getMonth() + 1).toString().padStart(2, '0');
         let d = newDateObj.getDate().toString().padStart(2, '0');
         let finalDateStr = `${m}-${d}`;
 
-        const newT = { 
-            id: Date.now() + i, date: finalDateStr, 
-            format: document.getElementById('newFormat').value, 
+        const newT = {
+            id: Date.now() + i, date: finalDateStr,
+            format: document.getElementById('newFormat').value,
             category: document.getElementById('newCategory').value,
-            level: document.getElementById('newLevel').value, 
-            time: laikas, registered: 0, 
-            max: parseInt(document.getElementById('newMax').value), 
-            status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: ((document.getElementById('newRoom')||{}).value || '').trim().toUpperCase() || null 
-        }; 
-        tournaments.push(newT); 
+            level: document.getElementById('newLevel').value,
+            time: laikas, registered: 0,
+            max: parseInt(document.getElementById('newMax').value),
+            status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
+        };
+        tournaments.push(newT);
     }
-    saveData(); 
-    showToast(`Turnyrai sukurti debesyje! (Viso: ${repeatCount})`); 
-    document.getElementById('adminForm').reset(); 
+    saveData();
+    showToast(`Turnyrai sukurti! Kambariai: ${roomIds.join(', ')}`);
+    document.getElementById('adminForm').reset();
 }
 
 function renderAdminTournaments() {
@@ -127,7 +158,8 @@ function renderAdminTournaments() {
             <td style="padding: 12px; font-weight: 800; color: var(--primary-blue);">${t.format}</td>
             <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${t.level}</span></td>
             <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
-            <td style="padding: 12px; text-align: center;">
+            <td style="padding: 12px; text-align: center; white-space:nowrap;">
+                ${t.room ? `<button type="button" onclick="openGeneratorRoom('${t.room}')" title="Atidaryti generatorių (kambarys ${t.room})" style="background:#ecfdf5; color:#047857; border:none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">▶ ${t.room}</button>` : ''}
                 <button type="button" onclick="openAdminTournamentModal('${t.id}')" style="background: #eff6ff; color: #1d4ed8; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
                 <button type="button" onclick="deleteAdminTournamentLive('${t.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
             </td>
