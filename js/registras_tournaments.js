@@ -225,7 +225,7 @@ function renderTournaments() {
         if (t.timeState === 'past') { 
             timeStateBadge = `<div class="status-badge-time badge-past">ĮVYKO</div>`; 
             cardClassModifier = 'card-past'; 
-            statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openTournamentResults();" style="cursor:pointer;"><i class="fa-solid fa-list-ol"></i> Rezultatai</button>`; 
+            statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openOfficialResults(${t.id});" style="cursor:pointer;"><i class="fa-solid fa-list-ol"></i> Rezultatai</button>`; 
         } else if (t.timeState === 'live') { 
             timeStateBadge = `<div class="status-badge-time badge-live"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> VYKSTA DABAR</div>`; 
             statusHTML = `<div class="status-indicator" style="color: var(--status-red);"><i class="fa-solid fa-tower-broadcast"></i> Tiesiogiai</div><button type="button" class="watch-badge" onclick="openLiveModal(event)"><i class="fa-solid fa-play"></i> Stebėti</button>`; 
@@ -257,57 +257,136 @@ function renderTournaments() {
     });
 }
 
-// ---------- TURNYRO REZULTATAI ----------
-const RESULTS_ROOMS_KEY = 'padelio_pro_master_rooms';
-
-function openTournamentResults() {
-    if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas."); return; }
-    firebase.database().ref(RESULTS_ROOMS_KEY).once('value').then(snap => {
-        const reg = snap.val() || {};
-        const now = Date.now();
-        // neseniai vykę turnyrai (per 7 d.), naujausi viršuje
-        const rooms = Object.keys(reg)
-            .filter(r => (now - (reg[r] || 0)) < 7 * 24 * 60 * 60 * 1000)
-            .sort((a, b) => (reg[b] || 0) - (reg[a] || 0));
-        renderTournamentResultsPicker(rooms);
-    }).catch(() => renderTournamentResultsPicker([]));
+// ---------- OFICIALŪS TURNYRO REZULTATAI (pilnas ekranas + reitingas) ----------
+function openOfficialResults(id) {
+    const t = tournaments.find(x => String(x.id) === String(id));
+    if (!t) return;
+    _resultsModalShell(t);
+    const body = document.getElementById('offres-body');
+    if (!body) return;
+    if (!t.room) { body.innerHTML = _resultsNoLinkHTML(t); return; }
+    body.innerHTML = '<div style="text-align:center;color:#718096;padding:48px 16px;font-size:14px;"><i class="fa-solid fa-circle-notch fa-spin" style="font-size:26px;color:#cbd5e0;display:block;margin-bottom:14px;"></i>Kraunami rezultatai...</div>';
+    if (typeof firebase === 'undefined') { body.innerHTML = '<div style="text-align:center;color:#e53e3e;padding:40px 16px;">Firebase neprieinamas.</div>'; return; }
+    firebase.database().ref(DB_KEY + '/' + String(t.room).toUpperCase()).once('value')
+        .then(snap => { const b = document.getElementById('offres-body'); if (b) b.innerHTML = _resultsBodyHTML(t, snap.val()); })
+        .catch(() => { const b = document.getElementById('offres-body'); if (b) b.innerHTML = '<div style="text-align:center;color:#e53e3e;padding:40px 16px;">Nepavyko įkelti rezultatų.</div>'; });
 }
 
-function renderTournamentResultsPicker(rooms) {
-    document.getElementById('tresults-modal')?.remove();
-    const wrap = document.createElement('div');
-    wrap.id = 'tresults-modal';
-    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;';
-    const items = rooms.length
-        ? rooms.map(r => {
-            const safe = String(r).replace(/'/g, "\\'");
-            return `<button type="button" onclick="openResultsForRoom('${safe}')" style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;margin-bottom:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8f9fb;color:#1a202c;font-size:14px;font-weight:bold;cursor:pointer;text-align:left;"><i class="fa-solid fa-trophy" style="color:#d69e2e;"></i> ${r}</button>`;
-        }).join('')
-        : '<div style="font-size:13px;color:#718096;text-align:center;padding:12px 0;">Nėra neseniai vykusių turnyrų debesyje.</div>';
-    wrap.innerHTML = `
-        <div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:80vh;display:flex;flex-direction:column;">
-            <div style="font-weight:900;font-size:16px;color:#1a202c;margin-bottom:4px;"><i class="fa-solid fa-list-ol" style="color:#2563eb;"></i> Turnyro rezultatai</div>
-            <div style="font-size:12px;color:#718096;margin-bottom:14px;">Pasirinkite turnyrą (kambarį) — parodysime galutinę lentelę.</div>
-            <div style="flex:1;overflow-y:auto;margin-bottom:8px;">${items}</div>
-            <div style="display:flex;gap:8px;margin-bottom:8px;">
-                <input type="text" id="tresultsManualRoom" placeholder="arba kambario ID" style="flex:1;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:bold;outline:none;color:#1a202c;">
-                <button type="button" onclick="openResultsForRoom(document.getElementById('tresultsManualRoom').value.trim())" style="padding:10px 16px;border:none;border-radius:8px;background:#2563eb;color:white;font-size:13px;font-weight:bold;cursor:pointer;">Rodyti</button>
-            </div>
-            <button type="button" onclick="document.getElementById('tresults-modal').remove()" style="width:100%;padding:10px;border:none;background:transparent;color:#718096;font-size:13px;font-weight:bold;cursor:pointer;">Uždaryti</button>
-        </div>`;
-    document.body.appendChild(wrap);
+function _resultsModalShell(t) {
+    document.getElementById('offres-modal')?.remove();
+    const m = document.createElement('div');
+    m.id = 'offres-modal';
+    m.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:6000;display:flex;flex-direction:column;';
+    m.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #edf2f7;flex-shrink:0;">' +
+            '<div style="display:flex;flex-direction:column;min-width:0;">' +
+                '<div style="font-weight:900;font-size:17px;color:#1a202c;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + esc(t.format) + '</div>' +
+                '<div style="font-size:12px;color:#718096;font-weight:600;">' + esc(t.date) + (t.time ? ' · ' + esc(t.time) : '') + '</div>' +
+            '</div>' +
+            '<button type="button" onclick="document.getElementById(\'offres-modal\').remove()" style="background:#f1f5f9;border:none;width:38px;height:38px;border-radius:50%;font-size:18px;color:#1a202c;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-xmark"></i></button>' +
+        '</div>' +
+        '<div id="offres-body" style="flex:1;overflow-y:auto;padding:16px;-webkit-overflow-scrolling:touch;"></div>';
+    document.body.appendChild(m);
 }
 
-function openResultsForRoom(room) {
-    if (!room) { showToast("Pasirinkite turnyrą arba įveskite kambario ID."); return; }
-    document.getElementById('tresults-modal')?.remove();
-    const inp = document.getElementById('liveRoomInput');
-    if (inp) inp.value = room;
-    if (typeof openLiveModal === 'function') openLiveModal({ stopPropagation: () => {} });
-    if (typeof connectLiveRoom === 'function') connectLiveRoom();
+function _resultsLeaderboard(matches) {
+    const pts = {}, played = {};
+    (matches || []).filter(m => m.finished).forEach(m => {
+        const s1 = Number(m.score1) || 0, s2 = Number(m.score2) || 0;
+        (m.team1 || []).forEach(p => { const n = p && p.name; if (!n) return; pts[n] = (pts[n] || 0) + s1; played[n] = (played[n] || 0) + 1; });
+        (m.team2 || []).forEach(p => { const n = p && p.name; if (!n) return; pts[n] = (pts[n] || 0) + s2; played[n] = (played[n] || 0) + 1; });
+    });
+    return Object.keys(pts).map(n => ({ name: n, points: pts[n], played: played[n] || 0 }))
+        .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
 }
 
-function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { openTournamentResults(); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
+function _resultsMatchWeight(m) {
+    if (m.isFinal) {
+        const t = (m.finalTitle || '').toUpperCase();
+        if (t.indexOf('DIDYSIS') > -1) return 10000;
+        if (t.indexOf('MAŽASIS') > -1) return 9000;
+        const num = t.match(/\d+/);
+        if (num) return 8000 - parseInt(num[0]);
+        return 5000;
+    }
+    return (m.round || 0) * 10;
+}
+
+function _resultsBodyHTML(t, data) {
+    if (!data || !data.matches || !data.matches.some(m => m.finished)) {
+        return '<div style="text-align:center;color:#718096;padding:48px 16px;font-size:14px;"><i class="fa-solid fa-hourglass-half" style="font-size:30px;color:#cbd5e0;display:block;margin-bottom:14px;"></i>Šio turnyro rezultatai dar nepaskelbti.</div>';
+    }
+    const lb = _resultsLeaderboard(data.matches);
+    const medal = ['#d69e2e', '#a0aec0', '#cd7f32'];
+    let html = '';
+    if (lb.length) {
+        html += '<div style="font-size:11px;font-weight:bold;color:#718096;text-transform:uppercase;letter-spacing:1px;margin:0 2px 10px;"><i class="fa-solid fa-ranking-star"></i> Galutinė lentelė</div>';
+        lb.forEach((p, i) => {
+            const rankBg = i < 3 ? medal[i] : '#e2e8f0';
+            const rankCol = i < 3 ? '#fff' : '#718096';
+            const rowBg = i === 0 ? '#fffbeb' : '#f8f9fb';
+            const rowBorder = i === 0 ? '#fde68a' : '#edf2f7';
+            html += '<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;margin-bottom:6px;background:' + rowBg + ';border:1px solid ' + rowBorder + ';border-radius:10px;">' +
+                '<div style="width:26px;height:26px;border-radius:50%;background:' + rankBg + ';color:' + rankCol + ';font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (i + 1) + '</div>' +
+                '<div style="flex:1;font-weight:700;color:#1a202c;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.name) + '</div>' +
+                '<div style="font-size:11px;color:#a0aec0;font-weight:600;">' + p.played + ' mač.</div>' +
+                '<div style="font-weight:900;color:#2563eb;font-size:17px;min-width:34px;text-align:right;">' + p.points + '</div>' +
+            '</div>';
+        });
+    }
+    const finished = data.matches.filter(m => m.finished).slice().sort((a, b) => {
+        const w = _resultsMatchWeight(b) - _resultsMatchWeight(a);
+        return w !== 0 ? w : (a.court || 0) - (b.court || 0);
+    });
+    html += '<div style="font-size:11px;font-weight:bold;color:#718096;text-transform:uppercase;letter-spacing:1px;margin:20px 2px 10px;"><i class="fa-solid fa-table-list"></i> Mačai</div>';
+    finished.forEach(m => {
+        const t1 = (m.team1 || []).map(p => esc(p && p.name)).join(' / ');
+        const t2 = (m.team2 || []).map(p => esc(p && p.name)).join(' / ');
+        const title = m.isFinal ? esc(m.finalTitle || 'FINALAS') : ('RAUNDAS ' + (m.round || 'X') + ' · Kortas ' + (m.court || '-'));
+        let bgTitle = 'background:#1a202c;';
+        if (m.isFinal) {
+            const tu = (m.finalTitle || '').toUpperCase();
+            if (tu.indexOf('DIDYSIS') > -1) bgTitle = 'background:linear-gradient(to right,#d69e2e,#b7791f);';
+            else if (tu.indexOf('MAŽASIS') > -1) bgTitle = 'background:linear-gradient(to right,#ed8936,#c05621);';
+            else bgTitle = 'background:#4a5568;';
+        }
+        const w1 = (m.score1 > m.score2) ? 'font-weight:900;color:#2563eb;' : 'color:#1a202c;';
+        const w2 = (m.score2 > m.score1) ? 'font-weight:900;color:#2563eb;' : 'color:#1a202c;';
+        html += '<div style="border:1px solid #edf2f7;border-radius:10px;overflow:hidden;margin-bottom:10px;">' +
+            '<div style="' + bgTitle + 'color:#fff;padding:6px 12px;font-size:10px;font-weight:bold;letter-spacing:1px;">' + title + '</div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;"><div style="font-size:13px;color:#1a202c;">' + t1 + '</div><div style="font-size:19px;' + w1 + '">' + (m.score1 || 0) + '</div></div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8f9fb;"><div style="font-size:13px;color:#1a202c;">' + t2 + '</div><div style="font-size:19px;' + w2 + '">' + (m.score2 || 0) + '</div></div>' +
+        '</div>';
+    });
+    return html;
+}
+
+function _resultsNoLinkHTML(t) {
+    const isAdm = document.getElementById('adminMode')?.style.display === 'block';
+    let h = '<div style="text-align:center;color:#718096;padding:40px 16px 20px;font-size:14px;"><i class="fa-solid fa-link-slash" style="font-size:30px;color:#cbd5e0;display:block;margin-bottom:14px;"></i>Šis turnyras dar nesusietas su rezultatų kambariu.</div>';
+    if (isAdm) {
+        h += '<div style="max-width:340px;margin:0 auto;padding:0 8px;">' +
+            '<div style="font-size:12px;color:#718096;margin-bottom:8px;text-align:center;">Įveskite generatoriaus kambario ID, kuriame vyko šis turnyras:</div>' +
+            '<div style="display:flex;gap:8px;">' +
+                '<input type="text" id="offres-link-room" placeholder="Kambario ID" style="flex:1;padding:11px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-weight:bold;outline:none;color:#1a202c;text-transform:uppercase;">' +
+                '<button type="button" onclick="linkRoomAndShow(\'' + esc(String(t.id)) + '\')" style="padding:11px 16px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:bold;cursor:pointer;">Susieti</button>' +
+            '</div></div>';
+    }
+    return h;
+}
+
+function linkRoomAndShow(id) {
+    const val = (document.getElementById('offres-link-room')?.value || '').trim().toUpperCase();
+    if (!val) { showToast('Įveskite kambario ID.'); return; }
+    const t = tournaments.find(x => String(x.id) === String(id));
+    if (!t) return;
+    t.room = val;
+    if (typeof saveData === 'function') saveData();
+    showToast('Kambarys susietas.');
+    openOfficialResults(id);
+}
+
+function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { openOfficialResults(id); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; let pFilter = document.getElementById('filterPlayer'); if(pFilter) pFilter.value = ''; renderTournaments(); }
