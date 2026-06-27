@@ -68,15 +68,16 @@ function startPhoneCameraBroadcast() {
 const RTC_ROOMS_KEY = 'padelio_pro_master_rooms';
 
 function rtcPickTournamentThenBroadcast() {
-    if (typeof firebase === 'undefined') { rtcGoToCameraAndBroadcast(); return; }
-    firebase.database().ref(RTC_ROOMS_KEY).once('value').then((snap) => {
-        const reg = snap.val() || {};
-        const now = Date.now();
-        // aktyvūs = pinguoti per pastarąsias 10 min
-        const active = Object.keys(reg).filter(r => (now - (reg[r] || 0)) < 10 * 60 * 1000).sort();
-        if (active.length === 0) { rtcGoToCameraAndBroadcast(); return; }  // nėra turnyrų — iškart bendra
-        rtcRenderTournamentPicker(active);
-    }).catch(() => rtcGoToCameraAndBroadcast());
+    if (typeof pickOfficialTournamentForStream === 'function') {
+        pickOfficialTournamentForStream({
+            title: '<i class="fa-solid fa-tower-broadcast" style="color:#e53e3e;"></i> Kurį turnyrą transliuoti?',
+            subtitle: 'Pasirinkite turnyrą — transliacija prisikabins prie jo automatiškai.',
+            allowNone: true,
+            onPick: function(room) { rtcChooseTournament(room); }
+        });
+    } else {
+        rtcGoToCameraAndBroadcast();
+    }
 }
 
 function rtcRenderTournamentPicker(rooms) {
