@@ -91,7 +91,7 @@ function createTournament(e) {
             level: document.getElementById('newLevel').value, 
             time: laikas, registered: 0, 
             max: parseInt(document.getElementById('newMax').value), 
-            status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [] 
+            status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: ((document.getElementById('newRoom')||{}).value || '').trim().toUpperCase() || null 
         }; 
         tournaments.push(newT); 
     }
@@ -146,6 +146,7 @@ function openAdminTournamentModal(id) {
     document.getElementById('editAdminTournamentMax').value = t.max || 16;
     document.getElementById('editAdminTournamentTime').value = t.time;
     document.getElementById('editAdminTournamentDate').value = t.date;
+    document.getElementById('editAdminTournamentRoom').value = t.room || '';
     document.getElementById('adminEditTournamentModal').classList.add('show');
 }
 
@@ -170,6 +171,7 @@ function saveAdminTournamentChanges() {
         tournaments[idx].max = max;
         tournaments[idx].time = time;
         tournaments[idx].date = date;
+        tournaments[idx].room = (document.getElementById('editAdminTournamentRoom').value || '').trim().toUpperCase() || null;
         saveData(); 
         closeAdminTournamentModal();
         showToast("Turnyras sėkmingai atnaujintas!");
