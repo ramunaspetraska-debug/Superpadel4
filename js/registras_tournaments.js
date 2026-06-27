@@ -398,9 +398,9 @@ function pickOfficialTournamentForStream(opts) {
     const subtitle = opts.subtitle || 'Pasirinkite turnyrą — viskas prisikabins automatiškai.';
 
     const list = (typeof tournaments !== 'undefined' ? tournaments : [])
-        .filter(t => t.room && t.timeState !== 'past')
+        .filter(t => t.room && getTimeState(t.date, t.time) !== 'past')
         .sort((a, b) => {
-            const rank = x => (x.timeState === 'live' ? 0 : 1);
+            const rank = x => (getTimeState(x.date, x.time) === 'live' ? 0 : 1);
             if (rank(a) !== rank(b)) return rank(a) - rank(b);
             return String(a.date).localeCompare(String(b.date)) || String(a.time || '').localeCompare(String(b.time || ''));
         });
@@ -413,7 +413,7 @@ function _renderStreamTournamentPicker(list, title, subtitle, allowNone) {
     wrap.id = 'stream-tpick-modal';
     wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px;';
     const items = list.length ? list.map(t => {
-        const liveDot = t.timeState === 'live' ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;margin-right:6px;vertical-align:middle;"></span>' : '';
+        const liveDot = getTimeState(t.date, t.time) === 'live' ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;margin-right:6px;vertical-align:middle;"></span>' : '';
         return `<button type="button" onclick="streamTournamentChosen('${esc(String(t.id))}')" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-bottom:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8f9fb;color:#1a202c;cursor:pointer;text-align:left;">
             <i class="fa-solid fa-trophy" style="color:#2563eb;font-size:16px;flex-shrink:0;"></i>
             <span style="flex:1;min-width:0;">
