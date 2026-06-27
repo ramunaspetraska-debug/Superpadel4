@@ -65,8 +65,6 @@ function startPhoneCameraBroadcast() {
     rtcPickTournamentThenBroadcast();
 }
 
-const RTC_ROOMS_KEY = 'padelio_pro_master_rooms';
-
 function rtcPickTournamentThenBroadcast() {
     if (typeof pickOfficialTournamentForStream === 'function') {
         pickOfficialTournamentForStream({
@@ -78,26 +76,6 @@ function rtcPickTournamentThenBroadcast() {
     } else {
         rtcGoToCameraAndBroadcast();
     }
-}
-
-function rtcRenderTournamentPicker(rooms) {
-    document.getElementById('rtc-tpick-modal')?.remove();
-    const wrap = document.createElement('div');
-    wrap.id = 'rtc-tpick-modal';
-    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px;';
-    const items = rooms.map(r => {
-        const safe = String(r).replace(/'/g, "\\'");
-        return `<button onclick="rtcChooseTournament('${safe}')" style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;margin-bottom:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8f9fb;color:#1a202c;font-size:14px;font-weight:bold;cursor:pointer;text-align:left;"><i class="fa-solid fa-trophy" style="color:#2563eb;"></i> ${r}</button>`;
-    }).join('');
-    wrap.innerHTML = `
-        <div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:80vh;display:flex;flex-direction:column;">
-            <div style="font-weight:900;font-size:16px;color:#1a202c;margin-bottom:4px;"><i class="fa-solid fa-tower-broadcast" style="color:#e53e3e;"></i> Prie kurio turnyro?</div>
-            <div style="font-size:12px;color:#718096;margin-bottom:14px;">Pasirinkite turnyrą — transliacija prie jo prisikabins automatiškai.</div>
-            <div style="flex:1;overflow-y:auto;margin-bottom:6px;">${items}</div>
-            <button onclick="rtcChooseTournament(null)" style="width:100%;padding:12px;margin-bottom:6px;border:none;border-radius:10px;background:#edf2f7;color:#1a202c;font-size:13px;font-weight:bold;cursor:pointer;">Be turnyro (bendra transliacija)</button>
-            <button onclick="document.getElementById('rtc-tpick-modal').remove()" style="width:100%;padding:10px;border:none;background:transparent;color:#718096;font-size:13px;font-weight:bold;cursor:pointer;">Atšaukti</button>
-        </div>`;
-    document.body.appendChild(wrap);
 }
 
 function rtcChooseTournament(room) {
