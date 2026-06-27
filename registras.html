@@ -137,6 +137,10 @@
                     <input type="text" id="editAdminTournamentTime" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
                 </div>
             </div>
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Rezultatų kambario ID <span style="color:#a0aec0;font-weight:400;">(generatoriaus kambarys)</span></label>
+                <input type="text" id="editAdminTournamentRoom" placeholder="pvz. VILNIUS0626" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none; text-transform: uppercase;">
+            </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <button type="button" class="modal-btn secondary" style="padding: 10px 18px; margin:0;" onclick="closeAdminTournamentModal()">Atšaukti</button>
                 <button type="button" class="modal-btn primary" style="padding: 10px 22px; margin:0; background: #48bb78;" onclick="saveAdminTournamentChanges()">Atnaujinti</button>
@@ -374,6 +378,11 @@
                                     <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Vietų sk.</label>
                                         <input type="number" id="newMax" value="16" min="2" max="32" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
                                     </div>
+                                </div>
+
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Rezultatų kambario ID <span style="color:#a0aec0;font-weight:400;">(nebūtina, galima pridėti vėliau)</span></label>
+                                    <input type="text" id="newRoom" placeholder="pvz. VILNIUS0626" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; text-transform: uppercase;">
                                 </div>
 
                                 <div style="margin-bottom: 15px;">
