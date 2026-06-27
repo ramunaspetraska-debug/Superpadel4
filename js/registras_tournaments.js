@@ -228,7 +228,7 @@ function renderTournaments() {
             statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openOfficialResults(${t.id});" style="cursor:pointer;"><i class="fa-solid fa-list-ol"></i> Rezultatai</button>`; 
         } else if (t.timeState === 'live') { 
             timeStateBadge = `<div class="status-badge-time badge-live"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> VYKSTA DABAR</div>`; 
-            statusHTML = `<div class="status-indicator" style="color: var(--status-red);"><i class="fa-solid fa-tower-broadcast"></i> Tiesiogiai</div><button type="button" class="watch-badge" onclick="openLiveModal(event)"><i class="fa-solid fa-play"></i> Stebėti</button>`; 
+            statusHTML = `<div class="status-indicator" style="color: var(--status-red);"><i class="fa-solid fa-tower-broadcast"></i> Tiesiogiai</div><button type="button" class="watch-badge" onclick="event.stopPropagation(); watchTournamentLive(${t.id});"><i class="fa-solid fa-play"></i> Stebėti</button>`; 
         } else { 
             if (t.status === 'open') { 
                 statusHTML = `<div class="status-indicator status-open"><i class="fa-regular fa-circle-check"></i> Laisva (Registruotis)</div>`; 
@@ -386,7 +386,82 @@ function linkRoomAndShow(id) {
     openOfficialResults(id);
 }
 
-function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { openOfficialResults(id); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
+// ---------- BENDRAS OFICIALIŲ TURNYRŲ PASIRINKIMAS TRANSLIACIJAI ----------
+// Naudoja ir WebRTC telefono transliacija, ir embed „Pridėti transliaciją".
+let _streamPickCb = null;
+
+function pickOfficialTournamentForStream(opts) {
+    opts = opts || {};
+    _streamPickCb = opts.onPick || null;
+    const allowNone = opts.allowNone !== false;
+    const title = opts.title || 'Pasirinkite turnyrą';
+    const subtitle = opts.subtitle || 'Pasirinkite turnyrą — viskas prisikabins automatiškai.';
+
+    const list = (typeof tournaments !== 'undefined' ? tournaments : [])
+        .filter(t => t.room && t.timeState !== 'past')
+        .sort((a, b) => {
+            const rank = x => (x.timeState === 'live' ? 0 : 1);
+            if (rank(a) !== rank(b)) return rank(a) - rank(b);
+            return String(a.date).localeCompare(String(b.date)) || String(a.time || '').localeCompare(String(b.time || ''));
+        });
+    _renderStreamTournamentPicker(list, title, subtitle, allowNone);
+}
+
+function _renderStreamTournamentPicker(list, title, subtitle, allowNone) {
+    document.getElementById('stream-tpick-modal')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'stream-tpick-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:10010;display:flex;align-items:center;justify-content:center;padding:20px;';
+    const items = list.length ? list.map(t => {
+        const liveDot = t.timeState === 'live' ? '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ef4444;margin-right:6px;vertical-align:middle;"></span>' : '';
+        return `<button type="button" onclick="streamTournamentChosen('${esc(String(t.id))}')" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-bottom:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8f9fb;color:#1a202c;cursor:pointer;text-align:left;">
+            <i class="fa-solid fa-trophy" style="color:#2563eb;font-size:16px;flex-shrink:0;"></i>
+            <span style="flex:1;min-width:0;">
+                <span style="display:block;font-weight:bold;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${liveDot}${esc(t.format)}</span>
+                <span style="display:block;font-size:11px;color:#718096;">${esc(t.date)}${t.time ? ' · ' + esc(t.time) : ''} · kamb. ${esc(String(t.room))}</span>
+            </span>
+        </button>`;
+    }).join('') : '<div style="font-size:13px;color:#718096;text-align:center;padding:14px 0;">Nėra aktualių turnyrų su kambariu.</div>';
+    wrap.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:80vh;display:flex;flex-direction:column;">
+            <div style="font-weight:900;font-size:16px;color:#1a202c;margin-bottom:4px;">${title}</div>
+            <div style="font-size:12px;color:#718096;margin-bottom:14px;">${subtitle}</div>
+            <div style="flex:1;overflow-y:auto;margin-bottom:6px;">${items}</div>
+            ${allowNone ? '<button type="button" onclick="streamTournamentChosen(null)" style="width:100%;padding:12px;margin-bottom:6px;border:none;border-radius:10px;background:#edf2f7;color:#1a202c;font-size:13px;font-weight:bold;cursor:pointer;">Be turnyro (bendra)</button>' : ''}
+            <button type="button" onclick="_streamPickCancel()" style="width:100%;padding:10px;border:none;background:transparent;color:#718096;font-size:13px;font-weight:bold;cursor:pointer;">Atšaukti</button>
+        </div>`;
+    document.body.appendChild(wrap);
+}
+
+function streamTournamentChosen(idOrNull) {
+    document.getElementById('stream-tpick-modal')?.remove();
+    const cb = _streamPickCb;
+    _streamPickCb = null;
+    if (!cb) return;
+    if (idOrNull === null || idOrNull === 'null') { cb(null, null); return; }
+    const t = (typeof tournaments !== 'undefined' ? tournaments : []).find(x => String(x.id) === String(idOrNull));
+    cb(t ? String(t.room) : null, t || null);
+}
+
+function _streamPickCancel() {
+    document.getElementById('stream-tpick-modal')?.remove();
+    _streamPickCb = null;
+}
+
+// „Stebėti" gyvai vykstantį turnyrą — atidaro LIVE langą, prisijungia prie to turnyro
+// kambario ir rodo BŪTENT to turnyro transliaciją (filtruotą).
+function watchTournamentLive(id) {
+    const t = (typeof tournaments !== 'undefined' ? tournaments : []).find(x => String(x.id) === String(id));
+    const room = (t && t.room) ? String(t.room) : null;
+    if (typeof openLiveModal === 'function') openLiveModal({ stopPropagation: () => {} }, room);
+    if (room) {
+        const inp = document.getElementById('liveRoomInput');
+        if (inp) inp.value = room;
+        if (typeof connectLiveRoom === 'function') connectLiveRoom();
+    }
+}
+
+function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { openOfficialResults(id); return; } if (t.timeState === 'live') { watchTournamentLive(id); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; let pFilter = document.getElementById('filterPlayer'); if(pFilter) pFilter.value = ''; renderTournaments(); }
