@@ -225,7 +225,7 @@ function renderTournaments() {
         if (t.timeState === 'past') { 
             timeStateBadge = `<div class="status-badge-time badge-past">ĮVYKO</div>`; 
             cardClassModifier = 'card-past'; 
-            statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><div class="edit-badge"><i class="fa-solid fa-list-ol"></i> Rezultatai</div>`; 
+            statusHTML = `<div class="status-indicator" style="color: var(--text-grey);"><i class="fa-solid fa-flag-checkered"></i> Turnyras baigėsi</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openTournamentResults();" style="cursor:pointer;"><i class="fa-solid fa-list-ol"></i> Rezultatai</button>`; 
         } else if (t.timeState === 'live') { 
             timeStateBadge = `<div class="status-badge-time badge-live"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> VYKSTA DABAR</div>`; 
             statusHTML = `<div class="status-indicator" style="color: var(--status-red);"><i class="fa-solid fa-tower-broadcast"></i> Tiesiogiai</div><button type="button" class="watch-badge" onclick="openLiveModal(event)"><i class="fa-solid fa-play"></i> Stebėti</button>`; 
@@ -257,7 +257,57 @@ function renderTournaments() {
     });
 }
 
-function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { showToast("Šis turnyras jau baigėsi."); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
+// ---------- TURNYRO REZULTATAI ----------
+const RESULTS_ROOMS_KEY = 'padelio_pro_master_rooms';
+
+function openTournamentResults() {
+    if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas."); return; }
+    firebase.database().ref(RESULTS_ROOMS_KEY).once('value').then(snap => {
+        const reg = snap.val() || {};
+        const now = Date.now();
+        // neseniai vykę turnyrai (per 7 d.), naujausi viršuje
+        const rooms = Object.keys(reg)
+            .filter(r => (now - (reg[r] || 0)) < 7 * 24 * 60 * 60 * 1000)
+            .sort((a, b) => (reg[b] || 0) - (reg[a] || 0));
+        renderTournamentResultsPicker(rooms);
+    }).catch(() => renderTournamentResultsPicker([]));
+}
+
+function renderTournamentResultsPicker(rooms) {
+    document.getElementById('tresults-modal')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'tresults-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    const items = rooms.length
+        ? rooms.map(r => {
+            const safe = String(r).replace(/'/g, "\\'");
+            return `<button type="button" onclick="openResultsForRoom('${safe}')" style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;margin-bottom:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8f9fb;color:#1a202c;font-size:14px;font-weight:bold;cursor:pointer;text-align:left;"><i class="fa-solid fa-trophy" style="color:#d69e2e;"></i> ${r}</button>`;
+        }).join('')
+        : '<div style="font-size:13px;color:#718096;text-align:center;padding:12px 0;">Nėra neseniai vykusių turnyrų debesyje.</div>';
+    wrap.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:20px;width:100%;max-width:380px;max-height:80vh;display:flex;flex-direction:column;">
+            <div style="font-weight:900;font-size:16px;color:#1a202c;margin-bottom:4px;"><i class="fa-solid fa-list-ol" style="color:#2563eb;"></i> Turnyro rezultatai</div>
+            <div style="font-size:12px;color:#718096;margin-bottom:14px;">Pasirinkite turnyrą (kambarį) — parodysime galutinę lentelę.</div>
+            <div style="flex:1;overflow-y:auto;margin-bottom:8px;">${items}</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input type="text" id="tresultsManualRoom" placeholder="arba kambario ID" style="flex:1;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:bold;outline:none;color:#1a202c;">
+                <button type="button" onclick="openResultsForRoom(document.getElementById('tresultsManualRoom').value.trim())" style="padding:10px 16px;border:none;border-radius:8px;background:#2563eb;color:white;font-size:13px;font-weight:bold;cursor:pointer;">Rodyti</button>
+            </div>
+            <button type="button" onclick="document.getElementById('tresults-modal').remove()" style="width:100%;padding:10px;border:none;background:transparent;color:#718096;font-size:13px;font-weight:bold;cursor:pointer;">Uždaryti</button>
+        </div>`;
+    document.body.appendChild(wrap);
+}
+
+function openResultsForRoom(room) {
+    if (!room) { showToast("Pasirinkite turnyrą arba įveskite kambario ID."); return; }
+    document.getElementById('tresults-modal')?.remove();
+    const inp = document.getElementById('liveRoomInput');
+    if (inp) inp.value = room;
+    if (typeof openLiveModal === 'function') openLiveModal({ stopPropagation: () => {} });
+    if (typeof connectLiveRoom === 'function') connectLiveRoom();
+}
+
+function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { openTournamentResults(); return; } if (t.timeState === 'live') { openLiveModal({stopPropagation: () => {}}); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; let pFilter = document.getElementById('filterPlayer'); if(pFilter) pFilter.value = ''; renderTournaments(); }
