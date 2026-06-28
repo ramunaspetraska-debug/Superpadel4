@@ -158,6 +158,7 @@ function initTournamentsDB() {
         
         renderTournaments();
         
+        notifCheckReminders();
         const profilePage = document.getElementById('page-profile');
         if (profilePage && profilePage.classList.contains('active')) {
             // Debounce: jei listener suveikia dažnai, neperpaišom profilio kas kartą
@@ -461,6 +462,118 @@ function watchTournamentLive(id) {
     }
 }
 
+// ========== PRANEŠIMŲ SISTEMA (varpelis) ==========
+// Saugoma Firebase: padelio_notifications/{currentUser.id}/{type}_{tId}
+let _notifRef = null, _notifPath = null, _notifData = {};
+
+function notifInit() {
+    if (typeof firebase === 'undefined') return;
+    const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.id) ? currentUser.id : null;
+    const path = uid ? ('padelio_notifications/' + uid) : null;
+    if (path === _notifPath) return; // jau klausom to paties vartotojo
+    if (_notifRef) { try { _notifRef.off(); } catch (e) {} }
+    _notifRef = null; _notifPath = path; _notifData = {};
+    if (!path) { notifRender(); return; }
+    _notifRef = firebase.database().ref(path);
+    _notifRef.on('value', snap => { _notifData = snap.val() || {}; notifRender(); });
+}
+
+function notifAdd(type, tId, title, body, once) {
+    if (typeof firebase === 'undefined') return;
+    const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.id) ? currentUser.id : null;
+    if (!uid) return;
+    const nid = (tId !== null && tId !== undefined) ? (type + '_' + tId) : (type + '_' + Date.now());
+    const ref = firebase.database().ref('padelio_notifications/' + uid + '/' + nid);
+    const payload = { type: type, title: title, body: body, tId: (tId !== null && tId !== undefined) ? tId : null, ts: Date.now(), read: false };
+    if (once) {
+        ref.once('value').then(snap => { if (!snap.exists()) ref.set(payload); }).catch(() => {});
+    } else {
+        ref.set(payload);
+    }
+}
+
+function notifRender() {
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+    const unread = Object.keys(_notifData).filter(k => _notifData[k] && !_notifData[k].read).length;
+    if (unread > 0) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.classList.add('show'); }
+    else { badge.classList.remove('show'); }
+}
+
+function notifMarkAllRead() {
+    if (!_notifPath || typeof firebase === 'undefined') return;
+    const updates = {};
+    Object.keys(_notifData).forEach(k => { if (_notifData[k] && !_notifData[k].read) updates[k + '/read'] = true; });
+    if (Object.keys(updates).length) firebase.database().ref(_notifPath).update(updates);
+}
+
+function notifClearAll() {
+    if (!_notifPath || typeof firebase === 'undefined') return;
+    firebase.database().ref(_notifPath).remove();
+    _notifData = {};
+    notifRender();
+    document.getElementById('notif-panel')?.remove();
+}
+
+function notifTimeAgo(ts) {
+    if (!ts) return '';
+    const m = Math.floor((Date.now() - ts) / 60000);
+    if (m < 1) return 'ką tik';
+    if (m < 60) return 'prieš ' + m + ' min';
+    const h = Math.floor(m / 60);
+    if (h < 24) return 'prieš ' + h + ' val.';
+    return 'prieš ' + Math.floor(h / 24) + ' d.';
+}
+
+function userIsRegistered(t) {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.name || !t || !t.players) return false;
+    return t.players.some(p => String(p).split('/').some(part => part.trim().split('|')[0].trim() === currentUser.name));
+}
+
+function notifCheckReminders() {
+    if (typeof currentUser === 'undefined' || !currentUser || typeof tournaments === 'undefined') return;
+    const now = new Date();
+    const today = String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    tournaments.forEach(t => {
+        if (!userIsRegistered(t)) return;
+        if (t.date !== today) return;
+        if (typeof getTimeState === 'function' && getTimeState(t.date, t.time) === 'past') return;
+        notifAdd('reminder', t.id, 'Turnyro priminimas', 'Šiandien ' + t.time + ' — ' + t.format + '. Nepamiršk!', true);
+    });
+}
+
+function openNotifications() {
+    notifMarkAllRead();
+    const items = Object.keys(_notifData).map(k => Object.assign({ _id: k }, _notifData[k])).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    document.getElementById('notif-panel')?.remove();
+    const back = document.createElement('div');
+    back.id = 'notif-panel';
+    back.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,0.25);';
+    back.addEventListener('click', e => { if (e.target === back) back.remove(); });
+    const meta = { reg: { icon: 'fa-circle-check', col: '#00b85c' }, spot: { icon: 'fa-user-plus', col: '#e53e3e' }, reminder: { icon: 'fa-clock', col: '#2563eb' } };
+    const list = items.length ? items.map(n => {
+        const m = meta[n.type] || { icon: 'fa-bell', col: '#718096' };
+        return '<div style="display:flex;gap:12px;padding:12px 14px;border-bottom:1px solid #f1f5f9;align-items:flex-start;background:' + (n.read ? '#fff' : '#f0f7ff') + ';">' +
+            '<div style="width:34px;height:34px;border-radius:50%;background:' + m.col + '1a;color:' + m.col + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid ' + m.icon + '"></i></div>' +
+            '<div style="flex:1;min-width:0;">' +
+                '<div style="font-weight:bold;font-size:13px;color:#1a202c;">' + esc(n.title || '') + '</div>' +
+                '<div style="font-size:12px;color:#4a5568;margin-top:2px;">' + esc(n.body || '') + '</div>' +
+                '<div style="font-size:10px;color:#a0aec0;margin-top:4px;">' + notifTimeAgo(n.ts) + '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('') : '<div style="text-align:center;color:#a0aec0;font-size:13px;padding:44px 16px;"><i class="fa-regular fa-bell-slash" style="font-size:26px;display:block;margin-bottom:10px;"></i>Nėra pranešimų</div>';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'position:fixed;top:62px;right:10px;width:min(360px,92vw);max-height:72vh;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.2);display:flex;flex-direction:column;overflow:hidden;';
+    panel.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #edf2f7;flex-shrink:0;">' +
+            '<div style="font-weight:900;font-size:15px;color:#1a202c;"><i class="fa-regular fa-bell"></i> Pranešimai</div>' +
+            (items.length ? '<button type="button" onclick="notifClearAll()" style="background:none;border:none;color:#718096;font-size:12px;font-weight:bold;cursor:pointer;">Išvalyti</button>' : '') +
+        '</div>' +
+        '<div style="overflow-y:auto;">' + list + '</div>';
+    back.appendChild(panel);
+    document.body.appendChild(back);
+}
+
 function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (t.timeState === 'past') { openOfficialResults(id); return; } if (t.timeState === 'live') { watchTournamentLive(id); return; } if (t.status === 'open') { openRegisterModal(id); } else if (t.status === 'registered') { openCancelModal(id); } else if (t.status === 'waitlist') { openWaitlistCancelModal(id); } else if (t.status === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else if (t.status === 'full' && !t.isDemoWaitlist) { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
@@ -615,6 +728,7 @@ function confirmRegistration(id, withPartner) {
         saveData();
         closeModal();
         showToast("Jūs sėkmingai užregistruoti!");
+        notifAdd('reg', id, 'Registracija patvirtinta', t.format + ' · ' + t.date + ' ' + t.time, false);
         renderUserProfile();
     }
 }
@@ -756,6 +870,7 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
     saveData();
     closeModal();
     showToast(`Sėkmingai užregistruota pora: ${player1} ir ${player2}!`);
+    notifAdd('reg', tournament.id, 'Registracija patvirtinta (pora)', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);
     renderUserProfile();
 }
 
@@ -779,8 +894,6 @@ function confirmCancel(id) {
     t.status = 'open';
     saveData(); 
     closeModal(); 
-    let notifBadge = document.getElementById('notifBadge');
-    if(notifBadge) notifBadge.style.display = 'none'; 
     showToast("Registracija sėkmingai atšauktą."); 
     renderUserProfile();
 }
@@ -792,7 +905,7 @@ let currentPushId = null;
 function simulateSpotOpening(e, id) { 
     e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); 
     let pushFormat = document.getElementById('pushFormatName'); if(pushFormat) pushFormat.innerText = `${t.format}`;
-    let notif = document.getElementById('notifBadge'); if(notif) notif.style.display = 'flex'; 
+    notifAdd('spot', id, 'Atsilaisvino vieta!', t.format + ' · ' + t.date + ' ' + t.time + ' — vieta jūsų!', false); 
     let pushContainer = document.getElementById('pushNotification'); if(pushContainer) pushContainer.style.top = '20px'; 
     setTimeout(() => { if(pushContainer) pushContainer.style.top = '-100px'; }, 8000); 
 }
