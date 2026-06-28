@@ -254,6 +254,7 @@ function refreshCurrentUserFromFirebase() {
 }
 
 function renderUserProfile() {
+    if (typeof notifInit === 'function') notifInit();
     const container = document.getElementById('page-profile');
     if (!container) return;
 
