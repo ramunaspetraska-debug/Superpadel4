@@ -462,6 +462,77 @@ function watchTournamentLive(id) {
     }
 }
 
+// ========== PUSH PRANEŠIMAI (telefone, kai programa išjungta) ==========
+// ⚠️ UŽPILDYK iš Firebase konsolės (Project settings):
+//   messagingSenderId + appId → General → Your apps (Web app config)  (tas pats ir registras_auth.js, ir firebase-messaging-sw.js)
+//   vapidKey → Cloud Messaging → Web Push certificates → "Key pair"
+const PUSH_CFG = {
+    vapidKey: "PASTE_VAPID_KEY"
+};
+
+let _pushMsg = null, _pushInited = false;
+
+function pushConfigReady() {
+    return String(PUSH_CFG.vapidKey).indexOf('PASTE') === -1
+        && typeof firebase !== 'undefined'
+        && firebase.messaging
+        && typeof firebase.messaging.isSupported === 'function'
+        && firebase.messaging.isSupported()
+        && firebase.app && firebase.app().options && !!firebase.app().options.messagingSenderId;
+}
+
+function pushInit() {
+    if (_pushInited || !pushConfigReady()) return;
+    try { _pushMsg = firebase.messaging(); } catch (e) { return; }
+    _pushInited = true;
+    _pushMsg.onMessage(payload => {
+        const n = (payload && payload.notification) || {};
+        if (typeof showToast === 'function') showToast((n.title ? n.title + ': ' : '') + (n.body || 'Naujas pranešimas'));
+    });
+}
+
+function requestPushPermission() {
+    if (!('Notification' in window)) { showToast("Šis įrenginys nepalaiko pranešimų."); return; }
+    if (!pushConfigReady()) { showToast("Push dar nesukonfigūruotas."); return; }
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) { showToast("Pirmiausia prisijunkite."); return; }
+    Notification.requestPermission().then(perm => {
+        if (perm !== 'granted') { showToast("Pranešimai neįjungti."); return; }
+        if (!_pushMsg) { try { _pushMsg = firebase.messaging(); _pushInited = true; } catch (e) { showToast("Klaida įjungiant."); return; } }
+        _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey }).then(token => {
+            if (!token) { showToast("Nepavyko gauti rakto."); return; }
+            const key = _pushHash(token);
+            firebase.database().ref('padelio_push_tokens/' + currentUser.id + '/' + key)
+                .set({ token: token, ts: Date.now(), ua: (navigator.userAgent || '').slice(0, 120) });
+            showToast("✅ Telefono pranešimai įjungti!");
+            document.getElementById('notif-panel')?.remove();
+        }).catch(e => { showToast("Klaida: " + (e && e.message ? e.message : e)); });
+    });
+}
+
+function _pushHash(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; } return 'k' + Math.abs(h); }
+
+function pushBannerHTML() {
+    if (!pushConfigReady()) return '';
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') return '';
+    return '<div style="padding:12px 14px;background:#f0f7ff;border-bottom:1px solid #dbeafe;">' +
+        '<div style="font-size:12px;color:#1e40af;font-weight:bold;margin-bottom:8px;"><i class="fa-solid fa-mobile-screen"></i> Gauk svarbiausius priminimus į telefoną, net išjungus programą.</div>' +
+        '<button type="button" onclick="requestPushPermission()" style="width:100%;padding:10px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:bold;cursor:pointer;">Įjungti telefono pranešimus</button>' +
+        '</div>';
+}
+
+// ----- Vartotojo turnyrų indeksas (kad serveris žinotų, kam siųsti push) -----
+function setUserTournament(t, status) {
+    if (typeof firebase === 'undefined' || typeof currentUser === 'undefined' || !currentUser || !currentUser.id || !t) return;
+    firebase.database().ref('padelio_user_tournaments/' + currentUser.id + '/' + t.id).set({
+        status: status, name: currentUser.name || '', date: t.date || '', time: t.time || '', format: t.format || '', ts: Date.now()
+    });
+}
+function clearUserTournament(tId) {
+    if (typeof firebase === 'undefined' || typeof currentUser === 'undefined' || !currentUser || !currentUser.id || tId == null) return;
+    firebase.database().ref('padelio_user_tournaments/' + currentUser.id + '/' + tId).remove();
+}
+
+
 // ========== PRANEŠIMŲ SISTEMA (varpelis) ==========
 // Saugoma Firebase: padelio_notifications/{currentUser.id}/{type}_{tId}
 let _notifRef = null, _notifPath = null, _notifData = {};
@@ -569,6 +640,7 @@ function openNotifications() {
             '<div style="font-weight:900;font-size:15px;color:#1a202c;"><i class="fa-regular fa-bell"></i> Pranešimai</div>' +
             (items.length ? '<button type="button" onclick="notifClearAll()" style="background:none;border:none;color:#718096;font-size:12px;font-weight:bold;cursor:pointer;">Išvalyti</button>' : '') +
         '</div>' +
+        pushBannerHTML() +
         '<div style="overflow-y:auto;">' + list + '</div>';
     back.appendChild(panel);
     document.body.appendChild(back);
@@ -729,6 +801,7 @@ function confirmRegistration(id, withPartner) {
         closeModal();
         showToast("Jūs sėkmingai užregistruoti!");
         notifAdd('reg', id, 'Registracija patvirtinta', t.format + ' · ' + t.date + ' ' + t.time, false);
+        setUserTournament(t, 'registered');
         renderUserProfile();
     }
 }
@@ -871,11 +944,12 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
     closeModal();
     showToast(`Sėkmingai užregistruota pora: ${player1} ir ${player2}!`);
     notifAdd('reg', tournament.id, 'Registracija patvirtinta (pora)', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);
+    setUserTournament(tournament, 'registered');
     renderUserProfile();
 }
 
 function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra. Stoti į eilę?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
-function confirmWaitlist(id) { let t = tournaments.find(x => x.id === id); t.status = 'waitlist'; t.waitlistCount += 1; saveData(); closeModal(); showToast("Pridėta į rezervą."); }
+function confirmWaitlist(id) { let t = tournaments.find(x => x.id === id); t.status = 'waitlist'; t.waitlistCount += 1; saveData(); setUserTournament(t, 'waitlist'); closeModal(); showToast("Pridėta į rezervą."); }
 function openCancelModal(id) { modalTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--status-red);"></i> Atšaukti Dalyvavimą`; modalBody.innerHTML = `Ar tikrai norite atšaukti savo vietą?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmCancel(${id})">Taip, atšaukti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
 
 function confirmCancel(id) { 
@@ -894,18 +968,18 @@ function confirmCancel(id) {
     t.status = 'open';
     saveData(); 
     closeModal(); 
-    showToast("Registracija sėkmingai atšauktą."); 
+    clearUserTournament(id); showToast("Registracija sėkmingai atšauktą."); 
     renderUserProfile();
 }
 
 function openWaitlistCancelModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `Palikti rezervą?`; modalBody.innerHTML = `Išeiti iš eilės?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmWaitlistCancel(${id})">Išeiti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Pasilikti</button>`; modal.classList.add('show'); }
-function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); closeModal(); showToast("Išbraukta iš rezervo."); }
+function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); t.status = 'full'; t.waitlistCount -= 1; saveData(); clearUserTournament(id); closeModal(); showToast("Išbraukta iš rezervo."); }
 
 let currentPushId = null; 
 function simulateSpotOpening(e, id) { 
     e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); 
     let pushFormat = document.getElementById('pushFormatName'); if(pushFormat) pushFormat.innerText = `${t.format}`;
-    notifAdd('spot', id, 'Atsilaisvino vieta!', t.format + ' · ' + t.date + ' ' + t.time + ' — vieta jūsų!', false); 
+    notifAdd('spot', id, 'Atsilaisvino vieta!', t.format + ' · ' + t.date + ' ' + t.time + ' — vieta jūsų!', false); setUserTournament(t, 'registered'); 
     let pushContainer = document.getElementById('pushNotification'); if(pushContainer) pushContainer.style.top = '20px'; 
     setTimeout(() => { if(pushContainer) pushContainer.style.top = '-100px'; }, 8000); 
 }
