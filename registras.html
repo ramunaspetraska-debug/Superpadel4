@@ -21,7 +21,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-    <link rel="stylesheet" href="/css/registras.css?v=9">
+    <link rel="stylesheet" href="/css/registras.css?v=10">
 </head>
 <body>
 
@@ -213,8 +213,7 @@
             <div class="logo" onclick="goToHome()"><span>SUPER</span>PADEL<span class="domain">.LT</span><span class="version-label" style="font-size: 9px; color: var(--text-grey); font-weight: normal; opacity: 0.4; margin-left: 6px; letter-spacing: 0;">v1.2.10</span></div>
             <div class="header-actions">
                 <div id="authBtn" onclick="openAuthModal()">Prisijungti</div>
-                <div class="bell-icon" onclick="showToast('Neturite naujų pranešimų')"><i class="fa-regular fa-bell"></i><div id="notifBadge" class="notification-badge">1</div></div>
-                <span onclick="promptAdmin()" style="margin-left: 10px; cursor: pointer; color: var(--text-grey);"><i class="fa-solid fa-lock"></i></span>
+                <button type="button" class="admin-lock-btn" onclick="promptAdmin()" title="Administratorius" aria-label="Administratorius"><i class="fa-solid fa-lock"></i></button>
             </div>
         </div>
 
