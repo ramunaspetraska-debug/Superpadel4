@@ -393,6 +393,8 @@ window.onload = () => {
     initDates(); 
     initTournamentsDB(); 
     updateAuthUI(); 
+    if (typeof notifInit === 'function') notifInit(); 
+    if (typeof notifCheckReminders === 'function') setTimeout(notifCheckReminders, 1500); 
     if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
 
     // QR srautas: registras?room=KAMBARYS — iškart atidarome prisijungimą prie kambario
