@@ -19,6 +19,10 @@ body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-
 .notification-badge { position: absolute; top: -4px; right: -4px; background: var(--status-red); color: white; font-size: 10px; font-weight: bold; width: 14px; height: 14px; border-radius: 50%; display: none; justify-content: center; align-items: center; }
 .admin-lock-btn { background: none; border: none; color: var(--text-grey); font-size: 18px; cursor: pointer; padding: 8px 10px; margin: -4px -4px -4px 0; transition: 0.2s; line-height: 1; display: flex; align-items: center; }
 .admin-lock-btn:active { transform: scale(0.9); }
+.bell-btn { position: relative; background: none; border: none; color: var(--text-grey); font-size: 18px; cursor: pointer; padding: 8px 10px; margin: -4px 0; transition: 0.2s; display: flex; align-items: center; }
+.bell-btn:active { transform: scale(0.9); }
+.notif-badge { position: absolute; top: 0; right: 2px; min-width: 16px; height: 16px; padding: 0 4px; background: var(--status-red); color: #fff; font-size: 10px; font-weight: bold; border-radius: 8px; display: none; align-items: center; justify-content: center; line-height: 1; box-sizing: border-box; }
+.notif-badge.show { display: flex; }
 
 .page-view { display: none; animation: slideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); width: 100%; }
 .page-view.active { display: block; }
