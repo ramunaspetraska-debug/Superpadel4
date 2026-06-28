@@ -394,6 +394,7 @@ window.onload = () => {
     initTournamentsDB(); 
     updateAuthUI(); 
     if (typeof notifInit === 'function') notifInit(); 
+    if (typeof pushInit === 'function') pushInit(); 
     if (typeof notifCheckReminders === 'function') setTimeout(notifCheckReminders, 1500); 
     if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
 
