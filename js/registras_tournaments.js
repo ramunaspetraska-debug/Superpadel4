@@ -895,4 +895,4 @@ function switchTab(pageId, element) {
         if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
     }
 }
-function goToHome() { const calendarBtn = document.querySelector('[data-index="1"]'); if(calendarBtn) switchTab('page-calendar', calendarBtn); }
+function goToHome() { const cal = document.getElementById('page-calendar'); if (cal && cal.classList.contains('active')) return; const calendarBtn = document.querySelector('[data-index="1"]'); if(calendarBtn) switchTab('page-calendar', calendarBtn); }
