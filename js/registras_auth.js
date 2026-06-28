@@ -15,7 +15,9 @@ const firebaseConfig = {
     authDomain: "padelio-turnyrai.firebaseapp.com", 
     databaseURL: "https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app", 
     projectId: "padelio-turnyrai",
-    storageBucket: "padelio-turnyrai.firebasestorage.app"
+    storageBucket: "padelio-turnyrai.firebasestorage.app",
+    messagingSenderId: "PASTE_SENDER_ID",
+    appId: "PASTE_APP_ID"
 };
 if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
 
