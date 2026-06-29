@@ -980,10 +980,10 @@ function simulateSpotOpening(e, id) {
     e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); 
     let pushFormat = document.getElementById('pushFormatName'); if(pushFormat) pushFormat.innerText = `${t.format}`;
     notifAdd('spot', id, 'Atsilaisvino vieta!', t.format + ' · ' + t.date + ' ' + t.time + ' — vieta jūsų!', false); setUserTournament(t, 'registered'); 
-    let pushContainer = document.getElementById('pushNotification'); if(pushContainer) pushContainer.style.top = '20px'; 
-    setTimeout(() => { if(pushContainer) pushContainer.style.top = '-100px'; }, 8000); 
+    let pushContainer = document.getElementById('pushNotification'); if(pushContainer) { pushContainer.style.top = '20px'; pushContainer.style.pointerEvents = 'auto'; } 
+    setTimeout(() => { if(pushContainer) { pushContainer.style.top = '-260px'; pushContainer.style.pointerEvents = 'none'; } }, 8000); 
 }
-function closePush() { let p = document.getElementById('pushNotification'); if(p) p.style.top = '-100px'; } 
+function closePush() { let p = document.getElementById('pushNotification'); if(p) { p.style.top = '-260px'; p.style.pointerEvents = 'none'; } } 
 function manageReservation() { closePush(); openCancelModal(currentPushId); } 
 function showToast(text) { const toast = document.getElementById('toastMsg'); if(!toast) return; toast.innerText = text; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 3000); }
 
