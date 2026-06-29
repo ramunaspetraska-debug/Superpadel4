@@ -8,8 +8,8 @@ firebase.initializeApp({
     authDomain: "padelio-turnyrai.firebaseapp.com",
     projectId: "padelio-turnyrai",
     storageBucket: "padelio-turnyrai.firebasestorage.app",
-    messagingSenderId: "PASTE_SENDER_ID",
-    appId: "PASTE_APP_ID"
+    messagingSenderId: "496685297949",
+    appId: "1:496685297949:web:f851696c783185f2de71f4"
 });
 
 const messaging = firebase.messaging();
