@@ -467,7 +467,7 @@ function watchTournamentLive(id) {
 //   messagingSenderId + appId → General → Your apps (Web app config)  (tas pats ir registras_auth.js, ir firebase-messaging-sw.js)
 //   vapidKey → Cloud Messaging → Web Push certificates → "Key pair"
 const PUSH_CFG = {
-    vapidKey: "PASTE_VAPID_KEY"
+    vapidKey: "BN1uN2xhquH_gAFZaGsgTXnaLA8pX9QQD580A3liJARO8F6r7US_PRZHbWIe5nEu7ObMdWnlNIlj2l8Z5jDgN2c"
 };
 
 let _pushMsg = null, _pushInited = false;
