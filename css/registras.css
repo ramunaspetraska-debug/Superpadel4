@@ -55,6 +55,7 @@ body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-
 
 .schedule-card.level-d { border-left-color: var(--lvl-d); }
 .schedule-card.level-d-c { border-left-color: var(--lvl-d-c); }
+.schedule-card.level-c2 { border-left-color: var(--lvl-c2); }
 .schedule-card.level-c { border-left-color: var(--lvl-c); }
 .schedule-card.level-b { border-left-color: var(--lvl-b); }
 .schedule-card.level-a { border-left-color: var(--lvl-a); }
@@ -72,6 +73,7 @@ body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-
 .level-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; width: max-content; }
 .level-d .level-badge { background-color: var(--lvl-d); }
 .level-d-c .level-badge { background-color: var(--lvl-d-c); }
+.level-c2 .level-badge { background-color: var(--lvl-c2); }
 .level-c .level-badge { background-color: var(--lvl-c); }
 .level-b .level-badge { background-color: var(--lvl-b); }
 .level-a .level-badge { background-color: var(--lvl-a); }
