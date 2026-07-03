@@ -58,18 +58,28 @@ function parseTimeStr(timeStr) {
 // Atomiškai rezervuoja unikalius kambarių ID iš monotoninio skaitiklio.
 // Skaitiklis TIK auga — net ištrynus kambarį, jo numeris niekada neatlaisvinamas → jokių dublių.
 async function reserveRoomIds(count) {
-    const seqRef = firebase.database().ref('padelio_room_seq');
     const ids = [];
-    let guard = 0;
-    while (ids.length < count && guard < 100) {
-        guard++;
-        const res = await seqRef.transaction(cur => (cur || 0) + 1);
-        if (!res.committed) continue;
-        const n = res.snapshot.val();
-        // Saugumo tinklas: jei toks numeris jau egzistuoja (pvz. rankinis kambarys) — praleidžiam, skaitiklis jau pažengė.
-        const snap = await firebase.database().ref(DB_KEY + '/' + n).once('value');
-        if (snap.exists()) continue;
-        ids.push(n);
+    try {
+        const seqRef = firebase.database().ref('padelio_room_seq');
+        let guard = 0;
+        while (ids.length < count && guard < 100) {
+            guard++;
+            const res = await seqRef.transaction(cur => (cur || 0) + 1);
+            if (!res.committed) continue;
+            const n = res.snapshot.val();
+            // Saugumo tinklas: jei toks numeris jau egzistuoja (pvz. rankinis kambarys) — praleidžiam, skaitiklis jau pažengė.
+            const snap = await firebase.database().ref(DB_KEY + '/' + n).once('value');
+            if (snap.exists()) continue;
+            ids.push(n);
+        }
+    } catch (err) {
+        console.error('reserveRoomIds klaida (naudojami atsarginiai ID):', err);
+    }
+    // Atsarginis kelias: jei skaitiklis neprieinamas — unikalūs ID iš laiko žymos.
+    // Turnyro kūrimas NIEKADA neužstringa dėl kambario numerio.
+    if (ids.length < count) {
+        const base = Number(String(Date.now()).slice(-8));
+        while (ids.length < count) ids.push(base + ids.length);
     }
     return ids;
 }
@@ -82,53 +92,67 @@ function openGeneratorRoom(room) {
 
 async function createTournament(e) {
     e.preventDefault();
-    const baseDateStr = document.getElementById('newDate').value;
-    const laikas = document.getElementById('newTime').value;
-    const repeatCount = parseInt(document.getElementById('newRepeat').value || 1);
+    const submitBtn = e.target ? e.target.querySelector('button[type="submit"]') : null;
+    const btnHTML = submitBtn ? submitBtn.innerHTML : '';
+    try {
+        const baseDateStr = document.getElementById('newDate').value;
+        const laikas = document.getElementById('newTime').value;
+        const repeatCount = parseInt(document.getElementById('newRepeat').value || 1);
 
-    const naujasLaikasObj = parseTimeStr(laikas);
-    const persidengiantysTurnyrai = tournaments.filter(t => {
-        if (t.date !== baseDateStr) return false;
-        const esamasLaikasObj = parseTimeStr(t.time);
-        if (!naujasLaikasObj || !esamasLaikasObj) return false;
-        return naujasLaikasObj.start < esamasLaikasObj.end && naujasLaikasObj.end > esamasLaikasObj.start;
-    });
+        if (!baseDateStr) { showToast("Pasirinkite datą."); return; }
+        if (!parseTimeStr(laikas)) { showToast("Neteisingas laiko formatas. Pvz.: 18:00 - 20:00"); return; }
 
-    if (persidengiantysTurnyrai.length > 0) {
-        const rastiTurnyrai = persidengiantysTurnyrai.map(t => `${t.format} (${t.time}, ${t.level} lygis)`).join('\n👉 ');
-        if (!confirm(`⚠️ ĮSPĖJIMAS: Šią dieną kerta kitus turnyrus:\n👉 ${rastiTurnyrai}\n\nTęsti turnyro kūrimą?`)) return;
+        const naujasLaikasObj = parseTimeStr(laikas);
+        const persidengiantysTurnyrai = tournaments.filter(t => {
+            if (t.date !== baseDateStr) return false;
+            const esamasLaikasObj = parseTimeStr(t.time);
+            if (!naujasLaikasObj || !esamasLaikasObj) return false;
+            return naujasLaikasObj.start < esamasLaikasObj.end && naujasLaikasObj.end > esamasLaikasObj.start;
+        });
+
+        if (persidengiantysTurnyrai.length > 0) {
+            const rastiTurnyrai = persidengiantysTurnyrai.map(t => `${t.format} (${t.time}, ${t.level} lygis)`).join('\n👉 ');
+            if (!confirm(`⚠️ ĮSPĖJIMAS: Šią dieną kerta kitus turnyrus:\n👉 ${rastiTurnyrai}\n\nTęsti turnyro kūrimą?`)) return;
+        }
+
+        if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas — bandykite vėliau."); return; }
+
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Kuriama...'; }
+
+        // Automatiškai priskiriam unikalius kambarių ID (po vieną kiekvienai kartojamai kopijai)
+        const roomIds = await reserveRoomIds(repeatCount);
+
+        const [month, day] = baseDateStr.split('-').map(Number);
+        const baseDate = new Date(new Date().getFullYear(), month - 1, day);
+
+        for (let i = 0; i < repeatCount; i++) {
+            let newDateObj = new Date(baseDate);
+            newDateObj.setDate(baseDate.getDate() + (i * 7));
+            let m = (newDateObj.getMonth() + 1).toString().padStart(2, '0');
+            let d = newDateObj.getDate().toString().padStart(2, '0');
+            let finalDateStr = `${m}-${d}`;
+
+            const newT = {
+                id: Date.now() + i, date: finalDateStr,
+                format: document.getElementById('newFormat').value,
+                category: document.getElementById('newCategory').value,
+                level: document.getElementById('newLevel').value,
+                time: laikas, registered: 0,
+                max: parseInt(document.getElementById('newMax').value),
+                status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
+            };
+            tournaments.push(newT);
+        }
+        const ok = await Promise.resolve(saveData());
+        if (ok === false) return; // saveData jau parodė klaidos pranešimą
+        showToast(`✅ Turnyrai sukurti! Kambariai: ${roomIds.join(', ')}`);
+        document.getElementById('adminForm').reset();
+    } catch (err) {
+        console.error('createTournament klaida:', err);
+        showToast('❌ Nepavyko sukurti turnyro: ' + (err && err.message ? err.message : err));
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = btnHTML; }
     }
-
-    if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas — bandykite vėliau."); return; }
-
-    // Automatiškai priskiriam unikalius kambarių ID (po vieną kiekvienai kartojamai kopijai)
-    const roomIds = await reserveRoomIds(repeatCount);
-    if (roomIds.length < repeatCount) { showToast("Nepavyko priskirti kambarių ID. Bandykite dar kartą."); return; }
-
-    const [month, day] = baseDateStr.split('-').map(Number);
-    const baseDate = new Date(new Date().getFullYear(), month - 1, day);
-
-    for (let i = 0; i < repeatCount; i++) {
-        let newDateObj = new Date(baseDate);
-        newDateObj.setDate(baseDate.getDate() + (i * 7));
-        let m = (newDateObj.getMonth() + 1).toString().padStart(2, '0');
-        let d = newDateObj.getDate().toString().padStart(2, '0');
-        let finalDateStr = `${m}-${d}`;
-
-        const newT = {
-            id: Date.now() + i, date: finalDateStr,
-            format: document.getElementById('newFormat').value,
-            category: document.getElementById('newCategory').value,
-            level: document.getElementById('newLevel').value,
-            time: laikas, registered: 0,
-            max: parseInt(document.getElementById('newMax').value),
-            status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
-        };
-        tournaments.push(newT);
-    }
-    saveData();
-    showToast(`Turnyrai sukurti! Kambariai: ${roomIds.join(', ')}`);
-    document.getElementById('adminForm').reset();
 }
 
 function renderAdminTournaments() {
@@ -149,7 +173,8 @@ function renderAdminTournaments() {
         if(t.level === 'A') levelColor = "color: #e53e3e;";
         else if(t.level === 'B-/B') levelColor = "color: #9f7aea;";
         else if(t.level === 'C/C+') levelColor = "color: #3182ce;";
-        else if(t.level === 'D-C') levelColor = "color: #06b6d4;";
+        else if(t.level === 'C-/C') levelColor = "color: #0ea5e9;";
+        else if(t.level === 'D/C-' || t.level === 'D-C') levelColor = "color: #06b6d4;";
         else if(t.level === 'D') levelColor = "color: #48bb78;";
 
         html += `<tr style="border-bottom: 1px solid #e2e8f0; transition: 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'">
@@ -358,7 +383,11 @@ function saveAdminPlayerChanges() {
     let updateData = { id: newId, phone: newId, name: name, gender: gender, rating: rating, tier: tier, photo: tempAdminPlayerPhotoBase64 };
 
     if (String(originalId) !== String(newId)) {
-        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + newId).set(updateData).then(() => {
+        // SVARBU: perkeliam VISĄ seną įrašą (statistiką ir kt.), tik ant viršaus uždedam pakeitimus
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).once('value').then(oldSnap => {
+            const merged = Object.assign({}, oldSnap.val() || {}, updateData);
+            return firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + newId).set(merged);
+        }).then(() => {
             firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).remove().then(() => {
                 closeAdminEditModal();
                 showToast("ID pakeistas ir duomenys išsaugoti!");
