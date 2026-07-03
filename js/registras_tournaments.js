@@ -174,7 +174,13 @@ function initTournamentsDB() {
 }
 
 function saveData() { 
-    firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(tournaments);
+    return firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(tournaments)
+        .then(() => true)
+        .catch(err => { 
+            console.error('saveData klaida:', err); 
+            showToast('❌ Nepavyko išsaugoti į debesį! Patikrinkite ryšį.'); 
+            return false; 
+        });
 }
 
 function resetLocalStorage() { 
@@ -251,7 +257,8 @@ function renderTournaments() {
         let lvlClass = t.level.toLowerCase();
         if (lvlClass === 'b-/b') lvlClass = 'b';
         if (lvlClass === 'c/c+') lvlClass = 'c';
-        if (lvlClass === 'd-c') lvlClass = 'd-c';
+        if (lvlClass === 'c-/c') lvlClass = 'c2';
+        if (lvlClass === 'd/c-' || lvlClass === 'd-c') lvlClass = 'd-c';
 
         let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${t.id})"><div class="card-date-square"><div class="num">${dayNum}</div><div class="name">${dayName}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${t.format}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${displayLevel}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${t.category}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${t.time}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(t.status !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
         list.innerHTML += cardHTML;
