@@ -75,6 +75,7 @@ function calculateResults(mArr, pArr, isF = false) {
 function generateFinals() {
     try {
         ensureTournamentId();
+        if (typeof settings !== 'undefined' && settings.format === 'cup') { alert("Taurės formatas atkrintamąsias ir finalus kuria automatiškai — spauskite „Kitas raundas“."); return; }
         const safeP = safeArr(players);
         if (safeP.length < 4) { alert("Nepakanka žaidėjų finalams."); return; }
 
@@ -120,6 +121,9 @@ function requestNextRound() {
         ensureTournamentId(); 
         const safeP = safeArr(players); 
         if (typeof settings !== 'undefined' && settings.format === 'fixed') { return generateFixedRound(safeP); }
+        if (typeof settings !== 'undefined' && settings.format === 'cup') { return generateCupRound(safeP); }
+        if (typeof settings !== 'undefined' && settings.format === 'mexicano') { return generateMexicanoRound(safeP); }
+        if (typeof settings !== 'undefined' && settings.format === 'king') { return generateKingRound(safeP); }
         if (safeP.length < 4 || safeP.length % 4 !== 0) { alert(`KLAIDA: Žaidėjų skaičius turi būti dalus iš 4! (Dabar yra ${safeP.length})`); return; }
         if (typeof settings !== 'undefined' && settings.format === 'mix_americano') { 
             const mC = safeP.filter(p => p.gender === 'M').length, fC = safeP.filter(p => p.gender === 'F').length; 
@@ -168,7 +172,7 @@ function reorderMix8ForVariety(matrix) {
 
 function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
 
-function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const perfectMatrix16 = [ [[[0,0], [7,7]], [[1,1], [5,5]], [[2,2], [4,4]], [[3,3], [6,6]]], [[[0,1], [3,4]], [[1,2], [2,3]], [[4,5], [7,0]], [[5,6], [6,7]]], [[[0,2], [4,6]], [[1,3], [6,0]], [[2,4], [3,5]], [[5,7], [7,1]]], [[[0,3], [1,4]], [[2,5], [4,7]], [[3,6], [5,0]], [[6,1], [7,2]]], [[[0,4], [3,7]], [[1,5], [6,2]], [[2,6], [7,3]], [[4,0], [5,1]]], [[[0,5], [7,4]], [[1,6], [3,0]], [[2,7], [5,2]], [[4,1], [6,3]]], [[[0,6], [5,3]], [[1,7], [7,5]], [[2,0], [6,4]], [[3,1], [4,2]]], [[[0,7], [2,1]], [[1,0], [4,3]], [[3,2], [7,6]], [[5,4], [6,5]]], [[[0,0], [6,6]], [[1,1], [2,2]], [[3,3], [4,4]], [[5,5], [7,7]]], [[[0,1], [4,5]], [[1,2], [5,6]], [[2,3], [7,0]], [[3,4], [6,7]]], [[[0,2], [2,4]], [[1,3], [3,5]], [[4,6], [5,7]], [[6,0], [7,1]]], [[[0,3], [5,0]], [[1,4], [6,1]], [[2,5], [4,7]], [[3,6], [7,2]]], [[[0,4], [2,6]], [[1,5], [7,3]], [[3,7], [5,1]], [[4,0], [6,2]]], [[[0,5], [3,0]], [[1,6], [5,2]], [[2,7], [6,3]], [[4,1], [7,4]]], [[[0,6], [1,7]], [[2,0], [3,1]], [[4,2], [5,3]], [[6,4], [7,5]]], [[[0,7], [6,5]], [[1,0], [4,3]], [[2,1], [5,4]], [[3,2], [7,6]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
+function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); /* v2 OPTIMIZUOTA (2026-07): partnerystės nepakito — visos 64 M+F poros lygiai po 2x; oponentai: visos 120 žaidėjų porų susitinka bent 1x (buvo 112/120), maksimumas 3 susitikimai (buvo iki 6); vyras-prieš-vyrą ir moteris-prieš-moterį idealu (20 porų po 2x + 8 po 3x); 0 identiškų mačų pasikartojimų (buvo 3); 0 oponentų/partnerių pasikartojimų gretimuose raunduose. */ const perfectMatrix16 = [ [[[7,5], [4,2]], [[1,7], [5,3]], [[6,4], [2,0]], [[0,6], [3,1]]], [[[1,4], [7,2]], [[0,3], [2,5]], [[6,1], [4,7]], [[3,6], [5,0]]], [[[1,0], [2,1]], [[0,7], [7,6]], [[5,4], [6,5]], [[3,2], [4,3]]], [[[0,4], [4,0]], [[6,2], [2,6]], [[3,7], [1,5]], [[7,3], [5,1]]], [[[3,3], [6,6]], [[7,7], [2,2]], [[1,1], [4,4]], [[5,5], [0,0]]], [[[7,2], [6,1]], [[3,6], [2,5]], [[4,7], [5,0]], [[1,4], [0,3]]], [[[6,5], [0,7]], [[5,4], [3,2]], [[4,3], [2,1]], [[7,6], [1,0]]], [[[0,2], [4,6]], [[6,0], [1,3]], [[5,7], [2,4]], [[7,1], [3,5]]], [[[6,4], [0,6]], [[1,7], [3,1]], [[2,0], [4,2]], [[7,5], [5,3]]], [[[6,0], [3,5]], [[7,1], [2,4]], [[5,7], [4,6]], [[1,3], [0,2]]], [[[0,4], [3,7]], [[1,5], [2,6]], [[7,3], [4,0]], [[6,2], [5,1]]], [[[6,6], [4,4]], [[5,5], [1,1]], [[2,2], [0,0]], [[3,3], [7,7]]], [[[2,7], [4,1]], [[3,0], [1,6]], [[0,5], [6,3]], [[5,2], [7,4]]], [[[1,2], [4,5]], [[2,3], [3,4]], [[0,1], [5,6]], [[7,0], [6,7]]], [[[3,0], [5,2]], [[0,5], [2,7]], [[4,1], [6,3]], [[7,4], [1,6]]], [[[5,6], [2,3]], [[4,5], [3,4]], [[6,7], [1,2]], [[7,0], [0,1]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
 
 function generateLookaheadTournament(safePool, startRound, countToGenerate) {
     let M = [], F = []; 
@@ -272,29 +276,279 @@ function dispatchRoundFromPreGen(roundNum) {
 
 function generateFixedRound(safePool) { 
     try {
-        let teams = []; for (let k = 0; k < safePool.length; k += 2) { if (k + 1 < safePool.length) teams.push([safePool[k], safePool[k + 1]]); } 
+        if (safePool.length < 4) { alert(`KLAIDA: Fiksuotoms poroms reikia bent 4 žaidėjų. (Dabar yra ${safePool.length})`); return; }
+        if (safePool.length % 2 !== 0) { alert(`KLAIDA: Fiksuotoms poroms žaidėjų skaičius turi būti lyginis! (Dabar yra ${safePool.length})\n\nPoros sudaromos pagal sąrašo eilę: 1-2, 3-4, 5-6...`); return; }
+        let teams = []; for (let k = 0; k < safePool.length; k += 2) { teams.push([safePool[k], safePool[k + 1]]); } 
         let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
         
-        let K_even = teams.length;
-        let cycleRounds = K_even - 1;
-        let shift = (roundNum - 1) % cycleRounds;
+        // Ratų sistema (circle method). Jei komandų skaičius NELYGINIS — pridedam tuščią vietą (-1 = "bye"):
+        // su ja suporuota komanda tą raundą ilsisi. Taip kiekviena komanda sužaidžia su visomis kitomis.
+        let idxs = teams.map((_, i) => i);
+        if (idxs.length % 2 === 1) idxs.push(-1);
+        const K_even = idxs.length;
+        const cycleRounds = K_even - 1;
+        const shift = (roundNum - 1) % cycleRounds;
         
-        let rotatedIndices = [0]; let others = [];
-        for (let i = 1; i < K_even; i++) others.push(i);
+        let rotatedIndices = [idxs[0]]; let others = idxs.slice(1);
         for (let i = 0; i < shift; i++) others.unshift(others.pop());
         rotatedIndices.push(...others);
         
-        let roundMatches = [];
+        let roundMatches = []; let restingTeam = null;
         for (let i = 0; i < K_even / 2; i++) {
             let t1Idx = rotatedIndices[i], t2Idx = rotatedIndices[K_even - 1 - i];
-            if (t1Idx < teams.length && t2Idx < teams.length) roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
+            if (t1Idx === -1) { restingTeam = teams[t2Idx]; continue; }
+            if (t2Idx === -1) { restingTeam = teams[t1Idx]; continue; }
+            roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
         }
         
         let newM = [];
         roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
         
         matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
+        if (restingTeam) { setTimeout(() => alert(`ℹ️ ${roundNum} raundą ilsisi: ${restingTeam[0].name} / ${restingTeam[1].name}`), 100); }
     } catch(e) { console.error("generateFixedRound Error:", e); }
+}
+
+// ===================== MEXICANO =====================
+// Kiekvienas raundas formuojamas pagal GYVĄ turnyro lentelę: žaidėjai rikiuojami pagal rezultatus,
+// grupuojami ketvertais pagal vietą (1-4 į 1 kortą, 5-8 į 2 kortą...), ketverte žaidžia 1+4 prieš 2+3.
+// Pirmas raundas — atsitiktinis. Mix kategorijoje poros visada V+M.
+function generateMexicanoRound(safePool) {
+    try {
+        const N = safePool.length;
+        if (N < 4 || N % 4 !== 0) { alert(`KLAIDA: Mexicano formatui žaidėjų skaičius turi būti dalus iš 4! (Dabar yra ${N})`); return; }
+        const isMix = (typeof settings !== 'undefined' && settings.category === 'Mix');
+        if (isMix) {
+            const mC = safePool.filter(p => p && p.gender === 'M').length, fC = N - mC;
+            if (mC !== fC) { alert(`KLAIDA: Mix kategorijai reikia po lygiai vyrų ir moterų! (Dabar: ${mC} vyr. / ${fC} mot.)`); return; }
+        }
+        const roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+        const finished = safeArr(matches).filter(m => m && m.finished && !m.isFinal);
+        let ordered;
+        if (finished.length === 0) {
+            ordered = shuffle([...safePool]);
+        } else {
+            const ranked = calculateResults(matches, safePool, false);
+            ordered = ranked.map(r => safePool.find(p => p && (p.id === r.id)) || r).filter(Boolean);
+        }
+        let newM = [];
+        if (isMix) {
+            const Ms = ordered.filter(p => p.gender === 'M'), Fs = ordered.filter(p => p.gender !== 'M');
+            for (let c = 0; c < N / 4; c++) {
+                const m1 = Ms[2*c], m2 = Ms[2*c+1], f1 = Fs[2*c], f2 = Fs[2*c+1];
+                if (!m1 || !m2 || !f1 || !f2) break;
+                newM.push({ id: uid(), round: roundNum, court: c + 1, finished: false, score1: 0, score2: 0, team1: [m1, f2], team2: [m2, f1] });
+            }
+        } else {
+            for (let c = 0; c < N / 4; c++) {
+                const q = ordered.slice(4*c, 4*c + 4);
+                if (q.length < 4) break;
+                newM.push({ id: uid(), round: roundNum, court: c + 1, finished: false, score1: 0, score2: 0, team1: [q[0], q[3]], team2: [q[1], q[2]] });
+            }
+        }
+        matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches');
+    } catch(e) { console.error("generateMexicanoRound Error:", e); }
+}
+
+// ===================== KING OF THE COURT =====================
+// Kortai hierarchiniai (1 kortas — "karaliaus"). Po raundo laimėjusi pora kyla kortu aukštyn,
+// pralaimėjusi leidžiasi žemyn (kraštuose lieka). Atvykusios poros SKYLA ir susikeičia partneriais.
+// Lygiųjų atveju laimėtoja laikoma 1 komanda. Pirmas raundas (ar pasikeitus sudėčiai) — atsitiktinis.
+function generateKingRound(safePool) {
+    try {
+        const N = safePool.length;
+        if (N < 4 || N % 4 !== 0) { alert(`KLAIDA: King of the Court formatui žaidėjų skaičius turi būti dalus iš 4! (Dabar yra ${N})`); return; }
+        const isMix = (typeof settings !== 'undefined' && settings.category === 'Mix');
+        if (isMix) {
+            const mC = safePool.filter(p => p && p.gender === 'M').length, fC = N - mC;
+            if (mC !== fC) { alert(`KLAIDA: Mix kategorijai reikia po lygiai vyrų ir moterų! (Dabar: ${mC} vyr. / ${fC} mot.)`); return; }
+        }
+        const courts = N / 4;
+        const roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+        const prev = safeArr(matches).filter(m => m && !m.isFinal && m.round === roundNum - 1);
+        let canMove = prev.length === courts && prev.every(m => m.finished);
+        if (canMove) {
+            const prevIds = new Set();
+            prev.forEach(m => [...safeArr(m.team1), ...safeArr(m.team2)].forEach(p => p && prevIds.add(p.id)));
+            canMove = prevIds.size === N && safePool.every(p => prevIds.has(p.id));
+        }
+        let newM = [];
+        const mk = (court, t1, t2) => ({ id: uid(), round: roundNum, court: court, finished: false, score1: 0, score2: 0, team1: t1, team2: t2 });
+        if (!canMove) {
+            // Atsitiktinė sėja (1 raundas arba pasikeitusi sudėtis)
+            if (isMix) {
+                const Ms = shuffle(safePool.filter(p => p.gender === 'M')), Fs = shuffle(safePool.filter(p => p.gender !== 'M'));
+                for (let c = 0; c < courts; c++) newM.push(mk(c + 1, [Ms[2*c], Fs[2*c]], [Ms[2*c+1], Fs[2*c+1]]));
+            } else {
+                const pool = shuffle([...safePool]);
+                for (let c = 0; c < courts; c++) newM.push(mk(c + 1, [pool[4*c], pool[4*c+1]], [pool[4*c+2], pool[4*c+3]]));
+            }
+        } else {
+            const byCourt = [...prev].sort((a, b) => (a.court || 0) - (b.court || 0));
+            const winners = [], losers = [];
+            byCourt.forEach(m => {
+                const s1 = parseInt(m.score1 || 0), s2 = parseInt(m.score2 || 0);
+                if (s1 >= s2) { winners.push(safeArr(m.team1)); losers.push(safeArr(m.team2)); }
+                else { winners.push(safeArr(m.team2)); losers.push(safeArr(m.team1)); }
+            });
+            for (let c = 0; c < courts; c++) {
+                let pairA, pairB; // dvi šio korto poros naujame raunde
+                if (courts === 1) { pairA = winners[0]; pairB = losers[0]; }
+                else if (c === 0) { pairA = winners[0]; pairB = winners[1]; }
+                else if (c === courts - 1) { pairA = losers[c - 1]; pairB = losers[c]; }
+                else { pairA = losers[c - 1]; pairB = winners[c + 1]; }
+                let t1, t2;
+                if (isMix) {
+                    const mA = pairA.find(p => p && p.gender === 'M'), fA = pairA.find(p => p && p.gender !== 'M');
+                    const mB = pairB.find(p => p && p.gender === 'M'), fB = pairB.find(p => p && p.gender !== 'M');
+                    if (mA && fA && mB && fB) { t1 = [mA, fB]; t2 = [mB, fA]; }
+                    else { t1 = [pairA[0], pairB[0]]; t2 = [pairA[1], pairB[1]]; }
+                } else {
+                    t1 = [pairA[0], pairB[0]]; t2 = [pairA[1], pairB[1]];
+                }
+                newM.push(mk(c + 1, t1, t2));
+            }
+        }
+        matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches');
+    } catch(e) { console.error("generateKingRound Error:", e); }
+}
+
+// ===================== TAURĖ (CUP) =====================
+// Fiksuotos poros (pagal sąrašo eilę: 1-2, 3-4...) → grupės → atkrintamosios.
+// Iki 5 komandų — 1 grupė; 6-9 — 2 grupės; 10-16 — 4 grupės. Grupėse — ratų sistema (su poilsiu, jei nelyginis sk.).
+// Atkrintamosios kuriamos automatiškai spaudžiant "Kitas raundas", kai baigti visi grupių mačai.
+function cupTeamKey(t) { return [t[0].id, t[1].id].sort().join('~'); }
+function cupTeamsFromPool(safePool) {
+    const teams = [];
+    for (let k = 0; k < safePool.length; k += 2) teams.push([safePool[k], safePool[k + 1]]);
+    return teams;
+}
+function cupGroupStandings(groupKeys, teamsByKey) {
+    const stats = {};
+    groupKeys.forEach(k => stats[k] = { key: k, w: 0, dif: 0, sw: 0 });
+    safeArr(matches).filter(m => m && m.finished && !m.isFinal).forEach(m => {
+        const k1 = (safeArr(m.team1).length === 2) ? cupTeamKey(m.team1) : null;
+        const k2 = (safeArr(m.team2).length === 2) ? cupTeamKey(m.team2) : null;
+        if (!k1 || !k2 || !stats[k1] || !stats[k2]) return;
+        const s1 = parseInt(m.score1 || 0), s2 = parseInt(m.score2 || 0);
+        stats[k1].sw += s1; stats[k1].dif += s1 - s2;
+        stats[k2].sw += s2; stats[k2].dif += s2 - s1;
+        if (s1 > s2) stats[k1].w++; else if (s2 > s1) stats[k2].w++;
+    });
+    return groupKeys.map(k => stats[k]).sort((a, b) => b.w - a.w || b.dif - a.dif || b.sw - a.sw).map(s => teamsByKey[s.key]);
+}
+function cupKoWinnerLoser(m) {
+    const s1 = parseInt(m.score1 || 0), s2 = parseInt(m.score2 || 0);
+    return (s1 >= s2) ? { win: safeArr(m.team1), lose: safeArr(m.team2) } : { win: safeArr(m.team2), lose: safeArr(m.team1) };
+}
+function generateCupRound(safePool) {
+    try {
+        const N = safePool.length;
+        if (N < 4) { alert(`KLAIDA: Taurės formatui reikia bent 4 žaidėjų (2 porų). (Dabar yra ${N})`); return; }
+        if (N % 2 !== 0) { alert(`KLAIDA: Taurės formatui žaidėjų skaičius turi būti lyginis! (Dabar yra ${N})\n\nPoros sudaromos pagal sąrašo eilę: 1-2, 3-4, 5-6...`); return; }
+        const teams = cupTeamsFromPool(safePool);
+        const T = teams.length;
+        const teamsByKey = {}; teams.forEach(t => teamsByKey[cupTeamKey(t)] = t);
+        const sig = Object.keys(teamsByKey).sort().join(';');
+
+        // Inicializacija (arba perkūrimas pasikeitus sudėčiai)
+        if (typeof settings.cupState === 'undefined' || !settings.cupState || settings.cupState.sig !== sig) {
+            if (settings.cupState && settings.cupState.sig !== sig && safeArr(matches).length > 0) {
+                if (!confirm("⚠️ Pasikeitė žaidėjų/porų sudėtis — Taurės struktūra (grupės) bus perkurta iš naujo. Tęsti?")) return;
+            }
+            let groupCount;
+            if (T <= 5) groupCount = 1; else if (T <= 9) groupCount = 2; else groupCount = 4;
+            const order = shuffle([...Object.keys(teamsByKey)]);
+            const groups = Array.from({ length: groupCount }, () => []);
+            order.forEach((k, i) => groups[i % groupCount].push(k));
+            const roundsForGroup = (g) => (g.length <= 1 ? 0 : (g.length % 2 === 0 ? g.length - 1 : g.length));
+            const groupRoundsTotal = Math.max(...groups.map(roundsForGroup));
+            settings.cupState = { sig: sig, groups: groups, groupRoundsTotal: groupRoundsTotal };
+            autoSave(true);
+            if (T === 2) settings.cupState.groupRoundsTotal = 0; // 2 komandos — iškart finalas
+        }
+        const st = settings.cupState;
+        const roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+        const groupMatches = safeArr(matches).filter(m => m && !m.isFinal);
+        const groupRoundsGenerated = groupMatches.length > 0 ? Math.max(...groupMatches.map(m => m.round || 0)) : 0;
+
+        // --- GRUPIŲ ETAPAS ---
+        if (groupRoundsGenerated < st.groupRoundsTotal) {
+            const grForGroup = groupRoundsGenerated; // kiek grupių raundų jau sužaista/sugeneruota (0-based kitam)
+            let newM = []; let court = 1; let resting = [];
+            st.groups.forEach((gKeys, gi) => {
+                let idxs = gKeys.map((_, i) => i);
+                if (idxs.length <= 1) return;
+                if (idxs.length % 2 === 1) idxs.push(-1);
+                const K = idxs.length, cycle = K - 1;
+                if (grForGroup >= (gKeys.length % 2 === 0 ? gKeys.length - 1 : gKeys.length)) return; // ši grupė jau baigė ratą
+                const shift2 = grForGroup % cycle;
+                let rot = [idxs[0]]; let others = idxs.slice(1);
+                for (let s = 0; s < shift2; s++) others.unshift(others.pop());
+                rot.push(...others);
+                for (let i = 0; i < K / 2; i++) {
+                    const a = rot[i], b = rot[K - 1 - i];
+                    if (a === -1) { resting.push(teamsByKey[gKeys[b]]); continue; }
+                    if (b === -1) { resting.push(teamsByKey[gKeys[a]]); continue; }
+                    newM.push({ id: uid(), round: roundNum, court: court++, finished: false, score1: 0, score2: 0, team1: teamsByKey[gKeys[a]], team2: teamsByKey[gKeys[b]] });
+                }
+            });
+            if (newM.length === 0) { alert("Grupių etapas baigtas — spauskite dar kartą atkrintamosioms."); return; }
+            matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches');
+            if (resting.length > 0) setTimeout(() => alert(`ℹ️ Šį raundą ilsisi: ${resting.map(t => t[0].name + ' / ' + t[1].name).join('; ')}`), 100);
+            return;
+        }
+
+        // --- ATKRINTAMOSIOS ---
+        const unfinishedGroup = safeArr(matches).filter(m => m && !m.isFinal && !m.finished);
+        if (unfinishedGroup.length > 0) { alert(`Prieš atkrintamąsias pabaikite visus grupių mačus! (Liko: ${unfinishedGroup.length})`); return; }
+        const koMatches = safeArr(matches).filter(m => m && m.isFinal);
+        const koByTitle = (word) => koMatches.filter(m => (m.finalTitle || '').indexOf(word) !== -1);
+        const qf = koByTitle('KETVIRTFINALIS'), sf = koByTitle('PUSFINALIS');
+        const finals = koMatches.filter(m => (m.finalTitle || '').indexOf('FINALAS') !== -1 && (m.finalTitle || '').indexOf('PUSFINALIS') === -1 && (m.finalTitle || '').indexOf('KETVIRTFINALIS') === -1);
+        const mkKO = (court, t1, t2, title, bg) => ({ id: uid(), round: roundNum, court: court, finished: false, score1: 0, score2: 0, team1: t1, team2: t2, isFinal: true, finalTitle: title, finalBg: bg || "bg-slate-800" });
+        let newM = [];
+
+        if (finals.length > 0) { alert("🏆 Turnyras baigtas! Visi atkrintamųjų etapai sužaisti."); return; }
+
+        if (sf.length > 0) {
+            // Pusfinaliai sužaisti? → finalai
+            if (sf.some(m => !m.finished)) { alert("Pabaikite pusfinalius prieš finalus!"); return; }
+            const r1 = cupKoWinnerLoser(sf[0]), r2 = cupKoWinnerLoser(sf[1]);
+            newM.push(mkKO(1, r1.win, r2.win, "🏆 DIDYSIS FINALAS", "bg-gradient-to-r from-yellow-500 to-amber-600"));
+            newM.push(mkKO(2, r1.lose, r2.lose, "🥉 MAŽASIS FINALAS", "bg-gradient-to-r from-orange-400 to-orange-600"));
+        } else if (qf.length > 0) {
+            // Ketvirtfinaliai sužaisti? → pusfinaliai
+            if (qf.some(m => !m.finished)) { alert("Pabaikite ketvirtfinalius prieš pusfinalius!"); return; }
+            const sorted = [...qf].sort((a, b) => (a.court || 0) - (b.court || 0));
+            const w = sorted.map(m => cupKoWinnerLoser(m).win);
+            newM.push(mkKO(1, w[0], w[1], "PUSFINALIS 1"));
+            newM.push(mkKO(2, w[2], w[3], "PUSFINALIS 2"));
+        } else {
+            // Pirmas atkrintamųjų raundas — pagal grupių lenteles
+            const standings = st.groups.map(g => cupGroupStandings(g, teamsByKey));
+            if (st.groups.length === 1) {
+                const s = standings[0];
+                if (s.length < 2) { alert("Per mažai komandų finalams."); return; }
+                newM.push(mkKO(1, s[0], s[1], "🏆 DIDYSIS FINALAS", "bg-gradient-to-r from-yellow-500 to-amber-600"));
+                if (s.length >= 4) newM.push(mkKO(2, s[2], s[3], "🥉 MAŽASIS FINALAS", "bg-gradient-to-r from-orange-400 to-orange-600"));
+            } else if (st.groups.length === 2) {
+                const A = standings[0], B = standings[1];
+                if (A.length < 2 || B.length < 2) { alert("Grupėse per mažai komandų pusfinaliams."); return; }
+                newM.push(mkKO(1, A[0], B[1], "PUSFINALIS 1"));
+                newM.push(mkKO(2, B[0], A[1], "PUSFINALIS 2"));
+            } else {
+                const A = standings[0], B = standings[1], C = standings[2], D = standings[3];
+                if ([A, B, C, D].some(g => g.length < 2)) { alert("Grupėse per mažai komandų ketvirtfinaliams."); return; }
+                newM.push(mkKO(1, A[0], D[1], "KETVIRTFINALIS 1"));
+                newM.push(mkKO(2, B[0], C[1], "KETVIRTFINALIS 2"));
+                newM.push(mkKO(3, C[0], B[1], "KETVIRTFINALIS 3"));
+                newM.push(mkKO(4, D[0], A[1], "KETVIRTFINALIS 4"));
+            }
+        }
+        if (newM.length === 0) { alert("Nepavyko suformuoti atkrintamųjų."); return; }
+        matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches');
+    } catch(e) { console.error("generateCupRound Error:", e); }
 }
 
 function processGlobalEloForMatch(match, globalData, globalRef) {
