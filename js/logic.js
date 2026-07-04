@@ -132,10 +132,11 @@ function requestNextRound() {
         
         let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
         
-        // Mix Americano turi FIKSUOTĄ matricą (8→12, 16→16 raundų). Viršijus ją, kartojam ciklu
-        // (dispatchRoundFromPreGen modulo), todėl nepergeneruojam. Americano generuoja po 30 ir tęsiasi.
+        // Fiksuotos matricos: Mix (8→12, 16→16 raundų) ir Americano 8 (14 raundų — du tobuli whist blokai).
+        // Viršijus jų ilgį, kartojam ciklu (dispatchRoundFromPreGen), todėl nepergeneruojam. Americano kitiems dydžiams generuoja po 30 ir tęsiasi.
         const isMixMatrix = (typeof settings !== 'undefined' && settings.format === 'mix_americano' && (safeP.length === 8 || safeP.length === 16));
-        const needGen = preGeneratedTournament.length === 0 || (!isMixMatrix && (roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]));
+        const isAmericano8Matrix = (typeof settings !== 'undefined' && settings.format === 'americano' && safeP.length === 8);
+        const needGen = preGeneratedTournament.length === 0 || (!isMixMatrix && !isAmericano8Matrix && (roundNum > preGeneratedTournament.length || !preGeneratedTournament[roundNum - 1]));
         // APSAUGA: Mix Americano reikia PO LYGIAI vyrų ir moterų, o žaidėjų skaičius turi dalintis iš 4 (4, 8, 12, 16...).
         if (needGen && typeof settings !== 'undefined' && settings.format === 'mix_americano') {
             const mc = safeP.filter(p => p && p.gender === 'M').length, wc = safeP.filter(p => p && p.gender === 'F').length;
@@ -151,7 +152,8 @@ function requestNextRound() {
                         if (safeP.length === 8) { preGeneratedTournament = reorderMix8ForVariety(generateInterleavedMix8Matrix(safeP)); setStore('pregen', preGeneratedTournament); } 
                         else if (safeP.length === 16) { preGeneratedTournament = generatePerfectMix16Matrix(safeP); setStore('pregen', preGeneratedTournament); } 
                         else { generateLookaheadTournament(safeP, roundNum, 30); }
-                    } else { generateLookaheadTournament(safeP, roundNum, 30); }
+                    } else if (isAmericano8Matrix) { preGeneratedTournament = generatePerfectAmericano8Matrix(safeP); setStore('pregen', preGeneratedTournament); }
+                    else { generateLookaheadTournament(safeP, roundNum, 30); }
                     if(overlay) overlay.style.display = 'none'; dispatchRoundFromPreGen(roundNum);
                 } catch (e) { console.error("Matrix generation error:", e); if(overlay) overlay.style.display = 'none'; }
             }, 50);
@@ -173,6 +175,20 @@ function reorderMix8ForVariety(matrix) {
 function generateInterleavedMix8Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); const opponentCycles = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]]; let baseRounds = []; for (let r = 0; r < 12; r++) { let roundMatches = [], oppSetup = opponentCycles[r % 3]; for (let c = 0; c < 2; c++) { let m1_idx = oppSetup[c][0], m2_idx = oppSetup[c][1], w1_idx = (m1_idx + r) % 4, w2_idx = (m2_idx + r) % 4; roundMatches.push({ t1: [M[m1_idx], F[w1_idx]], t2: [M[m2_idx], F[w2_idx]] }); } baseRounds.push(roundMatches); } const interleavePattern = [0, 5, 10, 3, 8, 1, 6, 11, 4, 9, 2, 7]; let interleavedRounds = []; interleavePattern.forEach(idx => { interleavedRounds.push(baseRounds[idx]); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { interleavedRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
 
 function generatePerfectMix16Matrix(safePool) { let M = safePool.filter(p => p.gender === 'M'), F = safePool.filter(p => p.gender === 'F'); /* v2 OPTIMIZUOTA (2026-07): partnerystės nepakito — visos 64 M+F poros lygiai po 2x; oponentai: visos 120 žaidėjų porų susitinka bent 1x (buvo 112/120), maksimumas 3 susitikimai (buvo iki 6); vyras-prieš-vyrą ir moteris-prieš-moterį idealu (20 porų po 2x + 8 po 3x); 0 identiškų mačų pasikartojimų (buvo 3); 0 oponentų/partnerių pasikartojimų gretimuose raunduose. */ const perfectMatrix16 = [ [[[7,5], [4,2]], [[1,7], [5,3]], [[6,4], [2,0]], [[0,6], [3,1]]], [[[1,4], [7,2]], [[0,3], [2,5]], [[6,1], [4,7]], [[3,6], [5,0]]], [[[1,0], [2,1]], [[0,7], [7,6]], [[5,4], [6,5]], [[3,2], [4,3]]], [[[0,4], [4,0]], [[6,2], [2,6]], [[3,7], [1,5]], [[7,3], [5,1]]], [[[3,3], [6,6]], [[7,7], [2,2]], [[1,1], [4,4]], [[5,5], [0,0]]], [[[7,2], [6,1]], [[3,6], [2,5]], [[4,7], [5,0]], [[1,4], [0,3]]], [[[6,5], [0,7]], [[5,4], [3,2]], [[4,3], [2,1]], [[7,6], [1,0]]], [[[0,2], [4,6]], [[6,0], [1,3]], [[5,7], [2,4]], [[7,1], [3,5]]], [[[6,4], [0,6]], [[1,7], [3,1]], [[2,0], [4,2]], [[7,5], [5,3]]], [[[6,0], [3,5]], [[7,1], [2,4]], [[5,7], [4,6]], [[1,3], [0,2]]], [[[0,4], [3,7]], [[1,5], [2,6]], [[7,3], [4,0]], [[6,2], [5,1]]], [[[6,6], [4,4]], [[5,5], [1,1]], [[2,2], [0,0]], [[3,3], [7,7]]], [[[2,7], [4,1]], [[3,0], [1,6]], [[0,5], [6,3]], [[5,2], [7,4]]], [[[1,2], [4,5]], [[2,3], [3,4]], [[0,1], [5,6]], [[7,0], [6,7]]], [[[3,0], [5,2]], [[0,5], [2,7]], [[4,1], [6,3]], [[7,4], [1,6]]], [[[5,6], [2,3]], [[4,5], [3,4]], [[6,7], [1,2]], [[7,0], [0,1]]] ]; let baseRounds = []; perfectMatrix16.forEach((roundData) => { let currentRound = []; roundData.forEach((match) => { currentRound.push({ t1: [M[match[0][0]], F[match[0][1]]], t2: [M[match[1][0]], F[match[1][1]]] }); }); baseRounds.push(currentRound); }); let extendedPreGen = []; for (let copy = 0; copy < 1; copy++) { baseRounds.forEach(rm => extendedPreGen.push(rm)); } return extendedPreGen; }
+
+// ===================== AMERICANO 8 — TOBULA MATRICA =====================
+// Matematiškai optimalus 8 žaidėjų Americano (rasta kompiuterine paieška, patikrinta auditu):
+// • R1-R7 — tobulas "whist" blokas: VISOS 28 partnerių poros po 1 kartą, visi oponentai lygiai po 2x;
+// • R8-R14 — antras tobulas blokas: per 14 raundų kiekviena pora partneriauja LYGIAI 2x, oponentai LYGIAI 4x;
+// • 0 identiškų mačų; 0 partnerių/oponentų pasikartojimų gretimuose raunduose;
+// • kortų balansas idealus (kiekvienas žaidėjas 1 korte lygiai 7x iš 14);
+// • žaidžiant 12 raundų: aprėptos visos 28 poros, nė viena nesikartoja daugiau nei 2x.
+// Virš 14 raundų matrica kartojama ciklu (dispatchRoundFromPreGen). Žaidėjai sumaišomi kaskart generuojant.
+function generatePerfectAmericano8Matrix(safePool) {
+    const P = shuffle([...safePool]);
+    const perfectAmericano8 = [ [[[0,4], [2,5]], [[1,7], [3,6]]], [[[1,2], [5,7]], [[0,3], [4,6]]], [[[4,7], [5,6]], [[0,1], [2,3]]], [[[0,6], [1,5]], [[2,7], [3,4]]], [[[0,2], [6,7]], [[1,3], [4,5]]], [[[2,6], [3,5]], [[0,7], [1,4]]], [[[0,5], [3,7]], [[1,6], [2,4]]], [[[1,4], [5,3]], [[7,0], [2,6]]], [[[2,0], [1,3]], [[7,6], [5,4]]], [[[7,4], [2,3]], [[1,0], [5,6]]], [[[3,4], [6,0]], [[7,2], [1,5]]], [[[2,1], [6,4]], [[7,5], [3,0]]], [[[7,3], [1,6]], [[2,4], [5,0]]], [[[7,1], [0,4]], [[2,5], [3,6]]] ];
+    return perfectAmericano8.map(roundData => roundData.map(m => ({ t1: [P[m[0][0]], P[m[0][1]]], t2: [P[m[1][0]], P[m[1][1]]] })));
+}
 
 function generateLookaheadTournament(safePool, startRound, countToGenerate) {
     let M = [], F = []; 
