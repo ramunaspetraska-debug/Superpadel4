@@ -224,7 +224,7 @@ function selectPortalTournament(tid) {
         settings.category = t.category || 'Atviras';
         // Tikrasis variklis: Americano + Mix → mix_americano
         if (settings.baseFormat === 'americano' && settings.category === 'Mix') settings.format = 'mix_americano';
-        else if (settings.baseFormat === 'fixed') settings.format = 'fixed';
+        else if (['fixed', 'mexicano', 'king', 'cup'].includes(settings.baseFormat)) settings.format = settings.baseFormat;
         else settings.format = 'americano';
         if (typeof safeVal === 'function') {
             safeVal('select-format', settings.baseFormat);
@@ -467,12 +467,10 @@ function applyFormatCategoryEngine() {
     // Americano + Mix → tavo specialus Mix Americano variklis (8/16 matrica)
     if (baseFmt === 'americano' && cat === 'Mix') {
         settings.format = 'mix_americano';
-    } else if (baseFmt === 'fixed') {
-        settings.format = 'fixed';
-    } else if (baseFmt === 'americano') {
-        settings.format = 'americano';
+    } else if (['fixed', 'mexicano', 'king', 'cup'].includes(baseFmt)) {
+        // Kiekvienas formatas turi savo variklį (Mix kategoriją jie apdoroja viduje)
+        settings.format = baseFmt;
     } else {
-        // Mexicano / King / Taurė — kol kas naudoja Americano variklį
         settings.format = 'americano';
     }
 }
