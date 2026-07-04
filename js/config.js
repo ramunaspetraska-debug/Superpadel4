@@ -1,4 +1,4 @@
-const APP_VERSION = 'v196';
+const APP_VERSION = 'v197';
 const DB_KEY = "padelio_pro_master"; 
 const REG_KEY = "padelio_pro_master_rooms"; 
 
