@@ -530,8 +530,7 @@ function resolveEngine() {
     const base = settings.baseFormat || 'americano';
     const cat = settings.category || 'Atviras';
     if (base === 'americano' && cat === 'Mix') return 'mix_americano';
-    if (base === 'fixed') return 'fixed';
-    // Mexicano/King/Taurė kol kas naudoja Americano variklį
+    if (['fixed', 'mexicano', 'king', 'cup'].includes(base)) return base;
     return 'americano';
 }
 
