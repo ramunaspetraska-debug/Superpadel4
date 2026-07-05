@@ -365,36 +365,7 @@ function renderTimerAndSettings() {
 
 function renderMatches() {
     const active = safeArr(matches).filter(m => !m.finished);
-
-    // === "KAS KUR ŽAIDŽIA?" — naujausio aktyvaus raundo aikštelių suvestinė ===
-    // Abėcėlinis žaidėjų sąrašas su korto numeriu + besiilsintys (bye) žaidėjai.
-    // Išskleidimo būsena išsaugoma perpiešiant (kad vedant rezultatus neužsidarytų).
-    let summaryHtml = '';
-    if (active.length > 0) {
-        const curRound = Math.max(...active.map(m => m.round || 0));
-        const roundMs = active.filter(m => (m.round || 0) === curRound);
-        const isFinalR = roundMs.some(m => m.isFinal);
-        const entries = []; const inRound = new Set();
-        roundMs.forEach(m => {
-            [...safeArr(m.team1), ...safeArr(m.team2)].forEach(p => {
-                if (p) { entries.push({ name: p.name || '?', court: (m.court || '?') }); inRound.add(p.id); }
-            });
-        });
-        entries.sort((a, b) => String(a.name).localeCompare(String(b.name), 'lt'));
-        const resting = isFinalR ? [] : safeArr(players).filter(p => p && !inRound.has(p.id));
-        let wasOpen = '';
-        try { const el = document.getElementById('courtSummary'); if (el && el.open) wasOpen = ' open'; } catch(e) {}
-        const title = isFinalR ? 'finalai' : `${curRound} raundas`;
-        summaryHtml = `<details id="courtSummary"${wasOpen} class="bg-white rounded-2xl shadow-md border border-slate-100 mb-5 overflow-hidden">`
-            + `<summary class="cursor-pointer select-none px-4 py-3 text-[10px] font-black tracking-widest uppercase text-slate-600 flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-blue-500"></i> KAS KUR ŽAIDŽIA? <span class="text-slate-400 font-bold tracking-normal">(${title})</span></summary>`
-            + `<div class="px-4 pb-4 pt-1"><div class="grid grid-cols-2 gap-x-4 gap-y-0">`
-            + entries.map(e => `<div class="flex justify-between items-center text-[12px] border-b border-slate-50 py-1"><span class="font-bold text-slate-700 truncate pr-2">${esc(e.name)}</span><span class="shrink-0 font-black text-blue-600">${e.court} k.</span></div>`).join('')
-            + `</div>`
-            + (resting.length ? `<div class="mt-3 text-[11px] font-bold text-orange-500"><i class="fa-solid fa-mug-hot mr-1"></i> Šį raundą ilsisi: ${resting.map(p => esc(p.name)).join(', ')}</div>` : '')
-            + `</div></details>`;
-    }
-
-    let aHtml = summaryHtml + active.map(m => {
+    let aHtml = active.map(m => {
         let t1 = m.team1.map(p => `<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span>`).join('');
         let t2 = m.team2.map(p => `<span class="font-bold text-sm text-slate-700">${esc(p.name)}</span>`).join(''); 
         let headT = m.isFinal ? esc(m.finalTitle) : `RAUNDAS ${m.round}`;
