@@ -33,4 +33,4 @@ let dbPhotosRef = null;
 
 let isMuted = localStorage.getItem('sp_is_muted') === 'true';
 let activeRoom = (localStorage.getItem('sp_active_room_master') || '').toUpperCase();
-if(activeRoom) isCloud = true;
+if(activeRoom) isCloud = true;
