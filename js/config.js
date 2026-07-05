@@ -1,4 +1,4 @@
-const APP_VERSION = 'v199';
+const APP_VERSION = 'v200';
 const DB_KEY = "padelio_pro_master"; 
 const REG_KEY = "padelio_pro_master_rooms"; 
 
@@ -33,4 +33,4 @@ let dbPhotosRef = null;
 
 let isMuted = localStorage.getItem('sp_is_muted') === 'true';
 let activeRoom = (localStorage.getItem('sp_active_room_master') || '').toUpperCase();
-if(activeRoom) isCloud = true;
+if(activeRoom) isCloud = true;
