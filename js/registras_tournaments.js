@@ -541,19 +541,26 @@ function pushBannerHTML() {
 // 2) FCM tokenai laikui bėgant keičiasi. Jokių dialogų — viskas fone.
 function pushSilentRefresh() {
     try {
-        if (!('Notification' in window) || Notification.permission !== 'granted') return;
-        if (!pushConfigReady()) return;
-        if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
+        // DIAGNOSTINĖ VERSIJA — praneša, kurioje vietoje sustoja (vėliau grąžinsim tylią)
+        const say = (m) => { try { if (typeof showToast === 'function') showToast('PUSH: ' + m); } catch(e) {} };
+        if (!('Notification' in window)) { say('įrenginys nepalaiko Notification'); return; }
+        if (Notification.permission !== 'granted') { say('leidimas: ' + Notification.permission); return; }
+        if (String(PUSH_CFG.vapidKey).indexOf('PASTE') !== -1) { say('vapidKey neįrašytas'); return; }
+        if (typeof firebase === 'undefined' || !firebase.messaging) { say('firebase.messaging biblioteka neįkelta'); return; }
+        if (typeof firebase.messaging.isSupported === 'function' && !firebase.messaging.isSupported()) { say('naršyklė nepalaiko FCM'); return; }
+        if (!firebase.app || !firebase.app().options || !firebase.app().options.messagingSenderId) { say('config be messagingSenderId'); return; }
+        if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) { say('neprisijungęs (currentUser nėra)'); return; }
         pushInit();
-        if (!_pushMsg) return;
+        if (!_pushMsg) { say('messaging init nepavyko'); return; }
         _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey }).then(token => {
-            if (!token) return;
+            if (!token) { say('tokenas tuščias'); return; }
             const key = _pushHash(token);
             firebase.database().ref('padelio_push_tokens/' + currentUser.id + '/' + key)
                 .set({ token: token, ts: Date.now(), ua: (navigator.userAgent || '').slice(0, 120) })
-                .catch(() => {});
-        }).catch(() => {});
-    } catch (e) { /* tylus — netrukdome portalui */ }
+                .then(() => { say('✅ tokenas įrašytas į DB!'); })
+                .catch(err => { say('DB įrašymo klaida: ' + (err && err.message ? err.message : err)); });
+        }).catch(err => { say('getToken klaida: ' + (err && err.message ? err.message : err)); });
+    } catch (e) { try { showToast('PUSH klaida: ' + (e && e.message ? e.message : e)); } catch(x) {} }
 }
 
 // ----- Vartotojo turnyrų indeksas (kad serveris žinotų, kam siųsti push) -----
