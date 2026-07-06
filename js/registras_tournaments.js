@@ -145,6 +145,10 @@ function initTournamentsDB() {
     const list = document.getElementById('scheduleList');
     if (list) list.innerHTML = `<div style="text-align:center; padding: 30px; color: var(--text-grey);"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami turnyrai...</div>`;
 
+    // Push: tylus tokeno atnaujinimas kaskart atidarius portalą (jei leidimas jau suteiktas).
+    // Vėlinam 2.5s, kad pirmiausia užsikrautų prisijungimas (currentUser) ir Firebase.
+    setTimeout(() => { try { pushSilentRefresh(); } catch(e) {} }, 2500);
+
     firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).on('value', snap => {
         let data = snap.val();
         if (data) {
@@ -520,11 +524,36 @@ function _pushHash(s) { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h 
 
 function pushBannerHTML() {
     if (!pushConfigReady()) return '';
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') return '';
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        return '<div style="padding:9px 14px;background:#f0fdf4;border-bottom:1px solid #dcfce7;font-size:11px;color:#15803d;font-weight:bold;">' +
+            '<i class="fa-solid fa-circle-check"></i> Telefono pranešimai įjungti' +
+            '</div>';
+    }
     return '<div style="padding:12px 14px;background:#f0f7ff;border-bottom:1px solid #dbeafe;">' +
         '<div style="font-size:12px;color:#1e40af;font-weight:bold;margin-bottom:8px;"><i class="fa-solid fa-mobile-screen"></i> Gauk svarbiausius priminimus į telefoną, net išjungus programą.</div>' +
         '<button type="button" onclick="requestPushPermission()" style="width:100%;padding:10px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:bold;cursor:pointer;">Įjungti telefono pranešimus</button>' +
         '</div>';
+}
+
+// Tylus tokeno atnaujinimas: jei leidimas JAU suteiktas, kaskart atidarius portalą
+// prisijungusiam vartotojui tokenas gaunamas iš naujo ir įrašomas į padelio_push_tokens.
+// Tai būtina, nes: 1) leidimas galėjo būti suteiktas senai versijai (be tokeno saugojimo),
+// 2) FCM tokenai laikui bėgant keičiasi. Jokių dialogų — viskas fone.
+function pushSilentRefresh() {
+    try {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        if (!pushConfigReady()) return;
+        if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
+        pushInit();
+        if (!_pushMsg) return;
+        _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey }).then(token => {
+            if (!token) return;
+            const key = _pushHash(token);
+            firebase.database().ref('padelio_push_tokens/' + currentUser.id + '/' + key)
+                .set({ token: token, ts: Date.now(), ua: (navigator.userAgent || '').slice(0, 120) })
+                .catch(() => {});
+        }).catch(() => {});
+    } catch (e) { /* tylus — netrukdome portalui */ }
 }
 
 // ----- Vartotojo turnyrų indeksas (kad serveris žinotų, kam siųsti push) -----
