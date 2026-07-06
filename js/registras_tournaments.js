@@ -509,7 +509,7 @@ function requestPushPermission() {
     Notification.requestPermission().then(perm => {
         if (perm !== 'granted') { showToast("Pranešimai neįjungti."); return; }
         if (!_pushMsg) { try { _pushMsg = firebase.messaging(); _pushInited = true; } catch (e) { showToast("Klaida įjungiant."); return; } }
-        _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey }).then(token => {
+        navigator.serviceWorker.ready.then(swReg => _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey, serviceWorkerRegistration: swReg })).then(token => {
             if (!token) { showToast("Nepavyko gauti rakto."); return; }
             const key = _pushHash(token);
             firebase.database().ref('padelio_push_tokens/' + currentUser.id + '/' + key)
@@ -552,7 +552,7 @@ function pushSilentRefresh() {
         if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) { say('neprisijungęs (currentUser nėra)'); return; }
         pushInit();
         if (!_pushMsg) { say('messaging init nepavyko'); return; }
-        _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey }).then(token => {
+        navigator.serviceWorker.ready.then(swReg => _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey, serviceWorkerRegistration: swReg })).then(token => {
             if (!token) { say('tokenas tuščias'); return; }
             const key = _pushHash(token);
             firebase.database().ref('padelio_push_tokens/' + currentUser.id + '/' + key)
