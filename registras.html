@@ -21,6 +21,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
     <link rel="stylesheet" href="/css/registras.css?v=13">
 </head>
@@ -42,6 +43,17 @@
                         <option value="M">Vyras</option>
                         <option value="F">Moteris</option>
                     </select>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin: 14px 0 10px;">
+                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                    <div style="font-size: 10px; font-weight: 900; color: #a0aec0; text-transform: uppercase;">arba saugiai</div>
+                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                </div>
+                <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 12px;">
+                    <div style="font-size: 11px; color: #1e40af; font-weight: bold; margin-bottom: 8px;"><i class="fa-solid fa-envelope-circle-check"></i> Prisijungimas el. paštu — gausite vienkartinę nuorodą, slaptažodžio nereikia.</div>
+                    <input type="email" id="authEmailInput" placeholder="el.pastas@pavyzdys.lt" autocomplete="email" style="width: 100%; padding: 12px; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 8px; outline: none; font-weight: bold; font-size: 14px; box-sizing: border-box;">
+                    <button type="button" class="modal-btn primary" onclick="clientSendEmailLink()" style="width: 100%; background: #2563eb;"><i class="fa-solid fa-paper-plane"></i> Siųsti prisijungimo nuorodą</button>
                 </div>
             </div>
             <div class="modal-actions">

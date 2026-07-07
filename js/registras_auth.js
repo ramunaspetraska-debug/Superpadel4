@@ -61,6 +61,206 @@ function esc(str) {
 }
 
 // ==========================================
+// 0. SAUGUS PRISIJUNGIMAS EL. PAŠTO NUORODA (Firebase Auth email link)
+// ==========================================
+// Firebase pats išsiunčia vienkartinę prisijungimo nuorodą — SMTP serverio nereikia.
+// BŪTINA įjungti konsolėje: Authentication → Sign-in method → Email/Password →
+// „Email link (passwordless sign-in)". Kol neįjungta — mygtukai parodys instrukciją.
+// DB šakos: padelio_email_links/{emailKey} = žaidėjo ID (kliento profilio susiejimas),
+// padelio_clubs/{clubId} ir padelio_club_admins/{emailKey} — klubų administratoriai.
+
+function authAvailable() {
+    return typeof firebase !== 'undefined' && typeof firebase.auth === 'function';
+}
+
+// El. paštas → saugus Firebase DB raktas (be . # $ [ ] /)
+function emailKey(email) {
+    return String(email || '').trim().toLowerCase().replace(/[.#$\[\]\/]/g, ',');
+}
+
+function validEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(email || '').trim());
+}
+
+// Bendras nuorodos siuntimas. flow: 'client' | 'admin'; extra — papildomi duomenys grįžimui.
+function sendLoginLink(email, flow, extra) {
+    if (!authAvailable()) {
+        showToast("El. pašto prisijungimas neprieinamas (neįkelta auth biblioteka).");
+        return Promise.reject(new Error('no-auth'));
+    }
+    const actionCodeSettings = { url: location.origin + location.pathname, handleCodeInApp: true };
+    return firebase.auth().sendSignInLinkToEmail(String(email).trim(), actionCodeSettings).then(() => {
+        localStorage.setItem('sp_pending_email', String(email).trim());
+        localStorage.setItem('sp_auth_flow', flow || 'client');
+        if (extra) localStorage.setItem('sp_auth_extra', JSON.stringify(extra));
+        else localStorage.removeItem('sp_auth_extra');
+    });
+}
+
+// Suprantamas klaidos paaiškinimas + instrukcija, jei Auth dar neįjungtas konsolėje
+function explainAuthError(err) {
+    const code = err && err.code ? String(err.code) : '';
+    if (code === 'auth/operation-not-allowed' || code === 'auth/configuration-not-found' || code === 'auth/admin-restricted-operation') {
+        alert("⚠️ El. pašto prisijungimas dar neįjungtas Firebase pusėje.\n\nĮjungimo instrukcija (vienkartinė, ~2 min.):\n1. Atsidarykite console.firebase.google.com → projektą „padelio-turnyrai\".\n2. Kairėje: Authentication → Get started (jei rodo).\n3. Skirtukas „Sign-in method\" → Email/Password → įjunkite ABU jungiklius (Email/Password IR Email link).\n4. Skirtuke „Settings\" → „Authorized domains\" patikrinkite, kad būtų www.superpadel.lt ir superpadel.lt.\n\nĮjungę bandykite dar kartą.");
+        return;
+    }
+    if (code === 'auth/invalid-email') { showToast("Neteisingas el. pašto adresas."); return; }
+    if (code === 'auth/too-many-requests') { showToast("Per daug bandymų — palaukite kelias minutes."); return; }
+    showToast("⚠️ Nepavyko išsiųsti nuorodos: " + (err && err.message ? err.message : err));
+}
+
+// Kliento „Siųsti prisijungimo nuorodą" mygtukas prisijungimo lange
+function clientSendEmailLink() {
+    const inp = document.getElementById('authEmailInput');
+    const email = inp ? inp.value.trim() : '';
+    if (!validEmail(email)) { showToast("Įveskite teisingą el. pašto adresą."); return; }
+    showToast("⏳ Siunčiama nuoroda...");
+    sendLoginLink(email, 'client').then(() => {
+        closeAuthModal();
+        alert("📧 Prisijungimo nuoroda išsiųsta į\n" + email + "\n\nAtidarykite laišką ŠIAME įrenginyje ir paspauskite nuorodą. Jei laiško nematote — patikrinkite šlamšto (spam) aplanką.");
+    }).catch(explainAuthError);
+}
+
+// Puslapio starte: jei grįžome paspaudę laiško nuorodą — užbaigiam prisijungimą
+function handleEmailLinkReturn() {
+    if (!authAvailable()) return;
+    let auth;
+    try { auth = firebase.auth(); } catch (e) { return; }
+    let isLink = false;
+    try { isLink = auth.isSignInWithEmailLink(window.location.href); } catch (e) { return; }
+    if (!isLink) return;
+    let email = localStorage.getItem('sp_pending_email');
+    if (!email) email = window.prompt('Saugumo patikra: įveskite el. pašto adresą, kuriuo gavote nuorodą:');
+    if (!email) return;
+    showToast("⏳ Tvirtinamas prisijungimas...");
+    auth.signInWithEmailLink(email.trim(), window.location.href).then(result => {
+        localStorage.removeItem('sp_pending_email');
+        const flow = localStorage.getItem('sp_auth_flow') || 'client';
+        let extra = null;
+        try { extra = JSON.parse(localStorage.getItem('sp_auth_extra') || 'null'); } catch (e) {}
+        localStorage.removeItem('sp_auth_flow'); localStorage.removeItem('sp_auth_extra');
+        try { history.replaceState(null, '', location.origin + location.pathname); } catch (e) {}
+        const verifiedEmail = (result && result.user && result.user.email) || email.trim();
+        if (flow === 'admin' && typeof adminEmailSignedIn === 'function') adminEmailSignedIn(verifiedEmail);
+        else clientEmailSignedIn(verifiedEmail, extra);
+    }).catch(err => {
+        console.error('Email link klaida:', err);
+        try { history.replaceState(null, '', location.origin + location.pathname); } catch (e) {}
+        showToast('⚠️ Nuoroda nebegalioja arba jau panaudota. Išsiųskite naują.');
+    });
+}
+
+// Klientas patvirtino el. paštą: randame susietą profilį arba siūlome susieti/sukurti
+function clientEmailSignedIn(email, extra) {
+    const ek = emailKey(email);
+    firebase.database().ref('padelio_email_links/' + ek).once('value').then(snap => {
+        const pid = snap.val();
+        if (pid) {
+            // El. paštas jau susietas su profiliu — prisijungiam
+            firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + pid).once('value').then(ps => {
+                const u = ps.val();
+                if (!u) { showToast("Susietas profilis nerastas — kreipkitės į administratorių."); return; }
+                currentUser = u;
+                localStorage.setItem('sp_current_user', JSON.stringify(u));
+                updateAuthUI();
+                closeAuthModal();
+                showToast('🔒 Prisijungta saugiai: ' + u.name);
+                if (typeof renderTournaments === 'function') renderTournaments();
+                if (typeof renderUserProfile === 'function') renderUserProfile();
+            });
+            return;
+        }
+        // Paskyros apsaugojimas iš profilio: susiejame su jau prisijungusio vartotojo profiliu
+        if (extra && extra.linkPhone) { linkEmailToPlayerPhone(email, String(extra.linkPhone), true); return; }
+        openEmailLinkAccountModal(email);
+    });
+}
+
+// Modalas po pirmo prisijungimo el. paštu: susieti esamą profilį (telefonu) arba kurti naują
+function openEmailLinkAccountModal(email) {
+    const m = document.getElementById('actionModal');
+    const mTitle = document.getElementById('modalTitle');
+    const mBody = document.getElementById('modalBody');
+    const mActions = document.getElementById('modalActions');
+    if (!m || !mTitle || !mBody || !mActions) return;
+    mTitle.innerHTML = '<i class="fa-solid fa-envelope-circle-check" style="color: var(--status-green);"></i> El. paštas patvirtintas';
+    mBody.innerHTML = `
+        <div style="font-size: 12px; color: var(--text-grey); margin-bottom: 12px;">${esc(email)} — patvirtintas. Susiekime jį su jūsų žaidėjo profiliu.</div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase;">Jau turite profilį? Įveskite savo telefono nr.</label>
+        <input type="text" id="emailLinkPhone" placeholder="Pvz. 37060000000" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; margin: 6px 0 14px; outline: none; font-weight: bold; box-sizing: border-box;">
+        <div style="border-top: 1px dashed #e2e8f0; padding-top: 12px;">
+            <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase;">Neturite profilio? Sukurkite naują</label>
+            <input type="text" id="emailLinkName" placeholder="Vardas Pavardė" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; margin: 6px 0 8px; outline: none; font-weight: bold; box-sizing: border-box;">
+            <select id="emailLinkGender" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box;">
+                <option value="M">Vyras</option><option value="F">Moteris</option>
+            </select>
+        </div>`;
+    mActions.innerHTML = `
+        <button type="button" class="modal-btn primary" onclick="emailLinkAccountSubmit('${esc(email)}')" style="width:100%; margin-bottom:8px;">Tęsti</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>`;
+    m.classList.add('show');
+}
+
+function emailLinkAccountSubmit(email) {
+    const phoneRaw = (document.getElementById('emailLinkPhone')?.value || '').trim().toLowerCase();
+    if (phoneRaw) {
+        let safeId = phoneRaw.replace(/[^a-z0-9]/g, '');
+        if (safeId.startsWith('86') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+        if (safeId.startsWith('06') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+        linkEmailToPlayerPhone(email, safeId, false);
+        return;
+    }
+    const name = (document.getElementById('emailLinkName')?.value || '').trim();
+    const gender = document.getElementById('emailLinkGender')?.value || 'M';
+    if (!name) { showToast("Įveskite telefono numerį ARBA vardą naujam profiliui."); return; }
+    // Naujas profilis su el. paštu vietoj telefono ID
+    const pid = 'em_' + emailKey(email).replace(/,/g, '_');
+    const newUser = { id: pid, name: name, gender: gender, rating: 300, tier: "D", total_matches: 0, last_played: Date.now(), email: String(email).trim().toLowerCase(), emailLocked: true };
+    firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + pid).set(newUser).then(() => {
+        firebase.database().ref('padelio_email_links/' + emailKey(email)).set(pid);
+        currentUser = newUser;
+        localStorage.setItem('sp_current_user', JSON.stringify(newUser));
+        updateAuthUI(); closeModal(); closeAuthModal();
+        showToast("🔒 Profilis sukurtas ir apsaugotas el. paštu!");
+        if (typeof renderUserProfile === 'function') renderUserProfile();
+    });
+}
+
+// Susieja patvirtintą el. paštą su esamu (telefono) profiliu ir jį užrakina
+function linkEmailToPlayerPhone(email, playerId, silent) {
+    const ek = emailKey(email);
+    firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + playerId).once('value').then(snap => {
+        const u = snap.val();
+        if (!u) { showToast("Profilis su šiuo numeriu nerastas. Patikrinkite arba sukurkite naują."); return; }
+        // APSAUGA: jau kitu el. paštu apsaugoto profilio perimti negalima
+        if (u.emailLocked && u.email && String(u.email).toLowerCase() !== String(email).toLowerCase()) {
+            showToast("🔒 Šis profilis jau apsaugotas kitu el. paštu."); return;
+        }
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + playerId).update({ email: String(email).trim().toLowerCase(), emailLocked: true }).then(() => {
+            firebase.database().ref('padelio_email_links/' + ek).set(playerId);
+            u.email = String(email).trim().toLowerCase(); u.emailLocked = true;
+            currentUser = u;
+            localStorage.setItem('sp_current_user', JSON.stringify(u));
+            updateAuthUI(); closeModal(); closeAuthModal();
+            showToast(silent ? "🔒 Paskyra apsaugota el. paštu!" : ('🔒 Susieta! Sveiki, ' + u.name));
+            if (typeof renderUserProfile === 'function') renderUserProfile();
+        });
+    });
+}
+
+// Profilio mygtukas „Apsaugoti paskyrą": siunčia nuorodą, o grįžus automatiškai susieja šį profilį
+function protectAccountWithEmail() {
+    if (!currentUser || !currentUser.id) { showToast("Pirmiausia prisijunkite."); return; }
+    const email = window.prompt("Įveskite savo el. pašto adresą paskyros apsaugai:");
+    if (!email) return;
+    if (!validEmail(email)) { showToast("Neteisingas el. pašto adresas."); return; }
+    showToast("⏳ Siunčiama nuoroda...");
+    sendLoginLink(email, 'client', { linkPhone: currentUser.id }).then(() => {
+        alert("📧 Patvirtinimo nuoroda išsiųsta į\n" + email.trim() + "\n\nPaspauskite ją ŠIAME įrenginyje — paskyra bus apsaugota: prisijungti bus galima tik per el. paštą.");
+    }).catch(explainAuthError);
+}
+
+// ==========================================
 // 1. AUTENTIFIKACIJA IR VARTOTOJO PROFILIS
 // ==========================================
 
@@ -108,6 +308,14 @@ function processAuth() {
     firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
         let user = snap.val();
         if(user) {
+            // 🔒 Apsaugotas profilis: prisijungti galima TIK per el. pašto nuorodą
+            if (user.emailLocked) {
+                const hint = user.email ? (' (' + String(user.email).replace(/^(..).*(@.*)$/, '$1***$2') + ')') : '';
+                showToast('🔒 Šis profilis apsaugotas el. paštu' + hint + '. Naudokite „Siųsti prisijungimo nuorodą" žemiau.');
+                const emailInp = document.getElementById('authEmailInput');
+                if (emailInp) emailInp.focus();
+                return;
+            }
             currentUser = user;
             localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
             showToast(`Sveiki sugrįžę, ${user.name}!`);
@@ -320,9 +528,13 @@ function renderUserProfile() {
                 <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 3px;"><i class="fa-solid fa-id-badge" style="margin-right:4px;"></i> ID: ${esc(currentUser.id)}</div>
             </div>
             <div style="text-align: right;">
-                <span style="background: ${ptsColor}; color: white; padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${currentUser.tier || 'D'} Lyga</span>
+                <span style="background: ${ptsColor}; color: white; padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${esc(currentUser.tier || 'D')} Lyga</span>
             </div>
         </div>
+
+        ${currentUser.emailLocked
+            ? `<div style="background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 10px; padding: 10px 14px; margin-bottom: 15px; font-size: 12px; color: #15803d; font-weight: bold;"><i class="fa-solid fa-lock"></i> Paskyra apsaugota el. paštu${currentUser.email ? ' (' + esc(currentUser.email) + ')' : ''}</div>`
+            : `<button type="button" onclick="protectAccountWithEmail()" style="width: 100%; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-lock"></i> Apsaugoti paskyrą el. paštu (rekomenduojama)</button>`}
 
         <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Oficiali Lyga</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 15px;">
@@ -1016,3 +1228,10 @@ function showRoomQR(roomName) {
         document.getElementById('roomQrBox').innerHTML = `<div style="font-size:11px; padding:20px; color:var(--text-grey); word-break:break-all;">${link}</div>`;
     }
 }
+
+// ==========================================
+// EL. PAŠTO NUORODOS APDOROJIMAS PUSLAPIO STARTE
+// ==========================================
+// Jei vartotojas atėjo paspaudęs laiško nuorodą — užbaigiam prisijungimą.
+// setTimeout: laukiam, kol užsikraus visi skriptai (admin funkcijos apibrėžtos vėliau).
+setTimeout(function () { try { handleEmailLinkReturn(); } catch (e) { console.error('handleEmailLinkReturn:', e); } }, 400);

@@ -1,19 +1,184 @@
 // ==========================================
-// 6. ADMINISTRATORIAUS VALDYMO PLATFORMA
+// 6. ADMINISTRATORIAUS VALDYMO PLATFORMA (klubų paskyros)
 // ==========================================
+// Kiekvienas klubas turi SAVO paskyrą: admin prisijungia patvirtinta el. pašto nuoroda
+// ir mato tik SAVO klubo turnyrus. DB: padelio_clubs/{clubId} (klubas + jo adminai),
+// padelio_club_admins/{emailKey} → { clubId } (greita paieška pagal el. paštą).
+// Pirmasis sukurtas klubas gauna legacyOwner=true ir perima senus turnyrus (be clubId).
+// Senas PIN kodas veikia TIK kol sistemoje nesukurtas nė vienas klubas (migracijai).
+
+let currentClub = null; // { id, name, legacyOwner, ownerEmail, myEmail }
 
 function promptAdmin() {
     if (!isAppMode) { toggleMode(); return; }
+    // Jau prisijungęs prie klubo šioje sesijoje — tiesiai į panelę
+    if (currentClub) { toggleMode(); updateAdminHeader(); return; }
+    // Aktyvi Firebase Auth sesija (prisijungta anksčiau) — bandome rasti klubą be naujo laiško
+    const authUser = (typeof authAvailable === 'function' && authAvailable()) ? firebase.auth().currentUser : null;
+    if (authUser && authUser.email) { adminEmailSignedIn(authUser.email); return; }
+    openAdminAuthModal();
+}
+
+function openAdminAuthModal() {
+    modalTitle.innerHTML = '<i class="fa-solid fa-building-lock" style="color: var(--primary-blue);"></i> Klubo administratorius';
+    modalBody.innerHTML = `
+        <div style="font-size: 12px; color: var(--text-grey); margin-bottom: 12px;">Prisijungimas patvirtinama el. pašto nuoroda. Jei klubo dar neturite — susikursite po patvirtinimo.</div>
+        <input type="email" id="adminEmailInput" placeholder="klubo@pastas.lt" autocomplete="email" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; font-size: 15px; box-sizing: border-box;">`;
+    modalActions.innerHTML = `
+        <button type="button" class="modal-btn primary" onclick="adminSendLink()" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-paper-plane"></i> Gauti prisijungimo nuorodą</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>
+        <button type="button" onclick="adminPinFallback()" style="width:100%; background:none; border:none; color:#a0aec0; font-size:11px; margin-top:8px; cursor:pointer;">Senas prisijungimas kodu (laikinas)</button>`;
+    modal.classList.add('show');
+    setTimeout(() => document.getElementById('adminEmailInput')?.focus(), 150);
+}
+
+function adminSendLink() {
+    const email = (document.getElementById('adminEmailInput')?.value || '').trim();
+    if (!validEmail(email)) { showToast("Įveskite teisingą el. pašto adresą."); return; }
+    showToast("⏳ Siunčiama nuoroda...");
+    sendLoginLink(email, 'admin').then(() => {
+        closeModal();
+        alert("📧 Prisijungimo nuoroda išsiųsta į\n" + email + "\n\nAtidarykite laišką ŠIAME įrenginyje ir paspauskite nuorodą. Jei nematote — patikrinkite šlamšto aplanką.");
+    }).catch(explainAuthError);
+}
+
+// Grįžus su patvirtinta admin nuoroda (arba esant aktyviai sesijai)
+function adminEmailSignedIn(email) {
+    const ek = emailKey(email);
+    firebase.database().ref('padelio_club_admins/' + ek).once('value').then(snap => {
+        const rec = snap.val();
+        if (rec && rec.clubId) {
+            firebase.database().ref('padelio_clubs/' + rec.clubId).once('value').then(cs => {
+                const club = cs.val();
+                if (club) enterClubAdmin(rec.clubId, club, email);
+                else openCreateClubModal(email);
+            });
+        } else {
+            openCreateClubModal(email);
+        }
+    });
+}
+
+function openCreateClubModal(email) {
+    modalTitle.innerHTML = '<i class="fa-solid fa-building-circle-check" style="color: var(--status-green);"></i> Naujas klubas';
+    modalBody.innerHTML = `
+        <div style="font-size: 12px; color: var(--text-grey); margin-bottom: 12px;"><strong>${esc(email)}</strong> patvirtintas, bet dar nepriskirtas jokiam klubui.<br><br>Sukurkite savo klubo paskyrą — matysite ir valdysite tik savo klubo turnyrus.</div>
+        <input type="text" id="newClubName" placeholder="Klubo pavadinimas (pvz. Kauno Padel)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box;">`;
+    modalActions.innerHTML = `
+        <button type="button" class="modal-btn primary" onclick="createClub('${esc(email)}')" style="width:100%; margin-bottom:8px;">Sukurti klubą</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>`;
+    modal.classList.add('show');
+    setTimeout(() => document.getElementById('newClubName')?.focus(), 150);
+}
+
+function createClub(email) {
+    const name = (document.getElementById('newClubName')?.value || '').trim();
+    if (name.length < 3) { showToast("Įveskite klubo pavadinimą (bent 3 simboliai)."); return; }
+    const ek = emailKey(email);
+    firebase.database().ref('padelio_clubs').once('value').then(s => {
+        const isFirst = !s.exists(); // pirmasis klubas perima senus (be clubId) turnyrus
+        const clubId = 'club_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        const club = {
+            name: name, createdAt: Date.now(), ownerEmail: String(email).toLowerCase(),
+            legacyOwner: isFirst,
+            admins: {}
+        };
+        club.admins[ek] = { email: String(email).toLowerCase(), addedAt: Date.now(), role: 'owner' };
+        firebase.database().ref('padelio_clubs/' + clubId).set(club).then(() => {
+            firebase.database().ref('padelio_club_admins/' + ek).set({ clubId: clubId, email: String(email).toLowerCase() });
+            closeModal();
+            enterClubAdmin(clubId, club, email);
+            if (isFirst) showToast("✅ Klubas sukurtas! Jam priskirti ir visi ankstesni turnyrai.");
+        });
+    });
+}
+
+function enterClubAdmin(clubId, club, email) {
+    currentClub = { id: clubId, name: club.name, legacyOwner: !!club.legacyOwner, ownerEmail: club.ownerEmail || '', myEmail: String(email).toLowerCase() };
+    closeModal();
+    if (isAppMode) toggleMode();
+    updateAdminHeader();
+    renderAdminTournaments();
+    showToast('✅ ' + club.name + ' — administratorius');
+}
+
+function adminLogout() {
+    currentClub = null;
+    if (typeof authAvailable === 'function' && authAvailable()) { try { firebase.auth().signOut(); } catch (e) {} }
+    if (!isAppMode) toggleMode();
+    showToast("Atsijungta nuo klubo paskyros.");
+}
+
+// Klubo juosta admin panelės viršuje: pavadinimas + adminų kvietimas + atsijungimas
+function updateAdminHeader() {
+    const sidebar = document.querySelector('.admin-sidebar .logo');
+    if (!sidebar) return;
+    document.getElementById('admin-club-bar')?.remove();
+    if (!currentClub) return;
+    const bar = document.createElement('div');
+    bar.id = 'admin-club-bar';
+    bar.style.cssText = 'padding: 10px 20px; background: #1a202c; border-top: 1px solid #2d3748; border-bottom: 1px solid #2d3748;';
+    bar.innerHTML = `
+        <div style="font-size: 10px; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px;">Klubas</div>
+        <div style="font-size: 15px; font-weight: 900; color: #48bb78; margin: 2px 0 8px;">${esc(currentClub.name)}${currentClub.legacyOwner ? ' <i class="fa-solid fa-crown" style="font-size:10px;color:#d69e2e;" title="Pagrindinis klubas"></i>' : ''}</div>
+        <button type="button" onclick="openInviteAdminModal()" style="width:100%; background:#2d3748; color:#e2e8f0; border:none; padding:7px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:5px;"><i class="fa-solid fa-user-plus"></i> Pakviesti administratorių</button>
+        <button type="button" onclick="adminLogout()" style="width:100%; background:none; color:#fc8181; border:1px solid #742a2a; padding:7px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-right-from-bracket"></i> Atsijungti</button>`;
+    sidebar.insertAdjacentElement('afterend', bar);
+}
+
+// Kito administratoriaus pakvietimas į SAVO klubą (pagal el. paštą)
+function openInviteAdminModal() {
+    if (!currentClub) return;
     openInputModal(
-        '<i class="fa-solid fa-lock" style="color: var(--primary-blue);"></i> Administratoriaus prieiga',
-        'Įveskite kodą',
-        'Prisijungti',
-        (code) => {
-            if (code === "7030") { toggleMode(); }
-            else if (code) { showToast("Neteisingas kodas!"); }
+        '<i class="fa-solid fa-user-plus" style="color: var(--primary-blue);"></i> Pakviesti administratorių',
+        'kolegos@pastas.lt',
+        'Pridėti prie klubo',
+        (email) => {
+            email = String(email || '').trim().toLowerCase();
+            if (!validEmail(email)) { showToast("Neteisingas el. pašto adresas."); return; }
+            const ek = emailKey(email);
+            firebase.database().ref('padelio_club_admins/' + ek).once('value').then(snap => {
+                const rec = snap.val();
+                if (rec && rec.clubId && rec.clubId !== currentClub.id) { showToast("Šis el. paštas jau priklauso kitam klubui."); return; }
+                firebase.database().ref('padelio_club_admins/' + ek).set({ clubId: currentClub.id, email: email });
+                firebase.database().ref('padelio_clubs/' + currentClub.id + '/admins/' + ek).set({ email: email, addedAt: Date.now(), role: 'admin' });
+                showToast("✅ " + email + " pridėtas. Jis prisijungs per „Admin\" su savo el. paštu.");
+            });
         },
-        'password'
+        'email'
     );
+}
+
+// SENAS PIN — veikia tik migracijos laikotarpiu, kol nesukurtas nė vienas klubas.
+// Vos tik sukuriamas pirmas klubas, šis kelias automatiškai išsijungia visam laikui.
+function adminPinFallback() {
+    firebase.database().ref('padelio_clubs').once('value').then(s => {
+        if (s.exists()) {
+            closeModal();
+            showToast("🔒 Prisijungimas kodu išjungtas — naudokite el. paštą.");
+            return;
+        }
+        openInputModal(
+            '<i class="fa-solid fa-lock" style="color: var(--status-orange);"></i> Laikinas kodas (nesaugu)',
+            'Įveskite kodą',
+            'Prisijungti',
+            (code) => {
+                if (code === "7030") {
+                    toggleMode();
+                    showToast("⚠️ Prisijunkite el. paštu ir susikurkite klubą — kodas bus išjungtas.");
+                }
+                else if (code) { showToast("Neteisingas kodas!"); }
+            },
+            'password'
+        );
+    }).catch(() => showToast("Nepavyko patikrinti — bandykite vėliau."));
+}
+
+// Ar šis admin gali valdyti turnyrą: savo klubo + (legacyOwner atveju) senus be klubo
+function canManageTournament(t) {
+    if (!currentClub) return false;
+    if (t && t.clubId) return t.clubId === currentClub.id;
+    return !!currentClub.legacyOwner;
 }
 
 function toggleMode() {
@@ -141,6 +306,8 @@ async function createTournament(e) {
                 max: parseInt(document.getElementById('newMax').value),
                 status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
             };
+            // Turnyras priklauso jį sukūrusiam klubui — kiti klubai jo nevaldys
+            if (currentClub) { newT.clubId = currentClub.id; newT.clubName = currentClub.name; }
             tournaments.push(newT);
         }
         const ok = await Promise.resolve(saveData());
@@ -158,12 +325,15 @@ async function createTournament(e) {
 function renderAdminTournaments() {
     const list = document.getElementById('admin-tournaments-list-db');
     if(!list) return;
-    if(tournaments.length === 0) {
-        list.innerHTML = '<div style="color: #718096; font-size: 13px; text-align:center; padding: 20px;">Turnyrų nėra.</div>';
+    // KLUBŲ IZOLIACIJA: rodomi tik savo klubo turnyrai (legacyOwner — ir seni be klubo žymos).
+    // currentClub nėra tik senuoju PIN keliu, kuris veikia tik kol klubų sistemoje nėra — tada rodomi visi.
+    let visible = currentClub ? tournaments.filter(t => canManageTournament(t)) : [...tournaments];
+    if(visible.length === 0) {
+        list.innerHTML = '<div style="color: #718096; font-size: 13px; text-align:center; padding: 20px;">' + (currentClub ? 'Jūsų klubas dar neturi turnyrų — sukurkite pirmąjį!' : 'Turnyrų nėra.') + '</div>';
         return;
     }
-    
-    let sorted = [...tournaments].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+    let sorted = [...visible].sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
     let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; min-width: 500px;">';
     html += '<tr style="background: #edf2f7; color: #718096; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;"><th style="padding: 12px; border-radius: 6px 0 0 0;">Diena</th><th>Laikas</th><th>Formatas</th><th>Lygis</th><th>Dalyviai</th><th style="padding: 12px; text-align: center; width: 160px; border-radius: 0 6px 0 0;">Veiksmai</th></tr>';
@@ -198,6 +368,7 @@ function renderAdminTournaments() {
 function openAdminTournamentModal(id) {
     let t = tournaments.find(x => String(x.id) === String(id));
     if(!t) return;
+    if (currentClub && !canManageTournament(t)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
     document.getElementById('editAdminTournamentId').value = t.id;
     document.getElementById('editAdminTournamentFormat').value = t.format;
     document.getElementById('editAdminTournamentLevel').value = t.level;
@@ -238,6 +409,8 @@ function saveAdminTournamentChanges() {
 }
 
 function deleteAdminTournamentLive(id) {
+    const target = tournaments.find(t => String(t.id) === String(id));
+    if (target && currentClub && !canManageTournament(target)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
     if(!confirm("Ar tikrai norite ištrinti šį turnyrą iš debesies? Visi užsiregistravę žaidėjai bus pašalinti.")) return;
     tournaments = tournaments.filter(t => String(t.id) !== String(id));
     saveData();
