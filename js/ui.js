@@ -555,12 +555,16 @@ function changeRanking(v) { if(typeof settings !== 'undefined') { settings.ranki
 
 function updSc(id, t, v) { const m = matches.find(x=>x.id===id); if(m){ if(t===1) m.score1=Math.max(0, (m.score1||0)+v); else m.score2=Math.max(0, (m.score2||0)+v); liveUpdateMatches(); } }
 
-function finM(id) { 
-    const m = matches.find(x=>x.id===id); 
-    if(m){ 
-        m.finished = true; 
-        liveUpdateMatches(); 
-    } 
+function finM(id) {
+    const m = matches.find(x=>x.id===id);
+    if(m){
+        // Atkrintamųjų/finalo mače lygiosios negalimos — nugalėtoja laikoma pirmoji komanda. Įspėjam.
+        if (m.isFinal && parseInt(m.score1 || 0) === parseInt(m.score2 || 0)) {
+            if (!confirm("Lygiosios finaliniame mače!\n\nNugalėtoja bus laikoma PIRMOJI (viršuje rodoma) komanda. Ar tikrai užbaigti?")) return;
+        }
+        m.finished = true;
+        liveUpdateMatches();
+    }
 }
 
 function undoM(id) { const m = matches.find(x=>x.id===id); if(m){ m.finished=false; liveUpdateMatches(); } }

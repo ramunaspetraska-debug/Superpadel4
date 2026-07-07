@@ -405,6 +405,9 @@ function generateMexicanoRound(safePool) {
             if (mC !== fC) { alert(`KLAIDA: Mix kategorijai reikia po lygiai vyrų ir moterų! (Dabar: ${mC} vyr. / ${fC} mot.)`); return; }
         }
         const roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
+        // Nebaigti mačai į lentelę neįtraukiami, todėl poravimas be jų rezultatų būtų netikslus — įspėjam.
+        const unfinishedM = safeArr(matches).filter(m => m && !m.finished && !m.isFinal);
+        if (unfinishedM.length > 0 && !confirm(`Dar ${unfinishedM.length} mač. nebaigta — lentelė nepilna, kitas raundas bus poruojamas be jų rezultatų.\n\nVis tiek generuoti?`)) return;
         const finished = safeArr(matches).filter(m => m && m.finished && !m.isFinal);
         let ordered;
         if (finished.length === 0) {
@@ -448,6 +451,8 @@ function generateKingRound(safePool) {
         const courts = N / 4;
         const roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
         const prev = safeArr(matches).filter(m => m && !m.isFinal && m.round === roundNum - 1);
+        // Nebaigtas praėjęs raundas → blokuojam: kitaip kortų hierarchija būtų prarasta ir sėja taptų atsitiktinė.
+        if (prev.length > 0 && !prev.every(m => m.finished)) { alert(`Pabaikite visus ${roundNum - 1} raundo mačus prieš generuodami kitą!`); return; }
         let canMove = prev.length === courts && prev.every(m => m.finished);
         if (canMove) {
             const prevIds = new Set();
@@ -540,45 +545,84 @@ function generateCupRound(safePool) {
             }
             let groupCount;
             if (T <= 5) groupCount = 1; else if (T <= 9) groupCount = 2; else groupCount = 4;
+            // Sėjimas pagal komandų reitingą (gyvatėlės principu): stipriausios komandos išskirstomos
+            // po skirtingas grupes, kad nesusitiktų grupių etape. Vienodo pajėgumo — atsitiktine tvarka.
+            const teamAvg = k => (((teamsByKey[k][0] && teamsByKey[k][0].rating) || 300) + ((teamsByKey[k][1] && teamsByKey[k][1].rating) || 300)) / 2;
             const order = shuffle([...Object.keys(teamsByKey)]);
+            order.sort((a, b) => teamAvg(b) - teamAvg(a));
             const groups = Array.from({ length: groupCount }, () => []);
-            order.forEach((k, i) => groups[i % groupCount].push(k));
+            order.forEach((k, i) => {
+                const block = Math.floor(i / groupCount), pos = i % groupCount;
+                groups[block % 2 === 0 ? pos : groupCount - 1 - pos].push(k);
+            });
             const roundsForGroup = (g) => (g.length <= 1 ? 0 : (g.length % 2 === 0 ? g.length - 1 : g.length));
-            const groupRoundsTotal = Math.max(...groups.map(roundsForGroup));
+            let groupRoundsTotal = Math.max(...groups.map(roundsForGroup));
+            if (T === 2) groupRoundsTotal = 0; // 2 komandos — iškart finalas
             settings.cupState = { sig: sig, groups: groups, groupRoundsTotal: groupRoundsTotal };
             autoSave(true);
-            if (T === 2) settings.cupState.groupRoundsTotal = 0; // 2 komandos — iškart finalas
         }
         const st = settings.cupState;
         const roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-        const groupMatches = safeArr(matches).filter(m => m && !m.isFinal);
-        const groupRoundsGenerated = groupMatches.length > 0 ? Math.max(...groupMatches.map(m => m.round || 0)) : 0;
 
-        // --- GRUPIŲ ETAPAS ---
-        if (groupRoundsGenerated < st.groupRoundsTotal) {
-            const grForGroup = groupRoundsGenerated; // kiek grupių raundų jau sužaista/sugeneruota (0-based kitam)
+        // --- GRUPIŲ ETAPAS (trynimui atsparus) ---
+        // Kiekvienai grupei skaičiuojam, kiek kartų kiekviena jos ratų rotacija jau yra tarp esamų mačų,
+        // ir generuojam REČIAUSIAI naudotą (tas pats principas kaip generateFixedRound): ištrynus raundą
+        // spraga užsipildo trūkstamais mačais, o ne šokama į atkrintamąsias su nepilna lentele.
+        // Kai visos grupės sužaidė visas rotacijas — tęsiama žemyn į atkrintamąsias.
+        if (st.groupRoundsTotal > 0) {
             let newM = []; let court = 1; let resting = [];
-            st.groups.forEach((gKeys, gi) => {
+            st.groups.forEach((gKeys) => {
+                if (gKeys.length <= 1) return;
                 let idxs = gKeys.map((_, i) => i);
-                if (idxs.length <= 1) return;
                 if (idxs.length % 2 === 1) idxs.push(-1);
                 const K = idxs.length, cycle = K - 1;
-                if (grForGroup >= (gKeys.length % 2 === 0 ? gKeys.length - 1 : gKeys.length)) return; // ši grupė jau baigė ratą
-                const shift2 = grForGroup % cycle;
-                let rot = [idxs[0]]; let others = idxs.slice(1);
-                for (let s = 0; s < shift2; s++) others.unshift(others.pop());
-                rot.push(...others);
-                for (let i = 0; i < K / 2; i++) {
-                    const a = rot[i], b = rot[K - 1 - i];
-                    if (a === -1) { resting.push(teamsByKey[gKeys[b]]); continue; }
-                    if (b === -1) { resting.push(teamsByKey[gKeys[a]]); continue; }
-                    newM.push({ id: uid(), round: roundNum, court: court++, finished: false, score1: 0, score2: 0, team1: teamsByKey[gKeys[a]], team2: teamsByKey[gKeys[b]] });
+                const pairingForShift = (shift) => {
+                    let rot = [idxs[0]]; let others = idxs.slice(1);
+                    for (let s = 0; s < shift; s++) others.unshift(others.pop());
+                    rot.push(...others);
+                    let prs = []; let rest = null;
+                    for (let i = 0; i < K / 2; i++) {
+                        const a = rot[i], b = rot[K - 1 - i];
+                        if (a === -1) { rest = b; continue; }
+                        if (b === -1) { rest = a; continue; }
+                        prs.push([a, b]);
+                    }
+                    return { prs, rest };
+                };
+                const shiftSigs = [];
+                for (let s = 0; s < cycle; s++) {
+                    const pr = pairingForShift(s);
+                    shiftSigs.push(pr.prs.map(p => [gKeys[p[0]], gKeys[p[1]]].sort().join('|')).sort().join('#'));
                 }
+                // Esamų šios grupės mačų raundai → rotacijų panaudojimo skaičiai
+                const gSet = new Set(gKeys);
+                const byRound = {};
+                safeArr(matches).forEach(m => {
+                    if (!m || m.isFinal) return;
+                    const k1 = (safeArr(m.team1).length === 2) ? cupTeamKey(m.team1) : null;
+                    const k2 = (safeArr(m.team2).length === 2) ? cupTeamKey(m.team2) : null;
+                    if (k1 && k2 && gSet.has(k1) && gSet.has(k2)) (byRound[m.round] = byRound[m.round] || []).push([k1, k2].sort().join('|'));
+                });
+                const counts = new Array(cycle).fill(0);
+                Object.keys(byRound).forEach(rn => {
+                    const idx = shiftSigs.indexOf(byRound[rn].sort().join('#'));
+                    if (idx !== -1) counts[idx]++;
+                });
+                let shift = 0, best = counts[0];
+                for (let s = 1; s < cycle; s++) { if (counts[s] < best) { best = counts[s]; shift = s; } }
+                if (best >= 1) return; // ši grupė jau sužaidė visas rotacijas (ratas baigtas)
+                const chosen = pairingForShift(shift);
+                chosen.prs.forEach(p => {
+                    newM.push({ id: uid(), round: roundNum, court: court++, finished: false, score1: 0, score2: 0, team1: teamsByKey[gKeys[p[0]]], team2: teamsByKey[gKeys[p[1]]] });
+                });
+                if (chosen.rest !== null && chosen.rest !== -1) resting.push(teamsByKey[gKeys[chosen.rest]]);
             });
-            if (newM.length === 0) { alert("Grupių etapas baigtas — spauskite dar kartą atkrintamosioms."); return; }
-            matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches');
-            if (resting.length > 0) setTimeout(() => alert(`ℹ️ Šį raundą ilsisi: ${resting.map(t => t[0].name + ' / ' + t[1].name).join('; ')}`), 100);
-            return;
+            if (newM.length > 0) {
+                matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches');
+                if (resting.length > 0) setTimeout(() => alert(`ℹ️ Šį raundą ilsisi: ${resting.map(t => t[0].name + ' / ' + t[1].name).join('; ')}`), 100);
+                return;
+            }
+            // Visos grupės baigė visas rotacijas — tęsiam į atkrintamąsias.
         }
 
         // --- ATKRINTAMOSIOS ---
