@@ -2,7 +2,7 @@
   "name": "superpadel-functions",
   "description": "SuperPadel.lt push notifications (reminders + spot opened)",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
