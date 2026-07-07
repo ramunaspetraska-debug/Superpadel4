@@ -44,8 +44,9 @@ function calculatePairsResults(mArr, pArr) {
             proc(m.team1, m.score1, m.score2); 
             proc(m.team2, m.score2, m.score1); 
         }); 
-    } catch(e) { console.error("calculatePairsResults Error:", e); } 
-    return Array.from(pairs.values()).sort((a,b) => (b.w/b.mp) - (a.w/a.mp) || b.mp - a.mp); 
+    } catch(e) { console.error("calculatePairsResults Error:", e); }
+    // Rikiavimas: pergalių dalis su lygiosiomis (lygiosios = 0.5 pergalės) → taškų skirtumas → mačų kiekis.
+    return Array.from(pairs.values()).sort((a,b) => ((b.w + 0.5*b.t)/b.mp) - ((a.w + 0.5*a.t)/a.mp) || (b.sd - a.sd) || (b.mp - a.mp));
 }
 
 function calculateResults(mArr, pArr, isF = false) { 
@@ -308,37 +309,84 @@ function dispatchRoundFromPreGen(roundNum) {
     } catch(e) { console.error("dispatchRoundFromPreGen Error:", e); }
 }
 
-function generateFixedRound(safePool) { 
+function generateFixedRound(safePool) {
     try {
         if (safePool.length < 4) { alert(`KLAIDA: Fiksuotoms poroms reikia bent 4 žaidėjų. (Dabar yra ${safePool.length})`); return; }
         if (safePool.length % 2 !== 0) { alert(`KLAIDA: Fiksuotoms poroms žaidėjų skaičius turi būti lyginis! (Dabar yra ${safePool.length})\n\nPoros sudaromos pagal sąrašo eilę: 1-2, 3-4, 5-6...`); return; }
-        let teams = []; for (let k = 0; k < safePool.length; k += 2) { teams.push([safePool[k], safePool[k + 1]]); } 
+        let teams = []; for (let k = 0; k < safePool.length; k += 2) { teams.push([safePool[k], safePool[k + 1]]); }
         let roundNum = (safeArr(matches).length > 0 ? (matches[matches.length-1].round || 0) : 0) + 1;
-        
+
         // Ratų sistema (circle method). Jei komandų skaičius NELYGINIS — pridedam tuščią vietą (-1 = "bye"):
         // su ja suporuota komanda tą raundą ilsisi. Taip kiekviena komanda sužaidžia su visomis kitomis.
         let idxs = teams.map((_, i) => i);
         if (idxs.length % 2 === 1) idxs.push(-1);
         const K_even = idxs.length;
         const cycleRounds = K_even - 1;
-        const shift = (roundNum - 1) % cycleRounds;
-        
-        let rotatedIndices = [idxs[0]]; let others = idxs.slice(1);
-        for (let i = 0; i < shift; i++) others.unshift(others.pop());
-        rotatedIndices.push(...others);
-        
-        let roundMatches = []; let restingTeam = null;
-        for (let i = 0; i < K_even / 2; i++) {
-            let t1Idx = rotatedIndices[i], t2Idx = rotatedIndices[K_even - 1 - i];
-            if (t1Idx === -1) { restingTeam = teams[t2Idx]; continue; }
-            if (t2Idx === -1) { restingTeam = teams[t1Idx]; continue; }
-            roundMatches.push({ team1: teams[t1Idx], team2: teams[t2Idx] });
+
+        // Vienos rotacijos (shift) poravimas: mačų indeksų poros + ilsisi komanda (bye atveju).
+        const pairingForShift = (shift) => {
+            let rotated = [idxs[0]]; let others = idxs.slice(1);
+            for (let i = 0; i < shift; i++) others.unshift(others.pop());
+            rotated.push(...others);
+            let pairs = []; let resting = null;
+            for (let i = 0; i < K_even / 2; i++) {
+                let a = rotated[i], b = rotated[K_even - 1 - i];
+                if (a === -1) { resting = b; continue; }
+                if (b === -1) { resting = a; continue; }
+                pairs.push([a, b]);
+            }
+            return { pairs, resting };
+        };
+
+        // TRYNIMUI ATSPARUS rotacijos parinkimas (tas pats principas kaip dispatchRoundFromPreGen):
+        // suskaičiuojam, kiek kartų kiekviena rotacija jau panaudota esamuose raunduose, ir imam
+        // REČIAUSIAI naudotą. Normaliam žaidimui (be trynimo) tai duoda 0,1,2,...,cycleRounds-1,0,...
+        // — identiška senam (roundNum-1)%cycleRounds. Bet ištrynus VIDURINĮ raundą, kitas raundas
+        // užpildo TĄ spragą (trūkstamą rotaciją), o ne aklai pakartoja jau sužaistą.
+        const teamSig = t => safeArr(t).map(p => (p && p.id) ? p.id : '?').sort().join('&');
+        const matchSig = (t1, t2) => [teamSig(t1), teamSig(t2)].sort().join('|');
+        const shiftSigs = [];
+        for (let s = 0; s < cycleRounds; s++) {
+            const pr = pairingForShift(s);
+            shiftSigs.push(pr.pairs.map(pair => matchSig(teams[pair[0]], teams[pair[1]])).sort().join('#'));
         }
-        
+        const counts = new Array(cycleRounds).fill(0);
+        const byRound = {};
+        safeArr(matches).forEach(m => { if (m && !m.isFinal) (byRound[m.round] = byRound[m.round] || []).push(m); });
+        Object.keys(byRound).forEach(rn => {
+            const s = byRound[rn].map(m => matchSig(m.team1, m.team2)).sort().join('#');
+            const idx = shiftSigs.indexOf(s);
+            if (idx !== -1) counts[idx]++;
+        });
+        let shift = 0, best = counts[0];
+        for (let s = 1; s < cycleRounds; s++) { if (counts[s] < best) { best = counts[s]; shift = s; } }
+
+        const chosen = pairingForShift(shift);
+        let roundMatches = chosen.pairs.map(pair => ({ team1: teams[pair[0]], team2: teams[pair[1]] }));
+        let restingTeam = (chosen.resting !== null && chosen.resting !== -1) ? teams[chosen.resting] : null;
+
+        // Kortų priskyrimas pagal FAKTINĘ istoriją: mačui parenkam laisvą kortą, kuriame jo komandos
+        // žaidė rečiausiai, kad poros nuolat nežaistų tame pačiame korte (circle metode pirmoji pora kitaip
+        // liktų 1-ame korte visą turnyrą). Lygybės atveju kandidatai pradedami nuo rotacinio postūmio
+        // (idx+shift) — kortai keičiasi net tuščioje istorijoje. Atsparu raundų trynimui.
+        const courtHist = {};
+        safeArr(matches).forEach(m => { if (m && !m.isFinal && m.court) { [m.team1, m.team2].forEach(t => { const k = teamSig(t); courtHist[k] = courtHist[k] || {}; courtHist[k][m.court] = (courtHist[k][m.court] || 0) + 1; }); } });
+        const courtCount = roundMatches.length;
+        const takenCourts = new Set();
         let newM = [];
-        roundMatches.forEach((m, idx) => { newM.push({ id: uid(), round: roundNum, court: idx + 1, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 }); });
-        
-        matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches'); 
+        roundMatches.forEach((m, idx) => {
+            let bestCourt = null, bestScore = Infinity;
+            for (let ci = 0; ci < courtCount; ci++) {
+                const c = ((idx + shift + ci) % courtCount) + 1;
+                if (takenCourts.has(c)) continue;
+                const score = ((courtHist[teamSig(m.team1)] || {})[c] || 0) + ((courtHist[teamSig(m.team2)] || {})[c] || 0);
+                if (score < bestScore) { bestScore = score; bestCourt = c; }
+            }
+            takenCourts.add(bestCourt);
+            newM.push({ id: uid(), round: roundNum, court: bestCourt, finished: false, score1: 0, score2: 0, team1: m.team1, team2: m.team2 });
+        });
+
+        matches = [...safeArr(matches), ...newM]; autoSave(true); switchView('matches');
         if (restingTeam) { setTimeout(() => alert(`ℹ️ ${roundNum} raundą ilsisi: ${restingTeam[0].name} / ${restingTeam[1].name}`), 100); }
     } catch(e) { console.error("generateFixedRound Error:", e); }
 }
