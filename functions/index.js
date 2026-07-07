@@ -25,7 +25,26 @@ const REGION = 'europe-west1';
 const DB_INSTANCE = 'padelio-turnyrai-default-rtdb';
 const APP_LINK = 'https://superpadel.lt/registras.html';
 
-// "MM-DD" + "HH:MM - HH:MM" -> turnyro pradžios epoch ms (einamieji metai)
+// Kiek Vilniaus sieninis laikas lenkia UTC duotu momentu (įskaitant vasaros/žiemos laiką)
+function vilniusOffsetMs(ts) {
+    const dtf = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Vilnius', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    const p = {};
+    dtf.formatToParts(new Date(ts)).forEach(x => { p[x.type] = x.value; });
+    const wall = Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second);
+    return wall - ts;
+}
+
+// Vilniaus sieninis laikas (metai, mėnuo, diena, val., min.) -> epoch ms
+function vilniusTimeToMs(year, month, day, hour, minute) {
+    let ts = Date.UTC(year, month - 1, day, hour, minute, 0);
+    // dvi iteracijos padengia DST perjungimo ribas
+    for (let i = 0; i < 2; i++) ts = Date.UTC(year, month - 1, day, hour, minute, 0) - vilniusOffsetMs(ts);
+    return ts;
+}
+
+// "MM-DD" + "HH:MM - HH:MM" -> turnyro pradžios epoch ms (einamieji metai).
+// SVARBU: serveris veikia UTC laiko juosta, todėl new Date(y,m,d,h) čia reikštų UTC laiką
+// ir priminimai išeitų 2-3 val. per vėlai — konvertuojam kaip Vilniaus sieninį laiką.
 function tournamentStartMs(dateStr, timeStr) {
     if (!dateStr || !timeStr) return null;
     const dm = String(dateStr).split('-').map(Number);
@@ -34,10 +53,11 @@ function tournamentStartMs(dateStr, timeStr) {
     const tm = startTime.split(':').map(Number);
     const hh = tm[0], mi = tm[1] || 0;
     if (isNaN(mm) || isNaN(dd) || isNaN(hh)) return null;
-    const now = new Date();
-    let d = new Date(now.getFullYear(), mm - 1, dd, hh, mi, 0);
-    if (d.getTime() < now.getTime() - 300 * 864e5) d = new Date(now.getFullYear() + 1, mm - 1, dd, hh, mi, 0);
-    return d.getTime();
+    const now = Date.now();
+    const curYear = new Date().getFullYear();
+    let t = vilniusTimeToMs(curYear, mm, dd, hh, mi);
+    if (t < now - 300 * 864e5) t = vilniusTimeToMs(curYear + 1, mm, dd, hh, mi);
+    return t;
 }
 
 // Išsiunčia push į visus vartotojo įrenginius; išvalo negaliojančius tokenus
@@ -105,6 +125,11 @@ exports.tournamentReminders = onSchedule(
                 }
             }
         }
+        // Valymas: "išsiųsta" žymos senesnės nei 14 d. nebereikalingos (turnyrai jau seniai įvykę)
+        for (const key of Object.keys(sent)) {
+            const ts = sent[key];
+            if (typeof ts === 'number' && now - ts > 14 * 864e5) updates[key] = null;
+        }
         if (Object.keys(updates).length) await db.ref('padelio_push_sent').update(updates);
         return null;
     }
@@ -126,6 +151,7 @@ exports.spotOpened = onValueWritten(
         const sent = sentSnap.val() || {};
         const now = Date.now();
         const updates = {};
+        let all = null; // padelio_user_tournaments — skaitom vieną kartą ir tik jei tikrai atsilaisvino vieta
 
         for (const t of toArr(after)) {
             if (!t || t.id == null) continue;
@@ -135,8 +161,10 @@ exports.spotOpened = onValueWritten(
             const nowOpen = (t.registered || 0) < (t.max || 0);
             if (!(wasFull && nowOpen)) continue;
 
-            const utSnap = await db.ref('padelio_user_tournaments').get();
-            const all = utSnap.val() || {};
+            if (all === null) {
+                const utSnap = await db.ref('padelio_user_tournaments').get();
+                all = utSnap.val() || {};
+            }
             for (const userId of Object.keys(all)) {
                 const rec = all[userId] && all[userId][t.id];
                 if (!rec || rec.status !== 'waitlist') continue;
