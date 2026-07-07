@@ -312,12 +312,12 @@ function renderUserProfile() {
     let html = `
         <div style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
             <div onclick="document.getElementById('profilePhotoInput').click()" style="position: relative; width: 50px; height: 50px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; border: 2px solid var(--primary-blue); text-transform: uppercase; cursor: pointer; overflow: hidden; flex-shrink: 0;" id="profileAvatar">
-                ${currentUser.photo ? `<img src="${currentUser.photo}" style="width:100%;height:100%;object-fit:cover;">` : currentUser.name.substring(0,2)}
+                ${currentUser.photo ? `<img src="${esc(currentUser.photo)}" style="width:100%;height:100%;object-fit:cover;">` : esc(currentUser.name.substring(0,2))}
             </div>
             <input type="file" id="profilePhotoInput" accept="image/*" style="display:none;" onchange="uploadProfilePhoto(event)">
             <div style="flex: 1;">
-                <div style="font-size: 16px; font-weight: 900; color: var(--text-dark);">${currentUser.name}</div>
-                <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 3px;"><i class="fa-solid fa-id-badge" style="margin-right:4px;"></i> ID: ${currentUser.id}</div>
+                <div style="font-size: 16px; font-weight: 900; color: var(--text-dark);">${esc(currentUser.name)}</div>
+                <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 3px;"><i class="fa-solid fa-id-badge" style="margin-right:4px;"></i> ID: ${esc(currentUser.id)}</div>
             </div>
             <div style="text-align: right;">
                 <span style="background: ${ptsColor}; color: white; padding: 4px 8px; border-radius: 6px; font-weight: 900; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">${currentUser.tier || 'D'} Lyga</span>
@@ -397,7 +397,7 @@ function renderUserProfile() {
             if (hasPartner) {
                 let parts = teamStr.split('/').map(cleanName);
                 let pName = parts[0].toLowerCase() === currentUser.name.toLowerCase() ? parts[1] : parts[0];
-                partnerInfo = `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 3px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-group"></i> ${pName}</div>`;
+                partnerInfo = `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 3px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-group"></i> ${esc(pName)}</div>`;
             } else {
                 actionButtons += `
                     <button type="button" onclick="event.stopPropagation(); confirmRegistration(${t.id}, true);" style="background: var(--status-green); color: white; border: none; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: 0.2s;">
@@ -413,11 +413,11 @@ function renderUserProfile() {
             `;
 
             html += `
-                <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-blue); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="activeDate='${t.date}'; switchTab('page-calendar'); setTimeout(() => { renderTournaments(); initDates(); }, 50);">
+                <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-blue); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="activeDate='${String(t.date).replace(/[^0-9-]/g, '')}'; switchTab('page-calendar'); setTimeout(() => { renderTournaments(); initDates(); }, 50);">
                     <div style="flex: 1; padding-right: 10px;">
-                        <div style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${t.format} <span style="font-size: 10px; background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: var(--text-dark); margin-left: 5px;">${displayLevel}</span></div>
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${esc(t.format)} <span style="font-size: 10px; background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: var(--text-dark); margin-left: 5px;">${esc(displayLevel)}</span></div>
                         <div style="font-size: 12px; color: var(--text-grey); margin-top: 2px; font-weight: 600;">
-                            <i class="fa-regular fa-clock" style="margin-right: 2px; font-size: 11px;"></i> ${t.date} • ${t.time}
+                            <i class="fa-regular fa-clock" style="margin-right: 2px; font-size: 11px;"></i> ${esc(t.date)} • ${esc(t.time)}
                         </div>
                         ${partnerInfo}
                     </div>

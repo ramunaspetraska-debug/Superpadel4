@@ -249,7 +249,9 @@ function renderTournaments() {
             if (persStatus === 'registered') {
                 statusHTML = `<div class="status-indicator status-in"><i class="fa-solid fa-check"></i> Dalyvaujate</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`;
             } else if (persStatus === 'waitlist') {
-                statusHTML = `<div class="status-indicator status-wait"><i class="fa-solid fa-hourglass-half"></i> Rezervas (eilėje ${t.waitlistCount || 1})</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`;
+                const myPos = userWaitlistPosition(t);
+                const posTxt = myPos > 0 ? `Jūs ${myPos}-as eilėje` : `eilėje ${t.waitlistCount || 1}`;
+                statusHTML = `<div class="status-indicator status-wait"><i class="fa-solid fa-hourglass-half"></i> Rezervas (${posTxt})</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`;
             } else if (persStatus === 'open') {
                 statusHTML = `<div class="status-indicator status-open"><i class="fa-regular fa-circle-check"></i> Laisva (Registruotis)</div>`;
             } else if (persStatus === 'full' && !t.isDemoWaitlist) {
@@ -260,8 +262,8 @@ function renderTournaments() {
         }
 
         let demoBtn = (t.isDemoWaitlist && persStatus === 'waitlist' && t.timeState === 'future') ? `<button type="button" class="test-trigger" onclick="simulateSpotOpening(event, ${t.id})">[Demo] Algoritmus perleidžia vietą</button>` : '';
-        let avatar1 = (t.players && t.players[0]) ? t.players[0].substring(0,2) : 'AŽ'; 
-        let avatar2 = (t.players && t.players[1]) ? t.players[1].substring(0,2) : 'MK';
+        let avatar1 = (t.players && t.players[0]) ? esc(String(t.players[0]).substring(0,2)) : 'AŽ';
+        let avatar2 = (t.players && t.players[1]) ? esc(String(t.players[1]).substring(0,2)) : 'MK';
         
         let lvlClass = t.level.toLowerCase();
         if (lvlClass === 'b-/b') lvlClass = 'b';
@@ -269,7 +271,7 @@ function renderTournaments() {
         if (lvlClass === 'c-/c') lvlClass = 'c2';
         if (lvlClass === 'd/c-' || lvlClass === 'd-c') lvlClass = 'd-c';
 
-        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${t.id})"><div class="card-date-square"><div class="num">${dayNum}</div><div class="name">${dayName}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${t.format}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${displayLevel}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${t.category}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${t.time}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(persStatus !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
+        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${Number(t.id)})"><div class="card-date-square"><div class="num">${esc(dayNum)}</div><div class="name">${esc(dayName)}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${esc(t.format)}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${esc(displayLevel)}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${esc(t.category)}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${esc(t.time)}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(persStatus !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
         list.innerHTML += cardHTML;
     });
 }
@@ -306,15 +308,25 @@ function _resultsModalShell(t) {
     document.body.appendChild(m);
 }
 
-function _resultsLeaderboard(matches) {
-    const pts = {}, played = {};
-    (matches || []).filter(m => m.finished).forEach(m => {
+// Lentelė rikiuojama TAIP PAT kaip generatoriuje (logic.js calculateResults):
+// 'points' → pagal taškų sumą (sw), 'wins' → pagal lygos taškus (2 už pergalę, 1 už lygiąsias);
+// abiem atvejais antras kriterijus — taškų skirtumas. Kitaip portalo eiliškumas skirtųsi nuo generatoriaus.
+function _resultsLeaderboard(matches, rankingMode) {
+    const stats = {};
+    (matches || []).filter(m => m && m.finished).forEach(m => {
         const s1 = Number(m.score1) || 0, s2 = Number(m.score2) || 0;
-        (m.team1 || []).forEach(p => { const n = p && p.name; if (!n) return; pts[n] = (pts[n] || 0) + s1; played[n] = (played[n] || 0) + 1; });
-        (m.team2 || []).forEach(p => { const n = p && p.name; if (!n) return; pts[n] = (pts[n] || 0) + s2; played[n] = (played[n] || 0) + 1; });
+        const upd = (team, my, en) => (team || []).forEach(p => {
+            const n = p && p.name; if (!n) return;
+            const s = stats[n] || (stats[n] = { name: n, points: 0, played: 0, w: 0, t: 0, l: 0, dif: 0, lp: 0 });
+            s.points += my; s.dif += my - en; s.played++;
+            if (my > en) { s.w++; s.lp += 2; } else if (my < en) { s.l++; } else { s.t++; s.lp += 1; }
+        });
+        upd(m.team1, s1, s2); upd(m.team2, s2, s1);
     });
-    return Object.keys(pts).map(n => ({ name: n, points: pts[n], played: played[n] || 0 }))
-        .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+    const arr = Object.values(stats);
+    if (rankingMode === 'wins') arr.sort((a, b) => b.lp - a.lp || b.dif - a.dif || a.name.localeCompare(b.name));
+    else arr.sort((a, b) => b.points - a.points || b.dif - a.dif || a.name.localeCompare(b.name));
+    return arr;
 }
 
 function _resultsMatchWeight(m) {
@@ -333,21 +345,24 @@ function _resultsBodyHTML(t, data) {
     if (!data || !data.matches || !data.matches.some(m => m.finished)) {
         return '<div style="text-align:center;color:#718096;padding:48px 16px;font-size:14px;"><i class="fa-solid fa-hourglass-half" style="font-size:30px;color:#cbd5e0;display:block;margin-bottom:14px;"></i>Šio turnyro rezultatai dar nepaskelbti.</div>';
     }
-    const lb = _resultsLeaderboard(data.matches);
+    const rankingMode = (data.settings && data.settings.rankingMode) || 'points';
+    const lb = _resultsLeaderboard(data.matches, rankingMode);
     const medal = ['#d69e2e', '#a0aec0', '#cd7f32'];
     let html = '';
     if (lb.length) {
-        html += '<div style="font-size:11px;font-weight:bold;color:#718096;text-transform:uppercase;letter-spacing:1px;margin:0 2px 10px;"><i class="fa-solid fa-ranking-star"></i> Galutinė lentelė</div>';
+        const modeLabel = rankingMode === 'wins' ? ' (pagal pergales)' : '';
+        html += '<div style="font-size:11px;font-weight:bold;color:#718096;text-transform:uppercase;letter-spacing:1px;margin:0 2px 10px;"><i class="fa-solid fa-ranking-star"></i> Galutinė lentelė' + modeLabel + '</div>';
         lb.forEach((p, i) => {
             const rankBg = i < 3 ? medal[i] : '#e2e8f0';
             const rankCol = i < 3 ? '#fff' : '#718096';
             const rowBg = i === 0 ? '#fffbeb' : '#f8f9fb';
             const rowBorder = i === 0 ? '#fde68a' : '#edf2f7';
+            const mainVal = rankingMode === 'wins' ? p.lp : p.points;
             html += '<div style="display:flex;align-items:center;gap:12px;padding:11px 12px;margin-bottom:6px;background:' + rowBg + ';border:1px solid ' + rowBorder + ';border-radius:10px;">' +
                 '<div style="width:26px;height:26px;border-radius:50%;background:' + rankBg + ';color:' + rankCol + ';font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (i + 1) + '</div>' +
                 '<div style="flex:1;font-weight:700;color:#1a202c;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.name) + '</div>' +
-                '<div style="font-size:11px;color:#a0aec0;font-weight:600;">' + p.played + ' mač.</div>' +
-                '<div style="font-weight:900;color:#2563eb;font-size:17px;min-width:34px;text-align:right;">' + p.points + '</div>' +
+                '<div style="font-size:11px;color:#a0aec0;font-weight:600;">' + p.played + ' mač. · ' + p.w + ' perg.</div>' +
+                '<div style="font-weight:900;color:#2563eb;font-size:17px;min-width:34px;text-align:right;">' + mainVal + '</div>' +
             '</div>';
         });
     }
@@ -670,11 +685,18 @@ function userTournamentsInit() {
         renderTournaments();
     });
 }
+// Mano vieta rezervo eilėje: 1, 2, ... arba 0 jei eilėje nesu.
+// t.waitlist — vardinis sąrašas („Vardas|Lytis"); seni turnyrai jo neturi (tik waitlistCount).
+function userWaitlistPosition(t) {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.name || !t || !Array.isArray(t.waitlist)) return 0;
+    const idx = t.waitlist.findIndex(p => String(p).split('|')[0].trim().toLowerCase() === currentUser.name.toLowerCase());
+    return idx === -1 ? 0 : idx + 1;
+}
 function effectiveStatusFor(t) {
     if (!t) return 'open';
     if (typeof currentUser !== 'undefined' && currentUser) {
         if (userIsRegistered(t)) return 'registered';
-        if (userTournamentStatus[t.id] === 'waitlist') return 'waitlist';
+        if (userWaitlistPosition(t) > 0 || userTournamentStatus[t.id] === 'waitlist') return 'waitlist';
     }
     return ((t.registered || 0) >= (t.max || 0)) ? 'full' : 'open';
 }
@@ -779,7 +801,7 @@ function openPlayerCard(playerId) {
         <div style="text-align: center; padding: 10px 0;">
             <div id="playerCardAvatar" style="width: 72px; height: 72px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; border: 3px solid ${tierColor}; margin: 0 auto 12px auto; overflow: hidden;">${initials}</div>
             <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${esc(p.name)}</div>
-            <span style="background: ${tierColor}; color: white; padding: 4px 12px; border-radius: 14px; font-weight: 900; font-size: 11px; text-transform: uppercase; display: inline-block; margin-top: 6px;">${p.tier || 'D'} Lyga</span>
+            <span style="background: ${tierColor}; color: white; padding: 4px 12px; border-radius: 14px; font-weight: 900; font-size: 11px; text-transform: uppercase; display: inline-block; margin-top: 6px;">${esc(p.tier || 'D')} Lyga</span>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; text-align: center;">
                 <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
@@ -825,7 +847,7 @@ function openRegisterModal(id) {
     let t = tournaments.find(x => x.id === id); 
     let displayLevel = t.level; 
     if (t.level === 'Privatus') displayLevel = 'Draugų';
-    modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${t.format} (${displayLevel} lygis)</strong>.<br>Laikas: ${t.time}.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
+    modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${esc(t.format)} (${esc(displayLevel)} lygis)</strong>.<br>Laikas: ${esc(t.time)}.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
 }
 
 function confirmRegistration(id, withPartner) { 
@@ -1031,7 +1053,16 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
 }
 
 function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra. Stoti į eilę?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
-function confirmWaitlist(id) { let t = tournaments.find(x => x.id === id); t.status = 'waitlist'; t.waitlistCount += 1; saveData(); setUserTournament(t, 'waitlist'); closeModal(); showToast("Pridėta į rezervą."); }
+function confirmWaitlist(id) {
+    if (typeof currentUser === 'undefined' || !currentUser) { closeModal(); pendingTournamentId = id; showToast("Norėdami stoti į eilę, pirmiausia prisijunkite!"); openAuthModal(); return; }
+    let t = tournaments.find(x => x.id === id); if (!t) return;
+    if (!Array.isArray(t.waitlist)) t.waitlist = [];
+    if (userWaitlistPosition(t) === 0) t.waitlist.push(currentUser.name + '|' + (currentUser.gender || 'M'));
+    t.status = 'waitlist';
+    t.waitlistCount = t.waitlist.length;
+    saveData(); setUserTournament(t, 'waitlist'); closeModal();
+    showToast(`Pridėta į rezervą (jūs ${userWaitlistPosition(t)}-as eilėje).`);
+}
 function openCancelModal(id) { modalTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--status-red);"></i> Atšaukti Dalyvavimą`; modalBody.innerHTML = `Ar tikrai norite atšaukti savo vietą?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmCancel(${id})">Taip, atšaukti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
 
 function confirmCancel(id) {
@@ -1058,11 +1089,30 @@ function confirmCancel(id) {
 }
 
 function openWaitlistCancelModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `Palikti rezervą?`; modalBody.innerHTML = `Išeiti iš eilės?`; modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmWaitlistCancel(${id})">Išeiti</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Pasilikti</button>`; modal.classList.add('show'); }
-function confirmWaitlistCancel(id) { let t = tournaments.find(x => x.id === id); if (!t) return; t.status = 'full'; t.waitlistCount = Math.max(0, (t.waitlistCount || 0) - 1); saveData(); clearUserTournament(id); closeModal(); showToast("Išbraukta iš rezervo."); }
+function confirmWaitlistCancel(id) {
+    let t = tournaments.find(x => x.id === id); if (!t) return;
+    if (Array.isArray(t.waitlist) && currentUser && currentUser.name) {
+        const idx = t.waitlist.findIndex(p => String(p).split('|')[0].trim().toLowerCase() === currentUser.name.toLowerCase());
+        if (idx !== -1) t.waitlist.splice(idx, 1);
+        t.waitlistCount = t.waitlist.length;
+    } else {
+        t.waitlistCount = Math.max(0, (t.waitlistCount || 0) - 1);
+    }
+    t.status = 'full';
+    saveData(); clearUserTournament(id); closeModal(); showToast("Išbraukta iš rezervo.");
+}
 
-let currentPushId = null; 
-function simulateSpotOpening(e, id) { 
-    e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); t.status = 'registered'; t.registered += 1; t.waitlistCount -= 1; saveData(); 
+let currentPushId = null;
+function simulateSpotOpening(e, id) {
+    e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); if (!t) return;
+    t.status = 'registered'; t.registered += 1;
+    if (Array.isArray(t.waitlist) && currentUser && currentUser.name) {
+        const idx = t.waitlist.findIndex(p => String(p).split('|')[0].trim().toLowerCase() === currentUser.name.toLowerCase());
+        if (idx !== -1) t.waitlist.splice(idx, 1);
+        t.waitlistCount = t.waitlist.length;
+    } else { t.waitlistCount = Math.max(0, (t.waitlistCount || 0) - 1); }
+    if (currentUser && currentUser.name) { if (!t.players) t.players = []; if (!userIsRegistered(t)) t.players.push(currentUser.name + '|' + (currentUser.gender || 'M')); }
+    saveData();
     let pushFormat = document.getElementById('pushFormatName'); if(pushFormat) pushFormat.innerText = `${t.format}`;
     notifAdd('spot', id, 'Atsilaisvino vieta!', t.format + ' · ' + t.date + ' ' + t.time + ' — vieta jūsų!', false); setUserTournament(t, 'registered'); 
     let pushContainer = document.getElementById('pushNotification'); if(pushContainer) { pushContainer.style.top = '20px'; pushContainer.style.pointerEvents = 'auto'; } 

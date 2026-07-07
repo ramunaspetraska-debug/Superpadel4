@@ -490,7 +490,7 @@ function rtcLaunchViewer(broadcastId, pin, broadcasterName) {
     wrap.id = 'rtc-viewer-modal';
     wrap.style.cssText = 'position:fixed;inset:0;background:#000;z-index:10002;display:flex;flex-direction:column;align-items:center;justify-content:center;';
     wrap.innerHTML = `
-        <div style="position:absolute;top:14px;left:0;right:0;text-align:center;color:white;font-weight:800;font-size:14px;z-index:2;"><span style="color:#ef4444;">🔴</span> ${broadcasterName || 'Transliacija'}</div>
+        <div style="position:absolute;top:14px;left:0;right:0;text-align:center;color:white;font-weight:800;font-size:14px;z-index:2;"><span style="color:#ef4444;">🔴</span> ${esc(broadcasterName || 'Transliacija')}</div>
         <video id="rtcViewerVideo" playsinline autoplay controls style="max-width:100%;max-height:100%;background:black;"></video>
         <div id="rtcViewerStatus" style="position:absolute;color:#94a3b8;font-size:13px;text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Jungiamasi prie transliacijos...</div>
         <button onclick="stopWatchingWebRTC()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);color:white;border:none;width:40px;height:40px;border-radius:50%;font-size:18px;cursor:pointer;z-index:2;">&times;</button>

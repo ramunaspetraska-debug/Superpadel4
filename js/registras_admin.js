@@ -177,16 +177,17 @@ function renderAdminTournaments() {
         else if(t.level === 'D/C-' || t.level === 'D-C') levelColor = "color: #06b6d4;";
         else if(t.level === 'D') levelColor = "color: #48bb78;";
 
+        const safeRoom = String(t.room || '').replace(/['"\\<>&]/g, '');
         html += `<tr style="border-bottom: 1px solid #e2e8f0; transition: 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'">
-            <td style="padding: 12px; font-weight: bold; color: var(--text-dark);">${t.date}</td>
-            <td style="padding: 12px; color: var(--text-grey); font-weight: 600;">${t.time}</td>
-            <td style="padding: 12px; font-weight: 800; color: var(--primary-blue);">${t.format}</td>
-            <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${t.level}</span></td>
+            <td style="padding: 12px; font-weight: bold; color: var(--text-dark);">${esc(t.date)}</td>
+            <td style="padding: 12px; color: var(--text-grey); font-weight: 600;">${esc(t.time)}</td>
+            <td style="padding: 12px; font-weight: 800; color: var(--primary-blue);">${esc(t.format)}</td>
+            <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${esc(t.level)}</span></td>
             <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
             <td style="padding: 12px; text-align: center; white-space:nowrap;">
-                ${t.room ? `<button type="button" onclick="openGeneratorRoom('${t.room}')" title="Atidaryti generatorių (kambarys ${t.room})" style="background:#ecfdf5; color:#047857; border:none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">▶ ${t.room}</button>` : ''}
-                <button type="button" onclick="openAdminTournamentModal('${t.id}')" style="background: #eff6ff; color: #1d4ed8; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
-                <button type="button" onclick="deleteAdminTournamentLive('${t.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
+                ${t.room ? `<button type="button" onclick="openGeneratorRoom('${safeRoom}')" title="Atidaryti generatorių (kambarys ${safeRoom})" style="background:#ecfdf5; color:#047857; border:none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">▶ ${esc(t.room)}</button>` : ''}
+                <button type="button" onclick="openAdminTournamentModal('${esc(String(t.id))}')" style="background: #eff6ff; color: #1d4ed8; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
+                <button type="button" onclick="deleteAdminTournamentLive('${esc(String(t.id))}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });
@@ -285,16 +286,17 @@ function renderAdminPlayersDB(playersArray) {
             '<span style="background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900;">V</span>' : 
             '<span style="background: #fff5f5; color: #c53030; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900;">M</span>';
 
-        let av = p.photo ? `<img src="${p.photo}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:8px; border:1px solid #cbd5e0;">` : `<div style="width:26px; height:26px; border-radius:50%; background:#e2e8f0; display:inline-block; vertical-align:middle; margin-right:8px; text-align:center; line-height:26px; font-size:10px; color:#718096; font-weight:bold;">${p.gender==='M'?'V':'M'}</div>`;
+        let av = p.photo ? `<img src="${esc(p.photo)}" style="width:26px; height:26px; border-radius:50%; object-fit:cover; vertical-align:middle; margin-right:8px; border:1px solid #cbd5e0;">` : `<div style="width:26px; height:26px; border-radius:50%; background:#e2e8f0; display:inline-block; vertical-align:middle; margin-right:8px; text-align:center; line-height:26px; font-size:10px; color:#718096; font-weight:bold;">${p.gender==='M'?'V':'M'}</div>`;
 
+        const safeId = esc(String(p.id));
         html += `<tr style="border-bottom: 1px solid #e2e8f0; transition: 0.2s;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'">
-            <td style="padding: 12px; font-weight: 800; color: var(--text-dark);">${av}${esc(p.name)} <br><span style="font-size:9px; color:#a0aec0; font-weight:normal;">ID: ${p.id}</span></td>
+            <td style="padding: 12px; font-weight: 800; color: var(--text-dark);">${av}${esc(p.name)} <br><span style="font-size:9px; color:#a0aec0; font-weight:normal;">ID: ${safeId}</span></td>
             <td style="padding: 12px; text-align:center;">${genderBadge}</td>
-            <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${p.tier || 'D'}</span></td>
+            <td style="padding: 12px;"><span style="background: #edf2f7; color: var(--text-dark); padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px;">${esc(p.tier || 'D')}</span></td>
             <td style="padding: 12px; color: ${ptsColor}; font-weight: 900; font-size: 15px;">${p.rating || 300}</td>
             <td style="padding: 12px; text-align: center;">
-                <button type="button" onclick="openAdminEditModal('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fa-solid fa-pen"></i></button>
-                <button type="button" onclick="deleteAdminPlayer('${p.id}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" onclick="openAdminEditModal('${safeId}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-orange); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-right: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" onclick="deleteAdminPlayer('${safeId}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>`;
     });

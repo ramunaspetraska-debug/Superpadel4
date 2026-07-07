@@ -511,7 +511,7 @@ function openClipPlayer(clips, startIdx, title, continuous) {
     wrap.id = 'clip-player-modal';
     wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;';
     wrap.innerHTML = `
-        <div style="position:absolute;top:14px;left:0;right:0;text-align:center;color:white;font-weight:800;font-size:15px;">${title}</div>
+        <div style="position:absolute;top:14px;left:0;right:0;text-align:center;color:white;font-weight:800;font-size:15px;">${esc(title)}</div>
         <div style="position:absolute;top:42px;left:0;right:0;text-align:center;color:#94a3b8;font-size:12px;" id="clipPlayerCounter"></div>
         <video id="clipPlayerVideo" playsinline autoplay controls style="max-width:100%;max-height:70vh;border-radius:12px;background:black;"></video>
         <div style="display:flex;gap:10px;margin-top:18px;align-items:center;">

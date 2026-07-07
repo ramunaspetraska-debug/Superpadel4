@@ -36,7 +36,7 @@ function openCourtView() {
         <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;">
             <div style="font-weight:900;font-size:15px;color:white;"><i class="fa-solid fa-table-cells-large" style="color:#22c55e;"></i> Korto peržiūra</div>
             <div style="flex:1;"></div>
-            ${hasRoom ? `<button id="courtFilterBtn" onclick="courtToggleRoomFilter()" style="background:#1e293b;color:#22c55e;border:1px solid #16a34a;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;"><i class="fa-solid fa-filter"></i> <span id="courtFilterLabel">Tik ${currentLiveRoomName}</span></button>` : ''}
+            ${hasRoom ? `<button id="courtFilterBtn" onclick="courtToggleRoomFilter()" style="background:#1e293b;color:#22c55e;border:1px solid #16a34a;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;"><i class="fa-solid fa-filter"></i> <span id="courtFilterLabel">Tik ${esc(currentLiveRoomName)}</span></button>` : ''}
             <button onclick="closeCourtView()" style="background:#ef4444;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">Uždaryti</button>
         </div>
         <div id="courtSources" style="display:flex;gap:8px;padding:10px 12px;overflow-x:auto;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;min-height:54px;align-items:center;"></div>
@@ -101,9 +101,9 @@ function courtRenderSources(data) {
         const name = (b.broadcaster || b.room || 'Kamera');
         const selected = !!courtViewTiles[id];
         const lock = b.isPrivate ? ' <i class="fa-solid fa-lock" style="font-size:9px;"></i>' : '';
-        const safeName = String(name).replace(/'/g, "\\'");
+        const safeName = String(name).replace(/['"\\<>&]/g, ''); // onclick atributui — be pavojingų simbolių
         return `<button onclick="courtToggleSource('${id}', '${safeName}', ${!!b.isPrivate})" style="flex-shrink:0;display:flex;align-items:center;gap:6px;background:${selected ? '#16a34a' : '#1e293b'};color:white;border:1px solid ${selected ? '#16a34a' : '#334155'};padding:8px 12px;border-radius:20px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">
-            <i class="fa-solid ${selected ? 'fa-check' : 'fa-video'}" style="font-size:11px;"></i> ${name}${lock}
+            <i class="fa-solid ${selected ? 'fa-check' : 'fa-video'}" style="font-size:11px;"></i> ${esc(name)}${lock}
         </button>`;
     }).join('');
 }
@@ -157,13 +157,13 @@ function courtAddTile(id, name, pin, isPrivate) {
     };
     courtViewTiles[id] = tile;
 
-    const safeName = String(name).replace(/'/g, "\\'");
+    const safeName = String(name).replace(/['"\\<>&]/g, ''); // onclick atributui — be pavojingų simbolių
     const el = document.createElement('div');
     el.id = 'court-tile-' + id;
     el.style.cssText = 'position:relative;flex:1 1 46%;min-width:300px;background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;aspect-ratio:16/9;';
     el.innerHTML = `
         <video id="court-vid-${id}" playsinline autoplay muted style="width:100%;height:100%;object-fit:contain;background:black;"></video>
-        <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.55);color:white;font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;"><span style="color:#ef4444;">🔴</span> ${name}</div>
+        <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.55);color:white;font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;"><span style="color:#ef4444;">🔴</span> ${esc(name)}</div>
         <div id="court-status-${id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;background:rgba(0,0,0,0.45);"><i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Jungiamasi...</div>
         <button onclick="courtTileReplayClick('${id}')" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(34,197,94,0.95);color:white;border:none;padding:10px 18px;border-radius:24px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:3;"><i class="fa-solid fa-clock-rotate-left"></i> Atsukti ${COURT_REPLAY_SEC}s</button>
         <button onclick="courtToggleSource('${id}', '${safeName}', ${!!isPrivate})" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.55);color:white;border:none;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;z-index:3;">&times;</button>

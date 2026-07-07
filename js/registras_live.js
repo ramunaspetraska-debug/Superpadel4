@@ -244,9 +244,9 @@ function connectLiveRoom() {
                 document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-trophy" style="color: #d69e2e;"></i> <span id="fbStatusText">Turnyro rezultatai</span>`;
                 let html = '';
                 finishedMatches.forEach(m => {
-                    let t1 = (m.team1 || []).map(p=>p.name).join(' / '); 
-                    let t2 = (m.team2 || []).map(p=>p.name).join(' / ');
-                    let title = m.isFinal ? (m.finalTitle || 'FINALAS') : `RAUNDAS ${m.round || 'X'} (Kortas ${m.court})`;
+                    let t1 = (m.team1 || []).map(p=>esc(p && p.name)).join(' / ');
+                    let t2 = (m.team2 || []).map(p=>esc(p && p.name)).join(' / ');
+                    let title = m.isFinal ? esc(m.finalTitle || 'FINALAS') : `RAUNDAS ${esc(m.round || 'X')} (Kortas ${esc(m.court)})`;
                     let bgTitle = 'background: #1a202c;';
                     if (m.isFinal) { 
                         let tUpper = title.toUpperCase(); 
@@ -264,7 +264,7 @@ function connectLiveRoom() {
             }
             return;
         }
-        document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-green);"></i> <span id="fbStatusText">Tiesiogiai: ${data.settings?.format || 'Turnyras'}</span>`;
+        document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-green);"></i> <span id="fbStatusText">Tiesiogiai: ${esc(data.settings?.format || 'Turnyras')}</span>`;
         renderLiveCourtFilters(); 
         if(!currentLiveMatches.find(m => m.court == activeLiveCourt)) { activeLiveCourt = currentLiveMatches[0].court; } 
         renderLiveScoreboard();
@@ -331,9 +331,9 @@ function renderLiveScoreboard() {
     const match = currentLiveMatches.find(m => m.court == activeLiveCourt); 
     if(!match) { container.innerHTML = "<p>Klaida kraunant mačą.</p>"; return; } 
     
-    const team1Names = (match.team1 || []).map(p => p.name).join('<br>') || 'Žaidėjas 1'; 
-    const team2Names = (match.team2 || []).map(p => p.name).join('<br>') || 'Žaidėjas 2'; 
-    let headerTitle = match.isFinal ? (match.finalTitle || 'FINALAS') : `RAUNDAS ${match.round || '1'} (Kortas ${match.court})`; 
+    const team1Names = (match.team1 || []).map(p => esc(p && p.name)).join('<br>') || 'Žaidėjas 1';
+    const team2Names = (match.team2 || []).map(p => esc(p && p.name)).join('<br>') || 'Žaidėjas 2';
+    let headerTitle = match.isFinal ? esc(match.finalTitle || 'FINALAS') : `RAUNDAS ${esc(match.round || '1')} (Kortas ${esc(match.court)})`;
     
     const isERef = currentFirebaseData?.settings?.eReferee;
     
@@ -402,21 +402,24 @@ function renderActiveStreams(filterRoom) {
         box.innerHTML = `
             <div style="font-size:11px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin:8px 0;"><i class="fa-solid fa-circle" style="color:#ef4444;font-size:7px;"></i> ${fr ? 'Šio turnyro transliacija' : 'Tiesiogiai dabar'}</div>
             ${items.map(r => {
+                // Onclick atributui vardas išvalomas nuo pavojingų simbolių (kabučių, kampinių skliaustų),
+                // o rodomam turiniui naudojamas esc() — vardus įveda vartotojai.
+                const jsSafe = (s) => String(s || '').replace(/['"\\<>&]/g, '');
                 if (r.type === 'webrtc') {
-                    return `<div onclick="openWebRTCViewer('${r.id}', ${r.isPrivate}, '${(r.name||'').replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;">
+                    return `<div onclick="openWebRTCViewer('${jsSafe(r.id)}', ${!!r.isPrivate}, '${jsSafe(r.name)}')" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;">
                         <div style="font-size:18px;"><i class="fa-solid fa-video" style="color:#ef4444;"></i></div>
                         <div style="flex:1;min-width:0;">
-                            <div style="font-weight:800;font-size:13px;color:white;">${r.name} ${r.isPrivate ? '<i class="fa-solid fa-lock" style="font-size:10px;color:#94a3b8;"></i>' : ''}</div>
-                            <div style="font-size:10px;color:#94a3b8;">SuperPadel tiesioginė • <i class="fa-solid fa-eye"></i> ${r.viewers}</div>
+                            <div style="font-weight:800;font-size:13px;color:white;">${esc(r.name)} ${r.isPrivate ? '<i class="fa-solid fa-lock" style="font-size:10px;color:#94a3b8;"></i>' : ''}</div>
+                            <div style="font-size:10px;color:#94a3b8;">SuperPadel tiesioginė • <i class="fa-solid fa-eye"></i> ${Number(r.viewers) || 0}</div>
                         </div>
                         <div style="background:#ef4444;color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:4px;">🔴 LIVE</div>
                     </div>`;
                 } else {
-                    return `<div onclick="watchLiveRoom('${r.name.replace(/'/g, "\\'")}')" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;">
+                    return `<div onclick="watchLiveRoom('${jsSafe(r.name)}')" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 12px;margin-bottom:6px;cursor:pointer;">
                         <div style="font-size:18px;">${platIcon[r.platform] || '<i class="fa-solid fa-video"></i>'}</div>
                         <div style="flex:1;min-width:0;">
-                            <div style="font-weight:800;font-size:13px;color:white;">${r.name}</div>
-                            <div style="font-size:10px;color:#94a3b8;">${r.format}</div>
+                            <div style="font-weight:800;font-size:13px;color:white;">${esc(r.name)}</div>
+                            <div style="font-size:10px;color:#94a3b8;">${esc(r.format)}</div>
                         </div>
                         <div style="background:#ef4444;color:white;font-size:9px;font-weight:900;padding:3px 8px;border-radius:4px;">🔴 LIVE</div>
                     </div>`;
