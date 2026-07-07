@@ -104,6 +104,10 @@ function explainAuthError(err) {
         alert("⚠️ El. pašto prisijungimas dar neįjungtas Firebase pusėje.\n\nĮjungimo instrukcija (vienkartinė, ~2 min.):\n1. Atsidarykite console.firebase.google.com → projektą „padelio-turnyrai\".\n2. Kairėje: Authentication → Get started (jei rodo).\n3. Skirtukas „Sign-in method\" → Email/Password → įjunkite ABU jungiklius (Email/Password IR Email link).\n4. Skirtuke „Settings\" → „Authorized domains\" patikrinkite, kad būtų www.superpadel.lt ir superpadel.lt.\n\nĮjungę bandykite dar kartą.");
         return;
     }
+    if (code === 'auth/unauthorized-continue-uri' || code === 'auth/unauthorized-domain') {
+        alert("⚠️ Svetainės domenas dar nepatvirtintas Firebase pusėje.\n\nFirebase Console → Authentication → Settings → „Authorized domains\" → Add domain:\n• superpadel.lt\n• www.superpadel.lt\n\nPridėję bandykite dar kartą.");
+        return;
+    }
     if (code === 'auth/invalid-email') { showToast("Neteisingas el. pašto adresas."); return; }
     if (code === 'auth/too-many-requests') { showToast("Per daug bandymų — palaukite kelias minutes."); return; }
     showToast("⚠️ Nepavyko išsiųsti nuorodos: " + (err && err.message ? err.message : err));
