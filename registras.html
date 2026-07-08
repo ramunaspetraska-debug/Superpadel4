@@ -23,7 +23,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-messaging-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 
-    <link rel="stylesheet" href="/css/registras.css?v=13">
+    <link rel="stylesheet" href="/css/registras.css?v=14">
 </head>
 <body>
 
@@ -31,14 +31,13 @@
 
     <div id="authModal" class="modal-overlay">
         <div class="modal-box">
-            <div class="modal-title"><i class="fa-solid fa-user-shield"></i> Jūsų Padelio Profilis</div>
+            <div class="modal-title"><i class="fa-solid fa-user-shield"></i> Prisijungimas</div>
             <div class="modal-body" style="margin-bottom: 10px;">
-                <p style="font-size: 12px; margin-bottom: 12px;">Prisijungimas saugia el. pašto nuoroda — slaptažodžio nereikia. Įveskite el. paštą ir gausite vienkartinę nuorodą.</p>
-                <input type="email" id="authEmailInput" placeholder="el.pastas@pavyzdys.lt" autocomplete="email" style="width: 100%; padding: 14px; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 10px; outline: none; font-weight: bold; font-size: 16px; box-sizing: border-box;">
-                <div style="font-size: 11px; color: var(--text-grey);"><i class="fa-solid fa-circle-info"></i> Pirmą kartą? Paspaudę nuorodą susiesite arba susikursite savo žaidėjo profilį.</div>
+                <p style="font-size: 12px; margin-bottom: 12px; color: var(--text-grey);">Gausite vienkartinę nuorodą el. paštu — slaptažodžio nereikia.</p>
+                <input type="email" id="authEmailInput" placeholder="el.pastas@pavyzdys.lt" autocomplete="email" style="width: 100%; padding: 14px; border: 1px solid #bfdbfe; border-radius: 8px; outline: none; font-weight: bold; font-size: 16px; box-sizing: border-box;">
             </div>
             <div class="modal-actions">
-                <button type="button" class="modal-btn primary" onclick="clientSendEmailLink()" style="background: #2563eb;"><i class="fa-solid fa-paper-plane"></i> Siųsti prisijungimo nuorodą</button>
+                <button type="button" class="modal-btn primary" onclick="clientSendEmailLink()" style="background: #2563eb;"><i class="fa-solid fa-paper-plane"></i> Gauti nuorodą</button>
                 <button type="button" class="modal-btn secondary" onclick="closeAuthModal()">Atšaukti</button>
             </div>
         </div>
@@ -402,7 +401,7 @@
                                         <input type="checkbox" id="newEReferee" style="width: 18px; height: 18px; accent-color: #4f46e5; cursor: pointer;">
                                         <span>
                                             <span style="display: block; font-size: 13px; font-weight: 800; color: #3730a3;"><i class="fa-solid fa-gavel"></i> E-Teisėjavimas</span>
-                                            <span style="display: block; font-size: 11px; color: #6366f1; margin-top: 2px;">Turnyro dalyviai galės patys vesti savo mačų taškus portalo LIVE lange.</span>
+                                            <span style="display: block; font-size: 11px; color: #6366f1; margin-top: 2px;">Dalyviai patys veda taškus LIVE lange.</span>
                                         </span>
                                     </label>
                                 </div>
@@ -412,7 +411,7 @@
                                         <input type="checkbox" id="newIsOfficial" style="width: 18px; height: 18px; accent-color: #d97706; cursor: pointer;">
                                         <span>
                                             <span style="display: block; font-size: 13px; font-weight: 800; color: #92400e;"><i class="fa-solid fa-trophy"></i> Oficialus turnyras (lygos ELO)</span>
-                                            <span style="display: block; font-size: 11px; color: #b45309; margin-top: 2px;">Mačai keis žaidėjų oficialų reitingą. Nepažymėjus — skaičiuojama tik mėgėjų (casual) statistika.</span>
+                                            <span style="display: block; font-size: 11px; color: #b45309; margin-top: 2px;">Mačai keičia lygos reitingą.</span>
                                         </span>
                                     </label>
                                 </div>

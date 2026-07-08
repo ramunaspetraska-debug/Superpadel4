@@ -41,14 +41,14 @@ body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-
 
 .date-carousel { display: flex; overflow-x: auto; padding: 10px 20px 15px 20px; gap: 10px; scrollbar-width: none; scroll-behavior: smooth; }
 .date-carousel::-webkit-scrollbar { display: none; }
-.date-box { min-width: 65px; height: 70px; border: 1px solid #e2e8f0; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; background: #fff; flex-shrink: 0;}
+.date-box { min-width: 65px; height: 70px; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; transition: 0.2s; background: #fff; flex-shrink: 0;}
 .date-box .day-num { font-size: 22px; font-weight: 800; }
 .date-box .day-name { font-size: 13px; color: var(--text-grey); font-weight: 600; margin-top: 2px;}
 .date-box.active { background-color: var(--primary-blue); border-color: var(--primary-blue); color: white; transform: scale(1.05); box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);}
 .date-box.active .day-name { color: rgba(255,255,255,0.9); }
 
 .schedule-list { padding: 0 20px; }
-.schedule-card { background-color: var(--card-bg); border-left: 5px solid #ccc; margin-bottom: 15px; display: flex; padding: 15px; border-radius: 6px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer; transition: transform 0.1s ease, background-color 0.1s ease; -webkit-tap-highlight-color: transparent; }
+.schedule-card { background-color: var(--card-bg); border-left: 5px solid #ccc; margin-bottom: 15px; display: flex; padding: 15px; border-radius: 12px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: pointer; transition: transform 0.1s ease, background-color 0.1s ease; -webkit-tap-highlight-color: transparent; }
 .schedule-card:active { transform: scale(0.98); background-color: #edf2f7; }
 .card-past { opacity: 0.55; filter: grayscale(80%); }
 .card-past:active { transform: none; background-color: var(--card-bg); cursor: default;}
@@ -62,7 +62,7 @@ body, html { background-color: var(--bg-light); margin: 0; padding: 0; overflow-
 .schedule-card.level-atviras { border-left-color: #94a3b8; }
 .schedule-card.level-privatus { border-left-color: #cbd5e1; }
 
-.card-date-square { width: 65px; height: 80px; background: white; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0; border-radius: 4px; }
+.card-date-square { width: 65px; height: 80px; background: white; border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: center; align-items: center; margin-right: 15px; flex-shrink: 0; border-radius: 10px; }
 .card-date-square .num { font-size: 24px; font-weight: 800; color: var(--text-dark);}
 .card-date-square .name { font-size: 14px; color: var(--text-grey); }
 .card-info { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; width: calc(100% - 80px);}
