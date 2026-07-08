@@ -422,9 +422,11 @@ function proceedDeleteRoom() {
     updates[`${DB_KEY}/${room}`] = null;
     updates[`${DB_KEY}/${room}_photos`] = null;
     updates[`${REG_KEY}/${room}`] = null;
-    updates[`padelio_rooms/${room}`] = null;
 
     firebase.database().ref().update(updates).then(() => {
+        // padelio_rooms (casual ELO) šaka reikalauja prisijungimo — trinam atskirai,
+        // kad anonimo kūrėjo kambario trynimas nesulūžtų dėl vieno kelio
+        firebase.database().ref('padelio_rooms/' + room).remove().catch(() => {});
         if(dbRef) { dbRef.off(); dbRef = null; }
         if(globalPlayersRef) { globalPlayersRef.off(); globalPlayersRef = null; }
         dbPhotosRef = null;

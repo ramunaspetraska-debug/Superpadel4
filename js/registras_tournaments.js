@@ -101,6 +101,9 @@ let tournaments = [];
 
 let _autoArchiveDone = false;
 function runBackgroundAutoArchiving(fetchedTournaments) {
+    // Archyvuoti gali tik prisijungęs vartotojas (DB taisyklės reikalauja auth rašymui).
+    // Anonimas praleidžiamas be žymos — archyvavimą atliks pirmas prisijungęs lankytojas.
+    if (typeof authAvailable !== 'function' || !authAvailable() || !firebase.auth().currentUser) return;
     // Apsauga: archyvuojame TIK kartą per sesiją. Kitaip archyvavimo įrašas
     // sukeltų turnyrų listener'į iš naujo → renderUserProfile ciklas → mirgėjimas.
     if (_autoArchiveDone) return;
@@ -159,8 +162,8 @@ function initTournamentsDB() {
             tournaments = tournaments.filter(t => t !== null); 
             runBackgroundAutoArchiving(tournaments);
         } else {
+            // DB tuščia — rodome pavyzdinį sąrašą tik lokaliai (nerašome: anonimas neturi rašymo teisės)
             tournaments = JSON.parse(JSON.stringify(defaultTournaments));
-            saveData();
         }
         
         renderTournaments();
@@ -181,13 +184,14 @@ function initTournamentsDB() {
     });
 }
 
-function saveData() { 
+function saveData() {
     return firebase.database().ref(GLOBAL_TOURNAMENTS_KEY).set(tournaments)
         .then(() => true)
-        .catch(err => { 
-            console.error('saveData klaida:', err); 
-            showToast('❌ Nepavyko išsaugoti į debesį! Patikrinkite ryšį.'); 
-            return false; 
+        .catch(err => {
+            console.error('saveData klaida:', err);
+            const denied = String((err && err.message) || err).toUpperCase().indexOf('PERMISSION') !== -1;
+            showToast(denied ? '🔒 Veiksmui reikia prisijungti — prisijunkite el. paštu ir bandykite vėl.' : '❌ Nepavyko išsaugoti į debesį! Patikrinkite ryšį.');
+            return false;
         });
 }
 

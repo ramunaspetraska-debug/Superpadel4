@@ -1,0 +1,126 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "padelio_global_tournaments": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "padelio_archive_turnyrai": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "padelio_global_players": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "padelio_global_players_photos": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "padelio_email_links": {
+      ".read": "auth != null",
+      "$ek": {
+        ".write": "auth != null && $ek === auth.token.email.toLowerCase().replace('.', ',')"
+      }
+    },
+
+    "padelio_clubs": {
+      ".read": true,
+      "$clubId": {
+        ".write": "auth != null && (!data.exists() || data.child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists())"
+      }
+    },
+
+    "padelio_club_admins": {
+      ".read": true,
+      "$ek": {
+        ".write": "auth != null && ($ek === auth.token.email.toLowerCase().replace('.', ',') || root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === newData.child('clubId').val())"
+      }
+    },
+
+    "padelio_user_tournaments": {
+      "$pid": {
+        ".read": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid",
+        ".write": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid"
+      }
+    },
+
+    "padelio_push_tokens": {
+      "$pid": {
+        ".read": false,
+        ".write": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid"
+      }
+    },
+
+    "padelio_push_sent": {
+      ".read": false,
+      ".write": false
+    },
+
+    "padelio_notifications": {
+      "$pid": {
+        ".read": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid",
+        ".write": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid"
+      }
+    },
+
+    "padelio_room_seq": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+
+    "padelio_pro_master": {
+      "$room": {
+        ".read": true,
+        ".write": "data.child('owner/type').val() === 'club' ? (auth != null && root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === data.child('owner/clubId').val()) : (newData.child('owner/type').val() === 'club' ? (auth != null && root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === newData.child('owner/clubId').val()) : true)",
+        "portal_links": { ".write": "auth != null" },
+        "portal_links_by_name": { ".write": "auth != null" },
+        "portal_links_reverse": { ".write": "auth != null" },
+        "portal_links_retro": { ".write": "auth != null" },
+        "lastUpdate": { ".write": "auth != null" },
+        "matches": {
+          "$idx": {
+            "score1": { ".write": "auth != null" },
+            "score2": { ".write": "auth != null" }
+          }
+        }
+      }
+    },
+
+    "padelio_pro_master_rooms": {
+      ".read": true,
+      ".write": true
+    },
+
+    "padelio_pro_master_global_stats": {
+      ".read": true,
+      ".write": true
+    },
+
+    "padelio_rooms": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+
+    "padelio_webrtc_broadcasts": {
+      ".read": true,
+      ".write": true
+    },
+
+    "padelio_webrtc_signals": {
+      ".read": true,
+      ".write": true
+    },
+
+    "padelio_highlights": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
