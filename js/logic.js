@@ -854,44 +854,28 @@ function processGlobalEloForMatch(match, globalData, globalRef) {
                     });
                 };
 
-                // 1 metodas (PIRMAS): portalo ryšys pagal vardą — tikras telefono profilis
-                if (p.name) {
-                    const nameKey = p.name.toLowerCase().trim().replace(/\s+/g, '_');
-                    const firstName = p.name.toLowerCase().trim().split(/\s+/)[0];
-                    const path1 = `${DB_KEY}/${roomName}/portal_links_by_name`;
-                    console.log(`🔍 [${p.name}] Ieškau nameKey="${nameKey}" (arba vardo "${firstName}") kelyje: ${path1}`);
-                    firebase.database().ref(path1).once('value').then(byNameSnap => {
-                        const byName = byNameSnap.val() || {};
-                        // 1a. Tikslus atitikimas (pilnas vardas)
-                        if (byName[nameKey]) { console.log(`✅ [${p.name}] 1-VARDAS (tikslus) rado phoneId=${byName[nameKey]}`); doUpdate(byName[nameKey]); return; }
-                        // 1b. Atitikimas pagal vardą (be pavardės)
-                        if (byName[firstName]) { console.log(`✅ [${p.name}] 1-VARDAS (vardas) rado phoneId=${byName[firstName]}`); doUpdate(byName[firstName]); return; }
-                        // 1c. Skenuojam visus raktus — jei kurio nors raktas prasideda žaidėjo vardu
-                        const matchKey = Object.keys(byName).find(k => k === firstName || k.split('_')[0] === firstName);
-                        if (matchKey) { console.log(`✅ [${p.name}] 1-VARDAS (skenavimas "${matchKey}") rado phoneId=${byName[matchKey]}`); doUpdate(byName[matchKey]); return; }
-                        console.log(`⏭️ [${p.name}] 1-VARDAS nerado. Bandau portal_links...`);
-
-                        // 2 metodas: portal_links skenavimas pagal žaidėjo ID
-                        firebase.database().ref(`${DB_KEY}/${roomName}/portal_links`).once('value').then(linksSnap => {
-                            const links = linksSnap.val() || {};
-                            console.log(`📋 [${p.name}] portal_links =`, JSON.stringify(links));
-                            const phoneId = Object.keys(links).find(pid => links[pid] === p.id);
-                            if (phoneId) { console.log(`✅ [${p.name}] 2-LINKS rado phoneId=${phoneId}`); doUpdate(phoneId); return; }
-                            console.log(`⏭️ [${p.name}] 2-LINKS nerado (žaidėjo ID=${p.id}). Bandau UUID...`);
-
-                            // 3 metodas (PASKUTINIS): UUID šešėlinis profilis — tik jei nėra portalo ryšio
-                            firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${p.id}`).once('value').then(snap => {
-                                if (snap.val()) { console.log(`⚠️ [${p.name}] 3-UUID šešėlinis profilis rastas, rašau ten ID=${p.id}`); doUpdate(p.id); }
-                                else { console.log(`❌ [${p.name}] NIEKAS NERADO. Žaidėjas niekur nesusietas.`); }
-                            });
-                        });
-                    }).catch(err => console.error("Casual global sync error:", err));
-                } else {
-                    // Be vardo — tik UUID profilis
+                // 1 metodas (PATIKIMIAUSIAS): žaidėjo ID yra telefono numeris — rašom tiesiai į jo profilį.
+                if (/^[0-9]{7,}$/.test(String(p.id))) {
                     firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${p.id}`).once('value').then(snap => {
                         if (snap.val()) doUpdate(p.id);
-                    });
+                    }).catch(err => console.error("Casual global sync error:", err));
+                    return;
                 }
+                // 2 metodas: žaidėjas pats susiejo profilį portale (portal_links: phoneId -> kambario ID)
+                firebase.database().ref(`${DB_KEY}/${roomName}/portal_links`).once('value').then(linksSnap => {
+                    const links = linksSnap.val() || {};
+                    const phoneId = Object.keys(links).find(pid => links[pid] === p.id);
+                    if (phoneId) { doUpdate(phoneId); return; }
+                    // 3 metodas: TIKSLUS pilno vardo raktas (portal_links_by_name).
+                    // Atitikimas vien pagal vardą (be pavardės) PAŠALINTAS — bendravardžiai
+                    // („Jonas Kitas" vs „Jonas Petraitis") gaudavo vienas kito statistiką.
+                    if (!p.name) return;
+                    const nameKey = p.name.toLowerCase().trim().replace(/\s+/g, '_');
+                    firebase.database().ref(`${DB_KEY}/${roomName}/portal_links_by_name/${nameKey}`).once('value').then(bn => {
+                        const pid2 = bn.val();
+                        if (pid2) doUpdate(pid2);
+                    });
+                }).catch(err => console.error("Casual global sync error:", err));
             };
             t1Players.forEach(p => syncCasualToGlobal(p, s1 > s2, delta1));
             t2Players.forEach(p => syncCasualToGlobal(p, s2 > s1, delta2));

@@ -238,9 +238,11 @@ function openPlayerCard(name) {
         let localP = players.find(x => x.name === name);
         if (localP && localP.rating) { globalRating = localP.rating; }
 
+        // Slenksčiai IDENTIŠKI logic.js tier skaičiavimui (851/701/551/451/351) — kad kortelė nerodytų kitos lygos nei DB
         if (globalRating >= 851) { tierName = "A (Ekspertas)"; barColor = "bg-gradient-to-r from-red-500 to-red-600"; textColor = "text-red-600"; }
-        else if (globalRating >= 671) { tierName = "B (Patyręs)"; barColor = "bg-gradient-to-r from-purple-500 to-purple-600"; textColor = "text-purple-600"; }
-        else if (globalRating >= 501) { tierName = "C (Pažengęs)"; barColor = "bg-gradient-to-r from-blue-500 to-blue-600"; textColor = "text-blue-600"; }
+        else if (globalRating >= 701) { tierName = "B-/B (Patyręs)"; barColor = "bg-gradient-to-r from-purple-500 to-purple-600"; textColor = "text-purple-600"; }
+        else if (globalRating >= 551) { tierName = "C/C+ (Pažengęs)"; barColor = "bg-gradient-to-r from-blue-500 to-blue-600"; textColor = "text-blue-600"; }
+        else if (globalRating >= 451) { tierName = "C-/C (Vidutinis)"; barColor = "bg-gradient-to-r from-sky-400 to-sky-500"; textColor = "text-sky-600"; }
         else if (globalRating >= 351) { tierName = "D/C- (Pradedantysis)"; barColor = "bg-gradient-to-r from-teal-400 to-teal-500"; textColor = "text-teal-600"; }
         else { tierName = "D (Naujokas)"; barColor = "bg-gradient-to-r from-green-400 to-green-500"; textColor = "text-green-600"; }
 

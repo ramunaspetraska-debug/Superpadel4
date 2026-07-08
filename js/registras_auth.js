@@ -983,25 +983,10 @@ function calculateRetroactiveStats(roomName, roomPlayerId, phoneId, playerName) 
 // ==========================================
 // RANKINIS STATISTIKOS PERSKAIČIAVIMAS
 // ==========================================
-// Patikimas būdas: perskaičiuoja casual mačus IŠ NAUJO pagal visus kambarius,
-// kuriuose vartotojas prisijungęs. Sutapimas pagal pilną IR tik vardą.
-// Nustato (ne prideda) reikšmes — todėl dvigubo skaičiavimo nėra.
-// Lyga pagal reitingą — TIE PATYS slenksčiai kaip admin žaidėjų bazėje
-function tierFromRating(rating) {
-    if (rating >= 851) return "A";
-    if (rating >= 701) return "B-/B";
-    if (rating >= 551) return "C/C+";
-    if (rating >= 451) return "C-/C";
-    if (rating >= 351) return "D/C-";
-    return "D";
-}
-
-// Mėgėjų lygos ELO: startas 300, +8 už pergalę, -5 už pralaimėjimą (min 100).
-// Perskaičiuojama nuo nulio kaskart — todėl formulę galima keisti bet kada.
-function casualRatingFrom(wins, losses) {
-    return Math.max(100, 300 + wins * 8 - losses * 5);
-}
-
+// „Atnaujinti mano statistiką": perskaičiuoja MAČŲ IR PERGALIŲ SKAIČIUS iš naujo
+// pagal visus kambarius (nustato, ne prideda — dvigubo skaičiavimo nėra).
+// ELO reitingai čia NEskaičiuojami — jie evoliucionuoja tik mačas po mačo
+// (processGlobalEloForMatch), nes ELO neįmanoma teisingai atkurti iš win/loss sumų.
 function recomputeMyStats(silent) {
     if (!currentUser || !currentUser.id) { if (!silent) showToast("Pirmiausia prisijunkite."); return; }
     if (!silent) showToast("⏳ Perskaičiuojama statistika...");
@@ -1012,11 +997,14 @@ function recomputeMyStats(silent) {
 
     const matchesPlayer = (p, roomPlayerId) => {
         if (!p) return false;
+        if (p.id === phoneId) return true; // tikslus telefono ID — patikimiausia
         if (roomPlayerId && p.id === roomPlayerId) return true;
         const pName = (p.name ? String(p.name).split('|')[0] : '').toLowerCase().trim();
         if (!pName) return false;
         if (fullName && pName === fullName) return true;
-        if (firstName && pName.split(/\s+/)[0] === firstName) return true;
+        // Vien vardo atitikimas — TIK kai kambaryje įrašytas vardas be pavardės
+        // (kitaip „Jonas Kitas" mačai būtų priskirti „Jonas Petraitis")
+        if (firstName && pName.indexOf(' ') === -1 && pName === firstName) return true;
         return false;
     };
 
@@ -1038,21 +1026,18 @@ function recomputeMyStats(silent) {
         let roomsWithMe = 0;
 
         const finish = () => {
-            const cRating = casualRatingFrom(totalWins, totalMatches - totalWins);
-            const cTier = tierFromRating(cRating);
+            // SVARBU: perskaičiuojami TIK mačų/pergalių skaičiai. ELO reitingų (rating,
+            // casual_rating) ir tier žymų NELIEČIAME — jie evoliucionuoja mačas po mačo
+            // (processGlobalEloForMatch); perrašymas formule sunaikintų ELO istoriją.
             firebase.database().ref(`${GLOBAL_PLAYERS_KEY}/${phoneId}`).update({
                 casual_matches: totalMatches,
                 casual_wins: totalWins,
-                casual_rating: cRating,
-                casual_tier: cTier,
                 total_matches: officialMatches,
                 official_wins: officialWins,
                 last_played: Date.now()
             }).then(() => {
                 currentUser.casual_matches = totalMatches;
                 currentUser.casual_wins = totalWins;
-                currentUser.casual_rating = cRating;
-                currentUser.casual_tier = cTier;
                 currentUser.total_matches = officialMatches;
                 currentUser.official_wins = officialWins;
                 localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
