@@ -1,9 +1,8 @@
 // ==========================================
-// VERSIJA: v1.2.10 (2026-06-19)
-// Įtraukta: recomputeMyStats (mygtukas "Atnaujinti statistiką"),
-//           handlePostLoginCard (po prisijungimo neatidaro atšaukimo lango),
-//           processAuth su .catch + prisijungimas iš atminties,
-//           vardo rakto pataisymai (pilnas + tik vardas), firstNameKey.
+// VERSIJA: v2.0 (2026-07-07)
+// Prisijungimai TIK patvirtinta el. pašto nuoroda (Firebase Auth email link):
+// klientams — profilis susiejamas su telefonu (ID), adminams — klubų paskyros.
+// Seni keliai (prisijungimas vien telefonu, admin PIN) pašalinti.
 // ==========================================
 
 // ==========================================
@@ -180,7 +179,10 @@ function clientEmailSignedIn(email, extra) {
     });
 }
 
-// Modalas po pirmo prisijungimo el. paštu: susieti esamą profilį (telefonu) arba kurti naują
+// Modalas po pirmo prisijungimo el. paštu: telefonas PRIVALOMAS (jis — žaidėjo profilio ID,
+// pagal jį veikia ELO, partnerių paieška ir push pranešimai). Jei profilis su tuo numeriu
+// jau yra (pvz. sukurtas administratoriaus ar partnerio registracijos metu) — susiejamas,
+// jei nėra — sukuriamas naujas. Visais atvejais profilis iškart užrakinamas šiuo el. paštu.
 function openEmailLinkAccountModal(email) {
     const m = document.getElementById('actionModal');
     const mTitle = document.getElementById('modalTitle');
@@ -189,11 +191,11 @@ function openEmailLinkAccountModal(email) {
     if (!m || !mTitle || !mBody || !mActions) return;
     mTitle.innerHTML = '<i class="fa-solid fa-envelope-circle-check" style="color: var(--status-green);"></i> El. paštas patvirtintas';
     mBody.innerHTML = `
-        <div style="font-size: 12px; color: var(--text-grey); margin-bottom: 12px;">${esc(email)} — patvirtintas. Susiekime jį su jūsų žaidėjo profiliu.</div>
-        <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase;">Jau turite profilį? Įveskite savo telefono nr.</label>
-        <input type="text" id="emailLinkPhone" placeholder="Pvz. 37060000000" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; margin: 6px 0 14px; outline: none; font-weight: bold; box-sizing: border-box;">
-        <div style="border-top: 1px dashed #e2e8f0; padding-top: 12px;">
-            <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase;">Neturite profilio? Sukurkite naują</label>
+        <div style="font-size: 12px; color: var(--text-grey); margin-bottom: 12px;"><strong>${esc(email)}</strong> — patvirtintas. Liko susieti jį su žaidėjo profiliu.</div>
+        <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase;">Telefono numeris (privalomas)</label>
+        <input type="text" id="emailLinkPhone" placeholder="Pvz. 37060000000" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; margin: 6px 0 12px; outline: none; font-weight: bold; box-sizing: border-box;">
+        <div id="emailLinkNewFields">
+            <label style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase;">Jūsų vardas (jei profilis dar nesukurtas)</label>
             <input type="text" id="emailLinkName" placeholder="Vardas Pavardė" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; margin: 6px 0 8px; outline: none; font-weight: bold; box-sizing: border-box;">
             <select id="emailLinkGender" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box;">
                 <option value="M">Vyras</option><option value="F">Moteris</option>
@@ -203,30 +205,31 @@ function openEmailLinkAccountModal(email) {
         <button type="button" class="modal-btn primary" onclick="emailLinkAccountSubmit('${esc(email)}')" style="width:100%; margin-bottom:8px;">Tęsti</button>
         <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>`;
     m.classList.add('show');
+    setTimeout(() => document.getElementById('emailLinkPhone')?.focus(), 150);
 }
 
 function emailLinkAccountSubmit(email) {
     const phoneRaw = (document.getElementById('emailLinkPhone')?.value || '').trim().toLowerCase();
-    if (phoneRaw) {
-        let safeId = phoneRaw.replace(/[^a-z0-9]/g, '');
-        if (safeId.startsWith('86') && safeId.length === 9) safeId = '370' + safeId.substring(1);
-        if (safeId.startsWith('06') && safeId.length === 9) safeId = '370' + safeId.substring(1);
-        linkEmailToPlayerPhone(email, safeId, false);
-        return;
-    }
-    const name = (document.getElementById('emailLinkName')?.value || '').trim();
-    const gender = document.getElementById('emailLinkGender')?.value || 'M';
-    if (!name) { showToast("Įveskite telefono numerį ARBA vardą naujam profiliui."); return; }
-    // Naujas profilis su el. paštu vietoj telefono ID
-    const pid = 'em_' + emailKey(email).replace(/,/g, '_');
-    const newUser = { id: pid, name: name, gender: gender, rating: 300, tier: "D", total_matches: 0, last_played: Date.now(), email: String(email).trim().toLowerCase(), emailLocked: true };
-    firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + pid).set(newUser).then(() => {
-        firebase.database().ref('padelio_email_links/' + emailKey(email)).set(pid);
-        currentUser = newUser;
-        localStorage.setItem('sp_current_user', JSON.stringify(newUser));
-        updateAuthUI(); closeModal(); closeAuthModal();
-        showToast("🔒 Profilis sukurtas ir apsaugotas el. paštu!");
-        if (typeof renderUserProfile === 'function') renderUserProfile();
+    if (!phoneRaw) { showToast("Telefono numeris privalomas — pagal jį skaičiuojama jūsų statistika."); return; }
+    let safeId = phoneRaw.replace(/[^a-z0-9]/g, '');
+    if (safeId.startsWith('86') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+    if (safeId.startsWith('06') && safeId.length === 9) safeId = '370' + safeId.substring(1);
+    if (!/^[0-9]{7,}$/.test(safeId)) { showToast("Neteisingas telefono numerio formatas."); return; }
+    firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
+        if (snap.val()) { linkEmailToPlayerPhone(email, safeId, false); return; }
+        // Profilio dar nėra — kuriam naują su telefono ID
+        const name = (document.getElementById('emailLinkName')?.value || '').trim();
+        const gender = document.getElementById('emailLinkGender')?.value || 'M';
+        if (!name) { showToast("Profilis su šiuo numeriu nerastas — įveskite vardą naujam profiliui."); return; }
+        const newUser = { id: safeId, name: name, gender: gender, rating: 300, tier: "D", total_matches: 0, last_played: Date.now(), email: String(email).trim().toLowerCase(), emailLocked: true };
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).set(newUser).then(() => {
+            firebase.database().ref('padelio_email_links/' + emailKey(email)).set(safeId);
+            currentUser = newUser;
+            localStorage.setItem('sp_current_user', JSON.stringify(newUser));
+            updateAuthUI(); closeModal(); closeAuthModal();
+            showToast("🔒 Profilis sukurtas ir apsaugotas el. paštu!");
+            if (typeof renderUserProfile === 'function') renderUserProfile();
+        });
     });
 }
 
@@ -269,10 +272,10 @@ function protectAccountWithEmail() {
 // ==========================================
 
 function openAuthModal() {
-    document.getElementById('authInput').value = '';
-    document.getElementById('authName').value = '';
-    document.getElementById('registerFields').style.display = 'none';
+    const emailInp = document.getElementById('authEmailInput');
+    if (emailInp) emailInp.value = '';
     document.getElementById('authModal').classList.add('show');
+    setTimeout(() => emailInp && emailInp.focus(), 150);
 }
 
 function closeAuthModal() { 
@@ -286,7 +289,7 @@ function handlePostLoginCard(id) {
     if (typeof tournaments === 'undefined') return;
     const t = tournaments.find(x => x.id === id);
     if (!t) { if (typeof switchTab === 'function') switchTab('page-profile'); return; }
-    if (t.status === 'registered') {
+    if (typeof effectiveStatusFor === 'function' && effectiveStatusFor(t) === 'registered') {
         showToast("Jūs jau užsiregistravęs šiame turnyre.");
         if (typeof switchTab === 'function') switchTab('page-profile');
         return;
@@ -294,86 +297,9 @@ function handlePostLoginCard(id) {
     if (typeof handleCardClick === 'function') handleCardClick(id);
 }
 
-function processAuth() {
-    let inputId = document.getElementById('authInput').value.trim().toLowerCase();
-    if(!inputId) { showToast("Įveskite ID arba telefono numerį!"); return; }
-    
-    let safeId = inputId.replace(/[^a-z0-9]/g, '');
-
-    if (safeId.startsWith('86') && safeId.length === 9) {
-        safeId = '370' + safeId.substring(1); 
-    }
-    else if (safeId.startsWith('06') && safeId.length === 9) {
-        safeId = '370' + safeId.substring(1); 
-    }
-
-    showToast("⏳ Jungiamasi...");
-
-    firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).once('value').then(snap => {
-        let user = snap.val();
-        if(user) {
-            // 🔒 Apsaugotas profilis: prisijungti galima TIK per el. pašto nuorodą
-            if (user.emailLocked) {
-                const hint = user.email ? (' (' + String(user.email).replace(/^(..).*(@.*)$/, '$1***$2') + ')') : '';
-                showToast('🔒 Šis profilis apsaugotas el. paštu' + hint + '. Naudokite „Siųsti prisijungimo nuorodą" žemiau.');
-                const emailInp = document.getElementById('authEmailInput');
-                if (emailInp) emailInp.focus();
-                return;
-            }
-            currentUser = user;
-            localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
-            showToast(`Sveiki sugrįžę, ${user.name}!`);
-            updateAuthUI();
-            closeAuthModal();
-            if (pendingTournamentId) {
-                const targetId = pendingTournamentId;
-                pendingTournamentId = null; 
-                handlePostLoginCard(targetId);
-            }
-        } else {
-            let regFields = document.getElementById('registerFields');
-            if(regFields.style.display === 'none') {
-                regFields.style.display = 'block';
-                showToast("Profilis nerastas. Įveskite duomenis registracijai.");
-            } else {
-                let name = document.getElementById('authName').value.trim();
-                let gender = document.getElementById('authGender').value;
-                if(!name) { showToast("Būtina įvesti vardą!"); return; }
-                let newUser = { id: safeId, name: name, gender: gender, rating: 300, tier: "D", total_matches: 0, last_played: Date.now() };
-                firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + safeId).set(newUser).then(() => {
-                    currentUser = newUser;
-                    localStorage.setItem('sp_current_user', JSON.stringify(currentUser));
-                    showToast("Registracija sėkmingai! Profilis sukurtas.");
-                    updateAuthUI();
-                    closeAuthModal();
-                    if (pendingTournamentId) {
-                        const targetId = pendingTournamentId;
-                        pendingTournamentId = null; 
-                        handlePostLoginCard(targetId);
-                    }
-                }).catch(err => {
-                    console.error("Registracijos klaida:", err);
-                    showToast("⚠️ Nepavyko išsaugoti profilio. Patikrinkite internetą.");
-                });
-            }
-        }
-    }).catch(err => {
-        // SVARBU: jei Firebase skaitymas nepavyksta (silpnas internetas), prisijungimas
-        // anksčiau tyliai nutrūkdavo. Dabar parodome klaidą ir, jei yra išsaugotas
-        // profilis su tuo pačiu ID, prisijungiame iš atminties (veikia be interneto).
-        console.error("Prisijungimo klaida:", err);
-        let cached = null;
-        try { cached = JSON.parse(localStorage.getItem('sp_current_user') || 'null'); } catch(e) {}
-        if (cached && cached.id === safeId) {
-            currentUser = cached;
-            showToast(`Prisijungta iš atminties (${cached.name}). Internetas neprieinamas.`);
-            updateAuthUI();
-            closeAuthModal();
-        } else {
-            showToast("⚠️ Nepavyko prisijungti. Patikrinkite internetą ir bandykite dar kartą.");
-        }
-    });
-}
+// PASTABA: senasis prisijungimas vien telefono numeriu (processAuth) PAŠALINTAS —
+// prisijungiama tik patvirtinta el. pašto nuoroda (žr. clientSendEmailLink / clientEmailSignedIn).
+// Telefono numeris liko tik kaip žaidėjo profilio ID (jo prašoma susiejant/kuriant profilį).
 
 function updateAuthUI() {
     let btn = document.getElementById('authBtn');

@@ -896,7 +896,7 @@ function confirmRegistration(id, withPartner) {
         if (userIsRegistered(t)) { closeModal(); showToast("Jūs jau užsiregistravęs šiame turnyre."); return; }
         if ((t.registered || 0) + 1 > (t.max || 0)) { closeModal(); showToast("Deja, vietų nebėra."); renderTournaments(); return; }
         if (!t.players) t.players = [];
-        t.status = 'registered';
+
         t.registered += 1;
         t.players.push(currentUser.name + '|' + (currentUser.gender || 'M'));
         saveData();
@@ -1039,7 +1039,7 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
     if (userIsRegistered(tournament)) { closeModal(); showToast("Jūs jau užsiregistravęs šiame turnyre."); return; }
     if ((tournament.registered || 0) + 2 > (tournament.max || 0)) { closeModal(); showToast("Deja, porai vietų nebėra."); renderTournaments(); return; }
     if (!tournament.players) tournament.players = [];
-    tournament.status = 'registered';
+
     tournament.registered += 2;
     const p1 = player1 + '|' + (gender1 || 'M');
     const p2 = player2 + '|' + (gender2 || 'M');
@@ -1058,7 +1058,7 @@ function confirmWaitlist(id) {
     let t = tournaments.find(x => x.id === id); if (!t) return;
     if (!Array.isArray(t.waitlist)) t.waitlist = [];
     if (userWaitlistPosition(t) === 0) t.waitlist.push(currentUser.name + '|' + (currentUser.gender || 'M'));
-    t.status = 'waitlist';
+
     t.waitlistCount = t.waitlist.length;
     saveData(); setUserTournament(t, 'waitlist'); closeModal();
     showToast(`Pridėta į rezervą (jūs ${userWaitlistPosition(t)}-as eilėje).`);
@@ -1081,7 +1081,7 @@ function confirmCancel(id) {
             t.players.splice(teamIndex, 1);
         }
     }
-    t.status = 'open';
+
     saveData();
     closeModal();
     clearUserTournament(id); showToast("Registracija sėkmingai atšaukta.");
@@ -1098,14 +1098,14 @@ function confirmWaitlistCancel(id) {
     } else {
         t.waitlistCount = Math.max(0, (t.waitlistCount || 0) - 1);
     }
-    t.status = 'full';
+
     saveData(); clearUserTournament(id); closeModal(); showToast("Išbraukta iš rezervo.");
 }
 
 let currentPushId = null;
 function simulateSpotOpening(e, id) {
     e.stopPropagation(); currentPushId = id; let t = tournaments.find(x => x.id === id); if (!t) return;
-    t.status = 'registered'; t.registered += 1;
+    t.registered += 1;
     if (Array.isArray(t.waitlist) && currentUser && currentUser.name) {
         const idx = t.waitlist.findIndex(p => String(p).split('|')[0].trim().toLowerCase() === currentUser.name.toLowerCase());
         if (idx !== -1) t.waitlist.splice(idx, 1);

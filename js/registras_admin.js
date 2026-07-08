@@ -26,8 +26,7 @@ function openAdminAuthModal() {
         <input type="email" id="adminEmailInput" placeholder="klubo@pastas.lt" autocomplete="email" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; font-size: 15px; box-sizing: border-box;">`;
     modalActions.innerHTML = `
         <button type="button" class="modal-btn primary" onclick="adminSendLink()" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-paper-plane"></i> Gauti prisijungimo nuorodą</button>
-        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>
-        <button type="button" onclick="adminPinFallback()" style="width:100%; background:none; border:none; color:#a0aec0; font-size:11px; margin-top:8px; cursor:pointer;">Senas prisijungimas kodu (laikinas)</button>`;
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>`;
     modal.classList.add('show');
     setTimeout(() => document.getElementById('adminEmailInput')?.focus(), 150);
 }
@@ -149,30 +148,8 @@ function openInviteAdminModal() {
     );
 }
 
-// SENAS PIN — veikia tik migracijos laikotarpiu, kol nesukurtas nė vienas klubas.
-// Vos tik sukuriamas pirmas klubas, šis kelias automatiškai išsijungia visam laikui.
-function adminPinFallback() {
-    firebase.database().ref('padelio_clubs').once('value').then(s => {
-        if (s.exists()) {
-            closeModal();
-            showToast("🔒 Prisijungimas kodu išjungtas — naudokite el. paštą.");
-            return;
-        }
-        openInputModal(
-            '<i class="fa-solid fa-lock" style="color: var(--status-orange);"></i> Laikinas kodas (nesaugu)',
-            'Įveskite kodą',
-            'Prisijungti',
-            (code) => {
-                if (code === "7030") {
-                    toggleMode();
-                    showToast("⚠️ Prisijunkite el. paštu ir susikurkite klubą — kodas bus išjungtas.");
-                }
-                else if (code) { showToast("Neteisingas kodas!"); }
-            },
-            'password'
-        );
-    }).catch(() => showToast("Nepavyko patikrinti — bandykite vėliau."));
-}
+// PASTABA: senasis prisijungimas kodu (PIN „7030") PAŠALINTAS — į admin panelę patenkama
+// tik patvirtinta el. pašto nuoroda ir tik prie savo klubo paskyros.
 
 // Ar šis admin gali valdyti turnyrą: savo klubo + (legacyOwner atveju) senus be klubo
 function canManageTournament(t) {
@@ -264,6 +241,7 @@ async function createTournament(e) {
         const laikas = document.getElementById('newTime').value;
         const repeatCount = parseInt(document.getElementById('newRepeat').value || 1);
 
+        if (!currentClub) { showToast("Prisijunkite prie klubo paskyros — turnyrai kuriami klubo vardu."); return; }
         if (!baseDateStr) { showToast("Pasirinkite datą."); return; }
         if (!parseTimeStr(laikas)) { showToast("Neteisingas laiko formatas. Pvz.: 18:00 - 20:00"); return; }
 
@@ -304,7 +282,7 @@ async function createTournament(e) {
                 level: document.getElementById('newLevel').value,
                 time: laikas, registered: 0,
                 max: parseInt(document.getElementById('newMax').value),
-                status: 'open', isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
+                isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
             };
             // Turnyras priklauso jį sukūrusiam klubui — kiti klubai jo nevaldys
             if (currentClub) { newT.clubId = currentClub.id; newT.clubName = currentClub.name; }
@@ -326,10 +304,13 @@ function renderAdminTournaments() {
     const list = document.getElementById('admin-tournaments-list-db');
     if(!list) return;
     // KLUBŲ IZOLIACIJA: rodomi tik savo klubo turnyrai (legacyOwner — ir seni be klubo žymos).
-    // currentClub nėra tik senuoju PIN keliu, kuris veikia tik kol klubų sistemoje nėra — tada rodomi visi.
-    let visible = currentClub ? tournaments.filter(t => canManageTournament(t)) : [...tournaments];
+    if (!currentClub) {
+        list.innerHTML = '<div style="color: #718096; font-size: 13px; text-align:center; padding: 20px;">Prisijunkite prie klubo paskyros el. paštu.</div>';
+        return;
+    }
+    let visible = tournaments.filter(t => canManageTournament(t));
     if(visible.length === 0) {
-        list.innerHTML = '<div style="color: #718096; font-size: 13px; text-align:center; padding: 20px;">' + (currentClub ? 'Jūsų klubas dar neturi turnyrų — sukurkite pirmąjį!' : 'Turnyrų nėra.') + '</div>';
+        list.innerHTML = '<div style="color: #718096; font-size: 13px; text-align:center; padding: 20px;">Jūsų klubas dar neturi turnyrų — sukurkite pirmąjį!</div>';
         return;
     }
 

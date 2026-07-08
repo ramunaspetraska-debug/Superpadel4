@@ -33,31 +33,12 @@
         <div class="modal-box">
             <div class="modal-title"><i class="fa-solid fa-user-shield"></i> Jūsų Padelio Profilis</div>
             <div class="modal-body" style="margin-bottom: 10px;">
-                <p style="font-size: 12px; margin-bottom: 15px;">Įveskite savo unikalų Padel ID arba telefono numerį. Jei tokio nėra – mes jį sukursime!</p>
-                <input type="text" id="authInput" placeholder="Padel ID / Telefono nr." style="width: 100%; padding: 14px; border: 1px solid #cbd5e0; border-radius: 8px; margin-bottom: 10px; outline: none; font-weight: bold; font-size: 16px;">
-                
-                <div id="registerFields" style="display: none; background: #f8f9fb; padding: 15px; border-radius: 8px; border: 1px dashed #cbd5e0; margin-bottom: 10px;">
-                    <div style="font-size: 11px; font-weight: 900; color: var(--status-orange); margin-bottom: 10px; text-transform: uppercase;">Profilis nerastas. Sukurkime naują!</div>
-                    <input type="text" id="authName" placeholder="Vardas Pavardė" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; margin-bottom: 10px; outline: none; font-weight: bold;">
-                    <select id="authGender" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; color: var(--text-dark);">
-                        <option value="M">Vyras</option>
-                        <option value="F">Moteris</option>
-                    </select>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 10px; margin: 14px 0 10px;">
-                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-                    <div style="font-size: 10px; font-weight: 900; color: #a0aec0; text-transform: uppercase;">arba saugiai</div>
-                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-                </div>
-                <div style="background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 8px; padding: 12px;">
-                    <div style="font-size: 11px; color: #1e40af; font-weight: bold; margin-bottom: 8px;"><i class="fa-solid fa-envelope-circle-check"></i> Prisijungimas el. paštu — gausite vienkartinę nuorodą, slaptažodžio nereikia.</div>
-                    <input type="email" id="authEmailInput" placeholder="el.pastas@pavyzdys.lt" autocomplete="email" style="width: 100%; padding: 12px; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 8px; outline: none; font-weight: bold; font-size: 14px; box-sizing: border-box;">
-                    <button type="button" class="modal-btn primary" onclick="clientSendEmailLink()" style="width: 100%; background: #2563eb;"><i class="fa-solid fa-paper-plane"></i> Siųsti prisijungimo nuorodą</button>
-                </div>
+                <p style="font-size: 12px; margin-bottom: 12px;">Prisijungimas saugia el. pašto nuoroda — slaptažodžio nereikia. Įveskite el. paštą ir gausite vienkartinę nuorodą.</p>
+                <input type="email" id="authEmailInput" placeholder="el.pastas@pavyzdys.lt" autocomplete="email" style="width: 100%; padding: 14px; border: 1px solid #bfdbfe; border-radius: 8px; margin-bottom: 10px; outline: none; font-weight: bold; font-size: 16px; box-sizing: border-box;">
+                <div style="font-size: 11px; color: var(--text-grey);"><i class="fa-solid fa-circle-info"></i> Pirmą kartą? Paspaudę nuorodą susiesite arba susikursite savo žaidėjo profilį.</div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="modal-btn primary" onclick="processAuth()">Patvirtinti</button>
+                <button type="button" class="modal-btn primary" onclick="clientSendEmailLink()" style="background: #2563eb;"><i class="fa-solid fa-paper-plane"></i> Siųsti prisijungimo nuorodą</button>
                 <button type="button" class="modal-btn secondary" onclick="closeAuthModal()">Atšaukti</button>
             </div>
         </div>
