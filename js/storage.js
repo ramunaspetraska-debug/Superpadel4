@@ -142,11 +142,11 @@ function autoSave(fullSync = false) {
         } 
         setStore('p', players); setStore('m', matches); setStore('s', settings); setStore('h', savedTournaments); setStore('tid', currentTid); setStore('lastUpdate', now); setStore('dataRoom', activeRoom || ''); 
         
-        if(isCloud && dbRef && fullSync) { 
-            const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: now }; 
-            window.lastCloudUpdate = now; 
-            dbRef.update(p); 
-            
+        if(isCloud && dbRef && fullSync && !window.roomReadOnly) {
+            const p = { players, matches, settings, savedTournaments, currentTid, lastUpdate: now };
+            window.lastCloudUpdate = now;
+            dbRef.update(p);
+
             syncPlayersToGlobalDB();
             // Atnaujinam kambario "gyvumo" laiką (kad liktų portalo aktyvių sąraše), max kas 60s
             if (activeRoom && (!window._lastRegPing || Date.now() - window._lastRegPing > 60000)) {
@@ -164,10 +164,10 @@ function liveUpdateMatches() {
         setStore('m', matches); setStore('lastUpdate', now); setStore('dataRoom', activeRoom || '');
         let upd = { matches: matches, lastUpdate: now };
         if (currentTid) { const idx = savedTournaments.findIndex(x => x.id === currentTid); if (idx > -1) { savedTournaments[idx].matches = matches; setStore('h', savedTournaments); } }
-        if (isCloud && dbRef) { 
-            window.lastCloudUpdate = now; 
-            dbRef.update(upd); 
-            
+        if (isCloud && dbRef && !window.roomReadOnly) {
+            window.lastCloudUpdate = now;
+            dbRef.update(upd);
+
             updateGlobalRatingsFromMatches();
             // Atnaujinam kambario "gyvumo" laiką (kad liktų portalo aktyvių sąraše), max kas 60s
             if (activeRoom && (!window._lastRegPing || Date.now() - window._lastRegPing > 60000)) {
@@ -189,30 +189,22 @@ function initFirebaseConnection() {
     ensureFirebaseInit(); activeRoom = room; isCloud = true; localStorage.setItem('sp_active_room_master', room); 
     saveToMyRooms(room);
     
-    firebase.database().ref(REG_KEY + '/' + room).set(Date.now()); 
-    dbRef = firebase.database().ref(DB_KEY + '/' + room); 
+    firebase.database().ref(REG_KEY + '/' + room).set(Date.now());
+    dbRef = firebase.database().ref(DB_KEY + '/' + room);
     dbPhotosRef = firebase.database().ref(DB_KEY + '/' + room + '_photos');
 
-    // Savininko nustatymas: jei kambarys NAUJAS (neturi savininko), dabartinis vartotojas tampa savininku.
-    // Hibridas: jei prisijungęs prie profilio → profilio ID, kitaip → įrenginio ID.
-    firebase.database().ref(`${DB_KEY}/${room}/owner`).once('value').then(ownerSnap => {
-        if (!ownerSnap.exists()) {
-            firebase.database().ref(`${DB_KEY}/${room}/owner`).set(getCurrentOwnerId());
-        }
-    });
-    
+    // NUOSAVYBĖ IR PRIEIGA: naujas kambarys pažymimas kūrėju (su galimybe apsaugoti PIN kodu),
+    // esamam — nustatoma rašymo teisė (klubo kambariai → tik klubo adminai; PIN kambariai → tik
+    // žinantys PIN; laisvi draugų kambariai → visi). Be teisės — tik peržiūros režimas.
+    window.roomReadOnly = false;
+    claimOrResolveRoomAccess(room);
+
     globalPlayersRef = firebase.database().ref(GLOBAL_PLAYERS_KEY);
     globalPlayersRef.on('value', snap => {
         globalPlayersData = snap.val() || {};
     });
 
-    safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room); 
-
-    // Minkšta apsauga: trynimo mygtukas rodomas TIK savininkui
-    isRoomOwner(room).then(isOwner => {
-        const delBtn = el('deleteRoomBtn');
-        if (delBtn) delBtn.style.display = isOwner ? 'block' : 'none';
-    });
+    safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room);
     
     const qrC = el('qrcode'); if(qrC && typeof QRCode !== 'undefined') { qrC.innerHTML = ''; new QRCode(qrC, { text: window.location.origin + window.location.pathname + `?room=${encodeURIComponent(room)}`, width: 160, height: 160 }); }
     
@@ -244,24 +236,47 @@ function initFirebaseConnection() {
             localLastUpdate = cloudUpdate; 
             setStore('lastUpdate', localLastUpdate); setStore('dataRoom', activeRoom || ''); setStore('m', matches); setStore('p', players); setStore('h', savedTournaments); setStore('s', settings); setStore('tid', currentTid); 
             render(); 
-        } else { 
+        } else {
             // Lokalūs to paties kambario duomenys NAUJESNI (pvz. ką tik sugeneruoti finalai, kurių debesis dar negavo) → NEperrašom; pastumiam į debesį
-            window.lastCloudUpdate = localLastUpdate; 
-            setStore('dataRoom', activeRoom || ''); 
-            if (isCloud && dbRef) dbRef.update({ players, matches, settings, savedTournaments, currentTid, lastUpdate: localLastUpdate }); 
-        } 
+            window.lastCloudUpdate = localLastUpdate;
+            setStore('dataRoom', activeRoom || '');
+            if (isCloud && dbRef && !window.roomReadOnly) dbRef.update({ players, matches, settings, savedTournaments, currentTid, lastUpdate: localLastUpdate });
+        }
     }); 
 }
 
-// Grąžina dabartinio vartotojo "savininko" ID.
-// Hibridas: jei prisijungęs prie profilio (telefono ID) → naudojam jį; kitaip → įrenginio ID.
+// ==========================================
+// KAMBARIŲ NUOSAVYBĖ IR PRIEIGOS KONTROLĖ
+// ==========================================
+// Kambarių tipai pagal owner įrašą (DB_KEY/{room}/owner):
+//  • { type:'club', clubId, clubName } — oficialus, sukurtas klubo admin panelėje portale.
+//    Rašyti gali TIK to klubo administratoriai (atpažįstami per bendrą Firebase Auth sesiją).
+//  • { type:'personal', email } / { type:'device', id } / senas string ('user_...'/'dev_...') —
+//    draugų kambarys. Rašyti gali visi prisijungę (bendras rezultatų vedimas), nebent kūrėjas
+//    nustatė PIN (DB_KEY/{room}/security/pin) — tada rašymui reikia PIN. Trinti — tik kūrėjas.
+
+// El. paštas → saugus DB raktas (kopija iš portalo — generatorius auth failo neįkelia)
+function emailKeyGen(email) {
+    return String(email || '').trim().toLowerCase().replace(/[.#$\[\]\/]/g, ',');
+}
+
+// Prisijungusio (per portalą — sesija bendra tame pačiame domene) vartotojo el. paštas
+function getAuthEmail() {
+    try {
+        if (typeof firebase !== 'undefined' && typeof firebase.auth === 'function') {
+            const u = firebase.auth().currentUser;
+            if (u && u.email) return String(u.email).toLowerCase();
+        }
+    } catch (e) {}
+    return null;
+}
+
+// Grąžina dabartinio vartotojo "savininko" ID (silpnesnės tapatybės — kai nėra el. pašto).
 function getCurrentOwnerId() {
-    // Profilis (jei prisijungęs portale ir ID matomas generatoriuje)
     try {
         const u = JSON.parse(localStorage.getItem('sp_current_user') || 'null');
         if (u && u.id) return 'user_' + u.id;
     } catch(e) {}
-    // Įrenginio ID (sukuriamas vieną kartą, lieka naršyklėje)
     let devId = localStorage.getItem('sp_device_id');
     if (!devId) {
         devId = 'dev_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -270,17 +285,108 @@ function getCurrentOwnerId() {
     return devId;
 }
 
-// Patikrina ar dabartinis vartotojas yra šio kambario savininkas.
-// Grąžina Promise<boolean>.
+// Ar dabartinės tapatybės atitinka draugų kambario savininką (bet kurio formato)?
+function matchesOwnerIdentity(owner) {
+    if (!owner) return true; // senas kambarys be savininko — atgalinis suderinamumas
+    const email = getAuthEmail();
+    if (typeof owner === 'string') return owner === getCurrentOwnerId();
+    if (owner.type === 'personal') return !!(email && owner.email === email);
+    if (owner.type === 'device') return owner.id === getCurrentOwnerId();
+    return false;
+}
+
+// Ar prisijungęs vartotojas yra nurodyto klubo administratorius? Promise<boolean>
+function isClubAdminOf(clubId) {
+    const email = getAuthEmail();
+    if (!email || !clubId) return Promise.resolve(false);
+    return firebase.database().ref('padelio_club_admins/' + emailKeyGen(email)).once('value')
+        .then(s => { const rec = s.val(); return !!(rec && rec.clubId === clubId); })
+        .catch(() => false);
+}
+
+// Ar dabartinis vartotojas yra šio kambario savininkas (gali TRINTI kambarį)? Promise<boolean>
 function isRoomOwner(room) {
-    // LAIKINAI IŠJUNGTA (vartotojo prašymu prieš testą): trynimo mygtukas matomas visiems.
-    // Norint grąžinti savininko apsaugą — atkomentuoti žemiau esantį bloką ir ištrinti šią eilutę.
-    return Promise.resolve(true);
-    /* return firebase.database().ref(`${DB_KEY}/${room}/owner`).once('value').then(snap => {
+    return firebase.database().ref(`${DB_KEY}/${room}/owner`).once('value').then(snap => {
         const owner = snap.val();
-        if (!owner) return true; // senas kambarys be savininko — leidžiam (atgalinis suderinamumas)
-        return owner === getCurrentOwnerId();
-    }).catch(() => false); */
+        if (!owner) return true; // senas kambarys be savininko
+        if (typeof owner === 'object' && owner.type === 'club') return isClubAdminOf(owner.clubId);
+        return matchesOwnerIdentity(owner);
+    }).catch(() => false);
+}
+
+// Prisijungimo metu: naujas kambarys pažymimas kūrėju (+ pasirinktinai PIN),
+// esamam nustatoma rašymo teisė ir įjungiamas/išjungiamas peržiūros režimas.
+function claimOrResolveRoomAccess(room) {
+    const ownerRef = firebase.database().ref(`${DB_KEY}/${room}/owner`);
+    Promise.all([
+        ownerRef.once('value'),
+        firebase.database().ref(`${DB_KEY}/${room}/security`).once('value')
+    ]).then(results => {
+        const owner = results[0].val();
+        const security = results[1].val() || {};
+        const pinField = el('fb-room-pin');
+        const enteredPin = pinField ? String(pinField.value || '').trim() : '';
+
+        if (!owner) {
+            // NAUJAS kambarys — dabartinis vartotojas tampa kūrėju
+            const email = getAuthEmail();
+            const newOwner = email
+                ? { type: 'personal', email: email, createdAt: Date.now() }
+                : { type: 'device', id: getCurrentOwnerId(), createdAt: Date.now() };
+            ownerRef.set(newOwner);
+            // PIN apsauga (nebūtina): 4 skaitmenys iš prisijungimo lauko
+            if (/^[0-9]{4}$/.test(enteredPin)) {
+                firebase.database().ref(`${DB_KEY}/${room}/security/pin`).set(enteredPin);
+                localStorage.setItem('sp_room_pin_' + room, enteredPin);
+                setTimeout(() => alert('🔒 Kambarys apsaugotas PIN kodu ' + enteredPin + '.\n\nRezultatus vesti galės tik jį žinantys — pasidalinkite kodu su žaidėjais.'), 200);
+            } else if (enteredPin) {
+                setTimeout(() => alert('PIN kodas turi būti 4 skaitmenys — kambarys sukurtas BE apsaugos.'), 200);
+            }
+            setRoomAccess(true, '');
+            return;
+        }
+
+        // ESAMAS kambarys
+        if (typeof owner === 'object' && owner.type === 'club') {
+            isClubAdminOf(owner.clubId).then(ok => {
+                if (ok) { setRoomAccess(true, ''); return; }
+                setRoomAccess(false, 'Kambarį valdo klubas „' + (owner.clubName || 'klubas') + '" — jūs matote tik peržiūrą. Redaguoti gali tik klubo administratoriai, prisijungę portale.');
+            });
+            return;
+        }
+        const pin = security.pin;
+        if (pin) {
+            if (matchesOwnerIdentity(owner)) { localStorage.setItem('sp_room_pin_' + room, pin); setRoomAccess(true, ''); return; }
+            const saved = localStorage.getItem('sp_room_pin_' + room);
+            let candidate = enteredPin || saved || '';
+            if (candidate !== pin) candidate = prompt('🔒 Šis kambarys apsaugotas PIN kodu.\n\nĮveskite 4 skaitmenų kodą (be jo — tik peržiūra):') || '';
+            if (candidate === pin) { localStorage.setItem('sp_room_pin_' + room, pin); setRoomAccess(true, ''); }
+            else setRoomAccess(false, 'Kambarys apsaugotas PIN kodu — be jo galite tik stebėti rezultatus. Norėdami vesti taškus, atsijunkite ir prisijunkite įvedę teisingą PIN.');
+            return;
+        }
+        setRoomAccess(true, '');
+    }).catch(e => { console.error('roomAccess klaida:', e); setRoomAccess(true, ''); });
+}
+
+// Įjungia/išjungia peržiūros režimą: blokuoja rašymą į debesį ir rodo juostą.
+function setRoomAccess(canWrite, message) {
+    window.roomReadOnly = !canWrite;
+    let bar = document.getElementById('room-readonly-banner');
+    if (canWrite) { if (bar) bar.remove(); }
+    else {
+        if (!bar) {
+            bar = document.createElement('div');
+            bar.id = 'room-readonly-banner';
+            bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:#b45309;color:#fff;padding:8px 14px;font-size:11px;font-weight:bold;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.25);';
+            document.body.appendChild(bar);
+        }
+        bar.innerHTML = '🔒 TIK PERŽIŪRA — ' + String(message || '').replace(/[<>]/g, '');
+    }
+    // Trynimo mygtukas — tik savininkui
+    isRoomOwner(activeRoom).then(isOwner => {
+        const delBtn = el('deleteRoomBtn');
+        if (delBtn) delBtn.style.display = (isOwner && canWrite) ? 'block' : 'none';
+    });
 }
 
 function disconnectFirebase() { 

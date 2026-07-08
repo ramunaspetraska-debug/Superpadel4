@@ -69,30 +69,10 @@ window.addEventListener('DOMContentLoaded', () => {
 let cachedCloudPlayers = [];
 let indexCasualPlayersRef = null;
 
-function toggleERef() {
-    const isChecked = document.getElementById('setting-ereferee')?.checked;
-    const pinInput = document.getElementById('setting-ereferee-pin');
-    if (!pinInput || typeof settings === 'undefined') return;
+// PASTABA: E-Teisėjo įjungimas PERKELTAS į portalo admin panelę (žymimas kuriant turnyrą,
+// saugomas turnyro lauke eReferee). Senosios toggleERef/updateERefPin funkcijos pašalintos.
 
-    if (isChecked) { 
-        pinInput.classList.remove('hidden'); 
-        settings.eReferee = true; 
-        settings.eRefereePin = pinInput.value || "1234"; 
-    } else { 
-        pinInput.classList.add('hidden'); 
-        settings.eReferee = false; 
-    }
-    if(typeof autoSave === 'function') autoSave(true);
-}
-
-function updateERefPin() { 
-    if (typeof settings !== 'undefined') {
-        settings.eRefereePin = document.getElementById('setting-ereferee-pin')?.value || "1234"; 
-        if(typeof autoSave === 'function') autoSave(true); 
-    }
-}
-
-function toggleAdminOfficial(val) { 
+function toggleAdminOfficial(val) {
     if(typeof settings !== 'undefined') { 
         settings.isOfficial = (val === "true"); 
         if(typeof autoSave === 'function') autoSave(true); 

@@ -158,6 +158,21 @@ function canManageTournament(t) {
     return !!currentClub.legacyOwner;
 }
 
+// Pažymi rezultatų kambarį kaip priklausantį MŪSŲ klubui (jei jis dar be savininko).
+// Nuo šio įrašo generatorius leidžia kambarį redaguoti tik klubo administratoriams.
+function claimRoomForClub(roomId) {
+    if (!currentClub || !roomId) return Promise.resolve(false);
+    const ref = firebase.database().ref(DB_KEY + '/' + String(roomId).toUpperCase() + '/owner');
+    return ref.once('value').then(snap => {
+        const owner = snap.val();
+        if (!owner) {
+            return ref.set({ type: 'club', clubId: currentClub.id, clubName: currentClub.name, createdAt: Date.now() }).then(() => true);
+        }
+        if (typeof owner === 'object' && owner.type === 'club' && owner.clubId === currentClub.id) return true;
+        return false; // kambarys jau priklauso kam nors kitam
+    }).catch(() => false);
+}
+
 function toggleMode() {
     const app = document.getElementById('appMode'); 
     const admin = document.getElementById('adminMode');
@@ -286,6 +301,10 @@ async function createTournament(e) {
             };
             // Turnyras priklauso jį sukūrusiam klubui — kiti klubai jo nevaldys
             if (currentClub) { newT.clubId = currentClub.id; newT.clubName = currentClub.name; }
+            // E-Teisėjavimas: dalyviai patys veda taškus portalo LIVE lange
+            newT.eReferee = !!document.getElementById('newEReferee')?.checked;
+            // Kambarys iškart pažymimas klubo nuosavybe — generatoriuje jį redaguos tik klubo adminai
+            claimRoomForClub(roomIds[i]);
             tournaments.push(newT);
         }
         const ok = await Promise.resolve(saveData());
@@ -351,6 +370,8 @@ function openAdminTournamentModal(id) {
     if(!t) return;
     if (currentClub && !canManageTournament(t)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
     document.getElementById('editAdminTournamentId').value = t.id;
+    const erefBox = document.getElementById('editAdminTournamentERef');
+    if (erefBox) erefBox.checked = !!t.eReferee;
     document.getElementById('editAdminTournamentFormat').value = t.format;
     document.getElementById('editAdminTournamentLevel').value = t.level;
     document.getElementById('editAdminTournamentMax').value = t.max || 16;
@@ -382,7 +403,9 @@ function saveAdminTournamentChanges() {
         tournaments[idx].time = time;
         tournaments[idx].date = date;
         tournaments[idx].room = (document.getElementById('editAdminTournamentRoom').value || '').trim().toUpperCase() || null;
-        saveData(); 
+        tournaments[idx].eReferee = !!document.getElementById('editAdminTournamentERef')?.checked;
+        if (tournaments[idx].room) claimRoomForClub(tournaments[idx].room); // naujas/pakeistas kambarys — pažymim klubo nuosavybe
+        saveData();
         closeAdminTournamentModal();
         showToast("Turnyras sėkmingai atnaujintas!");
         renderAdminTournaments();

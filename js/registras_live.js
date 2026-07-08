@@ -288,27 +288,38 @@ function changeLiveCourt(courtNum) {
     renderLiveScoreboard(); 
 }
 
+// ===== E-TEISĖJAVIMAS =====
+// Įjungiamas PORTALO admin panelėje kuriant/redaguojant turnyrą (turnyro laukas eReferee).
+// Taškus vesti gali tik PRISIJUNGĘS vartotojas, kuris yra to turnyro dalyvis
+// (jo vardas kambario žaidėjų sąraše arba portalo turnyro registracijoje). PIN nebenaudojamas.
+function liveERefTournament() {
+    if (!currentLiveRoomName || typeof tournaments === 'undefined') return null;
+    return tournaments.find(x => x && x.room && String(x.room).toUpperCase() === String(currentLiveRoomName).toUpperCase()) || null;
+}
+function liveERefEnabled() {
+    const t = liveERefTournament();
+    return !!(t && t.eReferee);
+}
+function liveCanScore() {
+    if (!liveERefEnabled()) return { ok: false, reason: 'off' };
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.name) return { ok: false, reason: 'login' };
+    const myName = String(currentUser.name).trim().toLowerCase();
+    const roomPlayers = (currentFirebaseData && Array.isArray(currentFirebaseData.players)) ? currentFirebaseData.players : [];
+    const inRoom = roomPlayers.some(p => p && p.name && String(p.name).trim().toLowerCase() === myName);
+    const t = liveERefTournament();
+    const inTournament = !!(t && typeof userIsRegistered === 'function' && userIsRegistered(t));
+    return (inRoom || inTournament) ? { ok: true } : { ok: false, reason: 'notplayer' };
+}
+
 function changeLiveScore(matchId, teamNum, change) {
-    if (!currentFirebaseData || !currentFirebaseData.settings?.eReferee) return;
-    if (!eRefAuthenticated) { 
-        openInputModal(
-            '<i class="fa-solid fa-gavel" style="color: var(--primary-blue);"></i> E-Teisėjas',
-            'PIN kodas',
-            'Patvirtinti',
-            (pin) => {
-                if (pin === currentFirebaseData.settings.eRefereePin) {
-                    eRefAuthenticated = true;
-                    showToast("Sėkmingai prisijungėte!");
-                    changeLiveScore(matchId, teamNum, change);
-                } else if (pin) {
-                    showToast("Neteisingas PIN kodas!");
-                }
-            },
-            'tel'
-        );
+    if (!currentFirebaseData) return;
+    const access = liveCanScore();
+    if (!access.ok) {
+        if (access.reason === 'login') { showToast("Prisijunkite, kad galėtumėte vesti taškus."); if (typeof openAuthModal === 'function') openAuthModal(); }
+        else if (access.reason === 'notplayer') { showToast("Taškus vesti gali tik šio turnyro dalyviai."); }
         return;
     }
-    const matchIndex = currentFirebaseData.matches.findIndex(m => m.id === matchId); 
+    const matchIndex = currentFirebaseData.matches.findIndex(m => m.id === matchId);
     if (matchIndex === -1) return;
     
     let match = currentFirebaseData.matches[matchIndex]; 
@@ -335,7 +346,7 @@ function renderLiveScoreboard() {
     const team2Names = (match.team2 || []).map(p => esc(p && p.name)).join('<br>') || 'Žaidėjas 2';
     let headerTitle = match.isFinal ? esc(match.finalTitle || 'FINALAS') : `RAUNDAS ${esc(match.round || '1')} (Kortas ${esc(match.court)})`;
     
-    const isERef = currentFirebaseData?.settings?.eReferee;
+    const isERef = liveERefEnabled();
     
     let score1Html = `<div class="team-score" style="color: var(--text-dark);">${match.score1 || 0}</div>`;
     let score2Html = `<div class="team-score" style="color: var(--text-dark);">${match.score2 || 0}</div>`;

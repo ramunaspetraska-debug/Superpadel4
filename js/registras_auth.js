@@ -35,7 +35,7 @@ let liveDbRef = null;
 let casualPlayersRef = null;
 let currentLiveMatches = []; 
 let activeLiveCourt = 1;
-let eRefAuthenticated = false; 
+// (eRefAuthenticated pašalintas — E-teisėjo PIN nebenaudojamas)
 let currentFirebaseData = null;
 let currentUser = JSON.parse(localStorage.getItem('sp_current_user')) || null;
 let isAppMode = true; 

@@ -412,10 +412,15 @@ function linkRoomAndShow(id) {
     if (!val) { showToast('Įveskite kambario ID.'); return; }
     const t = tournaments.find(x => String(x.id) === String(id));
     if (!t) return;
-    t.room = val;
-    if (typeof saveData === 'function') saveData();
-    showToast('Kambarys susietas.');
-    openOfficialResults(id);
+    // Susieti gali tik turnyrą valdantis klubo administratorius
+    if (typeof currentClub === 'undefined' || !currentClub || (typeof canManageTournament === 'function' && !canManageTournament(t))) {
+        showToast('🔒 Susieti gali tik šio turnyro klubo administratorius.'); return;
+    }
+    const doLink = () => { t.room = val; if (typeof saveData === 'function') saveData(); showToast('Kambarys susietas.'); openOfficialResults(id); };
+    // Kambarys pažymimas klubo nuosavybe; jei jis jau priklauso kitam klubui — nesusiejame
+    if (typeof claimRoomForClub === 'function') {
+        claimRoomForClub(val).then(ok => { if (ok) doLink(); else showToast('🔒 Šis kambarys priklauso kitam klubui — pasirinkite kitą.'); });
+    } else { doLink(); }
 }
 
 // ---------- BENDRAS OFICIALIŲ TURNYRŲ PASIRINKIMAS TRANSLIACIJAI ----------
