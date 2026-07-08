@@ -52,7 +52,9 @@ window.addEventListener('DOMContentLoaded', () => {
     } 
     
     logVisit();
-    render(); 
+    // Platformos savininko (legacyOwner klubo admino) patikra — rodo „Platformos statistika" mygtuką
+    if (typeof initPlatformOwnerCheck === 'function') setTimeout(initPlatformOwnerCheck, 800);
+    render();
     
     // Nustatome kurį ekraną rodyti užsikrovus
     if (typeof matches !== 'undefined' && matches.length > 0) {
@@ -69,16 +71,10 @@ window.addEventListener('DOMContentLoaded', () => {
 let cachedCloudPlayers = [];
 let indexCasualPlayersRef = null;
 
-// PASTABA: E-Teisėjo įjungimas PERKELTAS į portalo admin panelę (žymimas kuriant turnyrą,
-// saugomas turnyro lauke eReferee). Senosios toggleERef/updateERefPin funkcijos pašalintos.
-
-function toggleAdminOfficial(val) {
-    if(typeof settings !== 'undefined') { 
-        settings.isOfficial = (val === "true"); 
-        if(typeof autoSave === 'function') autoSave(true); 
-        if(typeof renderTimerAndSettings === 'function') renderTimerAndSettings(); 
-    } 
-}
+// PASTABA: E-Teisėjas ir Official/Casual režimas PERKELTI į portalo admin panelę
+// (žymimi kuriant/redaguojant turnyrą; kambarys žymę gauna per owner mazgą, o
+// generatorius ją perskaito prisijungdamas — žr. storage.js). toggleERef/
+// updateERefPin/toggleAdminOfficial funkcijos pašalintos.
 
 function searchLiveCloudPlayers(query) {
     const container = document.getElementById('live-search-results');
@@ -275,7 +271,8 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Dinaminis Badges atvaizdavimo hook'as
+// Dinaminis Badges atvaizdavimo hook'as (Official/Casual žymė antraštėje pagal settings.isOfficial,
+// kurį dabar nustato kambario owner mazgas — žr. storage.js)
 setTimeout(function() {
     if (typeof window.renderTimerAndSettings === 'function') {
         const originalRender = window.renderTimerAndSettings;
@@ -283,16 +280,17 @@ setTimeout(function() {
             originalRender();
             const offBadge = document.getElementById('official-badge');
             const casBadge = document.getElementById('casual-badge');
-            const adminOffSel = document.getElementById('admin-is-official');
+            const offNote = document.getElementById('organizer-official-note');
             if(typeof settings !== 'undefined') {
-                if (settings.isOfficial) { 
-                    offBadge?.classList.remove('hidden'); 
-                    casBadge?.classList.add('hidden'); 
-                } else { 
-                    offBadge?.classList.add('hidden'); 
-                    casBadge?.classList.remove('hidden'); 
+                if (settings.isOfficial) {
+                    offBadge?.classList.remove('hidden');
+                    casBadge?.classList.add('hidden');
+                    offNote?.classList.remove('hidden');
+                } else {
+                    offBadge?.classList.add('hidden');
+                    casBadge?.classList.remove('hidden');
+                    offNote?.classList.add('hidden');
                 }
-                if(adminOffSel) adminOffSel.value = settings.isOfficial ? "true" : "false";
             }
         };
     }

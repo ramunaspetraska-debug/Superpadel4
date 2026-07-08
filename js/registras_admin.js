@@ -160,16 +160,23 @@ function canManageTournament(t) {
 
 // Pažymi rezultatų kambarį kaip priklausantį MŪSŲ klubui (jei jis dar be savininko).
 // Nuo šio įrašo generatorius leidžia kambarį redaguoti tik klubo administratoriams.
-function claimRoomForClub(roomId) {
+// official=true — kambaryje bus skaičiuojamas LYGOS ELO (generatorius žymę perskaito prisijungdamas).
+function claimRoomForClub(roomId, official) {
     if (!currentClub || !roomId) return Promise.resolve(false);
     const ref = firebase.database().ref(DB_KEY + '/' + String(roomId).toUpperCase() + '/owner');
     return ref.once('value').then(snap => {
         const owner = snap.val();
         if (!owner) {
-            return ref.set({ type: 'club', clubId: currentClub.id, clubName: currentClub.name, createdAt: Date.now() }).then(() => true);
+            return ref.set({ type: 'club', clubId: currentClub.id, clubName: currentClub.name, official: official === true, createdAt: Date.now() }).then(() => true);
         }
-        if (typeof owner === 'object' && owner.type === 'club' && owner.clubId === currentClub.id) return true;
-        return false; // kambarys jau priklauso kam nors kitam
+        if (typeof owner === 'object' && owner.type === 'club' && owner.clubId === currentClub.id) {
+            // Savo klubo kambarys — atnaujiname Official žymę (jei ji keitėsi redaguojant turnyrą)
+            if (typeof official === 'boolean' && owner.official !== official) {
+                return ref.child('official').set(official).then(() => true);
+            }
+            return true;
+        }
+        return false; // kambarys jau priklauso kitam klubui
     }).catch(() => false);
 }
 
@@ -303,8 +310,10 @@ async function createTournament(e) {
             if (currentClub) { newT.clubId = currentClub.id; newT.clubName = currentClub.name; }
             // E-Teisėjavimas: dalyviai patys veda taškus portalo LIVE lange
             newT.eReferee = !!document.getElementById('newEReferee')?.checked;
+            // Oficialus turnyras: kambaryje skaičiuojamas lygos ELO (žymę perskaito generatorius)
+            newT.isOfficial = !!document.getElementById('newIsOfficial')?.checked;
             // Kambarys iškart pažymimas klubo nuosavybe — generatoriuje jį redaguos tik klubo adminai
-            claimRoomForClub(roomIds[i]);
+            claimRoomForClub(roomIds[i], newT.isOfficial);
             tournaments.push(newT);
         }
         const ok = await Promise.resolve(saveData());
@@ -372,6 +381,8 @@ function openAdminTournamentModal(id) {
     document.getElementById('editAdminTournamentId').value = t.id;
     const erefBox = document.getElementById('editAdminTournamentERef');
     if (erefBox) erefBox.checked = !!t.eReferee;
+    const offBox = document.getElementById('editAdminTournamentOfficial');
+    if (offBox) offBox.checked = !!t.isOfficial;
     document.getElementById('editAdminTournamentFormat').value = t.format;
     document.getElementById('editAdminTournamentLevel').value = t.level;
     document.getElementById('editAdminTournamentMax').value = t.max || 16;
@@ -404,7 +415,8 @@ function saveAdminTournamentChanges() {
         tournaments[idx].date = date;
         tournaments[idx].room = (document.getElementById('editAdminTournamentRoom').value || '').trim().toUpperCase() || null;
         tournaments[idx].eReferee = !!document.getElementById('editAdminTournamentERef')?.checked;
-        if (tournaments[idx].room) claimRoomForClub(tournaments[idx].room); // naujas/pakeistas kambarys — pažymim klubo nuosavybe
+        tournaments[idx].isOfficial = !!document.getElementById('editAdminTournamentOfficial')?.checked;
+        if (tournaments[idx].room) claimRoomForClub(tournaments[idx].room, tournaments[idx].isOfficial); // kambarys pažymimas klubo nuosavybe + Official žyme
         saveData();
         closeAdminTournamentModal();
         showToast("Turnyras sėkmingai atnaujintas!");

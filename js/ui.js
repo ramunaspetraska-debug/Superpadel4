@@ -757,7 +757,7 @@ function switchView(n) {
     document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
     document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active')); 
     el('view-' + n)?.classList.add('active'); el('nav-' + n)?.classList.add('active'); 
-    if(n==='stats') renderGlobalStats(); else if(n==='history') renderHistoryList(); else if(n==='admin') renderAdmin(); else if(n==='superadmin') loadSuperAdmin(); else if(n==='cloud') { renderMyRooms(); render(); } else render(); 
+    if(n==='stats') renderGlobalStats(); else if(n==='history') renderHistoryList(); else if(n==='superadmin') loadSuperAdmin(); else if(n==='cloud') { renderMyRooms(); render(); } else render();
 }
 
 function renderHistoryList() { 
@@ -774,20 +774,9 @@ function loadHistory(id) {
     } 
 }
 
-async function adminClick() { 
-    adminClickCount++; clearTimeout(adminTimer); adminTimer = setTimeout(() => { adminClickCount = 0; }, 1000); 
-    if (adminClickCount >= 5) { 
-        const p = prompt("Administratoriaus kodas:"); if (!p) return;
-        try {
-            const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p));
-            const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
-            if (hashHex === "f5de9f3a9d0796ce2da39fa5556008d33f18c4769381388a4612e8a371d8f9b0") { switchView('admin'); } 
-            else if (hashHex === "f5de9f3a9d0796ce2da39fa5556008d33f18c4769381388a4612e8a371d8f9b0") { switchView('superadmin'); loadSuperAdmin(); } 
-            else { alert("Neteisingas kodas!"); }
-        } catch(e) { console.error("Hash error:", e); alert("Klaida tikrinant slaptažodį."); }
-        adminClickCount = 0; 
-    } 
-}
+// PASTABA: slaptas admin aktyvavimas (5 paspaudimai ant logo + kodas) PAŠALINTAS.
+// Organizatoriaus įrankiai rodomi automatiškai kambario šeimininkui (žr. storage.js
+// setRoomAccess), o „Platformos statistika" — tik pagrindinio klubo adminui (superadmin-btn).
 
 function loadSuperAdmin() { 
     ensureFirebaseInit(); safeHTML('superadmin-rooms-list', '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin text-slate-400 text-2xl"></i></div>'); 
@@ -807,7 +796,6 @@ function loadSuperAdmin() {
 
 function superAdminJoin(rn) { safeVal('fb-room', rn); initFirebaseConnection(); switchView('setup'); }
 function superAdminDelete(rn) { if(confirm(`Trinti kambarį "${rn}" iš debesies?`)) { ensureFirebaseInit(); firebase.database().ref(DB_KEY+'/'+rn).remove(); firebase.database().ref(REG_KEY+'/'+rn).remove(); loadSuperAdmin(); } }
-function renderAdmin() { let tHtml = savedTournaments.map(t => `<div class="flex justify-between items-center p-3 bg-white border border-slate-100 shadow-sm mb-2 rounded-xl"><span class="font-bold text-sm text-slate-800">${esc(t.name)}</span><button onclick="adminDeleteTournament('${t.id}')" class="text-red-400 hover:text-red-600 p-2"><i class="fa-solid fa-trash-can"></i></button></div>`).join(''); safeHTML('admin-tournaments-list', tHtml); const uP = Array.from(new Map(players.map(p => [p.id, p])).values()); let pHtml = uP.map(p => `<div class="flex justify-between items-center p-3 text-xs bg-white border-b border-slate-50 last:border-0"><span class="font-bold text-slate-700">${esc(p.name)}</span><button onclick="adminDeletePlayer('${p.id}')" class="text-red-400 hover:text-red-600 font-bold uppercase text-[9px]">Šalinti</button></div>`).join(''); safeHTML('admin-players-list', pHtml); }
-function adminDeleteTournament(id) { if(confirm("Trinti turnyrą?")) { savedTournaments = savedTournaments.filter(x => x.id !== id); autoSave(true); renderAdmin(); } }
-function adminDeletePlayer(id) { if(confirm("Šalinti žaidėją iš sistemos?")) { players = players.filter(p => p.id !== id); autoSave(true); renderAdmin(); } }
+// renderAdmin / adminDeleteTournament / adminDeletePlayer PAŠALINTOS —
+// tai buvo „Istorijos" ir žaidėjų sąrašo dublikatai (trynimas ten jau yra).
 function setStatType(t) { statType = t; renderGlobalStats(); }

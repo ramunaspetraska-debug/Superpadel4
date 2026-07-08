@@ -1,4 +1,4 @@
-const APP_VERSION = 'v206';
+const APP_VERSION = 'v207';
 const DB_KEY = "padelio_pro_master"; 
 const REG_KEY = "padelio_pro_master_rooms"; 
 
@@ -20,8 +20,8 @@ let endTime = 0;
 let dbRef = null;
 let isCloud = false;
 let statType = 'indiv';
-let adminClickCount = 0;
-let adminTimer = null;
+
+
 let preGeneratedTournament = [];
 let editingPlayerId = null;
 let tempEditGender = 'M';

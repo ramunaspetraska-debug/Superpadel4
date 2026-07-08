@@ -63,7 +63,7 @@
 </head>
 <body class="overflow-x-hidden">
 
-    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V225</div>
+    <div class="fixed top-0 left-0 text-slate-400 text-[8px] px-1 py-0.5 z-[999] font-bold opacity-30 pointer-events-none">V226</div>
 
     <div id="loading-overlay" role="alert" aria-live="assertive"><div class="spinner mb-4"></div><p id="loading-text" class="text-sm font-bold text-slate-700">Kraunama...</p></div>
 
@@ -107,7 +107,7 @@
     </div>
 
     <div id="top-bar" class="app-header">
-        <div class="logo" onclick="adminClick()" id="app-logo">
+        <div class="logo" onclick="switchView('setup')" id="app-logo">
             <span>SUPER</span>PADEL<span class="domain">.LT</span>
         </div>
         <div class="flex items-center gap-1 shrink-0">
@@ -174,6 +174,15 @@
                 
             </div>
 
+            <!-- ORGANIZATORIAUS ĮRANKIAI: rodomi automatiškai kambario šeimininkui
+                 (klubo adminui arba draugų kambario kūrėjui) — jokių slaptų kodų -->
+            <div id="organizer-tools" class="hidden bg-white p-4 rounded-2xl border-2 border-green-200 shadow-sm mb-4 bg-gradient-to-br from-white to-green-50/30">
+                <h3 class="text-[10px] font-black uppercase text-green-600 mb-1 tracking-widest"><i class="fa-solid fa-user-tie"></i> Organizatoriaus įrankiai <span id="organizer-club-label" class="text-slate-400 normal-case font-bold"></span></h3>
+                <button type="button" onclick="importFromPortal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2 mb-2 mt-2"><i class="fa-solid fa-calendar-check"></i> Importuoti dalyvius iš turnyro</button>
+                <button type="button" onclick="openGlobalImportModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2"><i class="fa-solid fa-users"></i> Importuoti registruotus žaidėjus</button>
+                <div id="organizer-official-note" class="hidden mt-3 text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 text-center uppercase tracking-widest"><i class="fa-solid fa-trophy"></i> Oficialus turnyras — skaičiuojamas lygos ELO</div>
+            </div>
+
             <div id="players-list" class="space-y-2 mb-10"></div>
             <div class="space-y-3 pt-4 border-t border-slate-200 pb-10 text-center">
                 <a href="registras.html" target="_blank" class="w-full block py-3 text-white bg-blue-600 hover:bg-blue-700 rounded-xl font-bold text-[10px] uppercase shadow-sm tracking-widest"><i class="fa-solid fa-earth-europe"></i> Atidaryti Žaidėjų Portalą</a>
@@ -202,26 +211,8 @@
 
         <div id="view-superadmin" class="view-section w-full"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-purple-600 tracking-tight">Super Admin</h2><button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button></div><div class="bg-white p-4 rounded-2xl border border-slate-200 mb-4 shadow-sm"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Globali Statistika</h3><div id="superadmin-stats"><div class="text-center text-xs text-slate-400 py-2">Kraunama statistika...</div></div></div><div class="bg-white p-4 rounded-2xl border border-slate-200"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Aktyvūs Kambariai</h3><div id="superadmin-rooms-list" class="space-y-2"><div class="text-center text-xs text-slate-400 py-4">Kraunama...</div></div></div></div>
 
-        <div id="view-admin" class="view-section w-full">
-            <div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-black text-red-600 tracking-tight">Kambario Admin</h2><button onclick="switchView('setup')" class="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">Uždaryti</button></div>
-            <div class="space-y-4">
-                <div class="bg-white p-4 rounded-2xl border-2 border-green-200 shadow-sm bg-gradient-to-br from-white to-green-50/30">
-                    <h3 class="text-[10px] font-black uppercase text-green-600 mb-1 tracking-widest"><i class="fa-solid fa-cloud-arrow-down"></i> Duomenų Sinchronizacija</h3>
-                    <button type="button" onclick="importFromPortal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2 mb-2"><i class="fa-solid fa-calendar-check"></i> Importuoti iš Turnyro</button>
-                    <button type="button" onclick="openGlobalImportModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-wider shadow-md transition-colors flex items-center justify-center gap-2 mb-3"><i class="fa-solid fa-users"></i> Importuoti registruotus žaidėjus</button>
-                    <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-green-100 shadow-inner">
-                        <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wide">Reitingavimo režimas:</span>
-                        <select id="admin-is-official" onchange="toggleAdminOfficial(this.value)" class="bg-slate-50 border border-slate-200 rounded-lg p-1.5 text-xs font-black text-slate-700 focus:outline-none">
-                            <option value="false">☕ Casual (Kambario ELO)</option>
-                            <option value="true">🏆 Official (Lygos ELO)</option>
-                        </select>
-                    </div>
-                    <!-- E-Teisėjas perkeltas į portalo admin panelę (žymima kuriant turnyrą) -->
-                </div>
-                <div class="bg-white p-4 rounded-2xl border border-slate-200"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Turnyrai</h3><div id="admin-tournaments-list" class="space-y-2"></div></div>
-                <div class="bg-white p-4 rounded-2xl border border-slate-200"><h3 class="text-[10px] font-black uppercase text-slate-400 mb-3">Žaidėjai</h3><div id="admin-players-list" class="space-y-1 divide-y divide-slate-50"></div></div>
-            </div>
-        </div>
+        <!-- „Kambario Admin" ekranas PAŠALINTAS: importai perkelti į Setup (organizatoriaus įrankiai),
+             Official/Casual žymė — į portalo admin panelę kuriant turnyrą, sąrašai buvo dublikatai. -->
         
         <div id="view-cloud" class="view-section w-full">
             <h2 class="text-2xl font-black mb-6">Debesis</h2>
@@ -236,6 +227,8 @@
                     <div id="my-rooms-list" class="text-left"></div>
                 </div>
                 <div id="cloud-active-ui" class="hidden space-y-4 text-center flex flex-col items-center"><p id="cloud-room-name-display" class="text-xl font-black text-green-400 uppercase tracking-widest mb-2">---</p><div id="qrcode" class="flex justify-center bg-white p-3 rounded-xl shadow-inner mb-4 mx-auto w-max"></div><button type="button" onclick="disconnectFirebase()" class="w-full bg-slate-700 py-4 rounded-xl font-black text-sm uppercase text-white mt-4"><i class="fa-solid fa-power-off"></i> Atsijungti</button><button type="button" id="deleteRoomBtn" onclick="deleteCurrentRoom()" class="w-full bg-transparent border border-red-300 text-red-400 py-3 rounded-xl font-bold text-xs uppercase mt-2" style="display:none;"><i class="fa-solid fa-trash-can"></i> Ištrinti šį kambarį visiems</button></div>
+                <!-- Platformos statistika — matoma automatiškai TIK pagrindinio klubo (platformos savininko) adminui -->
+                <button type="button" id="superadmin-btn" onclick="switchView('superadmin')" class="hidden w-full bg-purple-900/60 border border-purple-500 text-purple-200 py-3 rounded-xl font-bold text-xs uppercase mt-4 tracking-widest"><i class="fa-solid fa-chart-pie"></i> Platformos statistika</button>
             </div>
         </div>
     </div>

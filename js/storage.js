@@ -232,7 +232,9 @@ function initFirebaseConnection() {
             // Debesis viršesnis (naujesnis ARBA kito kambario) → priimam ir įrašom lokaliai
             window.lastCloudUpdate = cloudUpdate; 
             if(d.photoBank) { photoBank = d.photoBank; setStore('photos', photoBank); }
-            players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings || {...ds}; savedTournaments = safeArr(d.savedTournaments); currentTid = d.currentTid; 
+            players = safeArr(d.players); matches = safeArr(d.matches); settings = d.settings || {...ds}; savedTournaments = safeArr(d.savedTournaments); currentTid = d.currentTid;
+            // Official/Casual režimą diktuoja kambario owner žyma (portalo admin), ne debesies settings
+            if (typeof window.roomOfficialFlag === 'boolean') settings.isOfficial = window.roomOfficialFlag;
             localLastUpdate = cloudUpdate; 
             setStore('lastUpdate', localLastUpdate); setStore('dataRoom', activeRoom || ''); setStore('m', matches); setStore('p', players); setStore('h', savedTournaments); setStore('s', settings); setStore('tid', currentTid); 
             render(); 
@@ -314,8 +316,9 @@ function isRoomOwner(room) {
     }).catch(() => false);
 }
 
-// Prisijungimo metu: naujas kambarys pažymimas kūrėju (+ pasirinktinai PIN),
-// esamam nustatoma rašymo teisė ir įjungiamas/išjungiamas peržiūros režimas.
+// Prisijungimo metu: naujas kambarys pažymimas kūrėju (+ pasirinktinai PIN), esamam nustatoma
+// rašymo teisė, ORGANIZATORIAUS statusas (importų įrankiai Setup ekrane) ir Official/Casual
+// režimas iš kambario owner žymos (ją įrašo portalo admin panelė kurdama turnyrą).
 function claimOrResolveRoomAccess(room) {
     const ownerRef = firebase.database().ref(`${DB_KEY}/${room}/owner`);
     Promise.all([
@@ -327,8 +330,11 @@ function claimOrResolveRoomAccess(room) {
         const pinField = el('fb-room-pin');
         const enteredPin = pinField ? String(pinField.value || '').trim() : '';
 
+        // Official (lygos ELO) режimas — TIK iš klubo kambario žymos; draugų kambariai visada Casual
+        applyOfficialFlag(!!(owner && typeof owner === 'object' && owner.type === 'club' && owner.official === true));
+
         if (!owner) {
-            // NAUJAS kambarys — dabartinis vartotojas tampa kūrėju
+            // NAUJAS kambarys — dabartinis vartotojas tampa kūrėju (ir organizatoriumi)
             const email = getAuthEmail();
             const newOwner = email
                 ? { type: 'personal', email: email, createdAt: Date.now() }
@@ -342,35 +348,44 @@ function claimOrResolveRoomAccess(room) {
             } else if (enteredPin) {
                 setTimeout(() => alert('PIN kodas turi būti 4 skaitmenys — kambarys sukurtas BE apsaugos.'), 200);
             }
-            setRoomAccess(true, '');
+            setRoomAccess(true, '', true, '');
             return;
         }
 
         // ESAMAS kambarys
         if (typeof owner === 'object' && owner.type === 'club') {
             isClubAdminOf(owner.clubId).then(ok => {
-                if (ok) { setRoomAccess(true, ''); return; }
-                setRoomAccess(false, 'Kambarį valdo klubas „' + (owner.clubName || 'klubas') + '" — jūs matote tik peržiūrą. Redaguoti gali tik klubo administratoriai, prisijungę portale.');
+                if (ok) { setRoomAccess(true, '', true, owner.clubName || ''); return; }
+                setRoomAccess(false, 'Kambarį valdo klubas „' + (owner.clubName || 'klubas') + '" — jūs matote tik peržiūrą. Redaguoti gali tik klubo administratoriai, prisijungę portale.', false, '');
             });
             return;
         }
+        const isCreator = matchesOwnerIdentity(owner);
         const pin = security.pin;
         if (pin) {
-            if (matchesOwnerIdentity(owner)) { localStorage.setItem('sp_room_pin_' + room, pin); setRoomAccess(true, ''); return; }
+            if (isCreator) { localStorage.setItem('sp_room_pin_' + room, pin); setRoomAccess(true, '', true, ''); return; }
             const saved = localStorage.getItem('sp_room_pin_' + room);
             let candidate = enteredPin || saved || '';
             if (candidate !== pin) candidate = prompt('🔒 Šis kambarys apsaugotas PIN kodu.\n\nĮveskite 4 skaitmenų kodą (be jo — tik peržiūra):') || '';
-            if (candidate === pin) { localStorage.setItem('sp_room_pin_' + room, pin); setRoomAccess(true, ''); }
-            else setRoomAccess(false, 'Kambarys apsaugotas PIN kodu — be jo galite tik stebėti rezultatus. Norėdami vesti taškus, atsijunkite ir prisijunkite įvedę teisingą PIN.');
+            if (candidate === pin) { localStorage.setItem('sp_room_pin_' + room, pin); setRoomAccess(true, '', false, ''); }
+            else setRoomAccess(false, 'Kambarys apsaugotas PIN kodu — be jo galite tik stebėti rezultatus. Norėdami vesti taškus, atsijunkite ir prisijunkite įvedę teisingą PIN.', false, '');
             return;
         }
-        setRoomAccess(true, '');
-    }).catch(e => { console.error('roomAccess klaida:', e); setRoomAccess(true, ''); });
+        setRoomAccess(true, '', isCreator, '');
+    }).catch(e => { console.error('roomAccess klaida:', e); setRoomAccess(true, '', false, ''); });
 }
 
-// Įjungia/išjungia peržiūros režimą: blokuoja rašymą į debesį ir rodo juostą.
-function setRoomAccess(canWrite, message) {
+// Official/Casual режимas taikomas settings (ir po debesies sinchronizacijos — žr. dbRef.on).
+function applyOfficialFlag(isOfficial) {
+    window.roomOfficialFlag = !!isOfficial;
+    if (typeof settings !== 'undefined' && settings) settings.isOfficial = window.roomOfficialFlag;
+    if (typeof renderTimerAndSettings === 'function') { try { renderTimerAndSettings(); } catch (e) {} }
+}
+
+// Įjungia/išjungia peržiūros режимą ir organizatoriaus įrankius.
+function setRoomAccess(canWrite, message, isOrganizer, clubName) {
     window.roomReadOnly = !canWrite;
+    window.isRoomOrganizer = !!isOrganizer;
     let bar = document.getElementById('room-readonly-banner');
     if (canWrite) { if (bar) bar.remove(); }
     else {
@@ -382,11 +397,36 @@ function setRoomAccess(canWrite, message) {
         }
         bar.innerHTML = '🔒 TIK PERŽIŪRA — ' + String(message || '').replace(/[<>]/g, '');
     }
-    // Trynimo mygtukas — tik savininkui
-    isRoomOwner(activeRoom).then(isOwner => {
-        const delBtn = el('deleteRoomBtn');
-        if (delBtn) delBtn.style.display = (isOwner && canWrite) ? 'block' : 'none';
-    });
+    // Organizatoriaus įrankiai (importai) Setup ekrane — tik kambario šeimininkui
+    const tools = el('organizer-tools');
+    if (tools) tools.classList.toggle('hidden', !isOrganizer);
+    const clubLabel = el('organizer-club-label');
+    if (clubLabel) clubLabel.textContent = clubName ? ('— ' + clubName) : '';
+    // Trynimo mygtukas — tik šeimininkui su rašymo teise
+    const delBtn = el('deleteRoomBtn');
+    if (delBtn) delBtn.style.display = (isOrganizer && canWrite) ? 'block' : 'none';
+}
+
+// Platformos savininkas = pagrindinio (legacyOwner) klubo adminas — jam Debesies ekrane
+// rodomas „Platformos statistika" mygtukas. Jokių kodų — atpažįstama per Auth sesiją.
+function initPlatformOwnerCheck() {
+    try {
+        ensureFirebaseInit();
+        if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') return;
+        firebase.auth().onAuthStateChanged(u => {
+            if (!u || !u.email) return;
+            firebase.database().ref('padelio_club_admins/' + emailKeyGen(u.email)).once('value').then(s => {
+                const rec = s.val();
+                if (!rec || !rec.clubId) return;
+                firebase.database().ref('padelio_clubs/' + rec.clubId + '/legacyOwner').once('value').then(ls => {
+                    if (ls.val() === true) {
+                        window.isPlatformOwner = true;
+                        el('superadmin-btn')?.classList.remove('hidden');
+                    }
+                });
+            });
+        });
+    } catch (e) { /* ne kritiška */ }
 }
 
 function disconnectFirebase() { 
