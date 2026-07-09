@@ -44,6 +44,13 @@
       }
     },
 
+    "padelio_user_clubs": {
+      "$pid": {
+        ".read": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid",
+        ".write": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid"
+      }
+    },
+
     "padelio_user_tournaments": {
       "$pid": {
         ".read": "auth != null && root.child('padelio_email_links').child(auth.token.email.toLowerCase().replace('.', ',')).val() === $pid",

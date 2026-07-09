@@ -557,9 +557,9 @@ function renderUserProfile() {
             html += `
                 <div style="background: white; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary-blue); border-radius: 12px; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="activeDate='${String(t.date).replace(/[^0-9-]/g, '')}'; switchTab('page-calendar'); setTimeout(() => { renderTournaments(); initDates(); }, 50);">
                     <div style="flex: 1; padding-right: 10px;">
-                        <div style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${esc(t.format)} <span style="font-size: 10px; background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: var(--text-dark); margin-left: 5px;">${esc(displayLevel)}</span></div>
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 14px;">${esc(t.format)} <span style="font-size: 10px; background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: var(--text-dark); margin-left: 5px;">${esc(displayLevel)}</span>${t.clubName ? ` <span style="font-size: 10px; background: #f0fdfa; color: #0f766e; border: 1px solid #ccfbf1; padding: 2px 6px; border-radius: 4px; font-weight: bold;"><i class="fa-solid fa-building" style="font-size:8px;"></i> ${esc(t.clubName)}</span>` : ''}</div>
                         <div style="font-size: 12px; color: var(--text-grey); margin-top: 2px; font-weight: 600;">
-                            <i class="fa-regular fa-clock" style="margin-right: 2px; font-size: 11px;"></i> ${esc(t.date)} • ${esc(t.time)}
+                            <i class="fa-regular fa-clock" style="margin-right: 2px; font-size: 11px;"></i> ${esc(t.date)} • ${esc(t.time)}${t.regClosed ? ' · <span style="color:#b45309;">registracija baigta</span>' : ''}
                         </div>
                         ${partnerInfo}
                     </div>
@@ -570,6 +570,48 @@ function renderUserProfile() {
             `;
         });
         html += `</div>`;
+    }
+
+    // REZERVO REGISTRACIJOS — su tikslia vieta eilėje
+    const myWaitlist = tournaments.filter(t => {
+        if (!t) return false;
+        t.timeState = getTimeState(t.date, t.time);
+        return t.timeState !== 'past' && typeof userWaitlistPosition === 'function' && userWaitlistPosition(t) > 0;
+    });
+    if (myWaitlist.length) {
+        html += `<div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-hourglass-half" style="color: var(--status-orange); font-size: 13px;"></i> Rezervas (${myWaitlist.length})</div>`;
+        html += `<div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px;">`;
+        myWaitlist.forEach(t => {
+            const pos = userWaitlistPosition(t);
+            html += `<div style="background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid var(--status-orange); border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="activeDate='${String(t.date).replace(/[^0-9-]/g, '')}'; switchTab('page-calendar'); setTimeout(() => { renderTournaments(); initDates(); }, 50);">
+                <div>
+                    <div style="font-weight: 800; color: var(--text-dark); font-size: 13px;">${esc(t.format)}${t.clubName ? ` <span style="font-size: 10px; color: #0f766e; font-weight: bold;">· ${esc(t.clubName)}</span>` : ''}</div>
+                    <div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 2px;">${esc(t.date)} • ${esc(t.time)}</div>
+                </div>
+                <span style="font-size: 11px; font-weight: 900; color: #92400e; background: #fef3c7; padding: 4px 10px; border-radius: 12px; white-space: nowrap;">Jūs ${pos}-as</span>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    // MANO KLUBAI — sekami klubai (žr. „Klubai" skirtuką)
+    const clubIds = (typeof myClubs !== 'undefined') ? Object.keys(myClubs) : [];
+    html += `<div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-building" style="color: #0f766e; font-size: 13px;"></i> Mano klubai (${clubIds.length})</div>`;
+    if (clubIds.length) {
+        html += `<div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px;">`;
+        clubIds.forEach(id => {
+            const c = myClubs[id] || {};
+            html += `<div style="background: white; border: 1px solid #ccfbf1; border-left: 4px solid #0f766e; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-weight: 800; color: var(--text-dark); font-size: 13px;">${esc(c.clubName || id)}</div>
+                    ${c.city ? `<div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city)}</div>` : ''}
+                </div>
+                <button type="button" onclick="toggleFollowClub('${esc(id)}'); setTimeout(renderUserProfile, 400);" style="background: #fff; border: 1px solid #fed7d7; color: var(--status-red); padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer;">Nebesekti</button>
+            </div>`;
+        });
+        html += `</div>`;
+    } else {
+        html += `<div style="background: #f8f9fb; border: 1px dashed #cbd5e0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 12px; margin-bottom: 25px;">Dar nesekate klubų — atraskite juos skirtuke <i class="fa-solid fa-house"></i></div>`;
     }
 
     // PASKUTINIAI MAČAI — perkelta į apačią

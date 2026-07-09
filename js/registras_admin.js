@@ -61,8 +61,10 @@ function adminEmailSignedIn(email) {
 function openCreateClubModal(email) {
     modalTitle.innerHTML = '<i class="fa-solid fa-building-circle-check" style="color: var(--status-green);"></i> Naujas klubas';
     modalBody.innerHTML = `
-        <div style="font-size: 12px; color: var(--text-grey); margin-bottom: 12px;"><strong>${esc(email)}</strong> patvirtintas, bet dar nepriskirtas jokiam klubui.<br><br>Sukurkite savo klubo paskyrą — matysite ir valdysite tik savo klubo turnyrus.</div>
-        <input type="text" id="newClubName" placeholder="Klubo pavadinimas (pvz. Kauno Padel)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box;">`;
+        <div style="font-size: 12px; color: var(--text-grey); margin-bottom: 12px;"><strong>${esc(email)}</strong> patvirtintas. Sukurkite klubo paskyrą — valdysite tik savo klubo turnyrus.</div>
+        <input type="text" id="newClubName" placeholder="Klubo pavadinimas (pvz. Kauno Padel)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box; margin-bottom: 8px;">
+        <input type="text" id="newClubCity" placeholder="Miestas (pvz. Kaunas)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box; margin-bottom: 8px;">
+        <textarea id="newClubDesc" placeholder="Trumpas aprašymas žaidėjams (nebūtina)" rows="2" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; box-sizing: border-box; font-size: 13px; resize: none;"></textarea>`;
     modalActions.innerHTML = `
         <button type="button" class="modal-btn primary" onclick="createClub('${esc(email)}')" style="width:100%; margin-bottom:8px;">Sukurti klubą</button>
         <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>`;
@@ -73,12 +75,16 @@ function openCreateClubModal(email) {
 function createClub(email) {
     const name = (document.getElementById('newClubName')?.value || '').trim();
     if (name.length < 3) { showToast("Įveskite klubo pavadinimą (bent 3 simboliai)."); return; }
+    const city = (document.getElementById('newClubCity')?.value || '').trim();
+    if (city.length < 2) { showToast("Įveskite miestą — pagal jį žaidėjai ras jūsų klubą."); return; }
+    const description = (document.getElementById('newClubDesc')?.value || '').trim().slice(0, 300);
     const ek = emailKey(email);
     firebase.database().ref('padelio_clubs').once('value').then(s => {
         const isFirst = !s.exists(); // pirmasis klubas perima senus (be clubId) turnyrus
         const clubId = 'club_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         const club = {
-            name: name, createdAt: Date.now(), ownerEmail: String(email).toLowerCase(),
+            name: name, city: city, description: description,
+            createdAt: Date.now(), ownerEmail: String(email).toLowerCase(),
             legacyOwner: isFirst,
             // OFICIALIŲ turnyrų (lygos ELO) teisę naujiems klubams suteikia TIK platformos
             // savininkas per „Platformos statistika" ekraną — apsauga nuo netikrų klubų,
@@ -141,9 +147,35 @@ function updateAdminHeader() {
     bar.innerHTML = `
         <div style="font-size: 10px; color: #a0aec0; text-transform: uppercase; letter-spacing: 1px;">Klubas</div>
         <div style="font-size: 15px; font-weight: 900; color: #48bb78; margin: 2px 0 8px;">${esc(currentClub.name)}${currentClub.legacyOwner ? ' <i class="fa-solid fa-crown" style="font-size:10px;color:#d69e2e;" title="Pagrindinis klubas"></i>' : ''}</div>
+        <button type="button" onclick="openClubInfoModal()" style="width:100%; background:#2d3748; color:#e2e8f0; border:none; padding:7px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:5px;"><i class="fa-solid fa-circle-info"></i> Klubo informacija</button>
         <button type="button" onclick="openInviteAdminModal()" style="width:100%; background:#2d3748; color:#e2e8f0; border:none; padding:7px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer; margin-bottom:5px;"><i class="fa-solid fa-user-plus"></i> Pakviesti administratorių</button>
         <button type="button" onclick="adminLogout()" style="width:100%; background:none; color:#fc8181; border:1px solid #742a2a; padding:7px; border-radius:6px; font-size:11px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-right-from-bracket"></i> Atsijungti</button>`;
     sidebar.insertAdjacentElement('afterend', bar);
+}
+
+// Klubo miesto ir aprašymo redagavimas — pagal juos žaidėjai randa klubą „Klubai" puslapyje
+function openClubInfoModal() {
+    if (!currentClub) return;
+    firebase.database().ref('padelio_clubs/' + currentClub.id).once('value').then(snap => {
+        const c = snap.val() || {};
+        modalTitle.innerHTML = '<i class="fa-solid fa-circle-info" style="color: var(--primary-blue);"></i> Klubo informacija';
+        modalBody.innerHTML = `
+            <input type="text" id="editClubCity" value="${esc(c.city || '')}" placeholder="Miestas (pvz. Kaunas)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box; margin-bottom: 8px;">
+            <textarea id="editClubDesc" placeholder="Trumpas aprašymas žaidėjams" rows="3" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; box-sizing: border-box; font-size: 13px; resize: none;">${esc(c.description || '')}</textarea>`;
+        modalActions.innerHTML = `
+            <button type="button" class="modal-btn primary" onclick="saveClubInfo()" style="width:100%; margin-bottom:8px;">Išsaugoti</button>
+            <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Atšaukti</button>`;
+        modal.classList.add('show');
+    });
+}
+function saveClubInfo() {
+    if (!currentClub) return;
+    const city = (document.getElementById('editClubCity')?.value || '').trim();
+    const description = (document.getElementById('editClubDesc')?.value || '').trim().slice(0, 300);
+    if (city.length < 2) { showToast("Įveskite miestą."); return; }
+    firebase.database().ref('padelio_clubs/' + currentClub.id).update({ city: city, description: description })
+        .then(() => { closeModal(); showToast("✅ Klubo informacija atnaujinta."); })
+        .catch(() => showToast("Nepavyko išsaugoti."));
 }
 
 // Kito administratoriaus pakvietimas į SAVO klubą (pagal el. paštą)

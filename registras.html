@@ -236,7 +236,18 @@
             </div>
         </div>
 
-        <div id="page-home" class="page-view empty-page"><i class="fa-solid fa-newspaper"></i><h3>Klubo naujienos</h3><p style="font-size: 12px; margin-top: 5px;">Čia bus skelbiamos svarbiausios klubo naujienos.</p></div>
+        <div id="page-home" class="page-view">
+            <div class="filters">
+                <div class="filter-group full-width">
+                    <select id="filterClubCity" onchange="renderClubsPage()">
+                        <option value="all">Visi miestai</option>
+                    </select>
+                </div>
+            </div>
+            <div id="clubs-list" style="padding: 5px 20px 20px;">
+                <div style="text-align:center; padding: 30px; color: var(--text-grey);"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami klubai...</div>
+            </div>
+        </div>
 
         <div id="page-calendar" class="page-view active">
             <div class="filters">
@@ -252,6 +263,12 @@
                         <option value="D/C-">D/C-</option>
                         <option value="D">D</option>
                         <option value="Privatus">Privatus (Nereitinguojamas)</option>
+                    </select>
+                </div>
+                <div class="filter-group full-width">
+                    <select id="filterClub" onchange="renderTournaments()">
+                        <option value="all">Visi klubai</option>
+                        <option value="mine">⭐ Mano klubai</option>
                     </select>
                 </div>
                 <div class="filter-group full-width"><div class="search-wrapper"><i class="fa-solid fa-magnifying-glass search-icon"></i><input type="text" id="filterPlayer" placeholder="Ieškoti žaidėjo (pvz. Marius)" onkeyup="renderTournaments()"></div></div>

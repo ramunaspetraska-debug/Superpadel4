@@ -169,6 +169,7 @@ function initTournamentsDB() {
         renderTournaments();
 
         userTournamentsInit();
+        userClubsInit();
         notifCheckReminders();
         const profilePage = document.getElementById('page-profile');
         if (profilePage && profilePage.classList.contains('active')) {
@@ -207,22 +208,25 @@ function renderTournaments() {
     const list = document.getElementById('scheduleList'); 
     if(!list) return;
 
-    const formatFilter = document.getElementById('filterFormat')?.value || 'all'; 
-    const levelFilter = document.getElementById('filterLevel')?.value || 'all'; 
-    const playerFilter = (document.getElementById('filterPlayer')?.value || "").toLowerCase().trim(); 
+    const formatFilter = document.getElementById('filterFormat')?.value || 'all';
+    const levelFilter = document.getElementById('filterLevel')?.value || 'all';
+    const playerFilter = (document.getElementById('filterPlayer')?.value || "").toLowerCase().trim();
+    const clubFilter = document.getElementById('filterClub')?.value || 'all';
+    updateClubFilterOptions();
     list.innerHTML = '';
-    
-    let filtered = tournaments.filter(t => { 
-        let matchDate = (t.date === activeDate); 
-        let matchFormat = (formatFilter === 'all' || t.format === formatFilter); 
-        let matchLevel = (levelFilter === 'all' || t.level === levelFilter); 
-        let matchPlayer = true; 
-        if (playerFilter !== '') { 
-            if (t.players && Array.isArray(t.players)) { 
-                matchPlayer = t.players.some(p => p.toLowerCase().includes(playerFilter)); 
-            } else { matchPlayer = false; } 
-        } 
-        return matchDate && matchFormat && matchLevel && matchPlayer; 
+
+    let filtered = tournaments.filter(t => {
+        let matchDate = (t.date === activeDate);
+        let matchFormat = (formatFilter === 'all' || t.format === formatFilter);
+        let matchLevel = (levelFilter === 'all' || t.level === levelFilter);
+        let matchClub = clubFilter === 'all' || (clubFilter === 'mine' ? !!(t.clubId && myClubs[t.clubId]) : t.clubId === clubFilter);
+        let matchPlayer = true;
+        if (playerFilter !== '') {
+            if (t.players && Array.isArray(t.players)) {
+                matchPlayer = t.players.some(p => p.toLowerCase().includes(playerFilter));
+            } else { matchPlayer = false; }
+        }
+        return matchDate && matchFormat && matchLevel && matchClub && matchPlayer;
     });
     
     if(filtered.length === 0) { 
@@ -889,6 +893,14 @@ function confirmRegistration(id, withPartner) {
         }
     }
 
+    // LAIKO KONFLIKTAS: tą pačią dieną jau dalyvaujate kitame turnyre (persidengia / arti) — tik įspėjame
+    const conflicts = registrationConflicts(t);
+    if (conflicts.length) {
+        const c = conflicts[0];
+        const kind = c.overlap ? 'LAIKAI PERSIDENGIA' : 'startai arčiau nei 3 val.';
+        if (!confirm(`⚠️ Tą pačią dieną jau dalyvaujate:\n${c.t.format}${c.t.clubName ? ' (' + c.t.clubName + ')' : ''} · ${c.t.time}\n\nŠis turnyras: ${t.time} — ${kind}.\n\nAr tikrai registruotis?`)) return;
+    }
+
     if (withPartner) {
         selectedPartnerData = null;
         tempPartnerGender = null;
@@ -1220,6 +1232,156 @@ function loadAutomatedRatings(leagueLevel = 'all') {
 }
 
 // ==========================================
+// KLUBAI: sąrašas, miestų filtras, sekimas
+// ==========================================
+// Namelio skirtukas rodo visus klubus su jų artimiausiais turnyrais. Žaidėjas gali
+// „sekti" kelis klubus (be jokių ribų) — sekimai saugomi padelio_user_clubs/{playerId}
+// ir naudojami kalendoriaus filtre „⭐ Mano klubai" bei profilio sąraše.
+
+let allClubsCache = {};       // clubId -> klubo duomenys (Klubų puslapiui ir filtrams)
+let myClubs = {};             // clubId -> {ts, clubName} — mano sekami klubai
+let _ucRef = null, _ucUid = null;
+
+function userClubsInit() {
+    if (typeof firebase === 'undefined') return;
+    const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.id) ? currentUser.id : null;
+    if (uid === _ucUid) return;
+    if (_ucRef) { try { _ucRef.off(); } catch (e) {} }
+    _ucRef = null; _ucUid = uid; myClubs = {};
+    if (!uid) return;
+    _ucRef = firebase.database().ref('padelio_user_clubs/' + uid);
+    _ucRef.on('value', snap => {
+        myClubs = snap.val() || {};
+        renderClubsPage();
+    });
+}
+
+function loadClubsPage() {
+    firebase.database().ref('padelio_clubs').once('value').then(snap => {
+        allClubsCache = snap.val() || {};
+        // Miestų filtras (unikalūs, abėcėlės tvarka)
+        const citySel = document.getElementById('filterClubCity');
+        if (citySel) {
+            const keep = citySel.value || 'all';
+            const cities = [...new Set(Object.values(allClubsCache).map(c => (c && c.city ? String(c.city).trim() : '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'lt'));
+            citySel.innerHTML = '<option value="all">Visi miestai</option>' + cities.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+            if (citySel.querySelector(`option[value="${CSS && CSS.escape ? CSS.escape(keep) : keep}"]`)) citySel.value = keep;
+        }
+        renderClubsPage();
+    }).catch(() => { const l = document.getElementById('clubs-list'); if (l) l.innerHTML = '<div style="text-align:center; padding:30px; color:var(--status-red); font-size:13px;">Nepavyko įkelti klubų.</div>'; });
+}
+
+function renderClubsPage() {
+    const list = document.getElementById('clubs-list');
+    if (!list) return;
+    const cityF = document.getElementById('filterClubCity')?.value || 'all';
+    const ids = Object.keys(allClubsCache).filter(id => {
+        const c = allClubsCache[id];
+        return c && (cityF === 'all' || String(c.city || '').trim() === cityF);
+    });
+    if (!ids.length) { list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-grey); font-size:13px;">Klubų pagal šį filtrą nėra.</div>'; return; }
+
+    // Klubai su artimiausiais turnyrais viršuje
+    const upcomingOf = (clubId) => (typeof tournaments !== 'undefined' ? tournaments : [])
+        .filter(t => t && t.clubId === clubId && getTimeState(t.date, t.time) === 'future')
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time).localeCompare(String(b.time)));
+
+    list.innerHTML = ids.map(id => {
+        const c = allClubsCache[id];
+        const up = upcomingOf(id);
+        const followed = !!myClubs[id];
+        const official = (c.canOfficial === true || c.legacyOwner === true) ? '<span style="font-size:10px; background:#fffbeb; color:#92400e; border:1px solid #fde68a; padding:2px 6px; border-radius:4px; font-weight:800;">🏆 Oficialūs</span>' : '';
+        const tourRows = up.slice(0, 3).map(t => {
+            const d = dynamicDates.find(x => x.dateKey === t.date);
+            const dayTxt = d ? `${d.dayNumStr} d. (${d.dayNameStr})` : t.date;
+            return `<div onclick="event.stopPropagation(); goToTournament('${String(t.date).replace(/[^0-9-]/g, '')}')" style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; background:#fff; border:1px solid #edf2f7; border-radius:8px; margin-top:6px; cursor:pointer; font-size:12px;">
+                <span style="font-weight:700; color:var(--text-dark);">${esc(t.format)}</span>
+                <span style="color:var(--text-grey); font-weight:600;">${esc(dayTxt)} · ${esc(String(t.time).split('-')[0].trim())}</span>
+            </div>`;
+        }).join('');
+        return `<div style="background:var(--card-bg); border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                <div style="min-width:0;">
+                    <div style="font-weight:900; font-size:15px; color:var(--text-dark);">${esc(c.name)}</div>
+                    <div style="font-size:11px; color:var(--text-grey); font-weight:600; margin-top:2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city || 'Miestas nenurodytas')} ${official}</div>
+                </div>
+                <button type="button" onclick="toggleFollowClub('${esc(id)}')" style="flex-shrink:0; padding:8px 12px; border-radius:8px; border:1px solid ${followed ? '#bbf7d0' : '#bfdbfe'}; background:${followed ? '#f0fdf4' : '#eff6ff'}; color:${followed ? '#15803d' : 'var(--primary-blue)'}; font-size:11px; font-weight:800; cursor:pointer;">${followed ? '✓ Sekamas' : '⭐ Sekti'}</button>
+            </div>
+            ${c.description ? `<div style="font-size:12px; color:var(--text-grey); margin-top:8px; line-height:1.4;">${esc(c.description)}</div>` : ''}
+            <div style="font-size:10px; font-weight:800; color:var(--text-grey); text-transform:uppercase; margin-top:10px;">${up.length ? 'Artimiausi turnyrai (' + up.length + ')' : 'Būsimų turnyrų nėra'}</div>
+            ${tourRows}
+        </div>`;
+    }).join('');
+}
+
+function toggleFollowClub(clubId) {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
+        showToast("Prisijunkite, kad galėtumėte sekti klubus."); openAuthModal(); return;
+    }
+    const ref = firebase.database().ref('padelio_user_clubs/' + currentUser.id + '/' + clubId);
+    if (myClubs[clubId]) {
+        ref.remove().then(() => showToast("Klubo nebesekate.")).catch(() => showToast("Nepavyko išsaugoti."));
+    } else {
+        const c = allClubsCache[clubId] || {};
+        ref.set({ ts: Date.now(), clubName: c.name || '', city: c.city || '' })
+            .then(() => showToast('⭐ Sekate klubą — jo turnyrus rasite filtre „Mano klubai".'))
+            .catch(() => showToast("Nepavyko išsaugoti — prisijunkite iš naujo."));
+    }
+}
+
+// Kalendoriaus klubo filtro parinktys — iš turnyruose esančių klubų (pavadinimas + miestas)
+function updateClubFilterOptions() {
+    const sel = document.getElementById('filterClub');
+    if (!sel || typeof tournaments === 'undefined') return;
+    const keep = sel.value || 'all';
+    const seen = {};
+    tournaments.forEach(t => { if (t && t.clubId && t.clubName && !seen[t.clubId]) seen[t.clubId] = t.clubName; });
+    const opts = Object.keys(seen).map(id => {
+        const city = allClubsCache[id] && allClubsCache[id].city ? ' (' + allClubsCache[id].city + ')' : '';
+        return `<option value="${esc(id)}">${esc(seen[id] + city)}</option>`;
+    }).join('');
+    sel.innerHTML = '<option value="all">Visi klubai</option><option value="mine">⭐ Mano klubai</option>' + opts;
+    if (sel.querySelector(`option[value="${keep}"]`)) sel.value = keep;
+}
+
+// Peršoka į kalendorių ties nurodyta data (iš klubo kortelės turnyro eilutės)
+function goToTournament(dateKey) {
+    activeDate = dateKey;
+    const calendarBtn = document.querySelector('.nav-item[data-index="1"]');
+    switchTab('page-calendar', calendarBtn);
+    renderTournaments(); initDates();
+}
+
+// ==========================================
+// REGISTRACIJŲ LAIKO KONFLIKTAI
+// ==========================================
+// Ribojimų nėra (galima registruotis į kelių klubų turnyrus) — tik ĮSPĖJIMAS,
+// jei tą pačią dieną jau dalyvaujate turnyre, kurio laikas persidengia arba
+// startas arčiau nei 3 val. nuo naujo turnyro starto.
+function _timeRange(timeStr) {
+    const parts = String(timeStr || '').split('-');
+    if (parts.length !== 2) return null;
+    const p1 = parts[0].trim().split(':'), p2 = parts[1].trim().split(':');
+    const s = parseInt(p1[0]) * 60 + parseInt(p1[1] || 0), e = parseInt(p2[0]) * 60 + parseInt(p2[1] || 0);
+    return (isNaN(s) || isNaN(e)) ? null : { start: s, end: e };
+}
+function registrationConflicts(t) {
+    if (!t || typeof tournaments === 'undefined') return [];
+    const nt = _timeRange(t.time);
+    if (!nt) return [];
+    const out = [];
+    tournaments.forEach(x => {
+        if (!x || x.id === t.id || x.date !== t.date || !userIsRegistered(x)) return;
+        const xt = _timeRange(x.time);
+        if (!xt) return;
+        const overlap = nt.start < xt.end && nt.end > xt.start;
+        const near = Math.abs(nt.start - xt.start) < 180;
+        if (overlap || near) out.push({ t: x, overlap: overlap });
+    });
+    return out;
+}
+
+// ==========================================
 // NAVIGACIJA IR SKIRTUKAI
 // ==========================================
 
@@ -1240,8 +1402,11 @@ function switchTab(pageId, element) {
         if(lTab) lTab.classList.add('active'); 
         loadAutomatedRatings('all'); 
     }
-    if(pageId === 'page-profile') { 
-        renderUserProfile(); 
+    if(pageId === 'page-home') {
+        loadClubsPage();
+    }
+    if(pageId === 'page-profile') {
+        renderUserProfile();
         if (typeof refreshCurrentUserFromFirebase === 'function') refreshCurrentUserFromFirebase();
     }
 }
