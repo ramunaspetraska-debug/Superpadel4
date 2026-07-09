@@ -1279,6 +1279,12 @@ function userClubsInit() {
     _ucRef.on('value', snap => {
         myClubs = snap.val() || {};
         renderClubsPage();
+        // Jei atidarytas profilis — atnaujinam „Mano klubai" sąrašą (su debounce, kad nemirgėtų)
+        const profilePage = document.getElementById('page-profile');
+        if (profilePage && profilePage.classList.contains('active') && typeof renderUserProfile === 'function') {
+            if (window._clubsProfileTimer) clearTimeout(window._clubsProfileTimer);
+            window._clubsProfileTimer = setTimeout(() => renderUserProfile(), 400);
+        }
     });
 }
 
@@ -1331,7 +1337,7 @@ function renderClubsPage() {
                     <div style="font-weight:900; font-size:15px; color:var(--text-dark);">${esc(c.name)}</div>
                     <div style="font-size:11px; color:var(--text-grey); font-weight:600; margin-top:2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city || 'Miestas nenurodytas')} ${official}</div>
                 </div>
-                <button type="button" onclick="toggleFollowClub('${esc(id)}')" style="flex-shrink:0; padding:8px 12px; border-radius:8px; border:1px solid ${followed ? '#bbf7d0' : '#bfdbfe'}; background:${followed ? '#f0fdf4' : '#eff6ff'}; color:${followed ? '#15803d' : 'var(--primary-blue)'}; font-size:11px; font-weight:800; cursor:pointer;">${followed ? '✓ Sekamas' : '⭐ Sekti'}</button>
+                <button type="button" onclick="toggleFollowClub('${esc(id)}')" style="flex-shrink:0; padding:8px 14px; border-radius:8px; border:none; background:${followed ? 'var(--status-green)' : 'var(--primary-blue)'}; color:#fff; font-size:11px; font-weight:800; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${followed ? '✓ Sekamas' : '⭐ Sekti'}</button>
             </div>
             ${c.description ? `<div style="font-size:12px; color:var(--text-grey); margin-top:8px; line-height:1.4;">${esc(c.description)}</div>` : ''}
             <div style="font-size:10px; font-weight:800; color:var(--text-grey); text-transform:uppercase; margin-top:10px;">${up.length ? 'Artimiausi turnyrai (' + up.length + ')' : 'Būsimų turnyrų nėra'}</div>
@@ -1344,14 +1350,22 @@ function toggleFollowClub(clubId) {
     if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) {
         showToast("Prisijunkite, kad galėtumėte sekti klubus."); openAuthModal(); return;
     }
+    userClubsInit(); // užtikrinam, kad sekimų klausytojas prijungtas (pvz. prisijungus vėliau)
     const ref = firebase.database().ref('padelio_user_clubs/' + currentUser.id + '/' + clubId);
     if (myClubs[clubId]) {
-        ref.remove().then(() => showToast("Klubo nebesekate.")).catch(() => showToast("Nepavyko išsaugoti."));
+        ref.remove().then(() => {
+            delete myClubs[clubId]; // atnaujinam iškart — mygtukas persipiešia nelaukiant serverio
+            renderClubsPage();
+            showToast("Klubo nebesekate.");
+        }).catch(() => showToast("Nepavyko išsaugoti — prisijunkite iš naujo el. paštu."));
     } else {
         const c = allClubsCache[clubId] || {};
-        ref.set({ ts: Date.now(), clubName: c.name || '', city: c.city || '' })
-            .then(() => showToast('⭐ Sekate klubą — jo turnyrus rasite filtre „Mano klubai".'))
-            .catch(() => showToast("Nepavyko išsaugoti — prisijunkite iš naujo."));
+        const entry = { ts: Date.now(), clubName: c.name || '', city: c.city || '' };
+        ref.set(entry).then(() => {
+            myClubs[clubId] = entry; // atnaujinam iškart
+            renderClubsPage();
+            showToast('⭐ Sekate klubą — jo turnyrus rasite filtre „Mano klubai".');
+        }).catch(() => showToast("Nepavyko išsaugoti — prisijunkite iš naujo el. paštu."));
     }
 }
 

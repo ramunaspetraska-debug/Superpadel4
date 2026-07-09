@@ -302,6 +302,10 @@ function handlePostLoginCard(id) {
 // Telefono numeris liko tik kaip žaidėjo profilio ID (jo prašoma susiejant/kuriant profilį).
 
 function updateAuthUI() {
+    // Prisijungus/atsijungus perjungiam asmeninius klausytojus (registracijos, sekami klubai) —
+    // kitaip prisijungus VĖLIAU nei užsikrovė turnyrai, profilio „Mano klubai" likdavo tuščias.
+    if (typeof userTournamentsInit === 'function') { try { userTournamentsInit(); } catch (e) {} }
+    if (typeof userClubsInit === 'function') { try { userClubsInit(); } catch (e) {} }
     let btn = document.getElementById('authBtn');
     if(!btn) return;
     if(currentUser) {
