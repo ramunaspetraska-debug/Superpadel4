@@ -792,6 +792,36 @@ function loadSuperAdmin() {
         let html = `<div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500"><i class="fa-solid fa-eye mr-1"></i> Atvertimai:</span> <span class="text-green-600 text-xl font-black">${visits}</span></div><div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-2"><span class="text-xs font-bold text-slate-500"><i class="fa-solid fa-mobile-screen mr-1"></i> Įrenginiai:</span> <span class="text-blue-600 text-xl font-black">${uniqueCount}</span></div><div class="text-[10px] text-slate-400 mt-2 uppercase font-black tracking-widest mb-2">Operacinės sistemos:</div><div class="flex flex-wrap">${typesHtml}</div>`;
         safeHTML('superadmin-stats', html);
     }).catch(e => { safeHTML('superadmin-stats', '<div class="text-xs text-red-500">Klaida gaunant duomenis.</div>'); });
+    loadSuperAdminClubs();
+}
+
+// Klubų sąrašas su oficialių turnyrų (lygos ELO) teisės valdymu — tik platformos savininkui.
+// Nauji klubai kuriami be šios teisės; suteikus, jų admin panelėje atsirakina „Oficialus turnyras" žymė.
+function loadSuperAdminClubs() {
+    firebase.database().ref('padelio_clubs').once('value').then(snap => {
+        const clubs = snap.val() || {};
+        const ids = Object.keys(clubs);
+        if (!ids.length) { safeHTML('superadmin-clubs-list', '<p class="text-center text-xs text-slate-500 py-4">Klubų dar nėra.</p>'); return; }
+        const h = ids.map(id => {
+            const c = clubs[id] || {};
+            const can = c.canOfficial === true || c.legacyOwner === true;
+            const crown = c.legacyOwner ? ' <i class="fa-solid fa-crown text-amber-500 text-[10px]" title="Pagrindinis klubas"></i>' : '';
+            const btn = c.legacyOwner
+                ? '<span class="text-[10px] font-bold text-slate-400 uppercase">Visada leidžiama</span>'
+                : `<button type="button" onclick="toggleClubOfficial('${esc(id)}', ${!can})" class="${can ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-500 border border-slate-200'} px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-colors">${can ? '🏆 Leidžiama · atšaukti' : 'Suteikti oficialių teisę'}</button>`;
+            return `<div class="flex justify-between items-center gap-2 p-3 bg-white rounded-xl border border-slate-100 shadow-sm"><div class="min-w-0"><div class="font-bold text-slate-800 text-sm truncate">${esc(c.name || id)}${crown}</div><div class="text-[10px] text-slate-400">${esc(c.ownerEmail || '')}</div></div>${btn}</div>`;
+        }).join('');
+        safeHTML('superadmin-clubs-list', h);
+    }).catch(() => safeHTML('superadmin-clubs-list', '<p class="text-center text-xs text-red-500 py-4">Klaida kraunant klubus.</p>'));
+}
+function toggleClubOfficial(clubId, allow) {
+    const q = allow
+        ? 'Suteikti šiam klubui teisę kurti OFICIALIUS turnyrus (lygos ELO)?'
+        : 'Atšaukti šio klubo oficialių turnyrų teisę? (Jau vykstančių kambarių tai nesulaužys.)';
+    if (!confirm(q)) return;
+    firebase.database().ref('padelio_clubs/' + clubId + '/canOfficial').set(allow === true)
+        .then(() => { loadSuperAdminClubs(); })
+        .catch(() => alert('Nepavyko išsaugoti — patikrinkite, ar esate prisijungęs kaip pagrindinio klubo administratorius.'));
 }
 
 function superAdminJoin(rn) { safeVal('fb-room', rn); initFirebaseConnection(); switchView('setup'); }

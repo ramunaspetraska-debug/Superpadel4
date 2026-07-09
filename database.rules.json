@@ -33,7 +33,7 @@
     "padelio_clubs": {
       ".read": true,
       "$clubId": {
-        ".write": "auth != null && (!data.exists() || data.child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists())"
+        ".write": "auth != null && (root.child('padelio_clubs').child(root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val()).child('legacyOwner').val() === true || !data.exists() || data.child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) && (newData.child('legacyOwner').val() !== true || data.child('legacyOwner').val() === true) && (newData.child('canOfficial').val() !== true || data.child('canOfficial').val() === true || root.child('padelio_clubs').child(root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val()).child('legacyOwner').val() === true)"
       }
     },
 
@@ -78,7 +78,7 @@
     "padelio_pro_master": {
       "$room": {
         ".read": true,
-        ".write": "(auth != null && root.child('padelio_clubs').child(root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val()).child('legacyOwner').val() === true) || (data.child('owner/type').val() === 'club' ? (auth != null && root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === data.child('owner/clubId').val()) : (newData.child('owner/type').val() === 'club' ? (auth != null && root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === newData.child('owner/clubId').val()) : true))",
+        ".write": "((auth != null && root.child('padelio_clubs').child(root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val()).child('legacyOwner').val() === true) || (data.child('owner/type').val() === 'club' ? (auth != null && root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === data.child('owner/clubId').val()) : (newData.child('owner/type').val() === 'club' ? (auth != null && root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === newData.child('owner/clubId').val()) : true))) && (newData.child('owner/official').val() !== true || data.child('owner/official').val() === true || root.child('padelio_clubs').child(newData.child('owner/clubId').val()).child('canOfficial').val() === true || root.child('padelio_clubs').child(newData.child('owner/clubId').val()).child('legacyOwner').val() === true)",
         "portal_links": { ".write": "auth != null" },
         "portal_links_by_name": { ".write": "auth != null" },
         "portal_links_reverse": { ".write": "auth != null" },
