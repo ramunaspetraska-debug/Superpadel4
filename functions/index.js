@@ -131,9 +131,94 @@ exports.tournamentReminders = onSchedule(
             if (typeof ts === 'number' && now - ts > 14 * 864e5) updates[key] = null;
         }
         if (Object.keys(updates).length) await db.ref('padelio_push_sent').update(updates);
+
+        // REGISTRACIJOS UŽDARYMAS: likus regCloseMins iki starto sąrašas apkarpomas iki pilnų kortų
+        await closeRegistrations(now);
         return null;
     }
 );
+
+// Kokiu žingsniu formatas reikalauja dalyvių: Americano/Mexicano/King — po 4, porų formatai — po 2
+function requiredStep(format) {
+    const f = String(format || '').toLowerCase();
+    if (f.indexOf('fiksuotos') !== -1 || f.indexOf('taur') !== -1) return 2;
+    return 4;
+}
+
+// Uždaro registracijas turnyrams, iki kurių starto liko mažiau nei jų regCloseMins (numatytoji 60 min.):
+// dalyvių sąrašas apkarpomas iki formato kartotinio (paskutinieji atmetami, poros neskaldomos),
+// atmestieji perkeliami į rezervo priekį ir gauna push pranešimą.
+async function closeRegistrations(now) {
+    const tSnap = await db.ref('padelio_global_tournaments').get();
+    const raw = tSnap.val();
+    if (!raw) return;
+    const arr = (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
+    let changed = false;
+    const rejectedByT = [];
+
+    for (const t of arr) {
+        if (!t || t.regClosed) continue;
+        const startMs = tournamentStartMs(t.date, t.time);
+        if (!startMs) continue;
+        const closeMins = (typeof t.regCloseMins === 'number' && t.regCloseMins > 0) ? t.regCloseMins : 60;
+        if (now < startMs - closeMins * 60000) continue; // dar ne laikas
+        t.regClosed = true; changed = true;
+        if (now > startMs) continue; // startas jau praėjo — tik pažymim, sąrašo nebeliečiam
+
+        const players = Array.isArray(t.players) ? t.players : Object.values(t.players || {});
+        const step = requiredStep(t.format);
+        const countOf = (entry) => (String(entry).indexOf('/') !== -1 ? 2 : 1);
+        let total = players.reduce((s, p) => s + countOf(p), 0);
+        const fits = (n) => n >= 4 && n % step === 0;
+
+        const rejected = [];
+        while (players.length && !fits(total) && total >= 4) {
+            const last = players.pop();
+            total -= countOf(last);
+            rejected.push(last);
+        }
+        if (total < 4) {
+            // per mažai dalyvių — nieko neatmetam, sprendžia organizatorius
+            while (rejected.length) { const r = rejected.pop(); players.push(r); total += countOf(r); }
+            t.shortOfPlayers = true;
+            t.players = players; t.registered = total;
+            continue;
+        }
+        t.players = players;
+        t.registered = total;
+        if (rejected.length) {
+            // Atmestieji (registracijos tvarka) — į rezervo PRIEKĮ, po vieną žmogų
+            const wlEntries = [];
+            rejected.reverse().forEach(entry => {
+                String(entry).split('/').forEach(part => { const nm = part.trim(); if (nm) wlEntries.push(nm); });
+            });
+            const wl = Array.isArray(t.waitlist) ? t.waitlist : [];
+            t.waitlist = wlEntries.concat(wl);
+            t.waitlistCount = t.waitlist.length;
+            rejectedByT.push({ t, wlEntries });
+        }
+    }
+
+    if (!changed) return;
+    await db.ref('padelio_global_tournaments').set(arr);
+
+    // Push pranešimai atmestiesiems + jų registracijos statusas keičiamas į waitlist
+    if (rejectedByT.length) {
+        const utSnap = await db.ref('padelio_user_tournaments').get();
+        const all = utSnap.val() || {};
+        for (const { t, wlEntries } of rejectedByT) {
+            for (const userId of Object.keys(all)) {
+                const rec = all[userId] && all[userId][t.id];
+                if (!rec || rec.status !== 'registered') continue;
+                const nm = String(rec.name || '').trim().toLowerCase();
+                const idx = wlEntries.findIndex(e => String(e).split('|')[0].trim().toLowerCase() === nm);
+                if (idx === -1) continue;
+                await sendToUser(userId, '⚠️ Netilpote į turnyrą', (t.format || 'Turnyras') + ' (' + (t.time || '') + ') — dalyviai apkarpyti iki pilnų kortų. Esate rezervo ' + (idx + 1) + '-as: atsilaisvinus vietai pranešime.', 'cut_' + t.id);
+                await db.ref('padelio_user_tournaments/' + userId + '/' + t.id + '/status').set('waitlist');
+            }
+        }
+    }
+}
 
 // 2) ATSILAISVINO VIETA — trigeris ant turnyrų sąrašo
 exports.spotOpened = onValueWritten(

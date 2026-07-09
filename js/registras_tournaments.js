@@ -256,8 +256,11 @@ function renderTournaments() {
                 const myPos = userWaitlistPosition(t);
                 const posTxt = myPos > 0 ? `Jūs ${myPos}-as eilėje` : `eilėje ${t.waitlistCount || 1}`;
                 statusHTML = `<div class="status-indicator status-wait"><i class="fa-solid fa-hourglass-half"></i> Rezervas (${posTxt})</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`;
+            } else if (persStatus === 'closed') {
+                statusHTML = `<div class="status-indicator status-full"><i class="fa-solid fa-lock"></i> Registracija baigta</div><div class="edit-badge"><i class="fa-solid fa-hourglass-half"></i> Į rezervą</div>`;
             } else if (persStatus === 'open') {
-                statusHTML = `<div class="status-indicator status-open"><i class="fa-regular fa-circle-check"></i> Laisva (Registruotis)</div>`;
+                const closeAt = regCloseTimeStr(t);
+                statusHTML = `<div class="status-indicator status-open"><i class="fa-regular fa-circle-check"></i> Laisva${closeAt ? ` <span style="font-weight:600;color:var(--text-grey);font-size:11px;">· iki ${closeAt}</span>` : ''}</div>`;
             } else if (persStatus === 'full' && !t.isDemoWaitlist) {
                 statusHTML = `<div class="status-indicator status-full">Vietų nėra</div>`;
             } else if (persStatus === 'full' && t.isDemoWaitlist) {
@@ -275,7 +278,7 @@ function renderTournaments() {
         if (lvlClass === 'c-/c') lvlClass = 'c2';
         if (lvlClass === 'd/c-' || lvlClass === 'd-c') lvlClass = 'd-c';
 
-        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${Number(t.id)})"><div class="card-date-square"><div class="num">${esc(dayNum)}</div><div class="name">${esc(dayName)}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${esc(t.format)}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${esc(displayLevel)}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${esc(t.category)}</div>` : ''}${t.clubName ? `<div class="level-badge" style="background:#0f766e;"><i class="fa-solid fa-building" style="font-size:8px;"></i> ${esc(t.clubName)}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${esc(t.time)}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${t.registered} / ${t.max}</div></div><div class="card-bottom">${statusHTML}${(persStatus !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
+        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${Number(t.id)})"><div class="card-date-square"><div class="num">${esc(dayNum)}</div><div class="name">${esc(dayName)}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${esc(t.format)}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${esc(displayLevel)}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${esc(t.category)}</div>` : ''}${t.clubName ? `<div class="level-badge" style="background:#0f766e;"><i class="fa-solid fa-building" style="font-size:8px;"></i> ${esc(t.clubName)}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${esc(t.time)}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${(t.max || 0) > 0 ? `${t.registered} / ${t.max}` : `${t.registered} dalyv.`}</div></div><div class="card-bottom">${statusHTML}${(persStatus !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
         list.innerHTML += cardHTML;
     });
 }
@@ -707,7 +710,21 @@ function effectiveStatusFor(t) {
         if (userIsRegistered(t)) return 'registered';
         if (userWaitlistPosition(t) > 0 || userTournamentStatus[t.id] === 'waitlist') return 'waitlist';
     }
-    return ((t.registered || 0) >= (t.max || 0)) ? 'full' : 'open';
+    if (t.regClosed) return 'closed'; // serveris uždarė registraciją — liko tik rezervas
+    const mx = t.max || 0; // max=0 — NERIBOTAS dalyvių skaičius
+    return (mx > 0 && (t.registered || 0) >= mx) ? 'full' : 'open';
+}
+
+// Kada uždaroma registracija („HH:MM"): turnyro startas minus regCloseMins (numatytoji 60 min.)
+function regCloseTimeStr(t) {
+    try {
+        const start = String(t.time || '').split('-')[0].trim();
+        const p = start.split(':');
+        let mins = parseInt(p[0]) * 60 + parseInt(p[1] || 0) - (t.regCloseMins || 60);
+        if (isNaN(mins)) return '';
+        if (mins < 0) mins += 24 * 60;
+        return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
+    } catch (e) { return ''; }
 }
 
 function notifCheckReminders() {
@@ -755,7 +772,7 @@ function openNotifications() {
     document.body.appendChild(back);
 }
 
-function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (!t) return; if (t.timeState === 'past') { openOfficialResults(id); return; } if (t.timeState === 'live') { watchTournamentLive(id); return; } const st = effectiveStatusFor(t); if (st === 'registered') { openCancelModal(id); } else if (st === 'waitlist') { openWaitlistCancelModal(id); } else if (st === 'open') { openRegisterModal(id); } else if (st === 'full' && t.isDemoWaitlist) { openJoinWaitlistModal(id); } else { showToast("Šiame turnyre vietų nebėra."); } }
+function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (!t) return; if (t.timeState === 'past') { openOfficialResults(id); return; } if (t.timeState === 'live') { watchTournamentLive(id); return; } const st = effectiveStatusFor(t); if (st === 'registered') { openCancelModal(id); } else if (st === 'waitlist') { openWaitlistCancelModal(id); } else if (st === 'open') { openRegisterModal(id); } else if (st === 'closed' || (st === 'full' && t.isDemoWaitlist)) { openJoinWaitlistModal(id); } else { showToast("Šiame turnyre vietų nebėra."); } }
 function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; let pFilter = document.getElementById('filterPlayer'); if(pFilter) pFilter.value = ''; renderTournaments(); }
@@ -903,7 +920,8 @@ function confirmRegistration(id, withPartner) {
         modal.classList.add('show');
     } else {
         if (userIsRegistered(t)) { closeModal(); showToast("Jūs jau užsiregistravęs šiame turnyre."); return; }
-        if ((t.registered || 0) + 1 > (t.max || 0)) { closeModal(); showToast("Deja, vietų nebėra."); renderTournaments(); return; }
+        if (t.regClosed) { closeModal(); showToast("🔒 Registracija baigta — galite stoti į rezervą."); renderTournaments(); return; }
+        if ((t.max || 0) > 0 && (t.registered || 0) + 1 > t.max) { closeModal(); showToast("Deja, vietų nebėra."); renderTournaments(); return; }
         if (!t.players) t.players = [];
 
         t.registered += 1;
@@ -1046,7 +1064,8 @@ function submitSmartPartner(tournamentId) {
 
 function completePairRegistration(tournament, player1, player2, gender1, gender2) {
     if (userIsRegistered(tournament)) { closeModal(); showToast("Jūs jau užsiregistravęs šiame turnyre."); return; }
-    if ((tournament.registered || 0) + 2 > (tournament.max || 0)) { closeModal(); showToast("Deja, porai vietų nebėra."); renderTournaments(); return; }
+    if (tournament.regClosed) { closeModal(); showToast("🔒 Registracija baigta — galite stoti į rezervą."); renderTournaments(); return; }
+    if ((tournament.max || 0) > 0 && (tournament.registered || 0) + 2 > tournament.max) { closeModal(); showToast("Deja, porai vietų nebėra."); renderTournaments(); return; }
     if (!tournament.players) tournament.players = [];
 
     tournament.registered += 2;
@@ -1061,7 +1080,7 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
     renderUserProfile();
 }
 
-function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Registracija į Rezervą`; modalBody.innerHTML = `Šiuo metu vietų nėra. Stoti į eilę?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${id})">Taip</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
+function openJoinWaitlistModal(id) { let t = tournaments.find(x => x.id === id); if (!t) return; modalTitle.innerHTML = `<i class="fa-solid fa-hourglass-half" style="color: var(--status-orange);"></i> Rezervas`; modalBody.innerHTML = t.regClosed ? `Registracija baigta. Atsilaisvinus vietai, rezervas kviečiamas eilės tvarka. Stoti į eilę?` : `Šiuo metu vietų nėra. Stoti į eilę?`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmWaitlist(${Number(t.id)})">Taip</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`; modal.classList.add('show'); }
 function confirmWaitlist(id) {
     if (typeof currentUser === 'undefined' || !currentUser) { closeModal(); pendingTournamentId = id; showToast("Norėdami stoti į eilę, pirmiausia prisijunkite!"); openAuthModal(); return; }
     let t = tournaments.find(x => x.id === id); if (!t) return;

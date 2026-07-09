@@ -118,6 +118,9 @@
                 <div style="flex: 1;">
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Maksimalus vietų sk.</label>
                     <input type="number" id="editAdminTournamentMax" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                    <label style="display: flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; font-size: 12px; color: #718096; font-weight: 600;">
+                        <input type="checkbox" id="editAdminTournamentUnlimited" onchange="document.getElementById('editAdminTournamentMax').disabled = this.checked" style="width: 15px; height: 15px; accent-color: #2563eb; cursor: pointer;"> Neribota
+                    </label>
                 </div>
             </div>
             <div style="display: flex; gap: 15px; margin-bottom: 20px;">
@@ -129,6 +132,15 @@
                     <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Laikas</label>
                     <input type="text" id="editAdminTournamentTime" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
                 </div>
+            </div>
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Registracija uždaroma prieš startą</label>
+                <select id="editAdminTournamentRegClose" style="width: 100%; padding: 11px; border: 1px solid #cbd5e0; border-radius: 8px; font-weight: bold; outline: none;">
+                    <option value="30">30 min.</option>
+                    <option value="60">1 val.</option>
+                    <option value="120">2 val.</option>
+                    <option value="1440">24 val.</option>
+                </select>
             </div>
             <div style="margin-bottom: 18px;">
                 <label style="display: block; font-size: 12px; font-weight: bold; color: #718096; margin-bottom: 5px;">Rezultatų kambario ID <span style="color:#a0aec0;font-weight:400;">(priskiriamas automatiškai, keiskite tik jei reikia)</span></label>
@@ -382,7 +394,21 @@
                                     </div>
                                     <div style="flex: 1;"><label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Vietų sk.</label>
                                         <input type="number" id="newMax" value="16" min="2" max="32" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px;">
+                                        <label style="display: flex; align-items: center; gap: 6px; margin-top: 6px; cursor: pointer; font-size: 12px; color: var(--text-grey); font-weight: 600;">
+                                            <input type="checkbox" id="newUnlimited" onchange="document.getElementById('newMax').disabled = this.checked" style="width: 15px; height: 15px; accent-color: var(--primary-blue); cursor: pointer;"> Neribota
+                                        </label>
                                     </div>
+                                </div>
+
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; font-size: 13px; color: var(--text-grey); margin-bottom: 5px; font-weight: 600;">Registracija uždaroma prieš startą</label>
+                                    <select id="newRegClose" style="width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; font-weight: bold;">
+                                        <option value="30">30 min.</option>
+                                        <option value="60" selected>1 val.</option>
+                                        <option value="120">2 val.</option>
+                                        <option value="1440">24 val.</option>
+                                    </select>
+                                    <div style="font-size: 11px; color: var(--text-grey); margin-top: 4px;">Uždarius, dalyviai apkarpomi iki pilnų kortų — paskutinieji keliauja į rezervą.</div>
                                 </div>
 
                                 <div style="margin-bottom: 15px;">

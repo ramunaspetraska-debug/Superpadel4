@@ -303,7 +303,10 @@ async function createTournament(e) {
                 category: document.getElementById('newCategory').value,
                 level: document.getElementById('newLevel').value,
                 time: laikas, registered: 0,
-                max: parseInt(document.getElementById('newMax').value),
+                // max = 0 reiškia NERIBOTĄ dalyvių skaičių (apkarpoma tik uždarant registraciją)
+                max: document.getElementById('newUnlimited')?.checked ? 0 : parseInt(document.getElementById('newMax').value),
+                // Registracijos uždarymas prieš startą (min.) — vykdo serveris (Cloud Functions)
+                regCloseMins: parseInt(document.getElementById('newRegClose')?.value || 60),
                 isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
             };
             // Turnyras priklauso jį sukūrusiam klubui — kiti klubai jo nevaldys
@@ -383,6 +386,11 @@ function openAdminTournamentModal(id) {
     if (erefBox) erefBox.checked = !!t.eReferee;
     const offBox = document.getElementById('editAdminTournamentOfficial');
     if (offBox) offBox.checked = !!t.isOfficial;
+    const unlBox = document.getElementById('editAdminTournamentUnlimited');
+    const maxInp = document.getElementById('editAdminTournamentMax');
+    if (unlBox) { unlBox.checked = !(t.max > 0); if (maxInp) maxInp.disabled = unlBox.checked; }
+    const rcSel = document.getElementById('editAdminTournamentRegClose');
+    if (rcSel) rcSel.value = String(t.regCloseMins || 60);
     document.getElementById('editAdminTournamentFormat').value = t.format;
     document.getElementById('editAdminTournamentLevel').value = t.level;
     document.getElementById('editAdminTournamentMax').value = t.max || 16;
@@ -410,7 +418,8 @@ function saveAdminTournamentChanges() {
     if(idx !== -1) {
         tournaments[idx].format = format;
         tournaments[idx].level = level;
-        tournaments[idx].max = max;
+        tournaments[idx].max = document.getElementById('editAdminTournamentUnlimited')?.checked ? 0 : max;
+        tournaments[idx].regCloseMins = parseInt(document.getElementById('editAdminTournamentRegClose')?.value || 60);
         tournaments[idx].time = time;
         tournaments[idx].date = date;
         tournaments[idx].room = (document.getElementById('editAdminTournamentRoom').value || '').trim().toUpperCase() || null;
