@@ -1007,7 +1007,15 @@ function handlePartnerPhoneInput(tournamentId) {
             let pData = snap.val();
             if (pData) {
                 selectedPartnerData = pData;
-                msgDiv.innerHTML = `<span style="color: var(--status-green);"><i class="fa-solid fa-circle-check"></i> Žaidėjas rastas: <strong>${esc(pData.name)}</strong> (${pData.gender === 'F' ? 'M' : 'V'})</span>`;
+                msgDiv.innerHTML = `<span id="partnerFoundAv" style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#f0fdf4; color:var(--status-green); font-size:9px; font-weight:900; overflow:hidden; vertical-align:middle; margin-right:4px;">${esc(String(pData.name || '?').substring(0, 2).toUpperCase())}</span><span style="color: var(--status-green);"><i class="fa-solid fa-circle-check"></i> Žaidėjas rastas: <strong>${esc(pData.name)}</strong> (${pData.gender === 'F' ? 'M' : 'V'})</span>`;
+                // Partnerio nuotrauka iš bendros saugyklos — matote, KĄ registruojate
+                if (pData.hasPhoto) {
+                    firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + safeId).once('value').then(ps => {
+                        const photo = ps.val();
+                        const av = document.getElementById('partnerFoundAv');
+                        if (photo && av) av.innerHTML = `<img src="${photo}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                    }).catch(() => {});
+                }
                 extraFields.style.display = 'none';
                 submitBtn.disabled = false;
                 submitBtn.innerText = `Registruoti su ${pData.name.split(' ')[0]}`;
@@ -1198,7 +1206,7 @@ function loadAutomatedRatings(leagueLevel = 'all') {
         else { dataPool = allPlayers.filter(p => p.tier === leagueLevel); }
 
         dataPool.sort((a,b) => (b.rating || 0) - (a.rating || 0));
-        let mappedPool = dataPool.map(p => ({ id: p.id, name: p.name, points: p.rating || 0 }));
+        let mappedPool = dataPool.map(p => ({ id: p.id, name: p.name, points: p.rating || 0, hasPhoto: p.hasPhoto === true, gender: p.gender || 'M' }));
         window._ratingsPool = dataPool;
 
         let p1 = document.getElementById('pod1-name'), p1p = document.getElementById('pod1-pts');
@@ -1215,18 +1223,36 @@ function loadAutomatedRatings(leagueLevel = 'all') {
             if(p3) p3.innerText = "-"; if(p3p) p3p.innerText = "-";
         }
 
-        const tbody = document.getElementById('ratingsTableBody'); 
+        const tbody = document.getElementById('ratingsTableBody');
         if(tbody) {
             tbody.innerHTML = '';
             mappedPool.forEach((player, index) => {
                 let rankNum = index + 1;
                 let rankClass = index === 0 ? 'color: #d69e2e; font-size: 18px; font-weight: 900;' : index === 1 ? 'color: #a0aec0; font-weight: 800;' : index === 2 ? 'color: #dd6b20; font-weight: 800;' : 'color: var(--text-grey);';
                 let ptsColor = 'var(--primary-blue)';
-                tbody.innerHTML += `<tr onclick="openPlayerCard('${esc(player.id)}')" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'"><td style="text-align: center; ${rankClass}">${rankNum}</td><td>${esc(player.name)} <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: #cbd5e0; margin-left: 4px;"></i></td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
+                const avBg = player.gender === 'F' ? '#fdf2f8' : '#eff6ff';
+                const avCol = player.gender === 'F' ? '#db2777' : 'var(--primary-blue)';
+                const initials = esc(String(player.name || '?').substring(0, 2).toUpperCase());
+                const av = `<span class="rt-av" data-pid="${esc(String(player.id))}" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:${avBg}; color:${avCol}; font-size:10px; font-weight:900; overflow:hidden; flex-shrink:0;">${initials}</span>`;
+                tbody.innerHTML += `<tr onclick="openPlayerCard('${esc(player.id)}')" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'"><td style="text-align: center; ${rankClass}">${rankNum}</td><td><div style="display:flex; align-items:center; gap:8px;">${av}<span>${esc(player.name)}</span> <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: #cbd5e0;"></i></div></td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
             });
         }
 
-        if(rLoader) rLoader.style.display = 'none'; 
+        // Nuotraukos iš bendros saugyklos: podium (3) + pirmieji 30 lentelės — asinchroniškai
+        const podiumIds = ['pod1-av', 'pod2-av', 'pod3-av'];
+        podiumIds.forEach((pid, i) => { const e = document.getElementById(pid); if (e) e.innerHTML = String(i + 1); });
+        mappedPool.slice(0, 30).forEach((player, index) => {
+            if (!player.hasPhoto) return;
+            firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + player.id).once('value').then(s => {
+                const photo = s.val();
+                if (!photo) return;
+                const img = `<img src="${photo}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                document.querySelectorAll(`.rt-av[data-pid="${String(player.id)}"]`).forEach(e => { e.innerHTML = img; });
+                if (index < 3) { const pav = document.getElementById(podiumIds[index]); if (pav) pav.innerHTML = img; }
+            }).catch(() => {});
+        });
+
+        if(rLoader) rLoader.style.display = 'none';
         if(rContent) rContent.style.display = 'block';
     }).catch(err => { console.error(err); });
 }

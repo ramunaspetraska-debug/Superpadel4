@@ -600,15 +600,20 @@ function openAdminEditModal(id) {
     document.getElementById('editAdminPlayerRating').value = p.rating || 300;
     document.getElementById('editAdminPlayerPhone').value = p.phone || p.id;
     
-    tempAdminPlayerPhotoBase64 = p.photo || null;
+    tempAdminPlayerPhotoBase64 = p.photo || null; // legacy laukas (seni įrašai)
     const pr = document.getElementById('editAdminPlayerPhotoPreview');
     const ph = document.getElementById('editAdminPlayerPhotoPlaceholder');
-    if(tempAdminPlayerPhotoBase64 && tempAdminPlayerPhotoBase64 !== "null" && tempAdminPlayerPhotoBase64 !== "") {
-        if(pr) { pr.src = tempAdminPlayerPhotoBase64; pr.style.display = 'block'; }
-        if(ph) ph.style.display = 'none';
-    } else {
-        if(pr) { pr.src = ''; pr.style.display = 'none'; }
-        if(ph) ph.style.display = 'block';
+    const showPreview = (src) => {
+        if (src) { if(pr) { pr.src = src; pr.style.display = 'block'; } if(ph) ph.style.display = 'none'; }
+        else { if(pr) { pr.src = ''; pr.style.display = 'none'; } if(ph) ph.style.display = 'block'; }
+    };
+    showPreview(tempAdminPlayerPhotoBase64 && tempAdminPlayerPhotoBase64 !== "null" ? tempAdminPlayerPhotoBase64 : null);
+    // Bendra nuotraukų saugykla (_photos) — vienintelis tikras šaltinis
+    if (!tempAdminPlayerPhotoBase64 && p.hasPhoto) {
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + p.id).once('value').then(s => {
+            const photo = s.val();
+            if (photo) { tempAdminPlayerPhotoBase64 = photo; showPreview(photo); }
+        });
     }
     document.getElementById('editAdminPlayerPhotoInput').value = '';
     document.getElementById('adminEditPlayerModal').classList.add('show');
@@ -635,14 +640,22 @@ function saveAdminPlayerChanges() {
     else if (rating >= 451) tier = "C-/C";
     else if (rating >= 351) tier = "D/C-";
 
-    let updateData = { id: newId, phone: newId, name: name, gender: gender, rating: rating, tier: tier, photo: tempAdminPlayerPhotoBase64 };
+    // NUOTRAUKA saugoma TIK bendroje _photos šakoje (photo laukas objekte — legacy, išvalomas),
+    // kad ją matytų visos sistemos dalys: portalas, generatorius, kambariai, kortelės.
+    const hasNewPhoto = !!(tempAdminPlayerPhotoBase64 && tempAdminPlayerPhotoBase64 !== "null");
+    let updateData = { id: newId, phone: newId, name: name, gender: gender, rating: rating, tier: tier, photo: null, hasPhoto: hasNewPhoto };
+    const savePhotoToShared = () => {
+        if (hasNewPhoto) return firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + newId).set(tempAdminPlayerPhotoBase64);
+        return Promise.resolve();
+    };
 
     if (String(originalId) !== String(newId)) {
         // SVARBU: perkeliam VISĄ seną įrašą (statistiką ir kt.), tik ant viršaus uždedam pakeitimus
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).once('value').then(oldSnap => {
             const merged = Object.assign({}, oldSnap.val() || {}, updateData);
             return firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + newId).set(merged);
-        }).then(() => {
+        }).then(savePhotoToShared).then(() => {
+            firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + originalId).remove().catch(() => {});
             firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).remove().then(() => {
                 closeAdminEditModal();
                 showToast("ID pakeistas ir duomenys išsaugoti!");
@@ -650,7 +663,7 @@ function saveAdminPlayerChanges() {
             });
         }).catch(err => { alert("Klaida keičiant unikalų ID."); });
     } else {
-        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).update(updateData).then(() => {
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).update(updateData).then(savePhotoToShared).then(() => {
             closeAdminEditModal();
             showToast("Profilio keitimai sėkmingai išsaugoti!");
             loadAdminPlayersDB();

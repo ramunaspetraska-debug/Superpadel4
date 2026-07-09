@@ -184,7 +184,12 @@ function savePlayerEdit() {
         if(p) { 
             let nameField = el('edit-player-name');
             p.name = nameField ? (nameField.value.trim() || p.name) : p.name; p.gender = tempEditGender; 
-            if (tempEditPhoto) { photoBank[p.id] = tempEditPhoto; setStore('photos', photoBank); trimPhotoBankIfNeeded(); if (typeof uploadPhotoToRoom === 'function') uploadPhotoToRoom(p.id, tempEditPhoto); }
+            if (tempEditPhoto) {
+                photoBank[p.id] = tempEditPhoto; setStore('photos', photoBank); trimPhotoBankIfNeeded();
+                if (typeof uploadPhotoToRoom === 'function') uploadPhotoToRoom(p.id, tempEditPhoto);
+                // Registruoto žaidėjo nuotrauka keliauja ir į bendrą saugyklą — matys visos sistemos dalys
+                if (typeof uploadPhotoToGlobal === 'function') uploadPhotoToGlobal(p.id, tempEditPhoto);
+            }
             matches.forEach(m => {
                 if(m.team1) m.team1.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});
                 if(m.team2) m.team2.forEach(tp => { if(tp.id === p.id) { tp.name = p.name; tp.gender = p.gender; }});

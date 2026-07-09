@@ -202,6 +202,8 @@ function initFirebaseConnection() {
     globalPlayersRef = firebase.database().ref(GLOBAL_PLAYERS_KEY);
     globalPlayersRef.on('value', snap => {
         globalPlayersData = snap.val() || {};
+        // Kambario žaidėjų nuotraukos iš bendros saugyklos (pvz. ką tik įkeltos portale)
+        setTimeout(fetchMissingGlobalPhotos, 800);
     });
 
     safeText('cloud-status', "Prijungta"); safeClass('cloud-connect-ui', "hidden"); safeClass('cloud-active-ui', "space-y-4 text-center flex flex-col items-center"); safeText('cloud-room-name-display', room);
@@ -545,6 +547,50 @@ function uploadPhotoToRoom(playerId, photo) {
     try {
         dbPhotosRef.child(playerId).set(photo);
     } catch(e) { console.error("uploadPhotoToRoom error:", e); }
+}
+
+// Įkelia nuotrauką į BENDRĄ saugyklą (padelio_global_players_photos) — vienintelį tikrą
+// šaltinį, iš kurio ją mato portalas, kortelės, reitingai ir kiti kambariai.
+// Tik registruotiems (telefono ID) žaidėjams. Atnaujina ir esamą (ne tik pirmą kartą).
+function uploadPhotoToGlobal(playerId, photo) {
+    if (!playerId || !photo || !/^[0-9]{7,}$/.test(String(playerId))) return;
+    try {
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + playerId).set(photo);
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + playerId + '/hasPhoto').set(true).catch(() => {});
+    } catch (e) { console.error("uploadPhotoToGlobal error:", e); }
+}
+
+// Parsisiunčia TRŪKSTAMAS kambario žaidėjų nuotraukas iš bendros saugyklos:
+// žaidėjas įsikėlė nuotrauką portale → ji automatiškai atsiranda ir generatoriuje
+// (o per uploadPhotoToRoom — ir kitų kambario dalyvių ekranuose).
+let _photoFetchBusy = false;
+function fetchMissingGlobalPhotos() {
+    if (_photoFetchBusy || !isCloud) return;
+    const candidates = safeArr(players).filter(p =>
+        p && /^[0-9]{7,}$/.test(String(p.id)) && !photoBank[p.id] &&
+        globalPlayersData[p.id] && globalPlayersData[p.id].hasPhoto === true
+    );
+    if (!candidates.length) return;
+    _photoFetchBusy = true;
+    let left = candidates.length;
+    let gotAny = false;
+    const done = () => {
+        left--;
+        if (left > 0) return;
+        _photoFetchBusy = false;
+        if (gotAny) { setStore('photos', photoBank); if (typeof render === 'function') render(); }
+    };
+    candidates.forEach(p => {
+        firebase.database().ref(GLOBAL_PLAYERS_KEY + '_photos/' + p.id).once('value').then(s => {
+            const photo = s.val();
+            if (photo) {
+                photoBank[p.id] = photo;
+                uploadPhotoToRoom(p.id, photo);
+                gotAny = true;
+            }
+            done();
+        }).catch(done);
+    });
 }
 
 function syncPlayersToGlobalDB() {
