@@ -397,6 +397,35 @@ function refreshCurrentUserFromFirebase() {
     }).catch(err => console.error("refreshCurrentUser error:", err));
 }
 
+// „Įrankiai" — perėjimai į kitas sistemos dalis. Vienoda kortelių kalba abiejose
+// programose; rodoma ir neprisijungus (klubo adminas gali neturėti žaidėjo paskyros).
+function profileToolsHtml() {
+    return `
+        <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; text-align: left;">
+            <i class="fa-solid fa-toolbox" style="color: var(--primary-blue); font-size: 13px;"></i> Įrankiai
+        </div>
+        <a href="/index.html" style="text-decoration: none; display: block; margin-bottom: 10px;">
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); text-align: left;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;"><i class="fa-solid fa-table-tennis-paddle-ball"></i></div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 800; font-size: 14px; color: var(--text-dark);">Turnyro skaičiuoklė</div>
+                    <div style="font-size: 11px; color: var(--text-grey); margin-top: 2px;">Mačų generavimas ir taškų vedimas prie korto</div>
+                </div>
+                <i class="fa-solid fa-chevron-right" style="color: #cbd5e0; font-size: 12px;"></i>
+            </div>
+        </a>
+        <div onclick="promptAdmin()" style="cursor: pointer; margin-bottom: 25px;">
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); text-align: left;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; background: #f0fdf4; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0;"><i class="fa-solid fa-building-lock"></i></div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 800; font-size: 14px; color: var(--text-dark);">Klubo valdymas</div>
+                    <div style="font-size: 11px; color: var(--text-grey); margin-top: 2px;">Turnyrų skelbimas ir dalyviai — klubų administratoriams</div>
+                </div>
+                <i class="fa-solid fa-chevron-right" style="color: #cbd5e0; font-size: 12px;"></i>
+            </div>
+        </div>`;
+}
+
 function renderUserProfile() {
     if (typeof notifInit === 'function') notifInit();
     const container = document.getElementById('page-profile');
@@ -411,7 +440,8 @@ function renderUserProfile() {
             </div>
             <h3 style="font-weight: 800; color: var(--text-dark); margin-bottom: 8px; font-size: 18px;">Mano Profilis</h3>
             <p style="font-size: 13px; color: var(--text-grey); margin-bottom: 25px; line-height: 1.5;">Prisijunkite prie savo paskyros, kad matytumėte asmeninę statistiką, reitingo taškus ir draugiškų turnyrų istoriją.</p>
-            <button type="button" class="modal-btn primary" onclick="openAuthModal()" style="padding: 12px 30px; font-size: 14px; font-weight: bold; border-radius: 8px; margin: 0 auto;">Prisijungti dabar</button>
+            <button type="button" class="modal-btn primary" onclick="openAuthModal()" style="padding: 12px 30px; font-size: 14px; font-weight: bold; border-radius: 8px; margin: 0 auto 35px;">Prisijungti dabar</button>
+            ${profileToolsHtml()}
         `;
         return;
     }
@@ -501,12 +531,6 @@ function renderUserProfile() {
                 <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${casualWinRate}%</div>
             </div>
         </div>
-
-        <a href="/index.html" style="text-decoration: none; display: block; margin-bottom: 25px;">
-            <div style="background: linear-gradient(to right, var(--primary-blue), #1d4ed8); color: white; border-radius: 10px; padding: 14px; font-size: 13px; font-weight: bold; text-align: center; box-shadow: 0 4px 6px rgba(49,130,206,0.2); display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <i class="fa-solid fa-table-tennis-paddle-ball"></i> Paleisti Mačų Skaičiuoklę / Generatorių
-            </div>
-        </a>
 
         <!-- AKTYVŪS KAMBARIAI -->
         <div style="font-size: 12px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
@@ -642,6 +666,9 @@ function renderUserProfile() {
             }).join('') : '<div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 11px;">Mačų istorija tuščia.</div>'}
         </div>
     `;
+
+    // ĮRANKIAI — perėjimai į skaičiuoklę ir klubo valdymą (profilio apačioje)
+    html += profileToolsHtml();
 
     container.innerHTML = html;
 
