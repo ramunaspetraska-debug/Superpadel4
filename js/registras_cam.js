@@ -692,8 +692,14 @@ function detectTournamentContext() {
     }
 }
 
+let camUploadWarned = false;
 function autoUploadHighlight(entry) {
     if (typeof firebase === 'undefined' || !firebase.storage) return;
+    // Debesies taisyklės reikalauja prisijungimo — neprisijungus klipai lieka telefone
+    if (!firebase.auth || !firebase.auth().currentUser) {
+        if (!camUploadWarned) { camUploadWarned = true; showToast("Klipai liks tik telefone — prisijunkite, kad keltųsi į debesį."); }
+        return;
+    }
     if (!camTournamentId) detectTournamentContext();
     if (entry.blob.size > 8 * 1024 * 1024) {
         console.warn("Highlight per didelis Firebase įkėlimui:", entry.blob.size);
@@ -706,15 +712,130 @@ function autoUploadHighlight(entry) {
         ref.put(entry.blob).then(snap => snap.ref.getDownloadURL()).then(downloadUrl => {
             entry.uploaded = true;
             entry.cloudUrl = downloadUrl;
-            firebase.database().ref(`padelio_highlights/${camTournamentId}`).push({
+            const rec = {
                 url: downloadUrl,
                 durationSec: entry.durationSec,
                 ts: entry.ts,
                 players: camTournamentPlayers || []
-            });
+            };
+            if (entry.thumb) rec.thumb = entry.thumb;
+            firebase.database().ref(`padelio_highlights/${camTournamentId}`).push(rec);
             updateHighlightCounter();
         }).catch(err => console.warn("Highlight upload klaida:", err.message));
     } catch (e) {
         console.warn("Firebase Storage neprieinama:", e);
+    }
+}
+
+// ==========================================
+// TURNYRO HIGHLIGHTS GALERIJA (klipai iš debesies)
+// ==========================================
+
+let cloudHighlights = [];
+
+function openTournamentHighlights(roomOverride) {
+    if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas."); return; }
+    const room = roomOverride
+        || (typeof currentLiveRoomName !== 'undefined' && currentLiveRoomName)
+        || (document.getElementById('liveRoomInput')?.value || '').trim().toUpperCase();
+    if (!room) { showToast("Įveskite kambario ID ir prisijunkite prie turnyro."); return; }
+
+    document.getElementById('cloud-highlights-modal')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'cloud-highlights-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:10000;display:flex;align-items:flex-end;justify-content:center;';
+    wrap.innerHTML = `
+        <div style="background:white;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column;padding:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-weight:900;font-size:16px;color:#1e293b;"><i class="fa-solid fa-fire" style="color:#ef4444;"></i> Highlights — ${esc(String(room))}</div>
+                <button onclick="document.getElementById('cloud-highlights-modal').remove()" style="background:#f1f5f9;border:none;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:12px;">Klipai debesyje saugomi 7 dienas — parsisiųskite tuos, kuriuos norite pasilikti.</div>
+            <div id="cloudHlActions" style="display:none;margin-bottom:12px;">
+                <button onclick="playCloudHighlightsAll()" style="width:100%;background:#2563eb;color:white;border:none;padding:12px;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;"><i class="fa-solid fa-bolt"></i> Žiūrėti viską iš eilės — mačas be prastovų</button>
+            </div>
+            <div id="cloudHlList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+                <div style="text-align:center;padding:24px;color:#94a3b8;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunami klipai...</div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(wrap);
+
+    firebase.database().ref('padelio_highlights/' + room).once('value').then(snap => {
+        const data = snap.val() || {};
+        cloudHighlights = Object.keys(data)
+            .map(k => data[k])
+            .filter(c => c && c.url)
+            .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+        renderCloudHighlightsList();
+    }).catch(err => {
+        const box = document.getElementById('cloudHlList');
+        if (box) box.innerHTML = '<div style="text-align:center;padding:24px;color:#ef4444;">Nepavyko įkelti klipų: ' + esc(err.message || '') + '</div>';
+    });
+}
+
+function renderCloudHighlightsList() {
+    const box = document.getElementById('cloudHlList');
+    if (!box) return;
+    if (cloudHighlights.length === 0) {
+        box.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;"><i class="fa-solid fa-video-slash" style="font-size:24px;display:block;margin-bottom:8px;"></i>Šis turnyras dar neturi klipų.<br><span style="font-size:11px;">Filmuokite kameros skirtuke — geriausi raliai atsiras čia automatiškai.</span></div>';
+        return;
+    }
+    const actions = document.getElementById('cloudHlActions');
+    if (actions) actions.style.display = 'block';
+    box.innerHTML = cloudHighlights.map((c, i) => {
+        const t = new Date(c.ts || 0);
+        const hh = t.getHours().toString().padStart(2, '0');
+        const mm = t.getMinutes().toString().padStart(2, '0');
+        const thumb = c.thumb
+            ? `<img src="${c.thumb}" style="width:100%;height:100%;object-fit:cover;" alt="">`
+            : '<i class="fa-solid fa-play"></i>';
+        return `
+        <div style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;">
+            <div onclick="playCloudHighlight(${i})" style="width:70px;height:48px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;flex-shrink:0;overflow:hidden;">${thumb}</div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:800;font-size:13px;color:#1e293b;">Ralis ${i + 1}</div>
+                <div style="font-size:11px;color:#64748b;">${parseInt(c.durationSec) || '?'}s &bull; ${hh}:${mm}</div>
+            </div>
+            <button onclick="shareCloudHighlight(${i})" title="Dalintis" style="background:#16a34a;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-share-nodes"></i></button>
+            <button onclick="downloadCloudHighlight(${i})" title="Atsisiųsti" style="background:#2563eb;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-download"></i></button>
+        </div>`;
+    }).join('');
+}
+
+function playCloudHighlight(i) {
+    if (!cloudHighlights[i]) return;
+    openClipPlayer(cloudHighlights, i, 'Ralis ' + (i + 1));
+}
+
+function playCloudHighlightsAll() {
+    if (cloudHighlights.length === 0) return;
+    openClipPlayer(cloudHighlights, 0, 'Mačas be prastovų', true);
+}
+
+function shareCloudHighlight(i) {
+    const c = cloudHighlights[i];
+    if (!c) return;
+    if (navigator.share) {
+        navigator.share({ title: 'SuperPadel highlight', text: 'Pažiūrėk šį ralį! 🎾', url: c.url }).catch(() => {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(c.url).then(() => showToast("Nuoroda nukopijuota!")).catch(() => showToast(c.url));
+    } else {
+        showToast(c.url);
+    }
+}
+
+async function downloadCloudHighlight(i) {
+    const c = cloudHighlights[i];
+    if (!c) return;
+    showToast("Siunčiama...");
+    try {
+        const resp = await fetch(c.url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const blob = await resp.blob();
+        triggerDownload(blob, 'highlight_' + (i + 1));
+        showToast("Klipas išsaugomas!");
+    } catch (e) {
+        window.open(c.url, '_blank'); // atsarginis kelias — atidaryti tiesiogiai
     }
 }
