@@ -23,7 +23,7 @@ canOfficial, legacyOwner), padelio_club_admins, padelio_email_links
 klubai), padelio_push_tokens/padelio_push_sent, padelio_notifications,
 padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
 
-## Sistemos būsena (2026-07-10, cache v272, APP_VERSION v210 / V229, registras.css?v=14)
+## Sistemos būsena (2026-07-10, cache v274, APP_VERSION v210 / V229, registras.css?v=14)
 - Prisijungimai: TIK el. pašto nuorodos (Firebase Auth email-link, be slaptažodžių).
   Telefono/PIN 7030 sistemos PAŠALINTOS. emailKey() = el. paštas mažosiomis,
   [.#$[]/] → ','. Sesija bendra tarp index.html ir registras.html (ta pati kilmė).
@@ -49,10 +49,26 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   per userClubsInit(), kuris prijungiamas updateAuthUI() metu (kiekvieną
   prisijungimą) — NE tik puslapio starto metu.
 - Cloud Functions: tournamentReminders (priminimai dieną/valandas prieš),
-  closeRegistrations, spotOpened (atsilaisvinus vietai). Vilniaus laiko juostos
-  helper'iai funkcijose (vilniusTimeToMs ir kt.).
+  closeRegistrations, spotOpened (atsilaisvinus vietai), cleanupHighlights
+  (naktinis 7 d. klipų valymas DB + Storage, našlaičiai po 1 d.). Vilniaus
+  laiko juostos helper'iai funkcijose (vilniusTimeToMs ir kt.).
+- Filmavimas (2026-07-10 pertvarkyta): registras_cam.js — VIENAS master
+  MediaRecorder (1s gabaliukai) aptarnauja pilną įrašą, highlight klipus
+  (pre-roll iš buferio) ir 15s atsukimą; jautrumo mygtukai (localStorage
+  camSensitivity) + fono kalibracija 4s; klipų miniatiūros (captureThumb),
+  Web Share dalinimasis. Highlights galerija portale: LIVE modale mygtukas
+  → padelio_highlights/{room} klipai (žiūrėti/dalintis/parsisiųsti).
+  WebRTC: PIN tikrina SIUNTĖJAS (offer'e pin, atsakymas rejected; PIN DB
+  nebesaugomas), ICE su Open Relay TURN (perrašoma per padelio_config/
+  iceServers), QR kodas transliacijos lange (js/vendor/qrcode.js).
+  Korto peržiūra: fullscreen bakstelėjus, garsas vienai kamerai,
+  „Atsukti visas" (visų kamerų 15s viename lange). Storage taisyklės
+  storage.rules (highlights/ video iki 10MB, rašymas tik auth).
 - Laukiantys darbai: Ramūnas turi užpildyti savo klubo miestą per „Klubo
   informacija"; naujiems klubams canOfficial tvirtinamas per Platform statistics.
+- LAUKIA DEPLOY (užblokuota automatikai, reikia Ramūno patvirtinimo):
+  `firebase deploy --only database,storage,functions --project padelio-turnyrai`
+  (naujos DB/Storage taisyklės ir cleanupHighlights funkcija).
 
 ## KRITINĖS TAISYKLĖS — VISADA
 - VISADA po BET KOKIO pakeitimo, kuris liečia cache'inamą turinį (html, js, css),

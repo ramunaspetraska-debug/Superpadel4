@@ -37,6 +37,7 @@ function openCourtView() {
             <div style="font-weight:900;font-size:15px;color:white;"><i class="fa-solid fa-table-cells-large" style="color:#22c55e;"></i> Korto peržiūra</div>
             <div style="flex:1;"></div>
             ${hasRoom ? `<button id="courtFilterBtn" onclick="courtToggleRoomFilter()" style="background:#1e293b;color:#22c55e;border:1px solid #16a34a;padding:7px 10px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;"><i class="fa-solid fa-filter"></i> <span id="courtFilterLabel">Tik ${esc(currentLiveRoomName)}</span></button>` : ''}
+            <button onclick="courtReplayAll()" title="Ginčo taškas iš visų kampų vienu metu" style="background:#16a34a;color:white;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;"><i class="fa-solid fa-clock-rotate-left"></i> Atsukti visas</button>
             <button onclick="closeCourtView()" style="background:#ef4444;color:white;border:none;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:bold;cursor:pointer;">Uždaryti</button>
         </div>
         <div id="courtSources" style="display:flex;gap:8px;padding:10px 12px;overflow-x:auto;background:#0f172a;border-bottom:1px solid #1e293b;flex-shrink:0;min-height:54px;align-items:center;"></div>
@@ -70,6 +71,7 @@ function closeCourtView() {
     if (courtBroadcastsRef) { try { courtBroadcastsRef.off(); } catch (e) {} courtBroadcastsRef = null; }
     Object.keys(courtViewTiles).forEach(id => courtRemoveTile(id));
     courtViewTiles = {};
+    if (typeof courtCloseReplayAll === 'function') courtCloseReplayAll();
     document.getElementById('court-replay-modal')?.remove();
     document.getElementById('court-view-modal')?.remove();
 }
@@ -161,14 +163,49 @@ function courtAddTile(id, name, pin, isPrivate) {
     el.id = 'court-tile-' + id;
     el.style.cssText = 'position:relative;flex:1 1 46%;min-width:300px;background:#000;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;aspect-ratio:16/9;';
     el.innerHTML = `
-        <video id="court-vid-${id}" playsinline autoplay muted style="width:100%;height:100%;object-fit:contain;background:black;"></video>
+        <video id="court-vid-${id}" onclick="courtTileToggleFull('${id}')" playsinline autoplay muted style="width:100%;height:100%;object-fit:contain;background:black;cursor:pointer;" title="Bakstelėkite — per visą ekraną"></video>
         <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.55);color:white;font-size:12px;font-weight:800;padding:3px 8px;border-radius:6px;"><span style="color:#ef4444;">🔴</span> ${esc(name)}</div>
-        <div id="court-status-${id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;background:rgba(0,0,0,0.45);"><i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Jungiamasi...</div>
+        <div id="court-status-${id}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;background:rgba(0,0,0,0.45);pointer-events:none;"><i class="fa-solid fa-spinner fa-spin"></i>&nbsp; Jungiamasi...</div>
         <button onclick="courtTileReplayClick('${id}')" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(34,197,94,0.95);color:white;border:none;padding:10px 18px;border-radius:24px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.4);z-index:3;"><i class="fa-solid fa-clock-rotate-left"></i> Atsukti ${COURT_REPLAY_SEC}s</button>
+        <button id="court-audio-${id}" onclick="courtTileToggleAudio('${id}')" title="Garsas" style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,0.55);color:white;border:none;width:34px;height:34px;border-radius:50%;font-size:13px;cursor:pointer;z-index:3;"><i class="fa-solid fa-volume-xmark"></i></button>
+        <button onclick="courtTileToggleFull('${id}')" title="Per visą ekraną" style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,0.55);color:white;border:none;width:34px;height:34px;border-radius:50%;font-size:13px;cursor:pointer;z-index:3;"><i class="fa-solid fa-expand"></i></button>
         <button onclick="courtToggleSource('${id}', '${safeName}', ${!!isPrivate})" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.55);color:white;border:none;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer;z-index:3;">&times;</button>
     `;
     grid.appendChild(el);
     courtTileConnect(tile);
+}
+
+// Plytelė per visą ekraną ir atgal (bakstelėjus vaizdą arba išplėtimo mygtuką)
+function courtTileToggleFull(id) {
+    const el = document.getElementById('court-tile-' + id);
+    if (!el) return;
+    if (el.dataset.full === '1') {
+        el.dataset.full = '';
+        el.style.position = 'relative';
+        el.style.inset = '';
+        el.style.zIndex = '';
+        el.style.borderRadius = '12px';
+        el.style.aspectRatio = '16/9';
+    } else {
+        el.dataset.full = '1';
+        el.style.position = 'fixed';
+        el.style.inset = '0';
+        el.style.zIndex = '10010';
+        el.style.borderRadius = '0';
+        el.style.aspectRatio = 'auto';
+    }
+}
+
+// Garsas įjungiamas tik VIENAI kamerai vienu metu (kitos nutildomos)
+function courtTileToggleAudio(id) {
+    Object.keys(courtViewTiles).forEach(k => {
+        const v = document.getElementById('court-vid-' + k);
+        if (!v) return;
+        if (k === id) v.muted = !v.muted;
+        else v.muted = true;
+        const btn = document.getElementById('court-audio-' + k);
+        if (btn) btn.innerHTML = v.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+    });
 }
 
 function courtRemoveTile(id) {
@@ -352,6 +389,58 @@ function courtTileShowReplay(tile) {
     if (recent.length === 0) { if (typeof showToast === 'function') showToast('Per mažai vaizdo.'); return; }
     const blob = new Blob([tile.replayHeader, ...recent], { type: tile.mime });
     courtOpenReplayPlayer(URL.createObjectURL(blob), tile.name);
+}
+
+// GINČO TAŠKAS IŠ VISŲ KAMPŲ: visų aktyvių kamerų paskutinės 15s viename lange.
+// Kiekviena kamera turi savo buferį, tad laikai apytiksliai sutampa (±1s).
+let courtReplayAllUrls = [];
+
+function courtReplayAll() {
+    const tiles = Object.values(courtViewTiles).filter(t => t.replayHeader && t.replayChunks && t.replayChunks.length);
+    if (tiles.length === 0) {
+        if (typeof showToast === 'function') showToast('Nėra sukaupto vaizdo — pridėkite kameras ir palaukite kelias sekundes.');
+        return;
+    }
+    document.getElementById('court-replay-all-modal')?.remove();
+    courtReplayAllUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
+    courtReplayAllUrls = [];
+
+    const cutoff = Date.now() - COURT_REPLAY_SEC * 1000;
+    const cells = tiles.map(t => {
+        const recent = t.replayChunks.filter(c => c.ts >= cutoff).map(c => c.blob);
+        if (recent.length === 0) return '';
+        const blob = new Blob([t.replayHeader, ...recent], { type: t.mime });
+        const url = URL.createObjectURL(blob);
+        courtReplayAllUrls.push(url);
+        return `<div style="position:relative;flex:1 1 46%;min-width:280px;display:flex;">
+            <div style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.6);color:white;font-size:11px;font-weight:800;padding:3px 8px;border-radius:6px;z-index:2;">${esc(t.name)}</div>
+            <video src="${url}" playsinline autoplay controls loop muted style="width:100%;object-fit:contain;background:black;border-radius:10px;"></video>
+        </div>`;
+    }).join('');
+
+    if (!cells) {
+        if (typeof showToast === 'function') showToast('Per mažai vaizdo — palaukite kelias sekundes.');
+        return;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.id = 'court-replay-all-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:10012;display:flex;flex-direction:column;';
+    wrap.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;flex-shrink:0;">
+            <div style="font-weight:900;font-size:14px;color:white;"><i class="fa-solid fa-clock-rotate-left" style="color:#22c55e;"></i> Visos kameros — paskutinės ${COURT_REPLAY_SEC}s</div>
+            <div style="flex:1;"></div>
+            <button onclick="courtCloseReplayAll()" style="background:rgba(255,255,255,0.15);color:white;border:none;width:38px;height:38px;border-radius:50%;font-size:17px;cursor:pointer;">&times;</button>
+        </div>
+        <div style="flex:1;display:flex;flex-wrap:wrap;gap:8px;padding:8px;overflow:auto;align-content:center;">${cells}</div>
+    `;
+    document.body.appendChild(wrap);
+}
+
+function courtCloseReplayAll() {
+    courtReplayAllUrls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
+    courtReplayAllUrls = [];
+    document.getElementById('court-replay-all-modal')?.remove();
 }
 
 function courtOpenReplayPlayer(url, label) {
