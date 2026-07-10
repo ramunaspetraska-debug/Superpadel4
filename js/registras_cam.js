@@ -488,34 +488,46 @@ function startClip() {
     clipFromTs = clipStartTs - PREROLL_SEC * 1000;
 }
 
-let pendingClip = null; // { startedTs, fromTs, timer } — klipas, laukiantis paskutinio gabaliuko
+let pendingClip = null; // { startedTs, fromTs, thumb, timer } — klipas, laukiantis paskutinio gabaliuko
+
+// Mažas kadras iš kameros vaizdo (miniatiūra klipų sąrašui) — ~10 KB JPEG
+function captureThumb() {
+    try {
+        const video = document.getElementById('cameraFeed');
+        if (!video || video.readyState < 2) return null;
+        const c = document.createElement('canvas');
+        c.width = 160; c.height = 90;
+        c.getContext('2d').drawImage(video, 0, 0, 160, 90);
+        return c.toDataURL('image/jpeg', 0.6);
+    } catch (e) { return null; }
+}
 
 // Ralio pabaiga: iškerpame gabaliukus [ralio pradžia - 3s ... dabar] į klipą.
 // Mažas uždelsimas leidžia master'iui atiduoti paskutinį dar nepilną gabaliuką.
 function finalizeClip() {
     if (!clipActive) return;
     clipActive = false;
-    const p = { startedTs: clipStartTs, fromTs: clipFromTs, timer: null };
+    const p = { startedTs: clipStartTs, fromTs: clipFromTs, thumb: captureThumb(), timer: null };
     pendingClip = p;
     p.timer = setTimeout(() => {
         if (pendingClip === p) pendingClip = null;
-        onClipReady(p.startedTs, p.fromTs);
+        onClipReady(p.startedTs, p.fromTs, p.thumb);
     }, MASTER_CHUNK_MS + 200);
 }
 
 // Iškerpa laukiančius klipus IŠKART — kviečiama sustabdžius master, kai visi
 // gabaliukai jau surinkti, o buferis tuoj bus išvalytas.
 function flushPendingClips() {
-    if (clipActive) { clipActive = false; onClipReady(clipStartTs, clipFromTs); }
+    if (clipActive) { clipActive = false; onClipReady(clipStartTs, clipFromTs, captureThumb()); }
     if (pendingClip) {
         clearTimeout(pendingClip.timer);
         const p = pendingClip;
         pendingClip = null;
-        onClipReady(p.startedTs, p.fromTs);
+        onClipReady(p.startedTs, p.fromTs, p.thumb);
     }
 }
 
-function onClipReady(startedTs, fromTs) {
+function onClipReady(startedTs, fromTs, thumb) {
     const rallyMs = Date.now() - startedTs;
 
     // Atmetame per trumpus ralius (rallyMs — be pre-roll)
@@ -526,6 +538,7 @@ function onClipReady(startedTs, fromTs) {
     const url = URL.createObjectURL(blob);
     const entry = {
         blob, url,
+        thumb: thumb || null,
         durationSec: Math.round(rallyMs / 1000 + PREROLL_SEC), // + pre-roll
         ts: Date.now(),
         uploaded: false
@@ -726,16 +739,21 @@ function renderHighlightsModal() {
     document.body.appendChild(wrap);
 
     const box = document.getElementById('highlightsListBox');
-    box.innerHTML = highlightClips.map((h, i) => `
+    box.innerHTML = highlightClips.map((h, i) => {
+        const thumbHtml = h.thumb
+            ? `<img src="${h.thumb}" style="width:100%;height:100%;object-fit:cover;" alt="">`
+            : '<i class="fa-solid fa-play"></i>';
+        return `
         <div style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;">
-            <div onclick="openClipPlayer(highlightClips, ${i}, 'Highlight ${i+1}')" style="width:70px;height:48px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-play"></i></div>
+            <div onclick="openClipPlayer(highlightClips, ${i}, 'Highlight ${i+1}')" style="width:70px;height:48px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;cursor:pointer;flex-shrink:0;overflow:hidden;">${thumbHtml}</div>
             <div style="flex:1;min-width:0;">
                 <div style="font-weight:800;font-size:13px;color:#1e293b;">Ralis ${i + 1}</div>
                 <div style="font-size:11px;color:#64748b;">${h.durationSec}s ${h.uploaded ? '\u2022 <span style="color:#16a34a;">debesyje \u2713</span>' : ''}</div>
             </div>
-            <button onclick="saveHighlightToGallery(${i})" style="background:#2563eb;color:white;border:none;padding:8px 12px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-download"></i> Galerija</button>
-        </div>
-    `).join('');
+            <button onclick="shareLocalHighlight(${i})" title="Dalintis" style="background:#16a34a;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-share-nodes"></i></button>
+            <button onclick="saveHighlightToGallery(${i})" title="\u012e galerij\u0105" style="background:#2563eb;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-download"></i></button>
+        </div>`;
+    }).join('');
 }
 
 function saveHighlightToGallery(i) {
