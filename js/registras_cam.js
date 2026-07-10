@@ -763,6 +763,28 @@ function saveHighlightToGallery(i) {
     showToast("Highlight'as išsaugomas į galeriją!");
 }
 
+// Dalinimasis klipo FAILU per telefono meniu (WhatsApp/Messenger ir kt.).
+// Jei failų dalinimosi naršyklė nemoka — dalinamės debesies nuoroda.
+async function shareLocalHighlight(i) {
+    const h = highlightClips[i];
+    if (!h) return;
+    const ext = (camMimeType && camMimeType.includes('mp4')) ? 'mp4' : 'webm';
+    try {
+        const file = new File([h.blob], `superpadel_ralis_${i + 1}.${ext}`, { type: h.blob.type || 'video/webm' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: 'SuperPadel highlight' });
+            return;
+        }
+    } catch (e) { /* atšaukė arba nepalaiko — bandome nuorodą */ }
+    if (h.cloudUrl && navigator.share) {
+        navigator.share({ title: 'SuperPadel highlight', text: 'Pažiūrėk šį ralį! 🎾', url: h.cloudUrl }).catch(() => {});
+    } else if (h.cloudUrl && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(h.cloudUrl).then(() => showToast("Nuoroda nukopijuota!")).catch(() => {});
+    } else {
+        showToast("Dalinimasis negalimas šioje naršyklėje — atsisiųskite klipą.");
+    }
+}
+
 // ==========================================
 // FIREBASE STORAGE ĮKĖLIMAS (tik highlights)
 // ==========================================

@@ -133,6 +133,11 @@
     "padelio_config": {
       ".read": true,
       ".write": false
+    },
+
+    "padelio_live_index": {
+      ".read": true,
+      ".write": "auth != null"
     }
   }
 }

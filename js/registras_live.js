@@ -172,6 +172,9 @@ function saveStreamFromModal() {
     firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/live_stream`).set(stream).then(() => {
         // Pažymime turnyrą kaip LIVE (kad portale matytųsi 🔴)
         firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/is_live`).set(true);
+        // Viešas transliacijų indeksas — sąrašui nereikia skaityti visų kambarių
+        // (kambarių šaka skaitoma tik po vieną, todėl bendras sąrašas be indekso neveiktų)
+        firebase.database().ref(`padelio_live_index/${currentLiveRoomName}`).set({ platform: stream.platform, ts: Date.now() });
         document.getElementById('stream-setup-modal')?.remove();
         loadLiveStream(currentLiveRoomName);
         const labels = { youtube: 'YouTube', twitch: 'Twitch', facebook: 'Facebook' };
@@ -184,6 +187,7 @@ function removeStream() {
     firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/live_stream`).remove();
     firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/youtube_live`).remove();
     firebase.database().ref(`${DB_KEY}/${currentLiveRoomName}/is_live`).remove();
+    firebase.database().ref(`padelio_live_index/${currentLiveRoomName}`).remove();
     document.getElementById('stream-setup-modal')?.remove();
     loadLiveStream(currentLiveRoomName);
     showToast("Transliacija sustabdyta.");
@@ -366,24 +370,27 @@ function renderActiveStreams(filterRoom) {
     const fr = filterRoom ? String(filterRoom).toUpperCase() : null;
     box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:10px;"><i class="fa-solid fa-spinner fa-spin"></i> Ieškoma transliacijų...</div>';
 
-    // Įkeliame ABU šaltinius: Twitch/FB/YouTube (DB_KEY) ir WebRTC (broadcasts)
+    // Įkeliame ABU šaltinius: Twitch/FB/YouTube (viešas live indeksas) ir WebRTC
+    // (visos kambarių šakos skaityti negalima — taisyklės leidžia tik po vieną kambarį)
     Promise.all([
-        firebase.database().ref(DB_KEY).once('value'),
-        firebase.database().ref('padelio_webrtc_broadcasts').once('value')
-    ]).then(([dbSnap, rtcSnap]) => {
-        const data = dbSnap.val() || {};
-        const rtcData = rtcSnap.val() || {};
+        // Kiekvienas šaltinis kraunasi nepriklausomai — vienos šakos klaida
+        // (pvz. taisyklių pakeitimas) nebegriauna viso sąrašo
+        firebase.database().ref('padelio_live_index').once('value').catch(() => null),
+        firebase.database().ref('padelio_webrtc_broadcasts').once('value').catch(() => null)
+    ]).then(([idxSnap, rtcSnap]) => {
+        const data = (idxSnap && idxSnap.val()) || {};
+        const rtcData = (rtcSnap && rtcSnap.val()) || {};
         const items = [];
 
         // 1. Twitch / FB / YouTube transliacijos
         Object.keys(data).forEach(roomName => {
-            const room = data[roomName];
-            if (room && room.is_live && room.live_stream && (!fr || String(roomName).toUpperCase() === fr)) {
+            const rec = data[roomName];
+            if (rec && rec.platform && (!fr || String(roomName).toUpperCase() === fr)) {
                 items.push({
                     type: 'embed',
                     name: roomName,
-                    platform: room.live_stream.platform,
-                    format: (room.settings && room.settings.format) || 'Turnyras'
+                    platform: rec.platform,
+                    format: rec.format || 'Turnyras'
                 });
             }
         });
