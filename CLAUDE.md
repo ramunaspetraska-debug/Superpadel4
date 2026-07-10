@@ -12,11 +12,47 @@ Repo turi DU atskirus app'us ir serverio funkcijas:
 - Bendras service worker: sw.js (šaknyje) — jame integruotas ir Firebase
   messaging (foniniai push). Failas firebase-messaging-sw.js NEBENAUDOJAMAS.
 
-Backend: Firebase Realtime Database + FCM push + Cloud Functions.
+Backend: Firebase Realtime Database + FCM push + Cloud Functions (v2, Node 22).
 Projektas: padelio-turnyrai, regionas europe-west1, Blaze planas.
 Pagrindinės DB šakos: padelio_global_tournaments (turnyrai),
-padelio_global_players (žaidėjai), padelio_pro_master (kambariai),
-padelio_push_tokens, padelio_user_tournaments, padelio_room_seq.
+padelio_global_players + padelio_global_players_photos (žaidėjai ir bendros
+nuotraukos — nuotrauka įkelta bet kur matoma visur), padelio_pro_master
+(kambariai; {room}_photos vaikai), padelio_clubs (klubai: city, description,
+canOfficial, legacyOwner), padelio_club_admins, padelio_email_links
+(emailKey→playerId), padelio_user_tournaments, padelio_user_clubs (sekami
+klubai), padelio_push_tokens/padelio_push_sent, padelio_notifications,
+padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
+
+## Sistemos būsena (2026-07-10, cache v272, APP_VERSION v210 / V229, registras.css?v=14)
+- Prisijungimai: TIK el. pašto nuorodos (Firebase Auth email-link, be slaptažodžių).
+  Telefono/PIN 7030 sistemos PAŠALINTOS. emailKey() = el. paštas mažosiomis,
+  [.#$[]/] → ','. Sesija bendra tarp index.html ir registras.html (ta pati kilmė).
+- Multi-tenancy: kiekvienas klubas turi savo admin paskyras (padelio_club_admins),
+  klubo adminas mato tik savo klubo turnyrus/kambarius.
+- Oficialūs turnyrai (lygos ELO): kurti gali TIK klubai su canOfficial=true,
+  kurį suteikia tik platformos savininkas per generatoriaus „Platform statistics"
+  ekraną (superadmin — atpažįstamas pagal el. paštą, be slaptų kodų).
+- Kambariai: klubo kambariai (official) — redaguoja tik klubo adminai; draugų
+  kambariai — savininkas + pasirinktinai 4 skaitmenų PIN. E-teisėjas = turnyro
+  vėliavėlė portalo admin'e (nebe atskiras prisijungimas).
+- DB saugumo taisyklės ĮDIEGTOS serveryje (database.rules.json repo šaknyje):
+  skaitymas daugiausia viešas, rašymas auth-gated; owner taisyklės per
+  padelio_email_links lookup; padelio_user_clubs/padelio_user_tournaments —
+  tik savininkas. Atsarginė kopija: rollback taisyklės buvo scratchpad'e.
+- Registracija: neribota (max=0), Cloud Function closeRegistrations uždaro
+  ~1 val. prieš startą (regCloseMins), apkarpo iki pilnų kortų (žingsnis 4 arba
+  2 pagal formatą), atmestieji → rezervo priekis + push pranešimas.
+- Klubų puslapis portale (namelio ikona, page-home): miestų filtras, sekimas
+  be limitų („⭐ Sekti" mėlynas / „✓ Sekamas" žalias, optimistinis atnaujinimas),
+  kalendoriaus filtras „Mano klubai", laiko konfliktų įspėjimai registruojantis
+  (persidengimas arba <180 min tą pačią dieną). Profilio „Mano klubai" pildosi
+  per userClubsInit(), kuris prijungiamas updateAuthUI() metu (kiekvieną
+  prisijungimą) — NE tik puslapio starto metu.
+- Cloud Functions: tournamentReminders (priminimai dieną/valandas prieš),
+  closeRegistrations, spotOpened (atsilaisvinus vietai). Vilniaus laiko juostos
+  helper'iai funkcijose (vilniusTimeToMs ir kt.).
+- Laukiantys darbai: Ramūnas turi užpildyti savo klubo miestą per „Klubo
+  informacija"; naujiems klubams canOfficial tvirtinamas per Platform statistics.
 
 ## KRITINĖS TAISYKLĖS — VISADA
 - VISADA po BET KOKIO pakeitimo, kuris liečia cache'inamą turinį (html, js, css),
@@ -57,7 +93,14 @@ padelio_push_tokens, padelio_user_tournaments, padelio_room_seq.
 - Varikliai (logic.js): prieš liečiant generavimo logiką, paleisk simuliacinius
   testus Node aplinkoje (partnerių/varžovų balansas, raundų teisingumas).
 - UI pakeitimai: bent node --check + rankinis Ramūno testas telefone.
-- Lokali peržiūra: `python -m http.server 8000` repo šaknyje (arba npx serve).
+- Lokali peržiūra: `python -m http.server 8000` repo šaknyje (arba npx serve;
+  yra .claude/launch.json su npx serve -l 8000).
+- Testų technika: vm.runInThisContext prieš tikrus failus su naršyklės/Firebase
+  stub'ais. SVARBU: skripto viršaus let/const kintamieji gyvena bendroje
+  globalioje leksinėje aplinkoje — testuose keisk juos PLIKAIS priskyrimais
+  (currentUser = ...), NE per global.currentUser (property užgožiama).
+- functions testams: TZ=UTC. Firebase CLI Git Bash'e: MSYS_NO_PATHCONV=1
+  (kitaip „Path must begin with /"); STDIN neveikia Windows — naudok --data.
 
 ## Commit stilius
 - Trumpos aiškios žinutės lietuviškai arba angliškai, pvz.:
