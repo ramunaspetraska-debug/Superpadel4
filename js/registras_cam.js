@@ -4,18 +4,22 @@
 //
 // Architektūra (mobiliam pritaikyta, be sunkių bibliotekų):
 //
-//  1. PILNAS ĮRAŠAS  — viena nepertraukiama MediaRecorder sesija visą matčą.
-//                      Naudojama "Atsisiųsti pilną įrašą".
+//  1. VIENAS BENDRAS ĮRAŠINĖTOJAS (master) — vienintelė MediaRecorder sesija
+//     1s gabaliukais aptarnauja VISKĄ: pilną įrašą, highlight klipus (su
+//     pre-roll) ir 15s atsukimą. Vienas recorderis vietoj keturių = gerokai
+//     mažiau baterijos ir kaitimo, stabilesni klipai (vienas šaltinis).
+//     Režimai: 'record' — kaupia viską (pilnam įrašui);
+//              'buffer' — laiko tik paskutines ~17s (vien atsukimui).
 //
 //  2. JUDĖJIMO VARIKLIS — kadrų skirtumo analizė (frame differencing) ant mažo
-//                      paslėpto canvas (~128x72), ~10 FPS. Lengvas telefonui,
-//                      veikia iš bet kokio kampo (ypač iš viršaus virš korto).
+//     paslėpto canvas (~128x72), ~10 FPS. Lengvas telefonui, veikia iš bet
+//     kokio kampo (ypač iš viršaus virš korto).
 //
-//  3. HIGHLIGHT KLIPAI — atskira MediaRecorder sesija, aktyvi TIK ralio metu.
-//                      Kiekvienas ralis = savarankiškas 15-25s WebM/MP4 klipas.
+//  3. HIGHLIGHT KLIPAI — iškarpomi iš bendro buferio pagal laiką:
+//     ralio pradžia - 3s (servas) ... ralio pabaiga. Jokio atskiro recorderio.
 //
-//  4. SAUGOJIMAS     — tik maži highlight klipai (~5MB) keliami į Firebase Storage,
-//                      susieti su turnyro ID. Pilnas įrašas lieka telefone.
+//  4. SAUGOJIMAS — tik maži highlight klipai (~5MB) keliami į Firebase Storage,
+//     susieti su turnyro ID. Pilnas įrašas lieka telefone.
 //
 //  5. "MAČAS BE PRASTOVŲ" — highlight klipai grojami iš eilės peržiūros lange.
 
@@ -24,17 +28,17 @@ let camStream = null;
 let camQuality = '720';
 let camMimeType = '';
 
-let fullRecorder = null;
-let fullChunks = [];
+// Bendras įrašinėtojas (master)
+let masterRecorder = null;
+let masterMode = 'off';        // 'off' | 'buffer' | 'record'
+let masterHeader = null;       // pirmas gabaliukas su WebM/MP4 antrašte (būtinas atkūrimui)
+let masterChunks = [];         // [{ blob, ts }] — 1s gabaliukai
+let masterStopCallback = null; // kviečiamas po recorderio flush'o sustabdant
 
-let clipRecorder = null;
-let clipChunks = [];
-let clipStartTs = 0;
-
-// Pre-roll buferis — nuolat sukasi, laiko paskutines ~4s, kad pagautume servą
-let bufferRecorder = null;
-let bufferChunks = [];        // [{ blob, ts }]
-let bufferHeaderChunk = null; // pirmas gabaliukas su WebM antrašte (būtinas atkūrimui)
+// Aktyvaus ralio žymos (klipas kerpamas iš masterChunks pagal laiką)
+let clipStartTs = 0;           // kada prasidėjo ralis (be pre-roll)
+let clipFromTs = 0;            // nuo kada imti gabaliukus (su pre-roll)
+let clipActive = false;
 
 let motionCanvas = null;
 let motionCtx = null;
@@ -54,9 +58,6 @@ let highlightClips = [];
 
 // ---------- INSTANT REPLAY (15s atsukimas) ----------
 let replayEnabled = false;
-let replayRecorder = null;
-let replayChunks = [];          // [{ blob, ts }]
-let replayHeader = null;        // pirmas gabaliukas su WebM antrašte
 const REPLAY_SEC = 15;
 
 let camTournamentId = null;
@@ -71,7 +72,7 @@ const RALLY_END_MS = 2500;           // ilgesnė pauzė prieš užbaigiant (rali
 const CLIP_MIN_MS = 3000;
 const CLIP_MAX_MS = 35000;
 const PREROLL_SEC = 3;               // kiek sekundžių prieš ralį įtraukti (servui)
-const PREBUFFER_CHUNK_MS = 1000;     // buferio gabaliuko dydis
+const MASTER_CHUNK_MS = 1000;        // bendro buferio gabaliuko dydis
 
 // ==========================================
 // KAMEROS PALEIDIMAS / SUSTABDYMAS
@@ -115,7 +116,8 @@ async function startCamera() {
         const hint = document.getElementById('cameraHintText');
         if (hint) hint.style.display = 'block';
         detectTournamentContext();
-        if (replayEnabled) { stopReplayBuffer(); startReplayBuffer(); }
+        // Naujas kameros srautas — jei atsukimas įjungtas, buferis perkuriamas ant naujo srauto
+        if (replayEnabled && !recordingActive) restartMasterRecorder('buffer');
         camRequestWakeLock();
     } catch (err) {
         console.error("Camera error:", err);
@@ -127,8 +129,8 @@ async function startCamera() {
 function stopCamera() {
     // Transliacijos metu kameros NESTABDOM — kitaip nutrūktų srautas (pvz. perėjus į kitą skirtuką).
     if (typeof rtcIsBroadcasting !== 'undefined' && rtcIsBroadcasting) return;
-    stopReplayBuffer();
     if (recordingActive) stopSmartRecording();
+    stopMasterRecorder();
     if (camStream) {
         camStream.getTracks().forEach(t => t.stop());
         camStream = null;
@@ -146,6 +148,7 @@ function setCamQuality(q) {
     document.getElementById('camQ720')?.classList.toggle('active', q === '720');
     document.getElementById('camQ1080')?.classList.toggle('active', q === '1080');
     if (camStream) {
+        stopMasterRecorder(); // buferis (jei suktas) perkuriamas startCamera() metu ant naujo srauto
         camStream.getTracks().forEach(t => t.stop());
         camStream = null;
         startCamera();
@@ -168,6 +171,72 @@ function pickMimeType() {
 }
 
 // ==========================================
+// BENDRAS ĮRAŠINĖTOJAS (master) — vienintelė MediaRecorder sesija
+// ==========================================
+
+// mode: 'record' — kaupia viską (pilnam įrašui); 'buffer' — tik paskutines REPLAY_SEC+2s
+function startMasterRecorder(mode) {
+    if (!camStream || masterRecorder) return false;
+    camMimeType = camMimeType || pickMimeType();
+    if (!camMimeType) return false;
+    masterMode = mode;
+    masterHeader = null;
+    masterChunks = [];
+    try {
+        const bitrate = camQuality === '1080' ? 4000000 : (camQuality === '480' ? 1200000 : 2500000);
+        masterRecorder = new MediaRecorder(camStream, { mimeType: camMimeType, videoBitsPerSecond: bitrate });
+    } catch (e) {
+        try { masterRecorder = new MediaRecorder(camStream); } catch (e2) { masterRecorder = null; masterMode = 'off'; return false; }
+    }
+    masterRecorder.ondataavailable = (e) => {
+        if (!e.data || e.data.size === 0) return;
+        // Pirmas gabaliukas turi failo antraštę — saugomas atskirai (reikalingas kiekvienam iškirpimui)
+        if (!masterHeader) { masterHeader = e.data; return; }
+        masterChunks.push({ blob: e.data, ts: Date.now() });
+        if (masterMode === 'buffer') {
+            const cutoff = Date.now() - (REPLAY_SEC + 2) * 1000;
+            while (masterChunks.length > 0 && masterChunks[0].ts < cutoff) masterChunks.shift();
+        }
+    };
+    masterRecorder.onstop = () => {
+        masterRecorder = null;
+        masterMode = 'off';
+        const cb = masterStopCallback;
+        masterStopCallback = null;
+        if (cb) cb();
+    };
+    masterRecorder.start(MASTER_CHUNK_MS);
+    return true;
+}
+
+// Sustabdo master; afterStop kviečiamas kai paskutinis gabaliukas jau surinktas
+function stopMasterRecorder(afterStop) {
+    if (masterRecorder && masterRecorder.state !== 'inactive') {
+        masterStopCallback = afterStop || null;
+        try { masterRecorder.stop(); } catch (e) {
+            masterRecorder = null; masterMode = 'off'; masterStopCallback = null;
+            if (afterStop) afterStop();
+        }
+    } else {
+        masterRecorder = null;
+        masterMode = 'off';
+        if (afterStop) afterStop();
+    }
+}
+
+function restartMasterRecorder(mode) {
+    stopMasterRecorder(() => { startMasterRecorder(mode); });
+}
+
+// Iškerpa gabaliukus nuo fromTs (imtinai) iki dabar į vieną grojamą blob'ą
+function sliceMasterBlob(fromTs) {
+    if (!masterHeader) return null;
+    const parts = masterChunks.filter(c => c.ts >= fromTs).map(c => c.blob);
+    if (parts.length === 0) return null;
+    return new Blob([masterHeader, ...parts], { type: camMimeType || 'video/webm' });
+}
+
+// ==========================================
 // IŠMANUSIS FILMAVIMAS
 // ==========================================
 
@@ -178,50 +247,20 @@ function toggleRecording() {
 
 function startSmartRecording() {
     if (!camStream) { showToast("Kamera dar neparuošta."); return; }
-    camMimeType = pickMimeType();
+    camMimeType = camMimeType || pickMimeType();
     if (!camMimeType) { alert("Šis įrenginys nepalaiko vaizdo įrašymo naršyklėje."); return; }
 
-    fullChunks = [];
     highlightClips.forEach(h => { if (h.url) URL.revokeObjectURL(h.url); });
     highlightClips = [];
+    clipActive = false;
+    if (pendingClip) { clearTimeout(pendingClip.timer); pendingClip = null; }
     rallyState = 'idle';
     rallyHighMotionFrames = 0;
     rallyLowMotionStart = 0;
     motionPrevFrame = null;
 
-    const bitrate = camQuality === '1080' ? 4000000 : 2500000;
-    try {
-        fullRecorder = new MediaRecorder(camStream, { mimeType: camMimeType, videoBitsPerSecond: bitrate });
-    } catch (e) {
-        fullRecorder = new MediaRecorder(camStream);
-    }
-    fullRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunks.push(e.data); };
-    fullRecorder.start(2000);
-
-    // Pre-roll buferis — atskira sesija su 1s gabaliukais, laikoma tik paskutinė kelių sekundžių istorija
-    bufferChunks = [];
-    bufferHeaderChunk = null;
-    try {
-        const br = camQuality === '1080' ? 3500000 : 2200000;
-        bufferRecorder = new MediaRecorder(camStream, { mimeType: camMimeType, videoBitsPerSecond: br });
-        bufferRecorder.ondataavailable = (e) => {
-            if (!e.data || e.data.size === 0) return;
-            // Pirmas gabaliukas turi WebM antraštę — saugome atskirai
-            if (!bufferHeaderChunk) {
-                bufferHeaderChunk = e.data;
-            } else {
-                bufferChunks.push({ blob: e.data, ts: Date.now() });
-                // Laikome tik paskutinių PREROLL_SEC+2 sekundžių gabaliukus
-                const cutoff = Date.now() - (PREROLL_SEC + 2) * 1000;
-                while (bufferChunks.length > 0 && bufferChunks[0].ts < cutoff) {
-                    bufferChunks.shift();
-                }
-            }
-        };
-        bufferRecorder.start(PREBUFFER_CHUNK_MS);
-    } catch (e) {
-        bufferRecorder = null;
-    }
+    // Vienas bendras įrašinėtojas viskam — jei sukosi atsukimo buferis, perkuriam švariai
+    restartMasterRecorder('record');
 
     recordingActive = true;
     recStartTime = Date.now();
@@ -250,24 +289,16 @@ function stopSmartRecording() {
     if (motionRAF) cancelAnimationFrame(motionRAF);
     motionRAF = null;
 
-    if (clipRecorder && clipRecorder.state !== 'inactive') {
-        finalizeClip();
-    }
-
-    // Sustabdome pre-roll buferį
-    if (bufferRecorder && bufferRecorder.state !== 'inactive') {
-        try { bufferRecorder.stop(); } catch (e) {}
-    }
-    bufferRecorder = null;
-    bufferChunks = [];
-    bufferHeaderChunk = null;
-
-    if (fullRecorder && fullRecorder.state !== 'inactive') {
-        fullRecorder.onstop = onFullRecordingStopped;
-        fullRecorder.stop();
-    } else {
+    // Sustabdome master, sulaukiame paskutinio gabaliuko, tada iškerpame
+    // nebaigtus klipus ir sudedame pilną įrašą. Jei atsukimas lieka įjungtas —
+    // buferis paleidžiamas iš naujo.
+    stopMasterRecorder(() => {
+        flushPendingClips();
         onFullRecordingStopped();
-    }
+        masterHeader = null;
+        masterChunks = [];
+        if (replayEnabled && camStream) startMasterRecorder('buffer');
+    });
 
     const btn = document.getElementById('recordBtn');
     const indicator = document.getElementById('recIndicator');
@@ -386,52 +417,54 @@ function endRally(now) {
 // HIGHLIGHT KLIPO ĮRAŠYMAS
 // ==========================================
 
+// Ralio pradžia: pažymime, nuo kada kirpti (su pre-roll — servas prieš ralį).
+// Jokio naujo recorderio — klipas vėliau iškerpamas iš bendro buferio.
 function startClip() {
-    if (!camStream || clipRecorder) return;
-    clipChunks = [];
+    if (clipActive) return;
+    clipActive = true;
     clipStartTs = Date.now();
-
-    // Į klipą iškart įdedame pre-roll buferį (servas prieš ralį):
-    // antraštės gabaliukas + paskutinių ~3s gabaliukai
-    if (bufferHeaderChunk) {
-        clipChunks.push(bufferHeaderChunk);
-        const cutoff = Date.now() - PREROLL_SEC * 1000;
-        bufferChunks.forEach(c => { if (c.ts >= cutoff) clipChunks.push(c.blob); });
-    }
-
-    try {
-        const br = camQuality === '1080' ? 3500000 : 2200000;
-        clipRecorder = new MediaRecorder(camStream, { mimeType: camMimeType, videoBitsPerSecond: br });
-    } catch (e) {
-        try { clipRecorder = new MediaRecorder(camStream); } catch (e2) { clipRecorder = null; return; }
-    }
-    clipRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) clipChunks.push(e.data); };
-    clipRecorder.onstop = onClipReady;
-    clipRecorder.start();
+    clipFromTs = clipStartTs - PREROLL_SEC * 1000;
 }
 
+let pendingClip = null; // { startedTs, fromTs, timer } — klipas, laukiantis paskutinio gabaliuko
+
+// Ralio pabaiga: iškerpame gabaliukus [ralio pradžia - 3s ... dabar] į klipą.
+// Mažas uždelsimas leidžia master'iui atiduoti paskutinį dar nepilną gabaliuką.
 function finalizeClip() {
-    if (clipRecorder && clipRecorder.state !== 'inactive') {
-        clipRecorder.stop();
+    if (!clipActive) return;
+    clipActive = false;
+    const p = { startedTs: clipStartTs, fromTs: clipFromTs, timer: null };
+    pendingClip = p;
+    p.timer = setTimeout(() => {
+        if (pendingClip === p) pendingClip = null;
+        onClipReady(p.startedTs, p.fromTs);
+    }, MASTER_CHUNK_MS + 200);
+}
+
+// Iškerpa laukiančius klipus IŠKART — kviečiama sustabdžius master, kai visi
+// gabaliukai jau surinkti, o buferis tuoj bus išvalytas.
+function flushPendingClips() {
+    if (clipActive) { clipActive = false; onClipReady(clipStartTs, clipFromTs); }
+    if (pendingClip) {
+        clearTimeout(pendingClip.timer);
+        const p = pendingClip;
+        pendingClip = null;
+        onClipReady(p.startedTs, p.fromTs);
     }
 }
 
-function onClipReady() {
-    const rallyMs = Date.now() - clipStartTs;
-    clipRecorder = null;
+function onClipReady(startedTs, fromTs) {
+    const rallyMs = Date.now() - startedTs;
 
     // Atmetame per trumpus ralius (rallyMs — be pre-roll)
-    if (rallyMs < CLIP_MIN_MS || clipChunks.length === 0) {
-        clipChunks = [];
-        return;
-    }
+    if (rallyMs < CLIP_MIN_MS) return;
 
-    const blob = new Blob(clipChunks, { type: camMimeType || 'video/webm' });
-    clipChunks = [];
+    const blob = sliceMasterBlob(fromTs);
+    if (!blob) return;
     const url = URL.createObjectURL(blob);
     const entry = {
         blob, url,
-        durationSec: Math.round((rallyMs / 1000) + PREROLL_SEC), // + pre-roll
+        durationSec: Math.round(rallyMs / 1000 + PREROLL_SEC), // + pre-roll
         ts: Date.now(),
         uploaded: false
     };
@@ -455,7 +488,9 @@ function updateHighlightCounter() {
 
 function onFullRecordingStopped() {
     const totalSec = Math.floor((Date.now() - recStartTime) / 1000);
-    const blob = fullChunks.length ? new Blob(fullChunks, { type: camMimeType || 'video/webm' }) : null;
+    const blob = (masterHeader && masterChunks.length)
+        ? new Blob([masterHeader, ...masterChunks.map(c => c.blob)], { type: camMimeType || 'video/webm' })
+        : null;
     window._fullMatchBlob = blob;
 
     const sizeMB = blob ? (blob.size / (1024 * 1024)).toFixed(0) : '0';
@@ -557,54 +592,24 @@ function toggleInstantReplay() {
     const showBtn = document.getElementById('instantReplayBtn');
     if (replayEnabled) {
         if (!camStream) { showToast("Pirmiausia įjunkite kamerą."); replayEnabled = false; return; }
-        startReplayBuffer();
+        // Jei įrašymas jau vyksta — atsukimas ims vaizdą iš to paties bendro buferio
+        if (!recordingActive) startMasterRecorder('buffer');
         if (btn) { btn.style.background = '#16a34a'; btn.style.borderColor = '#16a34a'; btn.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Pakartojimas: ĮJ'; }
         if (showBtn) showBtn.style.display = 'inline-flex';
         showToast("Pakartojimas įjungtas — kaupiamos paskutinės " + REPLAY_SEC + "s");
     } else {
-        stopReplayBuffer();
+        // Buferį stabdome tik jei jis suktas vien atsukimui (įrašymo neliečiam)
+        if (!recordingActive) stopMasterRecorder();
         if (btn) { btn.style.background = '#0f172a'; btn.style.borderColor = '#334155'; btn.innerHTML = '<i class="fa-solid fa-clock-rotate-left"></i> Pakartojimas: IŠJ'; }
         if (showBtn) showBtn.style.display = 'none';
         showToast("Pakartojimas išjungtas");
     }
 }
 
-// Nepertraukiamas paskutinių ~17s buferis (atskiras nuo highlight sistemos)
-function startReplayBuffer() {
-    if (!camStream || replayRecorder) return;
-    const mime = camMimeType || pickMimeType();
-    if (!mime) return;
-    camMimeType = mime;
-    replayChunks = [];
-    replayHeader = null;
-    try {
-        const br = camQuality === '1080' ? 3500000 : (camQuality === '480' ? 800000 : 2200000);
-        replayRecorder = new MediaRecorder(camStream, { mimeType: mime, videoBitsPerSecond: br });
-        replayRecorder.ondataavailable = (e) => {
-            if (!e.data || e.data.size === 0) return;
-            // Pirmas gabaliukas turi WebM antraštę — saugome atskirai
-            if (!replayHeader) { replayHeader = e.data; return; }
-            replayChunks.push({ blob: e.data, ts: Date.now() });
-            const cutoff = Date.now() - (REPLAY_SEC + 2) * 1000;
-            while (replayChunks.length > 0 && replayChunks[0].ts < cutoff) replayChunks.shift();
-        };
-        replayRecorder.start(1000);
-    } catch (e) { replayRecorder = null; console.warn("replay buffer:", e); }
-}
-
-function stopReplayBuffer() {
-    if (replayRecorder) { try { replayRecorder.stop(); } catch(e){} replayRecorder = null; }
-    replayChunks = [];
-    replayHeader = null;
-}
-
 function showInstantReplay() {
     if (!replayEnabled) { showToast("Pirmiausia įjunkite pakartojimą."); return; }
-    if (!replayHeader || replayChunks.length === 0) { showToast("Dar kaupiamas vaizdas — palaukite kelias sekundes."); return; }
-    const cutoff = Date.now() - REPLAY_SEC * 1000;
-    const recent = replayChunks.filter(c => c.ts >= cutoff).map(c => c.blob);
-    if (recent.length === 0) { showToast("Per mažai vaizdo."); return; }
-    const blob = new Blob([replayHeader, ...recent], { type: camMimeType });
+    const blob = sliceMasterBlob(Date.now() - REPLAY_SEC * 1000);
+    if (!blob) { showToast("Dar kaupiamas vaizdas — palaukite kelias sekundes."); return; }
     openReplayPlayer(URL.createObjectURL(blob));
 }
 
