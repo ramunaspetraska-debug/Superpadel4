@@ -17,14 +17,34 @@
 //   - Naudojami nemokami Google STUN serveriai (~70% atvejų pakanka)
 //   - Jei skirtingi mobilūs tinklai neprisijungia — reikės TURN serverio (vėliau)
 
-// ICE serveriai — nemokami Google STUN
-const WEBRTC_ICE_SERVERS = {
+// ICE serveriai: Google STUN + nemokamas Open Relay TURN. TURN reikalingas, kai
+// tiesioginis ryšys neįmanomas (pvz. siuntėjas ir žiūrovas skirtinguose mobiliuose
+// tinkluose) — anksčiau tokie žiūrovai tiesiog neprisijungdavo.
+// Sąrašą galima pakeisti be kodo per DB: padelio_config/iceServers = [ {urls, username, credential}, ... ]
+let WEBRTC_ICE_SERVERS = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' }
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
     ]
 };
+
+// Jei DB nurodyti savi ICE serveriai (pvz. nuosavas TURN) — jie pakeičia numatytuosius
+(function rtcLoadIceConfig() {
+    let tries = 0;
+    const tick = setInterval(() => {
+        tries++;
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length) {
+            clearInterval(tick);
+            firebase.database().ref('padelio_config/iceServers').once('value').then(snap => {
+                const arr = snap.val();
+                if (Array.isArray(arr) && arr.length) WEBRTC_ICE_SERVERS = { iceServers: arr };
+            }).catch(() => {});
+        } else if (tries > 30) { clearInterval(tick); }
+    }, 500);
+})();
 
 // ---------- SIUNTĖJO (žaidėjo) BŪSENA ----------
 let rtcBroadcastId = null;       // unikalus transliacijos ID
@@ -177,13 +197,17 @@ async function handleViewerOffer(viewerId, viewerData) {
     // Pridedame kameros srautą
     camStream.getTracks().forEach(track => pc.addTrack(track, camStream));
 
-    // Bitrate riba pagal pasirinktą kokybę (duomenų taupymui per mobilų internetą)
+    // Bitrate riba pagal pasirinktą kokybę (duomenų taupymui per mobilų internetą).
+    // Silpstant ryšiui WebRTC pats mažina kokybę — nurodome aukoti raišką, o ne
+    // sklandumą (sportui svarbiau matyti judesį), ir pažymime srautą kaip „judesio".
     try {
+        camStream.getVideoTracks().forEach(t => { try { t.contentHint = 'motion'; } catch (e2) {} });
         const cap = (typeof camQuality !== 'undefined') ? ({ '480': 700000, '720': 1800000, '1080': 3500000 }[camQuality] || 1800000) : 1800000;
         pc.getSenders().filter(s => s.track && s.track.kind === 'video').forEach(s => {
             const p = s.getParameters();
             if (!p.encodings || !p.encodings.length) p.encodings = [{}];
             p.encodings[0].maxBitrate = cap;
+            p.degradationPreference = 'maintain-framerate';
             s.setParameters(p).catch(e => console.warn("setParameters:", e));
         });
     } catch (e) { console.warn("bitrate cap:", e); }
@@ -277,7 +301,8 @@ function rtcShowBroadcastStatus(isPrivate, room) {
             <div style="font-size:10px; color:#94a3b8;">Privatus PIN — žiūrovui įvesti</div>
             <div style="font-size:24px; font-weight:900; letter-spacing:4px; color:#22c55e;">${rtcBroadcastPin}</div>
         </div>` : '<div style="font-size:11px; color:#94a3b8; margin:6px 0 10px;">Matoma „Korto peržiūroje" ir transliacijų sąraše</div>'}
-        <div style="font-size:12px; color:#cbd5e1; margin-bottom:10px;"><i class="fa-solid fa-eye"></i> Žiūri: <span id="rtcViewerCountDisplay">0</span></div>
+        <div style="font-size:12px; color:#cbd5e1; margin-bottom:8px;"><i class="fa-solid fa-eye"></i> Žiūri: <span id="rtcViewerCountDisplay">0</span></div>
+        <div style="font-size:10px; color:#fbbf24; margin-bottom:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Neužrakinkite telefono ir neuždarykite programėlės — transliacija nutrūks.</div>
         <button onclick="stopWebRTCBroadcast()" style="background:#ef4444; color:white; border:none; padding:9px 16px; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; width:100%;">Sustabdyti transliaciją</button>
     `;
     document.body.appendChild(box);

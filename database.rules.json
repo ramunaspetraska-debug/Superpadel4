@@ -128,6 +128,11 @@
     "padelio_highlights": {
       ".read": true,
       ".write": "auth != null"
+    },
+
+    "padelio_config": {
+      ".read": true,
+      ".write": false
     }
   }
 }
