@@ -314,10 +314,16 @@
             </div>
             <div class="cam-controls" id="camControls">
                 <div class="cam-info" id="camInfoText" style="text-align: center; color: #a0aec0; font-size: 13px;">DI automatiškai atpažins ralius ir sukurs geriausių momentų klipus. Tiesiog paspauskite įrašymą.</div>
-                <div style="display:flex; justify-content:center; gap:8px; margin-bottom:14px;">
+                <div style="display:flex; justify-content:center; gap:8px; margin-bottom:10px;">
                     <button type="button" id="camQ480" class="cam-q-btn" onclick="setCamQuality('480')">480p · taupo duomenis</button>
                     <button type="button" id="camQ720" class="cam-q-btn active" onclick="setCamQuality('720')">720p HD</button>
                     <button type="button" id="camQ1080" class="cam-q-btn" onclick="setCamQuality('1080')">1080p Full HD</button>
+                </div>
+                <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+                    <span style="font-size:11px; color:#64748b; font-weight:700;">Ralių gaudymas:</span>
+                    <button type="button" id="camSensZemas" class="cam-q-btn" onclick="setCamSensitivity('zemas')" title="Tik ryškūs raliai — mažiau klipų">Ramus</button>
+                    <button type="button" id="camSensVidutinis" class="cam-q-btn active" onclick="setCamSensitivity('vidutinis')" title="Subalansuotas — tinka daugumai kortų">Standartinis</button>
+                    <button type="button" id="camSensAukstas" class="cam-q-btn" onclick="setCamSensitivity('aukstas')" title="Gaudo ir švelnesnius judesius — daugiau klipų">Jautrus</button>
                 </div>
                 <div class="record-btn" id="recordBtn" onclick="toggleRecording()"><div class="record-btn-inner"></div></div>
                 <div style="display:flex; justify-content:center; gap:8px; margin-top:14px; flex-wrap:wrap;">

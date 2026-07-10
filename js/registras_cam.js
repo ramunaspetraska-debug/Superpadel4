@@ -65,8 +65,46 @@ let camTournamentPlayers = [];
 
 // ---------- KONSTANTOS (derinama pagal kortą/apšvietimą) ----------
 const MOTION_PIXEL_DELTA = 24;       // mažesnis = jautresnis judesiui
-const MOTION_RATIO_TRIGGER = 0.035;  // mažesnis = lengviau aptinka ralį
+const MOTION_RATIO_TRIGGER = 0.035;  // atsarginis slenkstis (naudojamas ir kaip „vidutinis")
 const MOTION_FPS = 10;
+
+// ---------- JAUTRUMAS IR AUTOMATINĖ KALIBRACIJA ----------
+// Vartotojo pasirenkamas ralių gaudymo jautrumas + pirmųjų sekundžių fono
+// matavimas: slenkstis pakeliamas virš natūralaus kadro triukšmo (šešėliai,
+// žiūrovai už korto), kad skirtingose salėse veiktų vienodai.
+const SENSITIVITY_TRIGGERS = { zemas: 0.06, vidutinis: 0.035, aukstas: 0.02 };
+const CALIBRATION_MS = 4000;         // kiek laiko matuojamas fonas įrašo pradžioje
+let camSensitivity = 'vidutinis';
+try { camSensitivity = localStorage.getItem('camSensitivity') || 'vidutinis'; } catch (e) {}
+if (!SENSITIVITY_TRIGGERS[camSensitivity]) camSensitivity = 'vidutinis';
+let motionTriggerLevel = SENSITIVITY_TRIGGERS[camSensitivity];
+let motionCalibrateUntil = 0;        // performance.now() riba, iki kada kalibruojama
+let motionBaselineSamples = [];
+let motionBaselineAvg = 0;
+
+function camApplyTriggerLevel() {
+    const userTrig = SENSITIVITY_TRIGGERS[camSensitivity] || MOTION_RATIO_TRIGGER;
+    // fonas * 2.5 + nedidelė atsarga — bet niekada ne žemiau vartotojo pasirinkimo
+    motionTriggerLevel = Math.max(userTrig, motionBaselineAvg * 2.5 + 0.008);
+}
+
+function setCamSensitivity(s) {
+    if (!SENSITIVITY_TRIGGERS[s]) return;
+    camSensitivity = s;
+    try { localStorage.setItem('camSensitivity', s); } catch (e) {}
+    syncSensitivityButtons();
+    camApplyTriggerLevel();
+    const labels = { zemas: "Ramus — tik ryškūs raliai", vidutinis: "Standartinis gaudymas", aukstas: "Jautrus — gaudo daugiau" };
+    showToast(labels[s]);
+}
+
+function syncSensitivityButtons() {
+    document.getElementById('camSensZemas')?.classList.toggle('active', camSensitivity === 'zemas');
+    document.getElementById('camSensVidutinis')?.classList.toggle('active', camSensitivity === 'vidutinis');
+    document.getElementById('camSensAukstas')?.classList.toggle('active', camSensitivity === 'aukstas');
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncSensitivityButtons);
+else syncSensitivityButtons();
 const RALLY_START_FRAMES = 2;        // greičiau pradeda ralį
 const RALLY_END_MS = 2500;           // ilgesnė pauzė prieš užbaigiant (ralis nepertrūksta)
 const CLIP_MIN_MS = 3000;
@@ -265,6 +303,12 @@ function startSmartRecording() {
     recordingActive = true;
     recStartTime = Date.now();
 
+    // Fono kalibracija: pirmas kelias sekundes matuojamas natūralus kadro triukšmas
+    motionBaselineSamples = [];
+    motionBaselineAvg = 0;
+    motionCalibrateUntil = performance.now() + CALIBRATION_MS;
+    camApplyTriggerLevel();
+
     initMotionCanvas();
     motionLoop();
 
@@ -368,9 +412,27 @@ function computeMotionScore(frame) {
 }
 
 function updateRallyState(score, now) {
-    const moving = score > MOTION_RATIO_TRIGGER;
     const dot = document.getElementById('rallyStatusDot');
     const txt = document.getElementById('rallyStatusText');
+
+    // Kalibracijos fazė: kaupiam foninius pavyzdžius, ralių dar negaudom
+    if (motionCalibrateUntil && now < motionCalibrateUntil) {
+        motionBaselineSamples.push(score);
+        if (dot) dot.style.background = '#f59e0b';
+        if (txt) txt.innerText = 'Kalibruojama...';
+        return;
+    }
+    if (motionCalibrateUntil) {
+        motionCalibrateUntil = 0;
+        motionBaselineAvg = motionBaselineSamples.length
+            ? motionBaselineSamples.reduce((a, b) => a + b, 0) / motionBaselineSamples.length
+            : 0;
+        camApplyTriggerLevel();
+        if (dot) dot.style.background = '#22c55e';
+        if (txt) txt.innerText = 'Pauzė';
+    }
+
+    const moving = score > motionTriggerLevel;
 
     if (rallyState === 'idle') {
         if (moving) {
