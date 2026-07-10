@@ -134,8 +134,7 @@ function courtToggleSource(id, name, isPrivate) {
     if (isPrivate) {
         pin = prompt(`"${name}" transliacija privati.\n\nĮveskite PIN kodą:`);
         if (!pin) return;
-        const known = courtLastData[id] && courtLastData[id].pin;
-        if (known && pin !== known) { if (typeof showToast === 'function') showToast("Neteisingas PIN kodas."); return; }
+        // PIN tikrina siuntėjas — neteisingas PIN grąžins „rejected" ir plytelė parodys klaidą
     }
     courtAddTile(id, name, pin, isPrivate);
     courtRefreshSources();
@@ -238,12 +237,24 @@ function courtTileConnect(tile) {
         try {
             const offer = await pc.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
             await pc.setLocalDescription(offer);
-            firebase.database().ref(`${RTC_SIGNAL_KEY}/${bid}/viewers/${tile.viewerId}/offer`).set({ type: offer.type, sdp: offer.sdp });
+            // offer + pin vienu update'u — PIN tikrina siuntėjas (žr. registras_webrtc.js)
+            const initData = { offer: { type: offer.type, sdp: offer.sdp } };
+            if (tile.pin) initData.pin = String(tile.pin);
+            firebase.database().ref(`${RTC_SIGNAL_KEY}/${bid}/viewers/${tile.viewerId}`).update(initData);
 
             firebase.database().ref(`${RTC_SIGNAL_KEY}/${bid}/viewers/${tile.viewerId}/answer`).on('value', (snap) => {
                 const a = snap.val();
                 if (a && tile.pc && !tile.pc.currentRemoteDescription) {
                     tile.pc.setRemoteDescription(new RTCSessionDescription(a)).catch(e => console.warn('court setRemote:', e));
+                }
+            });
+
+            // Siuntėjas atmetė (neteisingas PIN) — nebebandome jungtis
+            firebase.database().ref(`${RTC_SIGNAL_KEY}/${bid}/viewers/${tile.viewerId}/rejected`).on('value', (snap) => {
+                if (snap.val() === true) {
+                    tile.shouldReconnect = false;
+                    const st = document.getElementById('court-status-' + bid);
+                    if (st) { st.style.display = 'flex'; st.innerHTML = '<i class="fa-solid fa-lock"></i>&nbsp; Neteisingas PIN'; }
                 }
             });
 

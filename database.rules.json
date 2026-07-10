@@ -127,7 +127,7 @@
 
     "padelio_highlights": {
       ".read": true,
-      ".write": true
+      ".write": "auth != null"
     }
   }
 }

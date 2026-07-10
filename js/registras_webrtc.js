@@ -128,12 +128,13 @@ async function startWebRTCBroadcast(isPrivate) {
     const roomName = (typeof camTournamentId !== 'undefined' && camTournamentId) ? camTournamentId : 'transliacija';
     const broadcasterName = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.name : 'Žaidėjas';
 
-    // Registruojame transliaciją viešame sąraše (žiūrovai matys)
+    // Registruojame transliaciją viešame sąraše (žiūrovai matys).
+    // SVARBU: PIN į debesį NErašomas — jį žino tik šis telefonas, o žiūrovo
+    // atsiųstą PIN siuntėjas patikrina pats prieš duodamas vaizdą (handleViewerOffer).
     firebase.database().ref(`${RTC_BROADCAST_KEY}/${rtcBroadcastId}`).set({
         room: roomName,
         broadcaster: broadcasterName,
         isPrivate: !!isPrivate,
-        pin: rtcBroadcastPin,            // PIN tikrinamas serveryje per taisykles (kol kas kliente)
         startedAt: Date.now(),
         viewers: 0
     });
@@ -145,7 +146,7 @@ async function startWebRTCBroadcast(isPrivate) {
         const viewerId = snap.key;
         const viewerData = snap.val();
         if (viewerData && viewerData.offer && !rtcPeerConnections[viewerId]) {
-            handleViewerOffer(viewerId, viewerData.offer);
+            handleViewerOffer(viewerId, viewerData);
         }
     });
 
@@ -162,7 +163,14 @@ function rtcCloseViewerPC(viewerId) {
 }
 
 // Kai prisijungia žiūrovas — sukuriame jam atskirą peer connection
-async function handleViewerOffer(viewerId, offer) {
+async function handleViewerOffer(viewerId, viewerData) {
+    // PIN patikra SIUNTĖJO pusėje: be teisingo PIN vaizdo srautas neduodamas
+    // (anksčiau PIN buvo tikrinamas tik žiūrovo ekrane — apeinama techniškai).
+    if (rtcBroadcastPin && String(viewerData.pin || '') !== String(rtcBroadcastPin)) {
+        firebase.database().ref(`${RTC_SIGNAL_KEY}/${rtcBroadcastId}/viewers/${viewerId}/rejected`).set(true);
+        return;
+    }
+    const offer = viewerData.offer;
     const pc = new RTCPeerConnection(WEBRTC_ICE_SERVERS);
     rtcPeerConnections[viewerId] = pc;
 
@@ -282,14 +290,11 @@ function rtcShowBroadcastStatus(isPrivate, room) {
 async function watchWebRTCBroadcast(broadcastId, enteredPin) {
     if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas."); return; }
 
-    // Patikriname transliaciją ir PIN
+    // Patikriname ar transliacija dar gyva. PIN tikrina SIUNTĖJAS —
+    // žiūrovo įvestas PIN keliauja kartu su prisijungimo užklausa.
     const bSnap = await firebase.database().ref(`${RTC_BROADCAST_KEY}/${broadcastId}`).once('value');
     const broadcast = bSnap.val();
     if (!broadcast) { showToast("Transliacija nerasta arba pasibaigė."); return; }
-    if (broadcast.isPrivate && broadcast.pin !== enteredPin) {
-        showToast("Neteisingas PIN kodas.");
-        return;
-    }
 
     // Įsimenam duomenis automatiniam pri(si)jungimui
     rtcViewerBroadcastId = broadcastId;
@@ -348,12 +353,26 @@ function rtcViewerConnect() {
         try {
             const offer = await rtcViewerPC.createOffer({ offerToReceiveVideo: true, offerToReceiveAudio: true });
             await rtcViewerPC.setLocalDescription(offer);
-            firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/offer`).set({ type: offer.type, sdp: offer.sdp });
+            // offer ir pin rašomi VIENU update'u — siuntėjas juos gauna kartu ir iškart
+            // patikrina (update nepertrina galimai jau įrašytų ICE kandidatų)
+            const initData = { offer: { type: offer.type, sdp: offer.sdp } };
+            if (rtcViewerPin) initData.pin = String(rtcViewerPin);
+            firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}`).update(initData);
 
             firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/answer`).on('value', (snap) => {
                 const answer = snap.val();
                 if (answer && rtcViewerPC && !rtcViewerPC.currentRemoteDescription) {
                     rtcViewerPC.setRemoteDescription(new RTCSessionDescription(answer)).catch(e => console.warn("setRemote error:", e));
+                }
+            });
+
+            // Siuntėjas atmetė (neteisingas PIN) — nebebandome jungtis
+            firebase.database().ref(`${RTC_SIGNAL_KEY}/${broadcastId}/viewers/${rtcViewerId}/rejected`).on('value', (snap) => {
+                if (snap.val() === true) {
+                    rtcViewerShouldReconnect = false;
+                    const status = document.getElementById('rtcViewerStatus');
+                    if (status) { status.style.display = 'block'; status.innerHTML = '<i class="fa-solid fa-lock"></i> Neteisingas PIN kodas.'; }
+                    if (typeof showToast === 'function') showToast("Neteisingas PIN kodas.");
                 }
             });
 
