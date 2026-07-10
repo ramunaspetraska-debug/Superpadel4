@@ -285,22 +285,48 @@ function rtcUpdateViewerCount() {
 // SIUNTĖJO STATUSO LANGAS
 // ==========================================
 
+// Žiūrovo nuoroda: atidarius ją, transliacija paleidžiama automatiškai (rtcHandleWatchParam).
+// Privačiai transliacijai PIN įdedamas į nuorodą — QR skenuoja tik esantys prie korto.
+function rtcViewerLink() {
+    let url = location.origin + location.pathname + '?watch=' + encodeURIComponent(rtcBroadcastId);
+    if (rtcBroadcastPin) url += '&pin=' + encodeURIComponent(rtcBroadcastPin);
+    return url;
+}
+
+function rtcQrSvg(url) {
+    try {
+        if (typeof qrcode !== 'function') return '';
+        const qr = qrcode(0, 'M');
+        qr.addData(url);
+        qr.make();
+        return qr.createSvgTag({ cellSize: 3, margin: 2, scalable: true });
+    } catch (e) { return ''; }
+}
+
 function rtcShowBroadcastStatus(isPrivate, room) {
     document.getElementById('rtc-broadcast-status')?.remove();
     const roomReal = (room && !String(room).startsWith('profilis_') && room !== 'transliacija' && room !== 'bendri_highlights') ? room : null;
     const roomHtml = roomReal
         ? `<div style="background:rgba(22,163,74,0.13); border:1px solid rgba(22,163,74,0.35); border-radius:8px; padding:5px 8px; margin:4px 0 8px; font-size:11px; color:#22c55e; font-weight:bold;"><i class="fa-solid fa-trophy"></i> Turnyras: ${roomReal}</div>`
         : `<div style="background:rgba(51,65,85,0.2); border-radius:8px; padding:5px 8px; margin:4px 0 8px; font-size:10px; color:#94a3b8;">Neprijungta prie turnyro · bendra transliacija</div>`;
+    const link = rtcViewerLink();
+    const qrSvg = rtcQrSvg(link);
+    const qrHtml = qrSvg
+        ? `<div style="background:white; border-radius:10px; padding:8px; margin:6px auto 4px; width:120px; height:120px;">${qrSvg}</div>
+           <div style="font-size:10px; color:#94a3b8; margin-bottom:6px;">Žiūrovas nuskenuoja — ir žiūri</div>`
+        : '';
     const box = document.createElement('div');
     box.id = 'rtc-broadcast-status';
     box.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:#0f172a; color:white; border-radius:14px; padding:14px 18px; z-index:9998; box-shadow:0 10px 30px rgba(0,0,0,0.4); text-align:center; min-width:220px; max-width:280px;';
     box.innerHTML = `
         <div style="font-weight:900; font-size:13px; margin-bottom:6px;"><span style="color:#ef4444;">🔴</span> Transliuojama tiesiogiai</div>
         ${roomHtml}
-        ${isPrivate ? `<div style="background:#1e293b; border-radius:8px; padding:8px; margin:6px 0 10px;">
+        ${isPrivate ? `<div style="background:#1e293b; border-radius:8px; padding:8px; margin:6px 0 6px;">
             <div style="font-size:10px; color:#94a3b8;">Privatus PIN — žiūrovui įvesti</div>
             <div style="font-size:24px; font-weight:900; letter-spacing:4px; color:#22c55e;">${rtcBroadcastPin}</div>
-        </div>` : '<div style="font-size:11px; color:#94a3b8; margin:6px 0 10px;">Matoma „Korto peržiūroje" ir transliacijų sąraše</div>'}
+        </div>` : '<div style="font-size:11px; color:#94a3b8; margin:6px 0 6px;">Matoma „Korto peržiūroje" ir transliacijų sąraše</div>'}
+        ${qrHtml}
+        <button onclick="rtcCopyJoinLink(rtcViewerLink())" style="background:#1e293b; color:#cbd5e1; border:1px solid #334155; padding:7px 12px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; width:100%; margin-bottom:8px;"><i class="fa-solid fa-link"></i> Kopijuoti žiūrovo nuorodą</button>
         <div style="font-size:12px; color:#cbd5e1; margin-bottom:8px;"><i class="fa-solid fa-eye"></i> Žiūri: <span id="rtcViewerCountDisplay">0</span></div>
         <div style="font-size:10px; color:#fbbf24; margin-bottom:10px;"><i class="fa-solid fa-triangle-exclamation"></i> Neužrakinkite telefono ir neuždarykite programėlės — transliacija nutrūks.</div>
         <button onclick="stopWebRTCBroadcast()" style="background:#ef4444; color:white; border:none; padding:9px 16px; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; width:100%;">Sustabdyti transliaciją</button>

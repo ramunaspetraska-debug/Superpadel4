@@ -60,6 +60,7 @@ const ASSETS = [
     '/js/registras_tournaments.js',
     '/js/registras_admin.js',
     '/js/registras_cam.js',
+    '/js/vendor/qrcode.js',
     '/js/registras_webrtc.js',
     '/js/registras_courtview.js',
     '/manifest.json',
