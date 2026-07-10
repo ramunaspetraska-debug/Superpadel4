@@ -236,8 +236,11 @@ function renderTournaments() {
         return; 
     }
     
+    // Kortelės kaupiamos į eilutę ir įterpiamos VIENU kartu — innerHTML += cikle
+    // priverčia naršyklę perkurti visą sąrašą po kiekvienos kortelės (kvadratinis lėtėjimas)
+    let cardsHtml = '';
     filtered.forEach(t => {
-        let dayObj = dynamicDates.find(d => d.dateKey === t.date); 
+        let dayObj = dynamicDates.find(d => d.dateKey === t.date);
         let dayName = dayObj ? dayObj.dayNameStr : 'D'; 
         let dayNum = dayObj ? dayObj.dayNumStr : t.date; 
         
@@ -285,8 +288,9 @@ function renderTournaments() {
         if (lvlClass === 'd/c-' || lvlClass === 'd-c') lvlClass = 'd-c';
 
         let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${Number(t.id)})"><div class="card-date-square"><div class="num">${esc(dayNum)}</div><div class="name">${esc(dayName)}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${esc(t.format)}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${esc(displayLevel)}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${esc(t.category)}</div>` : ''}${t.clubName ? `<div class="level-badge" style="background:#0f766e;"><i class="fa-solid fa-building" style="font-size:8px;"></i> ${esc(t.clubName)}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${esc(t.time)}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${(t.max || 0) > 0 ? `${t.registered} / ${t.max}` : `${t.registered} dalyv.`}</div></div><div class="card-bottom">${statusHTML}${(persStatus !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
-        list.innerHTML += cardHTML;
+        cardsHtml += cardHTML;
     });
+    list.innerHTML = cardsHtml;
 }
 
 // ---------- OFICIALŪS TURNYRO REZULTATAI (pilnas ekranas + reitingas) ----------
@@ -1227,7 +1231,8 @@ function loadAutomatedRatings(leagueLevel = 'all') {
 
         const tbody = document.getElementById('ratingsTableBody');
         if(tbody) {
-            tbody.innerHTML = '';
+            // Eilutės kaupiamos ir įterpiamos vienu kartu (žr. renderTournaments pastabą)
+            let rowsHtml = '';
             mappedPool.forEach((player, index) => {
                 let rankNum = index + 1;
                 let rankClass = index === 0 ? 'color: #d69e2e; font-size: 18px; font-weight: 900;' : index === 1 ? 'color: #a0aec0; font-weight: 800;' : index === 2 ? 'color: #dd6b20; font-weight: 800;' : 'color: var(--text-grey);';
@@ -1236,8 +1241,9 @@ function loadAutomatedRatings(leagueLevel = 'all') {
                 const avCol = player.gender === 'F' ? '#db2777' : 'var(--primary-blue)';
                 const initials = esc(String(player.name || '?').substring(0, 2).toUpperCase());
                 const av = `<span class="rt-av" data-pid="${esc(String(player.id))}" style="display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; background:${avBg}; color:${avCol}; font-size:10px; font-weight:900; overflow:hidden; flex-shrink:0;">${initials}</span>`;
-                tbody.innerHTML += `<tr onclick="openPlayerCard('${esc(player.id)}')" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'"><td style="text-align: center; ${rankClass}">${rankNum}</td><td><div style="display:flex; align-items:center; gap:8px;">${av}<span>${esc(player.name)}</span> <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: #cbd5e0;"></i></div></td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
+                rowsHtml += `<tr onclick="openPlayerCard('${esc(player.id)}')" style="cursor: pointer;" onmouseover="this.style.backgroundColor='#f8f9fb'" onmouseout="this.style.backgroundColor='transparent'"><td style="text-align: center; ${rankClass}">${rankNum}</td><td><div style="display:flex; align-items:center; gap:8px;">${av}<span>${esc(player.name)}</span> <i class="fa-solid fa-chevron-right" style="font-size: 9px; color: #cbd5e0;"></i></div></td><td style="color: ${ptsColor}; font-weight: bold; text-align: right;">${player.points}</td></tr>`;
             });
+            tbody.innerHTML = rowsHtml;
         }
 
         // Nuotraukos iš bendros saugyklos: podium (3) + pirmieji 30 lentelės — asinchroniškai
