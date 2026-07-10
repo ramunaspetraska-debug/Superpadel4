@@ -14,9 +14,11 @@ const { onValueWritten } = require('firebase-functions/v2/database');
 const { initializeApp } = require('firebase-admin/app');
 const { getDatabase } = require('firebase-admin/database');
 const { getMessaging } = require('firebase-admin/messaging');
+const { getStorage } = require('firebase-admin/storage');
 
 initializeApp({
-    databaseURL: 'https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app'
+    databaseURL: 'https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app',
+    storageBucket: 'padelio-turnyrai.firebasestorage.app'
 });
 
 const db = getDatabase();
@@ -219,6 +221,60 @@ async function closeRegistrations(now) {
         }
     }
 }
+
+// 3) HIGHLIGHTS VALYMAS — kas naktį ištrina senesnius nei 7 d. klipus
+// (DB įrašai + Storage failai). Failai be DB įrašo (našlaičiai — pvz. bandymų
+// laikų likučiai) trinami po 1 dienos, kad saugyklos sąskaita neaugtų.
+const HIGHLIGHTS_TTL_DAYS = 7;
+
+exports.cleanupHighlights = onSchedule(
+    { schedule: '10 4 * * *', timeZone: 'Europe/Vilnius', region: REGION },
+    async () => {
+        const now = Date.now();
+        const cutoff = now - HIGHLIGHTS_TTL_DAYS * 864e5;
+
+        // 1. DB įrašai: padelio_highlights/{kambarys}/{klipas}, ts < 7 d.
+        const snap = await db.ref('padelio_highlights').get();
+        const rooms = snap.val() || {};
+        const updates = {};
+        const liveUrls = [];
+        for (const room of Object.keys(rooms)) {
+            const clips = rooms[room] || {};
+            for (const key of Object.keys(clips)) {
+                const c = clips[key];
+                if (!c || typeof c.ts !== 'number' || c.ts < cutoff) {
+                    updates[room + '/' + key] = null;
+                } else if (c.url) {
+                    liveUrls.push(String(c.url));
+                }
+            }
+        }
+        if (Object.keys(updates).length) await db.ref('padelio_highlights').update(updates);
+
+        // 2. Storage failai: highlights/** — seni (>7 d.) arba našlaičiai (>1 d. be DB įrašo)
+        let deleted = 0;
+        try {
+            const bucket = getStorage().bucket();
+            const [files] = await bucket.getFiles({ prefix: 'highlights/' });
+            for (const f of files) {
+                const created = Date.parse((f.metadata && f.metadata.timeCreated) || '') || 0;
+                const isOld = created < cutoff;
+                // Download URL kelias būna URL-koduotas (highlights%2F...), tikrinam abu variantus
+                const enc = encodeURIComponent(f.name);
+                const stillUsed = liveUrls.some(u => u.indexOf(enc) !== -1 || u.indexOf(f.name) !== -1);
+                const isOrphan = !stillUsed && created < now - 864e5;
+                if (isOld || isOrphan) {
+                    await f.delete().catch(() => {});
+                    deleted++;
+                }
+            }
+        } catch (e) {
+            console.error('cleanupHighlights storage klaida:', e);
+        }
+        console.log('cleanupHighlights: DB istrinta ' + Object.keys(updates).length + ', Storage istrinta ' + deleted);
+        return null;
+    }
+);
 
 // 2) ATSILAISVINO VIETA — trigeris ant turnyrų sąrašo
 exports.spotOpened = onValueWritten(
