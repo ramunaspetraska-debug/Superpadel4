@@ -446,7 +446,18 @@ function openAdminTournamentModal(id) {
     if (unlBox) { unlBox.checked = !(t.max > 0); if (maxInp) maxInp.disabled = unlBox.checked; }
     const rcSel = document.getElementById('editAdminTournamentRegClose');
     if (rcSel) rcSel.value = String(t.regCloseMins || 60);
-    document.getElementById('editAdminTournamentFormat').value = t.format;
+    const fmtSel = document.getElementById('editAdminTournamentFormat');
+    // Jei turnyras sukurtas su senu formatu, kurio sąraše nebėra (pvz. „Mix Blitz"),
+    // parodome jį laikina opcija — kitaip išsaugant formatas tyliai pasikeistų.
+    Array.from(fmtSel.querySelectorAll('option[data-legacy]')).forEach(o => o.remove());
+    if (t.format && !Array.from(fmtSel.options).some(o => o.value === t.format)) {
+        const legacyOpt = new Option(t.format + ' (senas formatas)', t.format);
+        legacyOpt.setAttribute('data-legacy', '1');
+        fmtSel.add(legacyOpt);
+    }
+    fmtSel.value = t.format;
+    const catSel = document.getElementById('editAdminTournamentCategory');
+    if (catSel) catSel.value = t.category || 'Atviras';
     document.getElementById('editAdminTournamentLevel').value = t.level;
     document.getElementById('editAdminTournamentMax').value = t.max || 16;
     document.getElementById('editAdminTournamentTime').value = t.time;
@@ -462,6 +473,7 @@ function closeAdminTournamentModal() {
 function saveAdminTournamentChanges() {
     const id = document.getElementById('editAdminTournamentId').value;
     const format = document.getElementById('editAdminTournamentFormat').value;
+    const category = document.getElementById('editAdminTournamentCategory')?.value || 'Atviras';
     const level = document.getElementById('editAdminTournamentLevel').value;
     const max = parseInt(document.getElementById('editAdminTournamentMax').value) || 16;
     const time = document.getElementById('editAdminTournamentTime').value.trim();
@@ -472,6 +484,7 @@ function saveAdminTournamentChanges() {
     const idx = tournaments.findIndex(t => String(t.id) === String(id));
     if(idx !== -1) {
         tournaments[idx].format = format;
+        tournaments[idx].category = category;
         tournaments[idx].level = level;
         tournaments[idx].max = document.getElementById('editAdminTournamentUnlimited')?.checked ? 0 : max;
         tournaments[idx].regCloseMins = parseInt(document.getElementById('editAdminTournamentRegClose')?.value || 60);

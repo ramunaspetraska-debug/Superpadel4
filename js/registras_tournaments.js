@@ -27,8 +27,10 @@ function initDates() {
         let idAttr = d.isToday ? 'id="today-date-box"' : ''; 
         let pastCls = d.isPast ? 'date-past' : '';
         carousel.innerHTML += `<div ${idAttr} class="date-box ${activeCls} ${pastCls}" onclick="selectDate('${d.dateKey}', this)"><div class="day-num">${d.dayNumStr}</div><div class="day-name">${d.dayNameStr}</div></div>`; 
-        let selected = d.isToday ? 'selected' : ''; 
-        if(adminSelect) adminSelect.innerHTML += `<option value="${d.dateKey}" ${selected}>${d.dayNumStr} d. (${d.dayNameStr})</option>`; 
+        let selected = d.isToday ? 'selected' : '';
+        // Admin formos „Pirmojo turnyro diena" — tik nuo šiandienos (praėjusios dienos
+        // reikalingos tik kalendoriaus karuselei, ne naujo turnyro kūrimui).
+        if(adminSelect && !d.isPast) adminSelect.innerHTML += `<option value="${d.dateKey}" ${selected}>${d.dayNumStr} d. (${d.dayNameStr})</option>`;
     }); 
     
     carousel.style.userSelect = 'none';
