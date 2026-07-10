@@ -1210,10 +1210,14 @@ function showRoomQR(roomName) {
     document.getElementById('modalActions').innerHTML = `<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width: 100%;">Uždaryti</button>`;
     modalEl.classList.add('show');
 
-    if (typeof QRCode !== 'undefined') {
-        new QRCode(document.getElementById('roomQrBox'), { text: link, width: 180, height: 180 });
+    // QR per js/vendor/qrcode.js (rtcQrSvg — bendras helperis su transliacijų nuorodomis).
+    // Anksčiau čia buvo kviečiama neįtraukta QRCode biblioteka ir kodas nesigeneruodavo.
+    const qrBox = document.getElementById('roomQrBox');
+    const svg = (typeof rtcQrSvg === 'function') ? rtcQrSvg(link) : '';
+    if (svg) {
+        qrBox.innerHTML = `<div style="width:180px;height:180px;">${svg}</div>`;
     } else {
-        document.getElementById('roomQrBox').innerHTML = `<div style="font-size:11px; padding:20px; color:var(--text-grey); word-break:break-all;">${link}</div>`;
+        qrBox.innerHTML = `<div style="font-size:11px; padding:20px; color:var(--text-grey); word-break:break-all;">${link}</div>`;
     }
 }
 
