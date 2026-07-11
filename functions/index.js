@@ -618,3 +618,129 @@ exports.stripeWebhook = onRequest(
         }
     }
 );
+
+
+// ===================== ATSARGINĖS KOPIJOS =====================
+// Kasdien 03:40 svarbiausios šakos nukopijuojamos į padelio_backups/{YYYY-MM-DD}.
+// Laikomos 14 dienų kopijos. Šaka klientams neprieinama (tik admin SDK) —
+// atkūrimo atveju duomenys pasiekiami per Firebase konsolę arba CLI:
+//   firebase database:get /padelio_backups/2026-07-12 --project padelio-turnyrai > kopija.json
+const BACKUP_BRANCHES = [
+    'padelio_global_tournaments', 'padelio_global_players', 'padelio_clubs',
+    'padelio_club_admins', 'padelio_email_links', 'padelio_rooms',
+    'padelio_archive_turnyrai', 'padelio_user_tournaments'
+];
+
+exports.dailyBackup = onSchedule(
+    { schedule: '40 3 * * *', timeZone: 'Europe/Vilnius', region: REGION },
+    async () => {
+        const stamp = new Intl.DateTimeFormat('lt-LT', { timeZone: 'Europe/Vilnius', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const backup = { createdAt: Date.now() };
+        for (const b of BACKUP_BRANCHES) {
+            const snap = await db.ref(b).get();
+            backup[b] = snap.val() || null;
+        }
+        await db.ref('padelio_backups/' + stamp).set(backup);
+        // Senesnių nei 14 d. kopijų valymas
+        const allSnap = await db.ref('padelio_backups').get();
+        const keys = Object.keys(allSnap.val() || {});
+        const cutoff = Date.now() - 14 * 864e5;
+        for (const k of keys) {
+            const t = Date.parse(k + 'T00:00:00Z');
+            if (!isNaN(t) && t < cutoff) await db.ref('padelio_backups/' + k).remove().catch(() => {});
+        }
+        console.log('dailyBackup: issaugota ' + stamp + ' (' + BACKUP_BRANCHES.length + ' sakos)');
+        return null;
+    }
+);
+
+// ===================== EL. PAŠTO PRANEŠIMAI =====================
+// Siunčiama per Gmail SMTP su App Password (secrets):
+//   firebase functions:secrets:set EMAIL_USER   (pvz. superpadel.lt@gmail.com)
+//   firebase functions:secrets:set EMAIL_PASS   (16 ženklų Gmail App Password)
+// Kol raktų nėra — laiškai tyliai praleidžiami (push veikia kaip pagrindinis kanalas).
+const EMAIL_USER = defineSecret('EMAIL_USER');
+const EMAIL_PASS = defineSecret('EMAIL_PASS');
+
+let _mailer = null;
+function getMailer() {
+    const user = String(EMAIL_USER.value() || '').trim();
+    const pass = String(EMAIL_PASS.value() || '').trim();
+    if (!user || user.indexOf('@') === -1 || !pass || pass.length < 8) return null;
+    if (!_mailer) {
+        const nodemailer = require('nodemailer');
+        _mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: user, pass: pass } });
+    }
+    return _mailer;
+}
+
+// Žaidėjo el. paštas: padelio_global_players/{id}/email (įrašomas apsaugant paskyrą)
+async function getUserEmail(userId) {
+    try {
+        const snap = await db.ref('padelio_global_players/' + userId + '/email').get();
+        const em = snap.val();
+        return (em && String(em).indexOf('@') !== -1) ? String(em) : null;
+    } catch (e) { return null; }
+}
+
+async function sendEmailToUser(userId, subject, bodyHtml) {
+    try {
+        const mailer = getMailer();
+        if (!mailer) return false;
+        const email = await getUserEmail(userId);
+        if (!email) return false;
+        await mailer.sendMail({
+            from: '"SuperPadel.lt" <' + String(EMAIL_USER.value()).trim() + '>',
+            to: email,
+            subject: subject,
+            html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">'
+                + '<div style="background:#0f172a;color:#fff;padding:14px 18px;border-radius:10px 10px 0 0;font-weight:bold;">SUPERPADEL.LT</div>'
+                + '<div style="border:1px solid #e2e8f0;border-top:none;padding:18px;border-radius:0 0 10px 10px;font-size:14px;color:#1e293b;line-height:1.5;">'
+                + bodyHtml
+                + '<div style="margin-top:16px;"><a href="' + APP_LINK + '" style="background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">Atidaryti portalą</a></div>'
+                + '</div></div>'
+        });
+        return true;
+    } catch (e) {
+        console.warn('sendEmailToUser klaida:', e && e.message ? e.message : e);
+        return false;
+    }
+}
+
+// PRIMINIMAI EL. PAŠTU — kartu su push (kas 15 min, tie patys langai, atskiros žymos)
+exports.emailReminders = onSchedule(
+    { schedule: 'every 15 minutes', timeZone: 'Europe/Vilnius', region: REGION, secrets: [EMAIL_USER, EMAIL_PASS] },
+    async () => {
+        if (!getMailer()) return null; // el. paštas dar nesukonfigūruotas
+        const utSnap = await db.ref('padelio_user_tournaments').get();
+        const all = utSnap.val() || {};
+        const sentSnap = await db.ref('padelio_push_sent').get();
+        const sent = sentSnap.val() || {};
+        const now = Date.now();
+        const updates = {};
+        for (const userId of Object.keys(all)) {
+            const ut = all[userId] || {};
+            for (const tId of Object.keys(ut)) {
+                const rec = ut[tId];
+                if (!rec || rec.status !== 'registered') continue;
+                const startMs = tournamentStartMs(rec.date, rec.time);
+                if (!startMs) continue;
+                const diffH = (startMs - now) / 3600000;
+                const dayKey = 'em_' + userId + '_' + tId + '_day';
+                if (diffH <= 24.5 && diffH >= 23.5 && !sent[dayKey]) {
+                    const ok = await sendEmailToUser(userId, '⏰ Rytoj turnyras — ' + (rec.format || 'SuperPadel'),
+                        '<b>' + (rec.format || 'Turnyras') + '</b> vyks rytoj, ' + (rec.date || '') + ' ' + (rec.time || '') + '.<br>Jei planai pasikeitė — atšaukite vietą portale, kad ją gautų rezervo eilė.');
+                    if (ok) updates[dayKey] = now;
+                }
+                const hKey = 'em_' + userId + '_' + tId + '_hours';
+                if (diffH <= 3.5 && diffH >= 2.5 && !sent[hKey]) {
+                    const ok = await sendEmailToUser(userId, '🎾 Turnyras jau šiandien!',
+                        '<b>' + (rec.format || 'Turnyras') + '</b> prasideda šiandien ' + (rec.time || '') + '. Sėkmės korte!');
+                    if (ok) updates[hKey] = now;
+                }
+            }
+        }
+        if (Object.keys(updates).length) await db.ref('padelio_push_sent').update(updates);
+        return null;
+    }
+);

@@ -565,6 +565,21 @@ function pushInit() {
     });
 }
 
+// Laukia Firebase Auth sesijos atstatymo (be jos DB atmes rakto įrašymą,
+// nes padelio_push_tokens rašyti gali tik autentifikuotas savininkas)
+function pushAuthReady() {
+    try {
+        const u = firebase.auth().currentUser;
+        if (u) return Promise.resolve(u);
+        return new Promise(resolve => {
+            let done = false;
+            const finish = (usr) => { if (!done) { done = true; resolve(usr || firebase.auth().currentUser); } };
+            const off = firebase.auth().onAuthStateChanged(usr => { try { off(); } catch (e) {} finish(usr); });
+            setTimeout(() => finish(null), 6000);
+        });
+    } catch (e) { return Promise.resolve(null); }
+}
+
 function requestPushPermission() {
     if (!('Notification' in window)) { showToast("Šis įrenginys nepalaiko pranešimų."); return; }
     if (!pushConfigReady()) { showToast("Push dar nesukonfigūruotas."); return; }
@@ -572,13 +587,29 @@ function requestPushPermission() {
     Notification.requestPermission().then(perm => {
         if (perm !== 'granted') { showToast("Pranešimai neįjungti."); return; }
         if (!_pushMsg) { try { _pushMsg = firebase.messaging(); _pushInited = true; } catch (e) { showToast("Klaida įjungiant."); return; } }
-        navigator.serviceWorker.ready.then(swReg => _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey, serviceWorkerRegistration: swReg })).then(token => {
+        Promise.all([
+            navigator.serviceWorker.ready.then(swReg => _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey, serviceWorkerRegistration: swReg })),
+            pushAuthReady()
+        ]).then(([token, authUser]) => {
             if (!token) { showToast("Nepavyko gauti rakto."); return; }
+            if (!authUser) {
+                // Auth sesija pasibaigusi — raktas nebūtų įrašytas. Prašom prisijungti iš naujo.
+                showToast("Prisijungimo sesija pasibaigusi — prisijunkite iš naujo ir bandykite dar kartą.");
+                openAuthModal();
+                return;
+            }
             const key = _pushHash(token);
             firebase.database().ref('padelio_push_tokens/' + currentUser.id + '/' + key)
-                .set({ token: token, ts: Date.now(), ua: (navigator.userAgent || '').slice(0, 120) });
-            showToast("✅ Telefono pranešimai įjungti!");
-            document.getElementById('notif-panel')?.remove();
+                .set({ token: token, ts: Date.now(), ua: (navigator.userAgent || '').slice(0, 120) })
+                .then(() => {
+                    showToast("✅ Telefono pranešimai įjungti!");
+                    document.getElementById('notif-panel')?.remove();
+                })
+                .catch(e => {
+                    // Raktas NEĮRAŠYTAS — anksčiau ši klaida buvo nuryjama tyliai ir
+                    // vartotojas matydavo „įjungta", nors serveris neturėjo kam siųsti.
+                    showToast("❌ Nepavyko užregistruoti įrenginio: " + ((e && e.message) || 'nėra teisių') + ". Prisijunkite iš naujo.");
+                });
         }).catch(e => { showToast("Klaida: " + (e && e.message ? e.message : e)); });
     });
 }
@@ -615,8 +646,12 @@ function pushSilentRefresh() {
         if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) { say('neprisijungęs (currentUser nėra)'); return; }
         pushInit();
         if (!_pushMsg) { say('messaging init nepavyko'); return; }
-        navigator.serviceWorker.ready.then(swReg => _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey, serviceWorkerRegistration: swReg })).then(token => {
+        Promise.all([
+            navigator.serviceWorker.ready.then(swReg => _pushMsg.getToken({ vapidKey: PUSH_CFG.vapidKey, serviceWorkerRegistration: swReg })),
+            pushAuthReady() // be auth sesijos DB atmestų įrašymą — palaukiam atstatymo
+        ]).then(([token, authUser]) => {
             if (!token) { say('tokenas tuščias'); return; }
+            if (!authUser) { say('auth sesijos nėra — tokenas neįrašytas (prisijunkite portale iš naujo)'); return; }
             const key = _pushHash(token);
             firebase.database().ref('padelio_push_tokens/' + currentUser.id + '/' + key)
                 .set({ token: token, ts: Date.now(), ua: (navigator.userAgent || '').slice(0, 120) })

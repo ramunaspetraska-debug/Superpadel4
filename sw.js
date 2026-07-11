@@ -40,7 +40,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // Kešo versija suderinta su programos versija (v212 — 2026-06-19)
-const CACHE_NAME = 'superpadel-cache-v284';
+const CACHE_NAME = 'superpadel-cache-v285';
 
 // Visi ekosistemos resursai, kurie privalo veikti neprisijungus prie interneto
 const ASSETS = [
@@ -61,6 +61,7 @@ const ASSETS = [
     '/js/registras_admin.js',
     '/js/registras_cam.js',
     '/js/registras_chat.js',
+    '/js/registras_tv.js',
     '/js/vendor/qrcode.js',
     '/js/registras_webrtc.js',
     '/js/registras_courtview.js',

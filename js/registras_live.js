@@ -224,7 +224,8 @@ function connectLiveRoom() {
         
         currentLiveMatches = data.matches.filter(m => !m.finished);
         if(currentLiveMatches.length === 0) {
-            document.getElementById('liveCourtsContainer').innerHTML = ""; 
+            document.getElementById('myCourtBar')?.remove();
+            document.getElementById('liveCourtsContainer').innerHTML = "";
             let finishedMatches = data.matches.filter(m => m.finished);
             finishedMatches.sort((a, b) => { 
                 function getWeight(m) { 
@@ -269,21 +270,56 @@ function connectLiveRoom() {
             return;
         }
         document.getElementById('fbStatusTitleContainer').innerHTML = `<i class="fa-solid fa-server" id="fbStatusIcon" style="color: var(--status-green);"></i> <span id="fbStatusText">Tiesiogiai: ${esc(data.settings?.format || 'Turnyras')}</span>`;
-        renderLiveCourtFilters(); 
-        if(!currentLiveMatches.find(m => m.court == activeLiveCourt)) { activeLiveCourt = currentLiveMatches[0].court; } 
+        if(!currentLiveMatches.find(m => m.court == activeLiveCourt)) { activeLiveCourt = currentLiveMatches[0].court; }
+        // E-TEISĖJAVIMO PATOGUMAS: žaidžiančiam automatiškai atidaromas JO kortas
+        // ir rodoma aiški juosta — nebereikia spėlioti, kur vesti rezultatą.
+        highlightMyCourt();
+        renderLiveCourtFilters();
         renderLiveScoreboard();
     });
 }
 
-function renderLiveCourtFilters() { 
-    const container = document.getElementById('liveCourtsContainer'); 
+// Kuriame korte vyksta MANO aktyvus mačas (arba null)
+function findMyLiveCourt() {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.name) return null;
+    const nm = currentUser.name.trim().toLowerCase();
+    const my = currentLiveMatches.find(m =>
+        [...(m.team1 || []), ...(m.team2 || [])].some(p => p && String(p.name || '').trim().toLowerCase() === nm));
+    return my ? my.court : null;
+}
+
+function highlightMyCourt() {
+    const myCourt = findMyLiveCourt();
+    let bar = document.getElementById('myCourtBar');
+    if (!myCourt) { if (bar) bar.remove(); window._myCourtLast = null; return; }
+    // Automatinis perjungimas tik kai mano kortas PASIKEIČIA (naujas raundas) —
+    // naršant kitus kortus juosta netrukdo, tik primena.
+    if (window._myCourtLast !== myCourt) {
+        window._myCourtLast = myCourt;
+        activeLiveCourt = myCourt;
+    }
+    if (!bar) {
+        const cont = document.getElementById('liveCourtsContainer');
+        if (!cont || !cont.parentNode) return;
+        bar = document.createElement('div');
+        bar.id = 'myCourtBar';
+        cont.parentNode.insertBefore(bar, cont);
+    }
+    bar.style.cssText = 'margin:8px 12px 0;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:800;color:#166534;cursor:pointer;text-align:center;';
+    bar.innerHTML = `🎾 Jūsų mačas — Kortas ${myCourt}${Number(activeLiveCourt) !== Number(myCourt) ? ' <span style="text-decoration:underline;">(atidaryti)</span>' : ''}`;
+    bar.onclick = () => changeLiveCourt(myCourt);
+}
+
+function renderLiveCourtFilters() {
+    const container = document.getElementById('liveCourtsContainer');
     if(!container) return;
-    container.innerHTML = ''; 
-    let courts = [...new Set(currentLiveMatches.map(m => m.court))].sort((a,b) => a-b); 
-    courts.forEach(courtNum => { 
-        let activeCls = (courtNum == activeLiveCourt) ? 'active' : ''; 
-        container.innerHTML += `<button type="button" class="live-filter-btn ${activeCls}" onclick="changeLiveCourt(${courtNum})">Kortas ${courtNum}</button>`; 
-    }); 
+    container.innerHTML = '';
+    const myCourt = findMyLiveCourt();
+    let courts = [...new Set(currentLiveMatches.map(m => m.court))].sort((a,b) => a-b);
+    courts.forEach(courtNum => {
+        let activeCls = (courtNum == activeLiveCourt) ? 'active' : '';
+        container.innerHTML += `<button type="button" class="live-filter-btn ${activeCls}" onclick="changeLiveCourt(${courtNum})">Kortas ${courtNum}${myCourt == courtNum ? ' 🎾' : ''}</button>`;
+    });
 }
 
 function changeLiveCourt(courtNum) { 

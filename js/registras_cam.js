@@ -750,6 +750,7 @@ function renderHighlightsModal() {
                 <div style="font-weight:800;font-size:13px;color:#1e293b;">Ralis ${i + 1}</div>
                 <div style="font-size:11px;color:#64748b;">${h.durationSec}s ${h.uploaded ? '\u2022 <span style="color:#16a34a;">debesyje \u2713</span>' : ''}</div>
             </div>
+            <button onclick="toggleCompareLocal(${i})" title="Palyginti du klipus (treniruotei)" style="background:#f8f9fb;color:#4a5568;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;">⚖</button>
             <button onclick="shareLocalHighlight(${i})" title="Dalintis" style="background:#16a34a;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-share-nodes"></i></button>
             <button onclick="saveHighlightToGallery(${i})" title="\u012e galerij\u0105" style="background:#2563eb;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-download"></i></button>
         </div>`;
@@ -761,6 +762,80 @@ function saveHighlightToGallery(i) {
     if (!h) return;
     triggerDownload(h.blob, `highlight_${i + 1}`);
     showToast("Highlight'as išsaugomas į galeriją!");
+}
+
+// ==========================================
+// TRENIRUOČIŲ ANALIZĖ — dviejų klipų palyginimas greta
+// ==========================================
+// Pasirenkami 2 klipai (⚖ mygtukai) — atidaromas grotuvas su dviem vaizdo
+// langais vienas virš kito ir bendrais valdikliais (paleisti abu, 0.5x, iš naujo).
+// Tinka technikos analizei: du to paties smūgio bandymai arba du kampai.
+
+let _cmpFirst = null;
+
+function toggleCompareLocal(i) {
+    const h = highlightClips[i];
+    if (h) toggleCompare(h.url, 'Ralis ' + (i + 1));
+}
+function toggleCompareCloud(i) {
+    const c = cloudHighlights[i];
+    if (c) toggleCompare(c.url, 'Ralis ' + (i + 1));
+}
+function toggleCompare(url, label) {
+    if (!_cmpFirst) {
+        _cmpFirst = { url: url, label: label };
+        showToast("⚖ Pasirinktas 1 klipas (" + label + ") — pasirinkite antrą.");
+        return;
+    }
+    const a = _cmpFirst;
+    _cmpFirst = null;
+    openComparePlayer(a, { url: url, label: label });
+}
+
+function openComparePlayer(a, b) {
+    document.getElementById('compare-player-modal')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'compare-player-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:10006;display:flex;flex-direction:column;padding:10px;';
+    wrap.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;color:white;padding:4px 6px 10px;">
+            <div style="font-weight:900;font-size:14px;">⚖ Palyginimas — treniruotės analizė</div>
+            <button type="button" onclick="document.getElementById('compare-player-modal').remove()" style="background:rgba(255,255,255,0.15);color:white;border:none;width:38px;height:38px;border-radius:50%;font-size:17px;cursor:pointer;">&times;</button>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;gap:8px;min-height:0;">
+            <div style="flex:1;position:relative;min-height:0;">
+                <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;z-index:2;">${esc(a.label)}</div>
+                <video id="cmpVidA" src="${a.url}" playsinline loop muted style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:10px;"></video>
+            </div>
+            <div style="flex:1;position:relative;min-height:0;">
+                <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:6px;z-index:2;">${esc(b.label)}</div>
+                <video id="cmpVidB" src="${b.url}" playsinline loop muted style="width:100%;height:100%;object-fit:contain;background:#000;border-radius:10px;"></video>
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;padding:10px 0 4px;flex-wrap:wrap;">
+            <button type="button" id="cmpPlay" style="background:#16a34a;color:#fff;border:none;padding:10px 22px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">▶ Paleisti abu</button>
+            <button type="button" id="cmpSlow" style="background:#1a202c;color:#fff;border:1px solid #4a5568;padding:10px 16px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">0.5x lėtai</button>
+            <button type="button" id="cmpRestart" style="background:#1a202c;color:#fff;border:1px solid #4a5568;padding:10px 16px;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">↺ Iš naujo</button>
+        </div>`;
+    document.body.appendChild(wrap);
+    const va = document.getElementById('cmpVidA');
+    const vb = document.getElementById('cmpVidB');
+    let playing = false, slow = false;
+    document.getElementById('cmpPlay').onclick = function () {
+        playing = !playing;
+        if (playing) { va.play().catch(() => {}); vb.play().catch(() => {}); this.innerText = '⏸ Pauzė'; }
+        else { va.pause(); vb.pause(); this.innerText = '▶ Paleisti abu'; }
+    };
+    document.getElementById('cmpSlow').onclick = function () {
+        slow = !slow;
+        va.playbackRate = slow ? 0.5 : 1;
+        vb.playbackRate = slow ? 0.5 : 1;
+        this.innerText = slow ? '1x normaliai' : '0.5x lėtai';
+    };
+    document.getElementById('cmpRestart').onclick = () => {
+        va.currentTime = 0; vb.currentTime = 0;
+        if (playing) { va.play().catch(() => {}); vb.play().catch(() => {}); }
+    };
 }
 
 // Dalinimasis klipo FAILU per telefono meniu (WhatsApp/Messenger ir kt.).
@@ -904,6 +979,7 @@ function renderCloudHighlightsList() {
                 <div style="font-weight:800;font-size:13px;color:#1e293b;">Ralis ${i + 1}</div>
                 <div style="font-size:11px;color:#64748b;">${parseInt(c.durationSec) || '?'}s &bull; ${hh}:${mm}</div>
             </div>
+            <button onclick="toggleCompareCloud(${i})" title="Palyginti du klipus (treniruotei)" style="background:#f8f9fb;color:#4a5568;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;">⚖</button>
             <button onclick="shareCloudHighlight(${i})" title="Dalintis" style="background:#16a34a;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-share-nodes"></i></button>
             <button onclick="downloadCloudHighlight(${i})" title="Atsisiųsti" style="background:#2563eb;color:white;border:none;width:36px;height:36px;border-radius:10px;font-size:13px;cursor:pointer;flex-shrink:0;"><i class="fa-solid fa-download"></i></button>
         </div>`;

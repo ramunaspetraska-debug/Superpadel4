@@ -428,8 +428,17 @@
                 
                 <div id="admin-view-apzvalga" class="admin-tab" style="display: none;">
                     <h1 style="margin-bottom: 20px;">Apžvalga</h1>
-                    <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <p style="color: var(--text-grey); font-size: 14px;">Čia netrukus atsiras bendra sistemos statistika.</p>
+                    <div style="display: grid; grid-template-columns: 1fr; max-width: 650px; gap: 15px;">
+                        <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                            <div style="font-size: 15px; font-weight: bold; margin-bottom: 6px;"><i class="fa-solid fa-tv" style="color: var(--primary-blue);"></i> TV ekrano režimas</div>
+                            <p style="color: var(--text-grey); font-size: 12px; margin-bottom: 12px;">Atidarykite šią nuorodą klubo televizoriuje ar planšetėje: vykstant jūsų turnyrui rodomi gyvi kortų rezultatai, o kitu metu — lygų reitingų karuselė.</p>
+                            <button type="button" onclick="adminShowTvLink()" style="background: var(--primary-blue); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer;"><i class="fa-solid fa-link"></i> Gauti TV nuorodą</button>
+                        </div>
+                        <div style="background: #fff; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                            <div style="font-size: 15px; font-weight: bold; margin-bottom: 6px;"><i class="fa-solid fa-floppy-disk" style="color: #16a34a;"></i> Atsarginės kopijos</div>
+                            <p style="color: var(--text-grey); font-size: 12px; margin-bottom: 12px;">Serveris kas naktį (03:40) automatiškai išsaugo visų duomenų kopiją ir laiko 14 dienų. Papildomai galite parsisiųsti kopiją į savo kompiuterį dabar.</p>
+                            <button type="button" onclick="adminDownloadBackup()" style="background: #16a34a; color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer;"><i class="fa-solid fa-download"></i> Atsisiųsti kopiją (JSON)</button>
+                        </div>
                     </div>
                 </div>
 
@@ -630,6 +639,7 @@
 <script src="/js/registras_tournaments.js"></script>
 <script src="/js/registras_cam.js"></script>
 <script src="/js/registras_chat.js"></script>
+<script src="/js/registras_tv.js"></script>
 <script src="/js/vendor/qrcode.js"></script>
 <script src="/js/registras_webrtc.js"></script>
 <script src="/js/registras_courtview.js"></script>

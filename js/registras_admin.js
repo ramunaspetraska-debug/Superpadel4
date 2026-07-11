@@ -448,6 +448,55 @@ function renderAdminTournaments() {
 }
 
 // ==========================================
+// APŽVALGA: TV nuoroda ir atsarginės kopijos atsisiuntimas
+// ==========================================
+
+function adminShowTvLink() {
+    const base = location.origin + '/registras.html?tv=1';
+    const link = currentClub ? base + '&club=' + encodeURIComponent(currentClub.id) : base;
+    modalTitle.innerHTML = `<i class="fa-solid fa-tv" style="color: var(--primary-blue);"></i> TV ekrano nuoroda`;
+    modalBody.innerHTML = `
+        <div style="text-align:left;">
+            <div style="font-size:12px; color:var(--text-grey); margin-bottom:8px;">Atidarykite šią nuorodą klubo TV ar planšetės naršyklėje (visu ekranu — F11):</div>
+            <div style="background:#f8f9fb; border:1px solid #e2e8f0; border-radius:8px; padding:10px; font-size:12px; word-break:break-all; font-weight:600;">${esc(link)}</div>
+            <div style="font-size:11px; color:var(--text-grey); margin-top:10px; line-height:1.5;">
+                • Vykstant jūsų klubo turnyrui ekrane automatiškai rodomi gyvi kortų rezultatai.<br>
+                • Kitu metu sukasi lygų reitingų karuselė (lygis keičiasi kas 12 sek.).<br>
+                • Norint visada rodyti konkretų kambarį, gale pridėkite <b>&room=17</b>.
+            </div>
+        </div>`;
+    modalActions.innerHTML = `
+        <button type="button" class="modal-btn primary" onclick="navigator.clipboard && navigator.clipboard.writeText('${esc(link)}').then(() => showToast('Nuoroda nukopijuota!'))" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-copy"></i> Kopijuoti nuorodą</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
+    modal.classList.add('show');
+}
+
+// Parsisiunčia pagrindinių duomenų kopiją į kompiuterį (JSON failas).
+// Serveris papildomai daro automatines naktines kopijas (dailyBackup → padelio_backups).
+function adminDownloadBackup() {
+    if (typeof firebase === 'undefined') { showToast("Firebase neprieinamas."); return; }
+    showToast("Ruošiama kopija...");
+    const branches = ['padelio_global_tournaments', 'padelio_global_players', 'padelio_clubs', 'padelio_club_admins', 'padelio_rooms', 'padelio_archive_turnyrai'];
+    Promise.all(branches.map(b => firebase.database().ref(b).once('value').then(s => [b, s.val()]).catch(() => [b, null])))
+        .then(pairs => {
+            const data = { createdAt: new Date().toISOString(), source: 'superpadel.lt admin backup' };
+            pairs.forEach(([b, v]) => { data[b] = v; });
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const d = new Date();
+            a.href = url;
+            a.download = 'superpadel_kopija_' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 8000);
+            showToast("✅ Kopija atsisiųsta!");
+        })
+        .catch(e => showToast("Nepavyko: " + ((e && e.message) || 'klaida')));
+}
+
+// ==========================================
 // DALYVIŲ VALDYMAS (klubo adminui): pašalinti neatvykusį/nepranešusį žaidėją.
 // Vieta atlaisvinama — rezervo eilei push'ą išsiunčia esamas spotOpened trigeris.
 // ==========================================

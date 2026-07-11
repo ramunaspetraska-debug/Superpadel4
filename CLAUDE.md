@@ -23,7 +23,7 @@ canOfficial, legacyOwner), padelio_club_admins, padelio_email_links
 klubai), padelio_push_tokens/padelio_push_sent, padelio_notifications,
 padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
 
-## Sistemos būsena (2026-07-11, cache v284, APP_VERSION v212 / V231, registras.css?v=14)
+## Sistemos būsena (2026-07-11, cache v285, APP_VERSION v212 / V231, registras.css?v=14)
 - MOKAMI TURNYRAI: admin formose jungiklis „Mokamas turnyras" (t.paid, fee €/žaidėjui,
   payDeadlineHours 12/24/48/0=iki reg. pabaigos; struktūrizuoti rekvizitai
   payRecipient/payIban/payPhone, senas payInfo — tik fallback; payCashAllowed;
@@ -42,6 +42,17 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   Cloud Functions secrets STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET (be jų —
   503, klientas fallback'ina į pavedimą). Kliente STRIPE_FN_BASE +
   startStripeCheckout/handleStripeReturn (registras_tournaments.js).
+- TV REZIMAS: registras.html?tv=1[&club=ID][&room=X] (registras_tv.js) — gyvi
+  kortu rezultatai vykstant turnyrui arba reitingu karusele (12s). Admin
+  apzvalgoje TV nuoroda + adminDownloadBackup (JSON i kompiuteri). Serveris:
+  dailyBackup (03:40, padelio_backups/{data}, 14d) ir emailReminders (24h/3h
+  laiskai per Gmail SMTP; secrets EMAIL_USER/EMAIL_PASS — be ju tyliai skip).
+- PUSH FIX: requestPushPermission/pushSilentRefresh laukia pushAuthReady()
+  (auth atstatymo) ir rodo DB iraso klaidas — anksciau tokenas tyliai
+  neisirasydavo ir vartotojas matydavo „ijungta“ be raktu serveryje.
+- E-teisejavimas: highlightMyCourt — zaidejo kortas atidaromas automatiskai,
+  juosta „Jusu macas — Kortas N“. Treniruotems: klipu palyginimas greta
+  (toggleCompare/openComparePlayer, ⚖ mygtukai galerijose).
 - CHATAS: padelio_chat/{clubId} — klubu pokalbiai (registras_chat.js, 💬 mygtukai
   klubu sarase ir profilyje), seek skelbimai (type=seek, {level,date,time}),
   trinti gali tik klubo adminas (DB rules), limitToLast(100).
