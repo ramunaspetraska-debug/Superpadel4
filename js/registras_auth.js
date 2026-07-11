@@ -564,9 +564,11 @@ function renderUserProfile() {
             let teamStr = t.players.find(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) || "";
             let hasPartner = teamStr.includes('/');
 
-            // Mokamo turnyro laukiantis apmokėjimas — matomas ir profilyje
+            // Mokamo turnyro apmokėjimo būsena — matoma ir profilyje
             const payPend = (typeof paymentPendingFor === 'function') ? paymentPendingFor(t) : null;
-            if (payPend) {
+            if (payPend && payPend.method === 'cash') {
+                partnerInfo += `<div onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="font-size: 11px; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 3px 8px; font-weight: bold; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;">💵 Grynais atvykus — ${payPend.amount} €</div>`;
+            } else if (payPend) {
                 partnerInfo += `<div onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="font-size: 11px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 3px 8px; font-weight: bold; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;"><i class="fa-solid fa-hourglass-half"></i> Laukia apmokėjimo — ${payPend.amount} €</div>`;
             }
             if (hasPartner) {

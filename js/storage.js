@@ -299,13 +299,36 @@ function matchesOwnerIdentity(owner) {
     return false;
 }
 
+// Laukia, kol Firebase Auth atstatys sesiją. Puslapio starte (pvz. atėjus su
+// ?room=X iš portalo) currentUser kelias sekundes būna null, nors vartotojas
+// prisijungęs — be šio laukimo klubo adminas gaudavo „tik peržiūrą".
+let _authReadyPromise = null;
+function authEmailReady() {
+    const now = getAuthEmail();
+    if (now) return Promise.resolve(now);
+    if (_authReadyPromise) return _authReadyPromise;
+    _authReadyPromise = new Promise(resolve => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(getAuthEmail()); } };
+        try {
+            if (typeof firebase !== 'undefined' && typeof firebase.auth === 'function') {
+                const off = firebase.auth().onAuthStateChanged(() => { try { off(); } catch (e) {} finish(); });
+            }
+        } catch (e) {}
+        setTimeout(finish, 6000); // atsarginis kelias — jei auth neužsikrauna
+    });
+    return _authReadyPromise;
+}
+
 // Ar prisijungęs vartotojas yra nurodyto klubo administratorius? Promise<boolean>
 function isClubAdminOf(clubId) {
-    const email = getAuthEmail();
-    if (!email || !clubId) return Promise.resolve(false);
-    return firebase.database().ref('padelio_club_admins/' + emailKeyGen(email)).once('value')
-        .then(s => { const rec = s.val(); return !!(rec && rec.clubId === clubId); })
-        .catch(() => false);
+    if (!clubId) return Promise.resolve(false);
+    return authEmailReady().then(email => {
+        if (!email) return false;
+        return firebase.database().ref('padelio_club_admins/' + emailKeyGen(email)).once('value')
+            .then(s => { const rec = s.val(); return !!(rec && rec.clubId === clubId); })
+            .catch(() => false);
+    });
 }
 
 // Ar dabartinis vartotojas yra šio kambario savininkas (gali TRINTI kambarį)? Promise<boolean>
@@ -323,10 +346,13 @@ function isRoomOwner(room) {
 // režimas iš kambario owner žymos (ją įrašo portalo admin panelė kurdama turnyrą).
 function claimOrResolveRoomAccess(room) {
     const ownerRef = firebase.database().ref(`${DB_KEY}/${room}/owner`);
-    Promise.all([
+    // Pirma palaukiam auth sesijos atstatymo — tik tada sprendžiam prieigą
+    // (kitaip naujas kambarys būtų pažymėtas „device" vietoj el. pašto, o
+    // klubo/asmeninis savininkas negautų savo teisių)
+    authEmailReady().then(() => Promise.all([
         ownerRef.once('value'),
         firebase.database().ref(`${DB_KEY}/${room}/security`).once('value')
-    ]).then(results => {
+    ])).then(results => {
         const owner = results[0].val();
         const security = results[1].val() || {};
         const pinField = el('fb-room-pin');

@@ -370,6 +370,7 @@ async function createTournament(e) {
                 newT.fee = Math.max(1, parseFloat(document.getElementById('newFee')?.value) || 10);
                 newT.payDeadlineHours = parseInt(document.getElementById('newPayDeadline')?.value || 24);
                 newT.payInfo = (document.getElementById('newPayInfo')?.value || '').trim();
+                newT.payCashAllowed = !!document.getElementById('newPayCash')?.checked;
                 newT.payments = {};
             }
             // Turnyras priklauso jį sukūrusiam klubui — kiti klubai jo nevaldys
@@ -449,16 +450,17 @@ function renderAdminTournaments() {
 // Kiek įrašų apmokėta / laukia / iš viso (įrašas = individualus žaidėjas arba pora)
 function paymentCounts(t) {
     const entries = Array.isArray(t.players) ? t.players : [];
-    let paid = 0, pending = 0, collected = 0, expected = 0;
+    let paid = 0, pending = 0, cash = 0, collected = 0, expected = 0;
     entries.forEach(e => {
         const seats = String(e).includes('/') ? 2 : 1;
         const amount = (t.fee || 0) * seats;
         expected += amount;
         const pay = (t.payments || {})[payKey(e)];
         if (pay && pay.status === 'paid') { paid++; collected += (pay.amount || amount); }
+        else if (pay && pay.method === 'cash') { cash++; }
         else pending++;
     });
-    return { paid, pending, total: entries.length, collected, expected };
+    return { paid, pending, cash, total: entries.length, collected, expected };
 }
 
 function openPaymentsModal(id) {
@@ -473,15 +475,17 @@ function openPaymentsModal(id) {
         const isPaid = pay && pay.status === 'paid';
         const amount = (pay && pay.amount) || (t.fee || 0) * seats;
         const names = String(e).split('/').map(part => esc(part.trim().split('|')[0].trim())).join(' / ');
-        const dl = (pay && pay.deadline && !isPaid)
+        const isCash = pay && pay.method === 'cash' && !isPaid;
+        const dl = (pay && pay.deadline && !isPaid && !isCash)
             ? `<div style="font-size:10px; color:${pay.deadline < Date.now() ? '#dc2626' : '#b45309'};"><i class="fa-solid fa-hourglass-half"></i> iki ${new Date(pay.deadline).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}${pay.deadline < Date.now() ? ' — VĖLUOJA' : ''}</div>`
             : '';
         const safeKey = payKey(e).replace(/'/g, '');
+        const statusTxt = isPaid ? ' · apmokėta ✅' : (isCash ? ' · 💵 mokės grynais vietoje' : ' · laukia pavedimo');
         return `
-        <div style="display:flex; align-items:center; gap:10px; border:1px solid ${isPaid ? '#bbf7d0' : '#e2e8f0'}; background:${isPaid ? '#f0fdf4' : 'white'}; border-radius:10px; padding:10px 12px;">
+        <div style="display:flex; align-items:center; gap:10px; border:1px solid ${isPaid ? '#bbf7d0' : (isCash ? '#bfdbfe' : '#e2e8f0')}; background:${isPaid ? '#f0fdf4' : (isCash ? '#eff6ff' : 'white')}; border-radius:10px; padding:10px 12px;">
             <div style="flex:1; min-width:0;">
                 <div style="font-weight:800; font-size:13px; color:var(--text-dark);">${names}${seats === 2 ? ' <span style="font-size:10px; color:var(--text-grey);">(pora)</span>' : ''}</div>
-                <div style="font-size:11px; color:var(--text-grey); font-weight:600;">${amount} €${isPaid ? ' · apmokėta ✅' : ' · laukia'}</div>
+                <div style="font-size:11px; color:var(--text-grey); font-weight:600;">${amount} €${statusTxt}</div>
                 ${dl}
             </div>
             ${isPaid
@@ -501,6 +505,10 @@ function openPaymentsModal(id) {
                 <div style="font-size:9px; font-weight:bold; color:#92400e; text-transform:uppercase;">Laukia</div>
                 <div style="font-size:18px; font-weight:900; color:#92400e;">${c.pending}</div>
             </div>
+            ${c.cash > 0 ? `<div style="flex:1; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:8px;">
+                <div style="font-size:9px; font-weight:bold; color:#1d4ed8; text-transform:uppercase;">💵 Vietoje</div>
+                <div style="font-size:18px; font-weight:900; color:#1d4ed8;">${c.cash}</div>
+            </div>` : ''}
             <div style="flex:1; background:#f8f9fb; border:1px solid #e2e8f0; border-radius:10px; padding:8px;">
                 <div style="font-size:9px; font-weight:bold; color:var(--text-grey); text-transform:uppercase;">Numatyta</div>
                 <div style="font-size:18px; font-weight:900; color:var(--text-dark);">${c.expected} €</div>
@@ -583,6 +591,8 @@ function openAdminTournamentModal(id) {
         if (dlSel) dlSel.value = String(typeof t.payDeadlineHours === 'number' ? t.payDeadlineHours : 24);
         const infoTa = document.getElementById('editAdminTournamentPayInfo');
         if (infoTa) infoTa.value = t.payInfo || '';
+        const cashBox = document.getElementById('editAdminTournamentPayCash');
+        if (cashBox) cashBox.checked = !!t.payCashAllowed;
     }
     document.getElementById('adminEditTournamentModal').classList.add('show');
 }
@@ -619,6 +629,7 @@ function saveAdminTournamentChanges() {
             tournaments[idx].fee = Math.max(1, parseFloat(document.getElementById('editAdminTournamentFee')?.value) || 10);
             tournaments[idx].payDeadlineHours = parseInt(document.getElementById('editAdminTournamentPayDeadline')?.value || 24);
             tournaments[idx].payInfo = (document.getElementById('editAdminTournamentPayInfo')?.value || '').trim();
+            tournaments[idx].payCashAllowed = !!document.getElementById('editAdminTournamentPayCash')?.checked;
             if (!tournaments[idx].payments) tournaments[idx].payments = {};
         }
         tournaments[idx].eReferee = !!document.getElementById('editAdminTournamentERef')?.checked;

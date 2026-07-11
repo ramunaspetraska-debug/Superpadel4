@@ -210,6 +210,18 @@ function renderTournaments() {
     const list = document.getElementById('scheduleList'); 
     if(!list) return;
 
+    // Dalinimosi nuoroda (?t=ID): atsidarius, kalendorius peršoka į to turnyro dieną
+    if (window._pendingShareTid !== undefined && Array.isArray(tournaments) && tournaments.length) {
+        const shared = tournaments.find(x => String(x.id) === String(window._pendingShareTid));
+        window._pendingShareTid = undefined;
+        if (shared) {
+            activeDate = shared.date;
+            if (typeof initDates === 'function') initDates();
+            const navBtn = document.querySelector('.nav-item[onclick*="page-calendar"]');
+            if (typeof switchTab === 'function' && navBtn) switchTab('page-calendar', navBtn);
+        }
+    }
+
     const formatFilter = document.getElementById('filterFormat')?.value || 'all';
     const levelFilter = document.getElementById('filterLevel')?.value || 'all';
     const playerFilter = (document.getElementById('filterPlayer')?.value || "").toLowerCase().trim();
@@ -261,7 +273,9 @@ function renderTournaments() {
         } else {
             if (persStatus === 'registered') {
                 const payPend = paymentPendingFor(t);
-                if (payPend) {
+                if (payPend && payPend.method === 'cash') {
+                    statusHTML = `<div class="status-indicator status-in"><i class="fa-solid fa-check"></i> Dalyvaujate</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="cursor:pointer; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">💵 ${payPend.amount} € vietoje</button>`;
+                } else if (payPend) {
                     statusHTML = `<div class="status-indicator" style="color:#b45309;"><i class="fa-solid fa-hourglass-half"></i> Laukia apmokėjimo</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="cursor:pointer; background:#fffbeb; color:#92400e; border:1px solid #fde68a;"><i class="fa-solid fa-euro-sign"></i> ${payPend.amount} € apmokėti</button>`;
                 } else {
                     statusHTML = `<div class="status-indicator status-in"><i class="fa-solid fa-check"></i> Dalyvaujate${t.paid ? ' · apmokėta' : ''}</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`;
@@ -292,7 +306,7 @@ function renderTournaments() {
         if (lvlClass === 'c-/c') lvlClass = 'c2';
         if (lvlClass === 'd/c-' || lvlClass === 'd-c') lvlClass = 'd-c';
 
-        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${Number(t.id)})"><div class="card-date-square"><div class="num">${esc(dayNum)}</div><div class="name">${esc(dayName)}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${esc(t.format)}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${esc(displayLevel)}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${esc(t.category)}</div>` : ''}${t.clubName ? `<div class="level-badge" style="background:#0f766e;"><i class="fa-solid fa-building" style="font-size:8px;"></i> ${esc(t.clubName)}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event)"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${esc(t.time)}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${(t.max || 0) > 0 ? `${t.registered} / ${t.max}` : `${t.registered} dalyv.`}</div></div><div class="card-bottom">${statusHTML}${(persStatus !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
+        let cardHTML = `<div class="schedule-card level-${lvlClass} ${cardClassModifier}" onclick="handleCardClick(${Number(t.id)})"><div class="card-date-square"><div class="num">${esc(dayNum)}</div><div class="name">${esc(dayName)}</div></div><div class="card-info"><div class="card-header"><div class="card-title-group"><div class="card-title">${esc(t.format)}</div><div style="display: flex; gap: 5px; flex-wrap: wrap;"><div class="level-badge">${esc(displayLevel)}</div>${t.category ? `<div class="level-badge" style="background:#64748b;">${esc(t.category)}</div>` : ''}${t.clubName ? `<div class="level-badge" style="background:#0f766e;"><i class="fa-solid fa-building" style="font-size:8px;"></i> ${esc(t.clubName)}</div>` : ''}${timeStateBadge}</div></div><button type="button" class="share-btn" onclick="shareBtn(event, ${Number(t.id)})"><i class="fa-solid fa-share-nodes"></i></button></div><div class="card-time">${esc(t.time)}</div><div class="avatars-row"><div class="avatar">${avatar1}</div><div class="avatar">${avatar2}</div><div class="avatar avatar-more">+${t.registered > 2 ? t.registered - 2 : 0}</div><div class="registration-count">${(t.max || 0) > 0 ? `${t.registered} / ${t.max}` : `${t.registered} dalyv.`}</div></div><div class="card-bottom">${statusHTML}${(persStatus !== 'registered' && t.timeState !== 'past' && t.timeState !== 'live') ? `<button type="button" class="h2h-btn" onclick="openH2H(event)"><i class="fa-solid fa-chart-simple"></i> H2H</button>` : ''}</div></div>${demoBtn}</div>`;
         cardsHtml += cardHTML;
     });
     list.innerHTML = cardsHtml;
@@ -788,7 +802,30 @@ function openNotifications() {
 }
 
 function handleCardClick(id) { let t = tournaments.find(x => x.id === id); if (!t) return; if (t.timeState === 'past') { openOfficialResults(id); return; } if (t.timeState === 'live') { watchTournamentLive(id); return; } const st = effectiveStatusFor(t); if (st === 'registered') { openCancelModal(id); } else if (st === 'waitlist') { openWaitlistCancelModal(id); } else if (st === 'open') { openRegisterModal(id); } else if (st === 'closed' || (st === 'full' && t.isDemoWaitlist)) { openJoinWaitlistModal(id); } else { showToast("Šiame turnyre vietų nebėra."); } }
-function shareBtn(e) { e.stopPropagation(); showToast("Nuoroda nukopijuota į iškarpinę!"); }
+// Turnyro dalinimasis: telefone — sisteminis meniu (WhatsApp ir kt.), kompiuteryje —
+// kopijavimas. Nuoroda ?t=ID atidaro portalą to turnyro dienoje (žr. renderTournaments).
+function shareBtn(e, id) {
+    e.stopPropagation();
+    const t = tournaments.find(x => String(x.id) === String(id));
+    const url = location.origin + location.pathname + (t ? '?t=' + encodeURIComponent(t.id) : '');
+    const text = t ? `${t.format} (${t.level}) — ${t.date} ${t.time}${t.clubName ? ' · ' + t.clubName : ''}` : 'SuperPadel turnyras';
+    if (navigator.share) {
+        navigator.share({ title: 'SuperPadel.lt', text: text, url: url }).catch(() => {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => showToast("Nuoroda nukopijuota į iškarpinę!")).catch(() => showToast(url));
+    } else {
+        showToast(url);
+    }
+}
+
+// Puslapio starte įsimenam ?t=ID iš dalinimosi nuorodos (apdorojama, kai užsikrauna turnyrai)
+try {
+    const _shareParams = new URLSearchParams(location.search);
+    if (_shareParams.get('t')) {
+        window._pendingShareTid = _shareParams.get('t');
+        history.replaceState(null, '', location.pathname);
+    }
+} catch (e) {}
 function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head statistika..."); }
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; let pFilter = document.getElementById('filterPlayer'); if(pFilter) pFilter.value = ''; renderTournaments(); }
 
@@ -862,26 +899,64 @@ function openPaymentInstructions(id) {
     const pay = (t.payments || {})[payKey(entry)];
     const amount = (pay && pay.amount) || (t.fee || 0) * (isPair ? 2 : 1);
     const alreadyPaid = pay && pay.status === 'paid';
+    const isCash = pay && pay.method === 'cash' && !alreadyPaid;
     const dlStr = (pay && pay.deadline)
         ? new Date(pay.deadline).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
         : '';
+    const headBg = alreadyPaid ? '#f0fdf4' : (isCash ? '#eff6ff' : '#fffbeb');
+    const headBorder = alreadyPaid ? '#bbf7d0' : (isCash ? '#bfdbfe' : '#fde68a');
+    const headColor = alreadyPaid ? '#166534' : (isCash ? '#1d4ed8' : '#92400e');
+    const headLabel = alreadyPaid ? 'Apmokėta ✅' : (isCash ? '💵 Mokėsite grynais atvykę' : 'Mokėtina suma');
     modalTitle.innerHTML = `<i class="fa-solid fa-euro-sign" style="color:#16a34a;"></i> Apmokėjimas`;
     modalBody.innerHTML = `
         <div style="text-align:left;">
-            <div style="background:${alreadyPaid ? '#f0fdf4' : '#fffbeb'}; border:1px solid ${alreadyPaid ? '#bbf7d0' : '#fde68a'}; border-radius:10px; padding:12px; margin-bottom:10px; text-align:center;">
-                <div style="font-size:11px; font-weight:700; color:${alreadyPaid ? '#166534' : '#92400e'}; text-transform:uppercase;">${alreadyPaid ? 'Apmokėta ✅' : 'Mokėtina suma'}</div>
-                <div style="font-size:28px; font-weight:900; color:${alreadyPaid ? '#166534' : '#92400e'};">${amount} €</div>
+            <div style="background:${headBg}; border:1px solid ${headBorder}; border-radius:10px; padding:12px; margin-bottom:10px; text-align:center;">
+                <div style="font-size:11px; font-weight:700; color:${headColor}; text-transform:uppercase;">${headLabel}</div>
+                <div style="font-size:28px; font-weight:900; color:${headColor};">${amount} €</div>
                 ${isPair ? '<div style="font-size:11px; color:var(--text-grey);">už porą (2 žaidėjai)</div>' : ''}
             </div>
-            ${!alreadyPaid && t.payInfo ? `
+            ${isCash ? `<div style="font-size:12px; color:var(--text-grey); margin-bottom:8px;">Vieta rezervuota — sumokėsite organizatoriui atvykę į turnyrą. Terminas jums negalioja.</div>` : ''}
+            ${!alreadyPaid && !isCash && t.payInfo ? `
                 <div style="font-size:11px; font-weight:800; color:var(--text-grey); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Mokėjimo rekvizitai</div>
                 <div style="background:#f8f9fb; border:1px solid #e2e8f0; border-radius:8px; padding:10px; font-size:13px; white-space:pre-wrap; word-break:break-word;">${esc(t.payInfo)}</div>` : ''}
-            ${!alreadyPaid ? `<div style="font-size:12px; margin-top:10px; color:var(--text-grey);">Mokėjimo paskirtis: <b style="color:var(--text-dark);">${esc(t.format)} ${esc(t.date)} — ${esc(cleanName(String(entry).split('/')[0]))}</b></div>` : ''}
-            ${!alreadyPaid && dlStr ? `<div style="font-size:12px; margin-top:8px; color:#b45309; font-weight:700;"><i class="fa-solid fa-hourglass-half"></i> Apmokėkite iki ${dlStr} — kitaip vieta atlaisvinama automatiškai.</div>` : ''}
-            ${!alreadyPaid ? `<div style="font-size:11px; margin-top:8px; color:var(--text-grey);">Organizatoriui patvirtinus apmokėjimą, būsena pasikeis į „Dalyvaujate".</div>` : ''}
+            ${!alreadyPaid && !isCash ? `<div style="font-size:12px; margin-top:10px; color:var(--text-grey);">Mokėjimo paskirtis: <b style="color:var(--text-dark);">${esc(t.format)} ${esc(t.date)} — ${esc(cleanName(String(entry).split('/')[0]))}</b></div>` : ''}
+            ${!alreadyPaid && !isCash && dlStr ? `<div style="font-size:12px; margin-top:8px; color:#b45309; font-weight:700;"><i class="fa-solid fa-hourglass-half"></i> Apmokėkite iki ${dlStr} — kitaip vieta atlaisvinama automatiškai.</div>` : ''}
+            ${!alreadyPaid && !isCash ? `<div style="font-size:11px; margin-top:8px; color:var(--text-grey);">Organizatoriui patvirtinus apmokėjimą, būsena pasikeis į „Dalyvaujate".</div>` : ''}
         </div>`;
-    modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="closeModal()" style="width:100%;">Supratau</button>`;
+    // Mokėjimo būdo perjungimas (jei organizatorius leidžia grynuosius)
+    let methodBtns = '';
+    if (!alreadyPaid && t.payCashAllowed) {
+        methodBtns = isCash
+            ? `<button type="button" class="modal-btn secondary" onclick="choosePaymentMethod(${Number(t.id)}, 'manual')" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-building-columns"></i> Vis dėlto mokėsiu pavedimu</button>`
+            : `<button type="button" class="modal-btn secondary" onclick="choosePaymentMethod(${Number(t.id)}, 'cash')" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-money-bill-wave"></i> Mokėsiu grynais atvykęs</button>`;
+    }
+    modalActions.innerHTML = `${methodBtns}<button type="button" class="modal-btn primary" onclick="closeModal()" style="width:100%;">Supratau</button>`;
     modal.classList.add('show');
+}
+
+// Perjungia mokėjimo būdą: grynais (terminas nebegalioja) <-> pavedimu (terminas atstatomas)
+function choosePaymentMethod(id, method) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t || !t.paid) return;
+    const entry = myPlayersEntry(t);
+    if (!entry) return;
+    if (!t.payments) t.payments = {};
+    const key = payKey(entry);
+    const existing = t.payments[key] || {};
+    if (existing.status === 'paid') { openPaymentInstructions(id); return; }
+    const seats = String(entry).includes('/') ? 2 : 1;
+    if (method === 'cash') {
+        if (!t.payCashAllowed) return;
+        t.payments[key] = Object.assign({}, existing, { entry: entry, status: 'pending', method: 'cash', amount: existing.amount || (t.fee || 0) * seats, deadline: null });
+        showToast("💵 Pažymėta: mokėsite grynais atvykę.");
+    } else {
+        t.payments[key] = Object.assign({}, existing, { entry: entry, status: 'pending', method: 'manual', amount: existing.amount || (t.fee || 0) * seats, deadline: paymentDeadlineMs(t, Date.now()) });
+        showToast("Pažymėta: mokėsite pavedimu.");
+    }
+    saveData();
+    openPaymentInstructions(id);
+    renderTournaments();
+    if (typeof renderUserProfile === 'function') renderUserProfile();
 }
 
 // ==========================================
@@ -991,10 +1066,15 @@ function openRegisterModal(id) {
     let t = tournaments.find(x => x.id === id);
     let displayLevel = t.level;
     if (t.level === 'Privatus') displayLevel = 'Draugų';
-    // Mokamo turnyro sąlygos parodomos PRIEŠ registraciją — jokių staigmenų
-    const payNote = t.paid
-        ? `<div style="margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px; font-size:12px; color:#166534; text-align:left;"><b>💶 Dalyvio mokestis: ${t.fee || 0} €</b> (porai ${(t.fee || 0) * 2} €).<br>Vieta rezervuojama — dalyvavimas patvirtinamas organizatoriui gavus apmokėjimą${t.payDeadlineHours ? ` per ${t.payDeadlineHours} val.` : ' iki registracijos pabaigos'}.</div>`
-        : '';
+    // Mokamo turnyro sąlygos parodomos PRIEŠ registraciją — jokių staigmenų.
+    // Rodomas FAKTINIS terminas: „X val. po registracijos", bet niekada ne vėliau
+    // registracijos uždarymo (registruojantis vėlai terminas savaime trumpesnis).
+    let payNote = '';
+    if (t.paid) {
+        const dl = paymentDeadlineMs(t, Date.now());
+        const dlStr = new Date(dl).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        payNote = `<div style="margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px; font-size:12px; color:#166534; text-align:left;"><b>💶 Dalyvio mokestis: ${t.fee || 0} €</b> (porai ${(t.fee || 0) * 2} €).<br>Vieta rezervuojama — apmokėkite iki <b>${dlStr}</b>, kitaip vieta atlaisvinama automatiškai.</div>`;
+    }
     modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${esc(t.format)} (${esc(displayLevel)} lygis)</strong>.<br>Laikas: ${esc(t.time)}.${payNote}`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show');
 }
 

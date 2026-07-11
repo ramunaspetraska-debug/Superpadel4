@@ -169,6 +169,7 @@ async function removeEntryAndNotify(t, entry, all, title, body, tag) {
 }
 
 // Laukiantys apmokėjimai su pasibaigusiu terminu — rezervacija atšaukiama.
+// Likus ~2 val. iki termino siunčiamas vienkartinis priminimas.
 // Atsilaisvinusią vietą rezervo eilei praneša esamas spotOpened trigeris.
 async function enforcePaymentDeadlines(now) {
     const tSnap = await db.ref('padelio_global_tournaments').get();
@@ -177,27 +178,59 @@ async function enforcePaymentDeadlines(now) {
     const arr = (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
     let changed = false;
     let all = null;
+    let sent = null;
+    const sentUpdates = {};
+    const loadAll = async () => {
+        if (all === null) { const s = await db.ref('padelio_user_tournaments').get(); all = s.val() || {}; }
+    };
     for (const t of arr) {
         if (!t || !t.paid || !t.payments || !Array.isArray(t.players)) continue;
+
+        // 1) Pavėlavę — šalinami
         const overdue = Object.keys(t.payments).filter(k => {
             const p = t.payments[k];
             return p && p.status === 'pending' && typeof p.deadline === 'number' && p.deadline < now;
         });
-        if (!overdue.length) continue;
-        if (all === null) {
-            const utSnap = await db.ref('padelio_user_tournaments').get();
-            all = utSnap.val() || {};
+        if (overdue.length) {
+            await loadAll();
+            for (const k of overdue) {
+                const entry = (t.payments[k] && t.payments[k].entry) || t.players.find(e => payKey(e) === k) || null;
+                if (!entry) { delete t.payments[k]; changed = true; continue; }
+                const ok = await removeEntryAndNotify(t, entry, all,
+                    '💶 Rezervacija atšaukta',
+                    (t.format || 'Turnyras') + ' (' + (t.date || '') + ' ' + (t.time || '') + ') — apmokėjimas negautas iki termino, vieta atlaisvinta.',
+                    'paydl_' + t.id);
+                changed = changed || ok;
+            }
         }
-        for (const k of overdue) {
-            const entry = (t.payments[k] && t.payments[k].entry) || t.players.find(e => payKey(e) === k) || null;
-            if (!entry) { delete t.payments[k]; changed = true; continue; }
-            const ok = await removeEntryAndNotify(t, entry, all,
-                '💶 Rezervacija atšaukta',
-                (t.format || 'Turnyras') + ' (' + (t.date || '') + ' ' + (t.time || '') + ') — apmokėjimas negautas iki termino, vieta atlaisvinta.',
-                'paydl_' + t.id);
-            changed = changed || ok;
+
+        // 2) Priminimas likus ~2 val. iki termino (vienkartinis; grynaisiais mokančių neliečia)
+        const soonKeys = Object.keys(t.payments).filter(k => {
+            const p = t.payments[k];
+            return p && p.status === 'pending' && p.method !== 'cash' && typeof p.deadline === 'number'
+                && p.deadline > now && p.deadline - now <= 2.5 * 3600000;
+        });
+        if (soonKeys.length) {
+            await loadAll();
+            if (sent === null) { const s = await db.ref('padelio_push_sent').get(); sent = s.val() || {}; }
+            for (const k of soonKeys) {
+                const p = t.payments[k];
+                const entry = p.entry || t.players.find(e => payKey(e) === k) || '';
+                const names = String(entry).split('/').map(x => x.trim().split('|')[0].trim().toLowerCase());
+                for (const userId of Object.keys(all)) {
+                    const rec = all[userId] && all[userId][t.id];
+                    if (!rec || names.indexOf(String(rec.name || '').trim().toLowerCase()) === -1) continue;
+                    const sKey = 'payrem_' + userId + '_' + t.id;
+                    if (sent[sKey] || sentUpdates[sKey]) continue;
+                    await sendToUser(userId, '💶 Priminimas apmokėti',
+                        (t.format || 'Turnyras') + ' — liko nedaug laiko apmokėti ' + (p.amount || t.fee || '') + ' €. Nespėjus, vieta bus atlaisvinta.',
+                        'payrem_' + t.id);
+                    sentUpdates[sKey] = now;
+                }
+            }
         }
     }
+    if (Object.keys(sentUpdates).length) await db.ref('padelio_push_sent').update(sentUpdates);
     if (changed) await db.ref('padelio_global_tournaments').set(arr);
 }
 
@@ -233,10 +266,12 @@ async function closeRegistrations(now) {
 
         // MOKAMAS TURNYRAS: uždarant registraciją NEAPMOKĖJUSIEJI šalinami pirmiausia —
         // tik tada sąrašas karpomas iki pilnų kortų pagal eilės tvarką.
+        // Pasirinkusieji mokėti GRYNAIS vietoje (method='cash') NEšalinami —
+        // jie atsiskaito organizatoriui atvykę į turnyrą.
         if (t.paid) {
             const unpaid = players.filter(e => {
                 const p = (t.payments || {})[payKey(e)];
-                return !(p && p.status === 'paid');
+                return !(p && (p.status === 'paid' || p.method === 'cash'));
             });
             if (unpaid.length) {
                 players = players.filter(e => unpaid.indexOf(e) === -1);
