@@ -577,6 +577,12 @@ function renderUserProfile() {
                 let parts = teamStr.split('/').map(cleanName);
                 let pName = parts[0].toLowerCase() === currentUser.name.toLowerCase() ? parts[1] : parts[0];
                 partnerInfo += `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 3px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-group"></i> ${esc(pName)}</div>`;
+                // Partnerio atšaukimas (mano vieta lieka)
+                actionButtons += `
+                    <button type="button" onclick="event.stopPropagation(); openRemovePartnerModal(${t.id});" title="Atšaukti partnerį" style="background: #fff; color: var(--status-orange); border: 1px solid #fde68a; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px;">
+                        <i class="fa-solid fa-user-minus"></i>
+                    </button>
+                `;
             } else {
                 actionButtons += `
                     <button type="button" onclick="event.stopPropagation(); confirmRegistration(${t.id}, true);" style="background: var(--status-green); color: white; border: none; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: 0.2s;">

@@ -434,7 +434,7 @@ function renderAdminTournaments() {
             <td style="padding: 12px; color: var(--text-grey); font-weight: 600;">${esc(t.time)}</td>
             <td style="padding: 12px; font-weight: 800; color: var(--primary-blue);">${esc(t.format)}</td>
             <td style="padding: 12px;"><span style="background: #edf2f7; padding: 3px 6px; border-radius: 4px; font-weight:bold; font-size: 11px; ${levelColor}">${esc(t.level)}</span></td>
-            <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
+            <td style="padding: 12px;"><button type="button" onclick="openParticipantsModal('${esc(String(t.id))}')" title="Dalyvių valdymas" style="background:none; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px; font-weight:bold; cursor:pointer; color:${t.registered >= t.max && (t.max || 0) > 0 ? 'var(--status-red)' : 'var(--status-green)'};">👥 ${t.registered}${(t.max || 0) > 0 ? '/' + t.max : ''}</button></td>
             <td style="padding: 12px; text-align: center; white-space:nowrap;">
                 ${t.room ? `<button type="button" onclick="openGeneratorRoom('${safeRoom}')" title="Atidaryti generatorių (kambarys ${safeRoom})" style="background:#ecfdf5; color:#047857; border:none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">▶ ${esc(t.room)}</button>` : ''}
                 ${t.paid ? (function () { const c = paymentCounts(t); return `<button type="button" onclick="openPaymentsModal('${esc(String(t.id))}')" title="Apmokėjimų valdymas" style="background:${c.pending > 0 ? '#fffbeb' : '#f0fdf4'}; color:${c.pending > 0 ? '#92400e' : '#166534'}; border:1px solid ${c.pending > 0 ? '#fde68a' : '#bbf7d0'}; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">💶 ${c.paid}/${c.total}</button>`; })() : ''}
@@ -445,6 +445,73 @@ function renderAdminTournaments() {
     });
     html += '</table>';
     list.innerHTML = html;
+}
+
+// ==========================================
+// DALYVIŲ VALDYMAS (klubo adminui): pašalinti neatvykusį/nepranešusį žaidėją.
+// Vieta atlaisvinama — rezervo eilei push'ą išsiunčia esamas spotOpened trigeris.
+// ==========================================
+
+function openParticipantsModal(id) {
+    const t = tournaments.find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (currentClub && !canManageTournament(t)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
+    const players = Array.isArray(t.players) ? t.players : [];
+    const waitlist = Array.isArray(t.waitlist) ? t.waitlist : [];
+    const row = (names, sub, btn) => `
+        <div style="display:flex; align-items:center; gap:10px; border:1px solid #e2e8f0; background:white; border-radius:10px; padding:9px 12px;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:800; font-size:13px; color:var(--text-dark);">${names}</div>
+                ${sub ? `<div style="font-size:10px; color:var(--text-grey); font-weight:600;">${sub}</div>` : ''}
+            </div>
+            ${btn}
+        </div>`;
+    const playerRows = players.length ? players.map((e, i) => {
+        const names = String(e).split('/').map(p => esc(p.trim().split('|')[0].trim())).join(' / ');
+        const seats = String(e).includes('/') ? 2 : 1;
+        return row(names, seats === 2 ? 'pora (2 vietos)' : '', `<button type="button" onclick="adminRemoveParticipant('${esc(String(t.id))}', ${i})" style="background:white; color:#dc2626; border:1px solid #fecaca; padding:6px 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; flex-shrink:0;"><i class="fa-solid fa-user-minus"></i> Pašalinti</button>`);
+    }).join('') : '<div style="text-align:center; color:var(--text-grey); font-size:12px; padding:14px;">Dalyvių nėra.</div>';
+    const wlRows = waitlist.length ? waitlist.map((e, i) => {
+        const nm = esc(String(e).split('|')[0].trim());
+        return row((i + 1) + '. ' + nm, '', `<button type="button" onclick="adminRemoveWaitlist('${esc(String(t.id))}', ${i})" style="background:white; color:#dc2626; border:1px solid #fecaca; padding:6px 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; flex-shrink:0;">Šalinti</button>`);
+    }).join('') : '';
+
+    modalTitle.innerHTML = `<i class="fa-solid fa-users" style="color:var(--primary-blue);"></i> Dalyviai — ${esc(t.format)} ${esc(t.date)}`;
+    modalBody.innerHTML = `
+        <div style="text-align:left;">
+            <div style="font-size:11px; color:var(--text-grey); margin-bottom:10px;">Užimta vietų: <b style="color:var(--text-dark);">${t.registered || 0}${(t.max || 0) > 0 ? ' / ' + t.max : ''}</b>. Pašalinus dalyvį vieta atlaisvinama, o rezervo eilė gauna pranešimą automatiškai.</div>
+            <div style="display:flex; flex-direction:column; gap:6px; max-height:40vh; overflow-y:auto;">${playerRows}</div>
+            ${wlRows ? `<div style="font-size:10px; font-weight:800; color:var(--text-grey); text-transform:uppercase; margin:12px 0 6px;">Rezervo eilė (${waitlist.length})</div><div style="display:flex; flex-direction:column; gap:6px; max-height:20vh; overflow-y:auto;">${wlRows}</div>` : ''}
+        </div>`;
+    modalActions.innerHTML = `<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
+    modal.classList.add('show');
+}
+
+function adminRemoveParticipant(id, index) {
+    const t = tournaments.find(x => String(x.id) === String(id));
+    if (!t || !Array.isArray(t.players) || !t.players[index]) return;
+    const entry = t.players[index];
+    const names = String(entry).split('/').map(p => p.trim().split('|')[0].trim()).join(' / ');
+    if (!confirm(`Pašalinti iš turnyro: ${names}?\n\nVieta bus atlaisvinta, rezervo eilė gaus pranešimą.`)) return;
+    const seats = String(entry).includes('/') ? 2 : 1;
+    t.players.splice(index, 1);
+    t.registered = Math.max(0, (t.registered || 0) - seats);
+    if (t.payments && t.payments[payKey(entry)]) delete t.payments[payKey(entry)];
+    saveData();
+    showToast(`Pašalinta: ${names}`);
+    openParticipantsModal(id);
+    renderAdminTournaments();
+}
+
+function adminRemoveWaitlist(id, index) {
+    const t = tournaments.find(x => String(x.id) === String(id));
+    if (!t || !Array.isArray(t.waitlist) || !t.waitlist[index]) return;
+    const nm = String(t.waitlist[index]).split('|')[0].trim();
+    if (!confirm(`Pašalinti iš rezervo eilės: ${nm}?`)) return;
+    t.waitlist.splice(index, 1);
+    t.waitlistCount = t.waitlist.length;
+    saveData();
+    openParticipantsModal(id);
 }
 
 // ==========================================

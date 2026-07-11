@@ -1398,7 +1398,42 @@ function submitSmartPartner(tournamentId) {
 }
 
 function completePairRegistration(tournament, player1, player2, gender1, gender2) {
-    if (userIsRegistered(tournament)) { closeModal(); showToast("Jūs jau užsiregistravęs šiame turnyre."); return; }
+    // JAU registruotas INDIVIDUALIAI? Įrašas konvertuojamas į porą (užimama +1 vieta).
+    const myEntry = myPlayersEntry(tournament);
+    if (myEntry && String(myEntry).includes('/')) { closeModal(); showToast("Jau žaidžiate poroje šiame turnyre."); return; }
+    if (myEntry) {
+        if (tournament.regClosed) { closeModal(); showToast("🔒 Registracija baigta — partnerio pridėti nebegalima."); return; }
+        if ((tournament.max || 0) > 0 && (tournament.registered || 0) + 1 > tournament.max) { closeModal(); showToast("Deja, partneriui vietos nebėra."); renderTournaments(); return; }
+        const idx = tournament.players.indexOf(myEntry);
+        if (idx === -1) return;
+        const pairEntry = `${myEntry} / ${player2}|${gender2 || 'M'}`;
+        tournament.players[idx] = pairEntry;
+        tournament.registered = (tournament.registered || 0) + 1;
+        if (tournament.paid) {
+            // Mokėjimo įrašas perskaičiuojamas: jei už save JAU apmokėta — belieka
+            // partnerio dalis (1x fee); jei dar ne — visa poros suma (2x fee).
+            if (!tournament.payments) tournament.payments = {};
+            const old = tournament.payments[payKey(myEntry)] || {};
+            delete tournament.payments[payKey(myEntry)];
+            const wasPaid = old.status === 'paid';
+            tournament.payments[payKey(pairEntry)] = {
+                entry: pairEntry,
+                status: 'pending',
+                method: old.method === 'cash' ? 'cash' : 'manual',
+                amount: (tournament.fee || 0) * (wasPaid ? 1 : 2),
+                note: wasPaid ? 'Už save apmokėta — liko partnerio dalis' : null,
+                ts: Date.now(),
+                deadline: old.method === 'cash' ? null : paymentDeadlineMs(tournament, Date.now())
+            };
+        }
+        saveData();
+        closeModal();
+        showToast(`Partneris pridėtas: ${player2}!`);
+        if (tournament.paid) openPaymentInstructions(tournament.id);
+        renderTournaments();
+        renderUserProfile();
+        return;
+    }
     if (tournament.regClosed) { closeModal(); showToast("🔒 Registracija baigta — galite stoti į rezervą."); renderTournaments(); return; }
     if ((tournament.max || 0) > 0 && (tournament.registered || 0) + 2 > tournament.max) { closeModal(); showToast("Deja, porai vietų nebėra."); renderTournaments(); return; }
     if (!tournament.players) tournament.players = [];
@@ -1458,6 +1493,54 @@ function confirmCancel(id) {
     saveData();
     closeModal();
     clearUserTournament(id); showToast("Registracija sėkmingai atšaukta.");
+    renderUserProfile();
+}
+
+// PARTNERIO ATŠAUKIMAS: pora tampa individualia registracija (mano vieta lieka).
+// Mokamame turnyre suma perskaičiuojama į 1x fee (permoką grąžina organizatorius).
+function openRemovePartnerModal(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t) return;
+    const entry = myPlayersEntry(t);
+    if (!entry || !String(entry).includes('/')) { showToast("Neturite partnerio šiame turnyre."); return; }
+    const parts = String(entry).split('/').map(p => p.trim());
+    const partnerPart = parts.find(p => p.split('|')[0].trim().toLowerCase() !== currentUser.name.toLowerCase()) || parts[1];
+    const partnerName = cleanName(partnerPart);
+    modalTitle.innerHTML = `<i class="fa-solid fa-user-minus" style="color: var(--status-red);"></i> Atšaukti partnerį`;
+    modalBody.innerHTML = `Partneris <b>${esc(partnerName)}</b> bus pašalintas iš turnyro, o jūsų vieta liks. Tęsti?`;
+    modalActions.innerHTML = `<button type="button" class="modal-btn danger" onclick="confirmRemovePartner(${Number(t.id)})">Taip, atšaukti partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Ne</button>`;
+    modal.classList.add('show');
+}
+
+function confirmRemovePartner(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t) return;
+    const entry = myPlayersEntry(t);
+    if (!entry || !String(entry).includes('/')) { closeModal(); return; }
+    const parts = String(entry).split('/').map(p => p.trim());
+    const myPart = parts.find(p => p.split('|')[0].trim().toLowerCase() === currentUser.name.toLowerCase()) || parts[0];
+    const idx = t.players.indexOf(entry);
+    if (idx === -1) { closeModal(); return; }
+    t.players[idx] = myPart;
+    t.registered = Math.max(0, (t.registered || 0) - 1);
+    if (t.paid && t.payments) {
+        const old = t.payments[payKey(entry)] || {};
+        delete t.payments[payKey(entry)];
+        t.payments[payKey(myPart)] = {
+            entry: myPart,
+            status: old.status === 'paid' ? 'paid' : 'pending',
+            method: old.method || 'manual',
+            amount: (t.fee || 0),
+            claimed: old.claimed || null,
+            ts: old.ts || Date.now(),
+            paidTs: old.paidTs || null,
+            deadline: old.status === 'paid' || old.method === 'cash' ? null : (old.deadline || paymentDeadlineMs(t, Date.now()))
+        };
+    }
+    saveData();
+    closeModal();
+    showToast("Partneris atšauktas — jūsų vieta liko.");
+    renderTournaments();
     renderUserProfile();
 }
 

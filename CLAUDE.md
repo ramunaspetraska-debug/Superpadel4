@@ -23,7 +23,7 @@ canOfficial, legacyOwner), padelio_club_admins, padelio_email_links
 klubai), padelio_push_tokens/padelio_push_sent, padelio_notifications,
 padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
 
-## Sistemos būsena (2026-07-11, cache v282, APP_VERSION v212 / V231, registras.css?v=14)
+## Sistemos būsena (2026-07-11, cache v284, APP_VERSION v212 / V231, registras.css?v=14)
 - MOKAMI TURNYRAI: admin formose jungiklis „Mokamas turnyras" (t.paid, fee €/žaidėjui,
   payDeadlineHours 12/24/48/0=iki reg. pabaigos; struktūrizuoti rekvizitai
   payRecipient/payIban/payPhone, senas payInfo — tik fallback; payCashAllowed;
@@ -42,6 +42,13 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   Cloud Functions secrets STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET (be jų —
   503, klientas fallback'ina į pavedimą). Kliente STRIPE_FN_BASE +
   startStripeCheckout/handleStripeReturn (registras_tournaments.js).
+- CHATAS: padelio_chat/{clubId} — klubu pokalbiai (registras_chat.js, 💬 mygtukai
+  klubu sarase ir profilyje), seek skelbimai (type=seek, {level,date,time}),
+  trinti gali tik klubo adminas (DB rules), limitToLast(100).
+- Admin dalyviu valdymas: openParticipantsModal (👥 mygtukas) — salinti dalyvius/
+  rezerva. Partnerio pridejimas PO registracijos: completePairRegistration
+  konvertuoja individualu irasa i pora (mokamame perskaiciuoja suma — jei uz save
+  apmoketa, lieka partnerio dalis); openRemovePartnerModal — atsaukti tik partneri.
 - Kambarių prieiga generatoriuje laukia auth atstatymo (authEmailReady, storage.js) —
   be jo klubo adminas gaudavo „TIK PERŽIŪRA". Turnyro dalinimasis: ?t=ID deep link.
 - Prisijungimai: TIK el. pašto nuorodos (Firebase Auth email-link, be slaptažodžių).
