@@ -138,6 +138,16 @@
     "padelio_live_index": {
       ".read": true,
       ".write": "auth != null"
+    },
+
+    "padelio_chat": {
+      "$clubId": {
+        ".read": true,
+        "$msgId": {
+          ".write": "auth != null && (!data.exists() || root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === $clubId)",
+          ".validate": "newData.hasChildren(['name','text','ts']) && newData.child('name').isString() && newData.child('name').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length <= 500"
+        }
+      }
     }
   }
 }

@@ -643,7 +643,10 @@ function renderUserProfile() {
                     <div style="font-weight: 800; color: var(--text-dark); font-size: 13px;">${esc(c.clubName || id)}</div>
                     ${c.city ? `<div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city)}</div>` : ''}
                 </div>
-                <button type="button" onclick="toggleFollowClub('${esc(id)}'); setTimeout(renderUserProfile, 400);" style="background: #fff; border: 1px solid #fed7d7; color: var(--status-red); padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer;">Nebesekti</button>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" onclick="openClubChat('${esc(id)}', '${String(c.clubName || id).replace(/['"\\<>&]/g, '')}')" title="Klubo pokalbiai" style="background: #fff; border: 1px solid #bfdbfe; color: var(--primary-blue); width: 32px; height: 30px; border-radius: 8px; font-size: 12px; cursor: pointer;"><i class="fa-solid fa-comments"></i></button>
+                    <button type="button" onclick="toggleFollowClub('${esc(id)}'); setTimeout(renderUserProfile, 400);" style="background: #fff; border: 1px solid #fed7d7; color: var(--status-red); padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer;">Nebesekti</button>
+                </div>
             </div>`;
         });
         html += `</div>`;

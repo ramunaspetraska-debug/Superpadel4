@@ -1664,7 +1664,10 @@ function renderClubsPage() {
                     <div style="font-weight:900; font-size:15px; color:var(--text-dark);">${esc(c.name)}</div>
                     <div style="font-size:11px; color:var(--text-grey); font-weight:600; margin-top:2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city || 'Miestas nenurodytas')} ${official}</div>
                 </div>
-                <button type="button" onclick="toggleFollowClub('${esc(id)}')" style="flex-shrink:0; padding:8px 14px; border-radius:8px; border:none; background:${followed ? 'var(--status-green)' : 'var(--primary-blue)'}; color:#fff; font-size:11px; font-weight:800; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${followed ? '✓ Sekamas' : '⭐ Sekti'}</button>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button type="button" onclick="openClubChat('${esc(id)}', '${String(c.name || '').replace(/['"\\<>&]/g, '')}')" title="Klubo pokalbiai" style="padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; background:#fff; color:var(--primary-blue); font-size:13px; font-weight:800; cursor:pointer;"><i class="fa-solid fa-comments"></i></button>
+                    <button type="button" onclick="toggleFollowClub('${esc(id)}')" style="padding:8px 14px; border-radius:8px; border:none; background:${followed ? 'var(--status-green)' : 'var(--primary-blue)'}; color:#fff; font-size:11px; font-weight:800; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${followed ? '✓ Sekamas' : '⭐ Sekti'}</button>
+                </div>
             </div>
             ${c.description ? `<div style="font-size:12px; color:var(--text-grey); margin-top:8px; line-height:1.4;">${esc(c.description)}</div>` : ''}
             <div style="font-size:10px; font-weight:800; color:var(--text-grey); text-transform:uppercase; margin-top:10px;">${up.length ? 'Artimiausi turnyrai (' + up.length + ')' : 'Būsimų turnyrų nėra'}</div>
