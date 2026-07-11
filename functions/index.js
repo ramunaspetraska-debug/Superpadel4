@@ -497,7 +497,7 @@ async function markStripePaid(tid, key, sessionId) {
 // Sukuria Stripe Checkout sesiją. SUMĄ skaičiuoja serveris iš DB (ne klientas) —
 // kainos suklastoti neįmanoma.
 exports.createStripeCheckout = onRequest(
-    { region: REGION, cors: true, secrets: [STRIPE_SECRET_KEY] },
+    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY] },
     async (req, res) => {
         try {
             const body = req.body || {};
@@ -544,7 +544,7 @@ exports.createStripeCheckout = onRequest(
 // Grįžus iš Checkout (?paysession=ID): patikrina sesiją per Stripe API ir pažymi
 // apmokėjimą — greitas kelias, kol webhook dar nesukonfigūruotas arba vėluoja.
 exports.verifyStripeSession = onRequest(
-    { region: REGION, cors: true, secrets: [STRIPE_SECRET_KEY] },
+    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY] },
     async (req, res) => {
         try {
             const sessionId = (req.body && req.body.session) || req.query.session;
@@ -569,7 +569,7 @@ exports.verifyStripeSession = onRequest(
 // Stripe webhook (checkout.session.completed) — patikimas automatinis žymėjimas,
 // veikia net žaidėjui negrįžus į portalą. Parašas tikrinamas su STRIPE_WEBHOOK_SECRET.
 exports.stripeWebhook = onRequest(
-    { region: REGION, secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] },
+    { region: REGION, invoker: 'public', secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] },
     async (req, res) => {
         try {
             const sk = STRIPE_SECRET_KEY.value();
