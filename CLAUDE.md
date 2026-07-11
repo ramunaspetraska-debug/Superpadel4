@@ -93,9 +93,6 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   storage.rules (highlights/ video iki 10MB, rašymas tik auth).
 - Laukiantys darbai: Ramūnas turi užpildyti savo klubo miestą per „Klubo
   informacija"; naujiems klubams canOfficial tvirtinamas per Platform statistics.
-- LAUKIA DEPLOY (užblokuota automatikai, reikia Ramūno patvirtinimo):
-  `firebase deploy --only database,storage,functions --project padelio-turnyrai`
-  (naujos DB/Storage taisyklės ir cleanupHighlights funkcija).
 
 ## KRITINĖS TAISYKLĖS — VISADA
 - VISADA po BET KOKIO pakeitimo, kuris liečia cache'inamą turinį (html, js, css),
