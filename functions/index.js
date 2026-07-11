@@ -503,7 +503,7 @@ exports.createStripeCheckout = onRequest(
             const body = req.body || {};
             const tid = body.tid, key = body.key;
             if (!tid || !key) { res.status(400).json({ error: 'missing params' }); return; }
-            const sk = STRIPE_SECRET_KEY.value();
+            const sk = String(STRIPE_SECRET_KEY.value() || '').trim();
             if (!sk || sk.indexOf('sk_') !== 0) { res.status(503).json({ error: 'stripe not configured' }); return; }
             const stripe = require('stripe')(sk);
             const snap = await db.ref('padelio_global_tournaments').get();
@@ -549,7 +549,7 @@ exports.verifyStripeSession = onRequest(
         try {
             const sessionId = (req.body && req.body.session) || req.query.session;
             if (!sessionId) { res.status(400).json({ error: 'missing session' }); return; }
-            const sk = STRIPE_SECRET_KEY.value();
+            const sk = String(STRIPE_SECRET_KEY.value() || '').trim();
             if (!sk || sk.indexOf('sk_') !== 0) { res.status(503).json({ error: 'stripe not configured' }); return; }
             const stripe = require('stripe')(sk);
             const session = await stripe.checkout.sessions.retrieve(String(sessionId));
@@ -567,29 +567,48 @@ exports.verifyStripeSession = onRequest(
 );
 
 // Stripe webhook (checkout.session.completed) — patikimas automatinis žymėjimas,
-// veikia net žaidėjui negrįžus į portalą. Parašas tikrinamas su STRIPE_WEBHOOK_SECRET.
+// veikia net žaidėjui negrįžus į portalą. Jei STRIPE_WEBHOOK_SECRET sukonfigūruotas —
+// tikrinamas Stripe parašas; jei ne — payload'u nepasitikima ir sesija PERSKAITOMA
+// tiesiai iš Stripe API (suklastoti neįmanoma, whsec nebūtinas).
 exports.stripeWebhook = onRequest(
     { region: REGION, invoker: 'public', secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] },
     async (req, res) => {
         try {
-            const sk = STRIPE_SECRET_KEY.value();
-            const whsec = STRIPE_WEBHOOK_SECRET.value();
-            if (!sk || sk.indexOf('sk_') !== 0 || !whsec || whsec.indexOf('whsec_') !== 0) {
+            const sk = String(STRIPE_SECRET_KEY.value() || '').trim();
+            const whsec = String(STRIPE_WEBHOOK_SECRET.value() || '').trim();
+            if (!sk || sk.indexOf('sk_') !== 0) {
                 res.status(503).send('stripe not configured');
                 return;
             }
             const stripe = require('stripe')(sk);
-            let event;
-            try {
-                event = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], whsec);
-            } catch (e) {
-                res.status(400).send('bad signature');
-                return;
+            let sessionId = null;
+            if (whsec && whsec.indexOf('whsec_') === 0) {
+                // Griežtas kelias: Stripe parašo tikrinimas
+                let event;
+                try {
+                    event = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], whsec);
+                } catch (e) {
+                    res.status(400).send('bad signature');
+                    return;
+                }
+                if (event.type === 'checkout.session.completed' && event.data && event.data.object) sessionId = event.data.object.id;
+            } else {
+                // Be whsec: iš payload'o imamas TIK sesijos ID, o tiesa tikrinama
+                // žemiau per Stripe API — netikras ID nieko nepasieks.
+                let body = req.body;
+                if (!body || typeof body !== 'object') {
+                    try { body = JSON.parse(String(req.rawBody || '{}')); } catch (e) { body = {}; }
+                }
+                if (body && body.type === 'checkout.session.completed' && body.data && body.data.object && body.data.object.id) {
+                    sessionId = String(body.data.object.id);
+                }
             }
-            if (event.type === 'checkout.session.completed') {
-                const s = event.data.object;
-                if (s && s.payment_status === 'paid' && s.metadata && s.metadata.tid && s.metadata.key) {
-                    await markStripePaid(s.metadata.tid, s.metadata.key, s.id);
+            if (sessionId) {
+                let session = null;
+                try { session = await stripe.checkout.sessions.retrieve(sessionId); }
+                catch (e) { session = null; } // neegzistuojanti/suklastota sesija — tyliai ignoruojama
+                if (session && session.payment_status === 'paid' && session.metadata && session.metadata.tid && session.metadata.key) {
+                    await markStripePaid(session.metadata.tid, session.metadata.key, session.id);
                 }
             }
             res.json({ received: true });
