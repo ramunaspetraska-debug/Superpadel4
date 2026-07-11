@@ -362,6 +362,16 @@ async function createTournament(e) {
                 regCloseMins: parseInt(document.getElementById('newRegClose')?.value || 60),
                 isDemoWaitlist: false, waitlistCount: 0, timeState: 'future', players: [], room: String(roomIds[i])
             };
+            // MOKAMAS TURNYRAS: vieta patvirtinama tik organizatoriui pažymėjus apmokėjimą.
+            // Struktūra paruošta ir automatiniams mokėjimams (Stripe) ateityje: payments
+            // įrašo method laukas ('manual' dabar, 'stripe' vėliau) — likusi logika nesikeis.
+            if (document.getElementById('newPaid')?.checked) {
+                newT.paid = true;
+                newT.fee = Math.max(1, parseFloat(document.getElementById('newFee')?.value) || 10);
+                newT.payDeadlineHours = parseInt(document.getElementById('newPayDeadline')?.value || 24);
+                newT.payInfo = (document.getElementById('newPayInfo')?.value || '').trim();
+                newT.payments = {};
+            }
             // Turnyras priklauso jį sukūrusiam klubui — kiti klubai jo nevaldys
             if (currentClub) { newT.clubId = currentClub.id; newT.clubName = currentClub.name; }
             // E-Teisėjavimas: dalyviai patys veda taškus portalo LIVE lange
@@ -422,6 +432,7 @@ function renderAdminTournaments() {
             <td style="padding: 12px; font-weight: bold; color: ${t.registered >= t.max ? 'var(--status-red)' : 'var(--status-green)'};">${t.registered}/${t.max}</td>
             <td style="padding: 12px; text-align: center; white-space:nowrap;">
                 ${t.room ? `<button type="button" onclick="openGeneratorRoom('${safeRoom}')" title="Atidaryti generatorių (kambarys ${safeRoom})" style="background:#ecfdf5; color:#047857; border:none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">▶ ${esc(t.room)}</button>` : ''}
+                ${t.paid ? (function () { const c = paymentCounts(t); return `<button type="button" onclick="openPaymentsModal('${esc(String(t.id))}')" title="Apmokėjimų valdymas" style="background:${c.pending > 0 ? '#fffbeb' : '#f0fdf4'}; color:${c.pending > 0 ? '#92400e' : '#166534'}; border:1px solid ${c.pending > 0 ? '#fde68a' : '#bbf7d0'}; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">💶 ${c.paid}/${c.total}</button>`; })() : ''}
                 <button type="button" onclick="openAdminTournamentModal('${esc(String(t.id))}')" style="background: #eff6ff; color: #1d4ed8; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
                 <button type="button" onclick="deleteAdminTournamentLive('${esc(String(t.id))}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
             </td>
@@ -429,6 +440,103 @@ function renderAdminTournaments() {
     });
     html += '</table>';
     list.innerHTML = html;
+}
+
+// ==========================================
+// MOKĖJIMŲ VALDYMAS (klubo adminui)
+// ==========================================
+
+// Kiek įrašų apmokėta / laukia / iš viso (įrašas = individualus žaidėjas arba pora)
+function paymentCounts(t) {
+    const entries = Array.isArray(t.players) ? t.players : [];
+    let paid = 0, pending = 0, collected = 0, expected = 0;
+    entries.forEach(e => {
+        const seats = String(e).includes('/') ? 2 : 1;
+        const amount = (t.fee || 0) * seats;
+        expected += amount;
+        const pay = (t.payments || {})[payKey(e)];
+        if (pay && pay.status === 'paid') { paid++; collected += (pay.amount || amount); }
+        else pending++;
+    });
+    return { paid, pending, total: entries.length, collected, expected };
+}
+
+function openPaymentsModal(id) {
+    const t = tournaments.find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (currentClub && !canManageTournament(t)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
+    const c = paymentCounts(t);
+    const entries = Array.isArray(t.players) ? t.players : [];
+    const rows = entries.length ? entries.map(e => {
+        const seats = String(e).includes('/') ? 2 : 1;
+        const pay = (t.payments || {})[payKey(e)];
+        const isPaid = pay && pay.status === 'paid';
+        const amount = (pay && pay.amount) || (t.fee || 0) * seats;
+        const names = String(e).split('/').map(part => esc(part.trim().split('|')[0].trim())).join(' / ');
+        const dl = (pay && pay.deadline && !isPaid)
+            ? `<div style="font-size:10px; color:${pay.deadline < Date.now() ? '#dc2626' : '#b45309'};"><i class="fa-solid fa-hourglass-half"></i> iki ${new Date(pay.deadline).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}${pay.deadline < Date.now() ? ' — VĖLUOJA' : ''}</div>`
+            : '';
+        const safeKey = payKey(e).replace(/'/g, '');
+        return `
+        <div style="display:flex; align-items:center; gap:10px; border:1px solid ${isPaid ? '#bbf7d0' : '#e2e8f0'}; background:${isPaid ? '#f0fdf4' : 'white'}; border-radius:10px; padding:10px 12px;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:800; font-size:13px; color:var(--text-dark);">${names}${seats === 2 ? ' <span style="font-size:10px; color:var(--text-grey);">(pora)</span>' : ''}</div>
+                <div style="font-size:11px; color:var(--text-grey); font-weight:600;">${amount} €${isPaid ? ' · apmokėta ✅' : ' · laukia'}</div>
+                ${dl}
+            </div>
+            ${isPaid
+                ? `<button type="button" onclick="setPaymentStatus('${esc(String(t.id))}', '${safeKey}', false)" style="background:white; color:#dc2626; border:1px solid #fecaca; padding:7px 10px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; flex-shrink:0;">↩ Atšaukti</button>`
+                : `<button type="button" onclick="setPaymentStatus('${esc(String(t.id))}', '${safeKey}', true)" style="background:#16a34a; color:white; border:none; padding:7px 12px; border-radius:8px; font-size:11px; font-weight:bold; cursor:pointer; flex-shrink:0;">✓ Patvirtinti</button>`}
+        </div>`;
+    }).join('') : '<div style="text-align:center; color:var(--text-grey); font-size:12px; padding:20px;">Dalyvių dar nėra.</div>';
+
+    modalTitle.innerHTML = `<i class="fa-solid fa-euro-sign" style="color:#16a34a;"></i> Mokėjimai — ${esc(t.format)} ${esc(t.date)}`;
+    modalBody.innerHTML = `
+        <div style="display:flex; gap:8px; margin-bottom:12px; text-align:center;">
+            <div style="flex:1; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:8px;">
+                <div style="font-size:9px; font-weight:bold; color:#166534; text-transform:uppercase;">Surinkta</div>
+                <div style="font-size:18px; font-weight:900; color:#166534;">${c.collected} €</div>
+            </div>
+            <div style="flex:1; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:8px;">
+                <div style="font-size:9px; font-weight:bold; color:#92400e; text-transform:uppercase;">Laukia</div>
+                <div style="font-size:18px; font-weight:900; color:#92400e;">${c.pending}</div>
+            </div>
+            <div style="flex:1; background:#f8f9fb; border:1px solid #e2e8f0; border-radius:10px; padding:8px;">
+                <div style="font-size:9px; font-weight:bold; color:var(--text-grey); text-transform:uppercase;">Numatyta</div>
+                <div style="font-size:18px; font-weight:900; color:var(--text-dark);">${c.expected} €</div>
+            </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; max-height:45vh; overflow-y:auto; text-align:left;">${rows}</div>`;
+    modalActions.innerHTML = `<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
+    modal.classList.add('show');
+}
+
+// Pažymi įrašą apmokėtu / grąžina į laukiančius. Struktūra suderinta su ateities
+// Stripe integracija: method liks 'manual' tik rankiniams patvirtinimams.
+function setPaymentStatus(tournamentId, key, isPaid) {
+    const t = tournaments.find(x => String(x.id) === String(tournamentId));
+    if (!t) return;
+    if (currentClub && !canManageTournament(t)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
+    if (!t.payments) t.payments = {};
+    const entry = (t.players || []).find(e => payKey(e).replace(/'/g, '') === key) || null;
+    const seats = entry && String(entry).includes('/') ? 2 : 1;
+    const existing = t.payments[key] || {};
+    if (isPaid) {
+        t.payments[key] = Object.assign({}, existing, {
+            entry: entry || existing.entry || '',
+            status: 'paid',
+            method: existing.method || 'manual',
+            amount: existing.amount || (t.fee || 0) * seats,
+            paidTs: Date.now(),
+            confirmedBy: (currentClub && currentClub.id) || 'admin'
+        });
+    } else {
+        t.payments[key] = Object.assign({}, existing, { status: 'pending', paidTs: null, confirmedBy: null });
+    }
+    saveData();
+    openPaymentsModal(tournamentId); // atnaujintas sąrašas
+    renderAdminTournaments();        // atnaujintas 💶 skaitliukas
+    showToast(isPaid ? "Apmokėjimas patvirtintas ✅" : "Grąžinta į laukiančius.");
 }
 
 function openAdminTournamentModal(id) {
@@ -463,6 +571,19 @@ function openAdminTournamentModal(id) {
     document.getElementById('editAdminTournamentTime').value = t.time;
     document.getElementById('editAdminTournamentDate').value = t.date;
     document.getElementById('editAdminTournamentRoom').value = t.room || '';
+    // Mokamo turnyro nustatymai
+    const paidBox = document.getElementById('editAdminTournamentPaid');
+    const paidFields = document.getElementById('editAdminPaidFields');
+    if (paidBox) {
+        paidBox.checked = !!t.paid;
+        if (paidFields) paidFields.style.display = t.paid ? 'block' : 'none';
+        const feeInp = document.getElementById('editAdminTournamentFee');
+        if (feeInp) feeInp.value = t.fee || 10;
+        const dlSel = document.getElementById('editAdminTournamentPayDeadline');
+        if (dlSel) dlSel.value = String(typeof t.payDeadlineHours === 'number' ? t.payDeadlineHours : 24);
+        const infoTa = document.getElementById('editAdminTournamentPayInfo');
+        if (infoTa) infoTa.value = t.payInfo || '';
+    }
     document.getElementById('adminEditTournamentModal').classList.add('show');
 }
 
@@ -491,6 +612,15 @@ function saveAdminTournamentChanges() {
         tournaments[idx].time = time;
         tournaments[idx].date = date;
         tournaments[idx].room = (document.getElementById('editAdminTournamentRoom').value || '').trim().toUpperCase() || null;
+        // Mokamo turnyro nustatymai (esami apmokėjimų įrašai nepertrinami)
+        const isPaid = !!document.getElementById('editAdminTournamentPaid')?.checked;
+        tournaments[idx].paid = isPaid;
+        if (isPaid) {
+            tournaments[idx].fee = Math.max(1, parseFloat(document.getElementById('editAdminTournamentFee')?.value) || 10);
+            tournaments[idx].payDeadlineHours = parseInt(document.getElementById('editAdminTournamentPayDeadline')?.value || 24);
+            tournaments[idx].payInfo = (document.getElementById('editAdminTournamentPayInfo')?.value || '').trim();
+            if (!tournaments[idx].payments) tournaments[idx].payments = {};
+        }
         tournaments[idx].eReferee = !!document.getElementById('editAdminTournamentERef')?.checked;
         tournaments[idx].isOfficial = !!(currentClub && currentClub.canOfficial && document.getElementById('editAdminTournamentOfficial')?.checked);
         if (tournaments[idx].room) claimRoomForClub(tournaments[idx].room, tournaments[idx].isOfficial); // kambarys pažymimas klubo nuosavybe + Official žyme

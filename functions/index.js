@@ -134,11 +134,72 @@ exports.tournamentReminders = onSchedule(
         }
         if (Object.keys(updates).length) await db.ref('padelio_push_sent').update(updates);
 
+        // MOKĖJIMŲ TERMINAI: nesumokėjusių rezervacijos atšaukiamos, vietos atlaisvinamos
+        await enforcePaymentDeadlines(now);
         // REGISTRACIJOS UŽDARYMAS: likus regCloseMins iki starto sąrašas apkarpomas iki pilnų kortų
         await closeRegistrations(now);
         return null;
     }
 );
+
+// ===================== MOKAMI TURNYRAI =====================
+// Firebase raktuose draudžiami . # $ / [ ] — players įrašas verčiamas payments raktu
+// (IDENTIŠKA kliento payKey funkcijai registras_tournaments.js)
+function payKey(entry) { return String(entry).replace(/[.#$/\[\]]/g, ','); }
+
+// Pašalina players įrašą, atlaisvina vietas, išvalo payment ir praneša įrašo žaidėjams.
+// all — padelio_user_tournaments turinys (perduodamas, kad neskaitytume kaskart).
+async function removeEntryAndNotify(t, entry, all, title, body, tag) {
+    const idx = (t.players || []).indexOf(entry);
+    if (idx === -1) return false;
+    const seats = String(entry).indexOf('/') !== -1 ? 2 : 1;
+    t.players.splice(idx, 1);
+    t.registered = Math.max(0, (t.registered || 0) - seats);
+    if (t.payments) delete t.payments[payKey(entry)];
+    const names = String(entry).split('/').map(p => p.trim().split('|')[0].trim().toLowerCase());
+    for (const userId of Object.keys(all)) {
+        const rec = all[userId] && all[userId][t.id];
+        if (!rec) continue;
+        const nm = String(rec.name || '').trim().toLowerCase();
+        if (names.indexOf(nm) === -1) continue;
+        await sendToUser(userId, title, body, tag);
+        await db.ref('padelio_user_tournaments/' + userId + '/' + t.id).remove().catch(() => {});
+    }
+    return true;
+}
+
+// Laukiantys apmokėjimai su pasibaigusiu terminu — rezervacija atšaukiama.
+// Atsilaisvinusią vietą rezervo eilei praneša esamas spotOpened trigeris.
+async function enforcePaymentDeadlines(now) {
+    const tSnap = await db.ref('padelio_global_tournaments').get();
+    const raw = tSnap.val();
+    if (!raw) return;
+    const arr = (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
+    let changed = false;
+    let all = null;
+    for (const t of arr) {
+        if (!t || !t.paid || !t.payments || !Array.isArray(t.players)) continue;
+        const overdue = Object.keys(t.payments).filter(k => {
+            const p = t.payments[k];
+            return p && p.status === 'pending' && typeof p.deadline === 'number' && p.deadline < now;
+        });
+        if (!overdue.length) continue;
+        if (all === null) {
+            const utSnap = await db.ref('padelio_user_tournaments').get();
+            all = utSnap.val() || {};
+        }
+        for (const k of overdue) {
+            const entry = (t.payments[k] && t.payments[k].entry) || t.players.find(e => payKey(e) === k) || null;
+            if (!entry) { delete t.payments[k]; changed = true; continue; }
+            const ok = await removeEntryAndNotify(t, entry, all,
+                '💶 Rezervacija atšaukta',
+                (t.format || 'Turnyras') + ' (' + (t.date || '') + ' ' + (t.time || '') + ') — apmokėjimas negautas iki termino, vieta atlaisvinta.',
+                'paydl_' + t.id);
+            changed = changed || ok;
+        }
+    }
+    if (changed) await db.ref('padelio_global_tournaments').set(arr);
+}
 
 // Kokiu žingsniu formatas reikalauja dalyvių: Americano/Mexicano/King — po 4, porų formatai — po 2
 function requiredStep(format) {
@@ -157,6 +218,7 @@ async function closeRegistrations(now) {
     const arr = (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
     let changed = false;
     const rejectedByT = [];
+    const removedUnpaidByT = []; // mokamų turnyrų neapmokėjusieji — pranešimams
 
     for (const t of arr) {
         if (!t || t.regClosed) continue;
@@ -167,7 +229,21 @@ async function closeRegistrations(now) {
         t.regClosed = true; changed = true;
         if (now > startMs) continue; // startas jau praėjo — tik pažymim, sąrašo nebeliečiam
 
-        const players = Array.isArray(t.players) ? t.players : Object.values(t.players || {});
+        let players = Array.isArray(t.players) ? t.players : Object.values(t.players || {});
+
+        // MOKAMAS TURNYRAS: uždarant registraciją NEAPMOKĖJUSIEJI šalinami pirmiausia —
+        // tik tada sąrašas karpomas iki pilnų kortų pagal eilės tvarką.
+        if (t.paid) {
+            const unpaid = players.filter(e => {
+                const p = (t.payments || {})[payKey(e)];
+                return !(p && p.status === 'paid');
+            });
+            if (unpaid.length) {
+                players = players.filter(e => unpaid.indexOf(e) === -1);
+                unpaid.forEach(e => { if (t.payments) delete t.payments[payKey(e)]; });
+                removedUnpaidByT.push({ t, entries: unpaid });
+            }
+        }
         const step = requiredStep(t.format);
         const countOf = (entry) => (String(entry).indexOf('/') !== -1 ? 2 : 1);
         let total = players.reduce((s, p) => s + countOf(p), 0);
@@ -203,6 +279,26 @@ async function closeRegistrations(now) {
 
     if (!changed) return;
     await db.ref('padelio_global_tournaments').set(arr);
+
+    // Pranešimai neapmokėjusiems (mokamų turnyrų) — vieta atlaisvinta, į rezervą nekeliami
+    if (removedUnpaidByT.length) {
+        const utSnap = await db.ref('padelio_user_tournaments').get();
+        const all = utSnap.val() || {};
+        for (const { t, entries } of removedUnpaidByT) {
+            for (const entry of entries) {
+                const names = String(entry).split('/').map(p => p.trim().split('|')[0].trim().toLowerCase());
+                for (const userId of Object.keys(all)) {
+                    const rec = all[userId] && all[userId][t.id];
+                    if (!rec) continue;
+                    if (names.indexOf(String(rec.name || '').trim().toLowerCase()) === -1) continue;
+                    await sendToUser(userId, '💶 Nepatvirtintas apmokėjimas',
+                        (t.format || 'Turnyras') + ' (' + (t.time || '') + ') — registracija uždaryta, apmokėjimas negautas, vieta atlaisvinta.',
+                        'payclose_' + t.id);
+                    await db.ref('padelio_user_tournaments/' + userId + '/' + t.id).remove().catch(() => {});
+                }
+            }
+        }
+    }
 
     // Push pranešimai atmestiesiems + jų registracijos statusas keičiamas į waitlist
     if (rejectedByT.length) {

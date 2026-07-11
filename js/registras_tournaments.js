@@ -260,7 +260,12 @@ function renderTournaments() {
             statusHTML = `<div class="status-indicator" style="color: var(--status-red);"><i class="fa-solid fa-tower-broadcast"></i> Tiesiogiai</div><button type="button" class="watch-badge" onclick="event.stopPropagation(); watchTournamentLive(${t.id});"><i class="fa-solid fa-play"></i> Stebėti</button>`;
         } else {
             if (persStatus === 'registered') {
-                statusHTML = `<div class="status-indicator status-in"><i class="fa-solid fa-check"></i> Dalyvaujate</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`;
+                const payPend = paymentPendingFor(t);
+                if (payPend) {
+                    statusHTML = `<div class="status-indicator" style="color:#b45309;"><i class="fa-solid fa-hourglass-half"></i> Laukia apmokėjimo</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="cursor:pointer; background:#fffbeb; color:#92400e; border:1px solid #fde68a;"><i class="fa-solid fa-euro-sign"></i> ${payPend.amount} € apmokėti</button>`;
+                } else {
+                    statusHTML = `<div class="status-indicator status-in"><i class="fa-solid fa-check"></i> Dalyvaujate${t.paid ? ' · apmokėta' : ''}</div><div class="edit-badge"><i class="fa-solid fa-pen"></i> Keisti</div>`;
+                }
             } else if (persStatus === 'waitlist') {
                 const myPos = userWaitlistPosition(t);
                 const posTxt = myPos > 0 ? `Jūs ${myPos}-as eilėje` : `eilėje ${t.waitlistCount || 1}`;
@@ -788,10 +793,102 @@ function openH2H(e) { e.stopPropagation(); showToast("Kraunama Head-to-Head stat
 function selectDate(dateKey, element) { document.querySelectorAll('.date-box').forEach(el => el.classList.remove('active')); element.classList.add('active'); activeDate = dateKey; let pFilter = document.getElementById('filterPlayer'); if(pFilter) pFilter.value = ''; renderTournaments(); }
 
 // ==========================================
+// MOKAMI TURNYRAI — apmokėjimo būsenos
+// ==========================================
+// Vieta rezervuojama registruojantis, o „Dalyvaujate" tampa tik organizatoriui
+// patvirtinus apmokėjimą (t.payments[raktas].status: 'pending' → 'paid').
+// method laukas ('manual') paruoštas ateities Stripe integracijai.
+
+// Firebase raktuose draudžiami . # $ / [ ] — players įrašą verčiam saugiu raktu
+function payKey(entry) { return String(entry).replace(/[.#$/\[\]]/g, ','); }
+
+// Mano players įrašas šiame turnyre (individualus 'Vardas|M' arba poros 'V|M / P|F')
+function myPlayersEntry(t) {
+    if (typeof currentUser === 'undefined' || !currentUser || !t || !Array.isArray(t.players)) return null;
+    return t.players.find(p => String(p).split('/').some(part => part.trim().split('|')[0].trim().toLowerCase() === currentUser.name.toLowerCase())) || null;
+}
+
+// Turnyro starto laikas (ms) kliento pusėje — terminams skaičiuoti
+function tournamentStartMsClient(t) {
+    try {
+        const dm = String(t.date).split('-').map(Number);
+        const start = String(t.time).split('-')[0].trim().split(':').map(Number);
+        const now = new Date();
+        let d = new Date(now.getFullYear(), dm[0] - 1, dm[1], start[0], start[1] || 0);
+        if (d.getTime() < Date.now() - 300 * 864e5) d = new Date(now.getFullYear() + 1, dm[0] - 1, dm[1], start[0], start[1] || 0);
+        return d.getTime();
+    } catch (e) { return Date.now() + 864e5; }
+}
+
+// Apmokėjimo terminas: registracija + X val., bet ne vėliau registracijos uždarymo.
+// payDeadlineHours=0 reiškia „iki registracijos pabaigos".
+function paymentDeadlineMs(t, regTs) {
+    const closeMs = tournamentStartMsClient(t) - (t.regCloseMins || 60) * 60000;
+    const hours = (typeof t.payDeadlineHours === 'number') ? t.payDeadlineHours : 24;
+    if (!hours) return closeMs;
+    return Math.min(regTs + hours * 3600000, closeMs);
+}
+
+// Mano laukiantis apmokėjimas šiame turnyre (arba null)
+function paymentPendingFor(t) {
+    if (!t || !t.paid || !t.payments) return null;
+    const entry = myPlayersEntry(t);
+    if (!entry) return null;
+    const pay = t.payments[payKey(entry)];
+    return (pay && pay.status === 'pending') ? pay : null;
+}
+
+// Sukuria laukiančio apmokėjimo įrašą ką tik įregistruotam players įrašui
+function createPendingPayment(t, entry, seats) {
+    if (!t.paid) return;
+    if (!t.payments) t.payments = {};
+    t.payments[payKey(entry)] = {
+        entry: entry,
+        status: 'pending',
+        method: 'manual',
+        amount: (t.fee || 0) * seats,
+        ts: Date.now(),
+        deadline: paymentDeadlineMs(t, Date.now())
+    };
+}
+
+// Apmokėjimo instrukcijų langas (po registracijos ir paspaudus „Apmokėti")
+function openPaymentInstructions(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t || !t.paid) return;
+    const entry = myPlayersEntry(t);
+    if (!entry) return;
+    const isPair = String(entry).includes('/');
+    const pay = (t.payments || {})[payKey(entry)];
+    const amount = (pay && pay.amount) || (t.fee || 0) * (isPair ? 2 : 1);
+    const alreadyPaid = pay && pay.status === 'paid';
+    const dlStr = (pay && pay.deadline)
+        ? new Date(pay.deadline).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+        : '';
+    modalTitle.innerHTML = `<i class="fa-solid fa-euro-sign" style="color:#16a34a;"></i> Apmokėjimas`;
+    modalBody.innerHTML = `
+        <div style="text-align:left;">
+            <div style="background:${alreadyPaid ? '#f0fdf4' : '#fffbeb'}; border:1px solid ${alreadyPaid ? '#bbf7d0' : '#fde68a'}; border-radius:10px; padding:12px; margin-bottom:10px; text-align:center;">
+                <div style="font-size:11px; font-weight:700; color:${alreadyPaid ? '#166534' : '#92400e'}; text-transform:uppercase;">${alreadyPaid ? 'Apmokėta ✅' : 'Mokėtina suma'}</div>
+                <div style="font-size:28px; font-weight:900; color:${alreadyPaid ? '#166534' : '#92400e'};">${amount} €</div>
+                ${isPair ? '<div style="font-size:11px; color:var(--text-grey);">už porą (2 žaidėjai)</div>' : ''}
+            </div>
+            ${!alreadyPaid && t.payInfo ? `
+                <div style="font-size:11px; font-weight:800; color:var(--text-grey); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Mokėjimo rekvizitai</div>
+                <div style="background:#f8f9fb; border:1px solid #e2e8f0; border-radius:8px; padding:10px; font-size:13px; white-space:pre-wrap; word-break:break-word;">${esc(t.payInfo)}</div>` : ''}
+            ${!alreadyPaid ? `<div style="font-size:12px; margin-top:10px; color:var(--text-grey);">Mokėjimo paskirtis: <b style="color:var(--text-dark);">${esc(t.format)} ${esc(t.date)} — ${esc(cleanName(String(entry).split('/')[0]))}</b></div>` : ''}
+            ${!alreadyPaid && dlStr ? `<div style="font-size:12px; margin-top:8px; color:#b45309; font-weight:700;"><i class="fa-solid fa-hourglass-half"></i> Apmokėkite iki ${dlStr} — kitaip vieta atlaisvinama automatiškai.</div>` : ''}
+            ${!alreadyPaid ? `<div style="font-size:11px; margin-top:8px; color:var(--text-grey);">Organizatoriui patvirtinus apmokėjimą, būsena pasikeis į „Dalyvaujate".</div>` : ''}
+        </div>`;
+    modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="closeModal()" style="width:100%;">Supratau</button>`;
+    modal.classList.add('show');
+}
+
+// ==========================================
 // REGISTRACIJOS MODALINIAI LANGAI
 // ==========================================
 
-const modal = document.getElementById('actionModal'); 
+const modal = document.getElementById('actionModal');
 const modalTitle = document.getElementById('modalTitle'); 
 const modalBody = document.getElementById('modalBody'); 
 const modalActions = document.getElementById('modalActions'); 
@@ -891,10 +988,14 @@ function openRegisterModal(id) {
         openAuthModal(); 
         return; 
     }
-    let t = tournaments.find(x => x.id === id); 
-    let displayLevel = t.level; 
+    let t = tournaments.find(x => x.id === id);
+    let displayLevel = t.level;
     if (t.level === 'Privatus') displayLevel = 'Draugų';
-    modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${esc(t.format)} (${esc(displayLevel)} lygis)</strong>.<br>Laikas: ${esc(t.time)}.`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show'); 
+    // Mokamo turnyro sąlygos parodomos PRIEŠ registraciją — jokių staigmenų
+    const payNote = t.paid
+        ? `<div style="margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px; font-size:12px; color:#166534; text-align:left;"><b>💶 Dalyvio mokestis: ${t.fee || 0} €</b> (porai ${(t.fee || 0) * 2} €).<br>Vieta rezervuojama — dalyvavimas patvirtinamas organizatoriui gavus apmokėjimą${t.payDeadlineHours ? ` per ${t.payDeadlineHours} val.` : ' iki registracijos pabaigos'}.</div>`
+        : '';
+    modalTitle.innerHTML = `<i class="fa-solid fa-check-to-slot"></i> Turnyro Registracija`; modalBody.innerHTML = `Patvirtinkite dalyvavimą: <strong>${esc(t.format)} (${esc(displayLevel)} lygis)</strong>.<br>Laikas: ${esc(t.time)}.${payNote}`; modalActions.innerHTML = `<button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, false)">Registruotis Individualiai</button><button type="button" class="modal-btn primary" onclick="confirmRegistration(${id}, true)"><i class="fa-solid fa-user-plus"></i> Pridėti Partnerį</button><button type="button" class="modal-btn secondary" onclick="closeModal()">Atšaukti</button>`; modal.classList.add('show');
 }
 
 function confirmRegistration(id, withPartner) { 
@@ -953,12 +1054,19 @@ function confirmRegistration(id, withPartner) {
         if ((t.max || 0) > 0 && (t.registered || 0) + 1 > t.max) { closeModal(); showToast("Deja, vietų nebėra."); renderTournaments(); return; }
         if (!t.players) t.players = [];
 
+        const entry = currentUser.name + '|' + (currentUser.gender || 'M');
         t.registered += 1;
-        t.players.push(currentUser.name + '|' + (currentUser.gender || 'M'));
+        t.players.push(entry);
+        if (t.paid) createPendingPayment(t, entry, 1);
         saveData();
         closeModal();
-        showToast("Jūs sėkmingai užregistruoti!");
-        notifAdd('reg', id, 'Registracija patvirtinta', t.format + ' · ' + t.date + ' ' + t.time, false);
+        if (t.paid) {
+            notifAdd('reg', id, 'Vieta rezervuota — laukia apmokėjimo', t.format + ' · ' + t.date + ' ' + t.time, false);
+            openPaymentInstructions(id);
+        } else {
+            showToast("Jūs sėkmingai užregistruoti!");
+            notifAdd('reg', id, 'Registracija patvirtinta', t.format + ' · ' + t.date + ' ' + t.time, false);
+        }
         setUserTournament(t, 'registered');
         renderUserProfile();
     }
@@ -1108,11 +1216,18 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
     tournament.registered += 2;
     const p1 = player1 + '|' + (gender1 || 'M');
     const p2 = player2 + '|' + (gender2 || 'M');
-    tournament.players.push(`${p1} / ${p2}`);
+    const pairEntry = `${p1} / ${p2}`;
+    tournament.players.push(pairEntry);
+    if (tournament.paid) createPendingPayment(tournament, pairEntry, 2); // mokestis už ABU žaidėjus
     saveData();
     closeModal();
-    showToast(`Sėkmingai užregistruota pora: ${player1} ir ${player2}!`);
-    notifAdd('reg', tournament.id, 'Registracija patvirtinta (pora)', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);
+    if (tournament.paid) {
+        notifAdd('reg', tournament.id, 'Poros vieta rezervuota — laukia apmokėjimo', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);
+        openPaymentInstructions(tournament.id);
+    } else {
+        showToast(`Sėkmingai užregistruota pora: ${player1} ir ${player2}!`);
+        notifAdd('reg', tournament.id, 'Registracija patvirtinta (pora)', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);
+    }
     setUserTournament(tournament, 'registered');
     renderUserProfile();
 }
@@ -1144,6 +1259,8 @@ function confirmCancel(id) {
             let teamStr = t.players[teamIndex];
             if(teamStr.includes('/')) { t.registered = Math.max(0, (t.registered || 0) - 2); } else { t.registered = Math.max(0, (t.registered || 0) - 1); }
             t.players.splice(teamIndex, 1);
+            // Mokamo turnyro apmokėjimo įrašas išvalomas kartu su registracija
+            if (t.payments && t.payments[payKey(teamStr)]) delete t.payments[payKey(teamStr)];
         }
     }
 

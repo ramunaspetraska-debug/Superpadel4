@@ -23,7 +23,15 @@ canOfficial, legacyOwner), padelio_club_admins, padelio_email_links
 klubai), padelio_push_tokens/padelio_push_sent, padelio_notifications,
 padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
 
-## Sistemos būsena (2026-07-10, cache v274, APP_VERSION v210 / V229, registras.css?v=14)
+## Sistemos būsena (2026-07-11, cache v280, APP_VERSION v211 / V230, registras.css?v=14)
+- MOKAMI TURNYRAI: admin formose jungiklis „Mokamas turnyras" (t.paid, fee €/žaidėjui,
+  payDeadlineHours 12/24/48/0=iki reg. pabaigos, payInfo rekvizitai). Registracija
+  sukuria t.payments[payKey(entry)]={status:'pending',method:'manual',amount,deadline}
+  (pora — 2x fee, vienas įrašas). payKey keičia [.#$/[]] → ','. Žaidėjas mato
+  „Laukia apmokėjimo" + instrukcijų modalą (openPaymentInstructions). Adminas
+  tvirtina per 💶 modalą (openPaymentsModal/setPaymentStatus). Serveris kas 15 min
+  (enforcePaymentDeadlines) šalina pavėlavusius; closeRegistrations pirmiausiai
+  šalina neapmokėjusius. method laukas paruoštas Stripe ateičiai.
 - Prisijungimai: TIK el. pašto nuorodos (Firebase Auth email-link, be slaptažodžių).
   Telefono/PIN 7030 sistemos PAŠALINTOS. emailKey() = el. paštas mažosiomis,
   [.#$[]/] → ','. Sesija bendra tarp index.html ir registras.html (ta pati kilmė).

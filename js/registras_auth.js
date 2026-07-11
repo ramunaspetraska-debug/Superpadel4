@@ -564,10 +564,15 @@ function renderUserProfile() {
             let teamStr = t.players.find(p => p.toLowerCase().includes(currentUser.name.toLowerCase())) || "";
             let hasPartner = teamStr.includes('/');
 
+            // Mokamo turnyro laukiantis apmokėjimas — matomas ir profilyje
+            const payPend = (typeof paymentPendingFor === 'function') ? paymentPendingFor(t) : null;
+            if (payPend) {
+                partnerInfo += `<div onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="font-size: 11px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 3px 8px; font-weight: bold; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;"><i class="fa-solid fa-hourglass-half"></i> Laukia apmokėjimo — ${payPend.amount} €</div>`;
+            }
             if (hasPartner) {
                 let parts = teamStr.split('/').map(cleanName);
                 let pName = parts[0].toLowerCase() === currentUser.name.toLowerCase() ? parts[1] : parts[0];
-                partnerInfo = `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 3px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-group"></i> ${esc(pName)}</div>`;
+                partnerInfo += `<div style="font-size: 11px; color: var(--status-green); font-weight: bold; margin-top: 3px; display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-user-group"></i> ${esc(pName)}</div>`;
             } else {
                 actionButtons += `
                     <button type="button" onclick="event.stopPropagation(); confirmRegistration(${t.id}, true);" style="background: var(--status-green); color: white; border: none; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: 0.2s;">
