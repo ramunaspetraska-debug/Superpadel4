@@ -497,7 +497,7 @@ function renderUserProfile() {
         </div>
 
         ${currentUser.emailLocked
-            ? `<div style="background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 10px; padding: 10px 14px; margin-bottom: 15px; font-size: 12px; color: #15803d; font-weight: bold;"><i class="fa-solid fa-lock"></i> Paskyra apsaugota el. paštu${currentUser.email ? ' (' + esc(currentUser.email) + ')' : ''}</div>`
+            ? ''
             : `<button type="button" onclick="protectAccountWithEmail()" style="width: 100%; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-lock"></i> Apsaugoti paskyrą el. paštu (rekomenduojama)</button>`}
 
         <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Oficiali Lyga</div>
@@ -642,10 +642,19 @@ function renderUserProfile() {
         html += `<div style="background: #f8f9fb; border: 1px dashed #cbd5e0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 12px; margin-bottom: 25px;">Dar nesekate klubų — atraskite juos skirtuke <i class="fa-solid fa-house"></i></div>`;
     }
 
-    // PASKUTINIAI MAČAI — perkelta į apačią
+    // ĮRANKIAI — perėjimai į skaičiuoklę ir klubo valdymą
+    html += profileToolsHtml();
+
+    // PASKUTINIAI MAČAI — sutraukiama skiltis pačioje apačioje: langas mažiau
+    // apkrautas, istorija atsiskleidžia tik paspaudus
+    const recentCnt = (currentUser.recent_matches && currentUser.recent_matches.length) || 0;
     html += `
-        <div style="font-size: 11px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Paskutiniai mačai</div>
-        <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+        <details style="margin: 0 0 30px;">
+            <summary style="list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: space-between; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <span style="font-size: 13px; font-weight: 800; color: var(--text-dark);"><i class="fa-solid fa-clock-rotate-left" style="color: var(--primary-blue); margin-right: 8px;"></i>Paskutiniai mačai${recentCnt ? ` <span style="color: var(--text-grey); font-weight: 600;">(${recentCnt})</span>` : ''}</span>
+                <i class="fa-solid fa-chevron-down" style="color: #cbd5e0; font-size: 12px;"></i>
+            </summary>
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
             ${(currentUser.recent_matches && currentUser.recent_matches.length > 0) ? currentUser.recent_matches.map(m => {
                 const badge = m.win
                     ? '<span style="font-size: 9px; background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LAIMĖTA</span>'
@@ -664,11 +673,9 @@ function renderUserProfile() {
                     <div style="margin-left: 8px;">${badge}</div>
                 </div>`;
             }).join('') : '<div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 11px;">Mačų istorija tuščia.</div>'}
-        </div>
+            </div>
+        </details>
     `;
-
-    // ĮRANKIAI — perėjimai į skaičiuoklę ir klubo valdymą (profilio apačioje)
-    html += profileToolsHtml();
 
     container.innerHTML = html;
 

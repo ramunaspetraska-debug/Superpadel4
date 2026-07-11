@@ -827,10 +827,26 @@ function openPlayerCard(playerId) {
     else if (p.tier === 'D/C-') tierColor = 'var(--lvl-d-c)';
     else if (p.tier === 'D-C') tierColor = 'var(--lvl-d-c)';
 
+    // Dvi atskiros statistikos: oficiali lyga ir mėgėjų (draugiškų mačų) lyga —
+    // tokia pati struktūra kaip savo profilyje: ELO / mačai / laimėta %
+    const officialM = p.total_matches || 0;
+    const officialWinRate = officialM > 0 ? Math.round(((p.official_wins || 0) / officialM) * 100) : 0;
     const casualM = p.casual_matches || 0;
     const casualWinRate = casualM > 0 ? Math.round(((p.casual_wins || 0) / casualM) * 100) : 0;
+    let casualColor = 'var(--lvl-d)';
+    const ct = p.casual_tier;
+    if (ct === 'A') casualColor = 'var(--lvl-a)';
+    else if (ct === 'B-/B') casualColor = 'var(--lvl-b)';
+    else if (ct === 'C/C+') casualColor = 'var(--lvl-c)';
+    else if (ct === 'C-/C') casualColor = 'var(--lvl-c2)';
+    else if (ct === 'D/C-' || ct === 'D-C') casualColor = 'var(--lvl-d-c)';
     const lastPlayed = p.last_played ? new Date(p.last_played).toLocaleDateString('lt-LT') : '—';
     const initials = esc(p.name.substring(0, 2).toUpperCase());
+    const statBox = (label, value, color) => `
+                <div style="background: #f8f9fb; border-radius: 10px; padding: 10px 6px; border: 1px solid #e2e8f0;">
+                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">${label}</div>
+                    <div style="font-size: 19px; font-weight: 900; color: ${color};">${value}</div>
+                </div>`;
 
     modalTitle.innerHTML = `<i class="fa-solid fa-user" style="color: var(--primary-blue);"></i> Žaidėjo kortelė`;
     modalBody.innerHTML = `
@@ -839,23 +855,18 @@ function openPlayerCard(playerId) {
             <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${esc(p.name)}</div>
             <span style="background: ${tierColor}; color: white; padding: 4px 12px; border-radius: 14px; font-weight: 900; font-size: 11px; text-transform: uppercase; display: inline-block; margin-top: 6px;">${esc(p.tier || 'D')} Lyga</span>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 18px; text-align: center;">
-                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">ELO Reitingas</div>
-                    <div style="font-size: 22px; font-weight: 900; color: ${tierColor};">${p.rating || 300}</div>
-                </div>
-                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">Oficialūs mačai</div>
-                    <div style="font-size: 22px; font-weight: 900; color: var(--text-dark);">${p.total_matches || 0}</div>
-                </div>
-                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">Draugiški mačai</div>
-                    <div style="font-size: 22px; font-weight: 900; color: var(--text-dark);">${casualM}</div>
-                </div>
-                <div style="background: #f8f9fb; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">Laimėta</div>
-                    <div style="font-size: 22px; font-weight: 900; color: var(--status-green);">${casualWinRate}%</div>
-                </div>
+            <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 6px; text-align: left;">Oficiali lyga</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; text-align: center;">
+                ${statBox('ELO Reitingas', p.rating || 300, tierColor)}
+                ${statBox('Mačai', officialM, 'var(--text-dark)')}
+                ${statBox('Laimėta', officialWinRate + '%', 'var(--status-green)')}
+            </div>
+
+            <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 6px; text-align: left;">Mėgėjų lyga (draugiški)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; text-align: center;">
+                ${statBox('ELO Reitingas', p.casual_rating || 300, casualColor)}
+                ${statBox('Mačai', casualM, 'var(--text-dark)')}
+                ${statBox('Laimėta', casualWinRate + '%', 'var(--status-green)')}
             </div>
             <div style="font-size: 11px; color: var(--text-grey); margin-top: 12px;"><i class="fa-regular fa-clock"></i> Paskutinį kartą žaidė: ${lastPlayed}</div>
         </div>
