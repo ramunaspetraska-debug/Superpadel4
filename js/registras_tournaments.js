@@ -275,6 +275,8 @@ function renderTournaments() {
                 const payPend = paymentPendingFor(t);
                 if (payPend && payPend.method === 'cash') {
                     statusHTML = `<div class="status-indicator status-in"><i class="fa-solid fa-check"></i> Dalyvaujate</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="cursor:pointer; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;">💵 ${payPend.amount} € vietoje</button>`;
+                } else if (payPend && payPend.claimed) {
+                    statusHTML = `<div class="status-indicator" style="color:#1d4ed8;"><i class="fa-solid fa-circle-check"></i> Laukia patvirtinimo</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="cursor:pointer; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;"><i class="fa-solid fa-euro-sign"></i> Apmokėta?</button>`;
                 } else if (payPend) {
                     statusHTML = `<div class="status-indicator" style="color:#b45309;"><i class="fa-solid fa-hourglass-half"></i> Laukia apmokėjimo</div><button type="button" class="edit-badge" onclick="event.stopPropagation(); openPaymentInstructions(${Number(t.id)});" style="cursor:pointer; background:#fffbeb; color:#92400e; border:1px solid #fde68a;"><i class="fa-solid fa-euro-sign"></i> ${payPend.amount} € apmokėti</button>`;
                 } else {
@@ -903,10 +905,27 @@ function openPaymentInstructions(id) {
     const dlStr = (pay && pay.deadline)
         ? new Date(pay.deadline).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
         : '';
+    const isClaimed = pay && pay.claimed && !alreadyPaid && !isCash;
     const headBg = alreadyPaid ? '#f0fdf4' : (isCash ? '#eff6ff' : '#fffbeb');
     const headBorder = alreadyPaid ? '#bbf7d0' : (isCash ? '#bfdbfe' : '#fde68a');
     const headColor = alreadyPaid ? '#166534' : (isCash ? '#1d4ed8' : '#92400e');
-    const headLabel = alreadyPaid ? 'Apmokėta ✅' : (isCash ? '💵 Mokėsite grynais atvykę' : 'Mokėtina suma');
+    const headLabel = alreadyPaid ? 'Apmokėta ✅' : (isCash ? '💵 Mokėsite grynais atvykę' : (isClaimed ? 'Laukia organizatoriaus patvirtinimo' : 'Mokėtina suma'));
+
+    // Struktūrizuoti rekvizitai su kopijavimo mygtukais; seni turnyrai — payInfo tekstas
+    const reqRow = (label, value) => `
+        <div style="display:flex; align-items:center; gap:8px; background:#f8f9fb; border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin-bottom:6px;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-size:9px; font-weight:800; color:var(--text-grey); text-transform:uppercase;">${label}</div>
+                <div style="font-size:13px; font-weight:700; color:var(--text-dark); word-break:break-all;">${esc(value)}</div>
+            </div>
+            <button type="button" onclick="copyPayField(this, '${esc(value).replace(/'/g, '')}')" style="background:#eff6ff; color:var(--primary-blue); border:1px solid #bfdbfe; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:12px; flex-shrink:0;"><i class="fa-regular fa-copy"></i></button>
+        </div>`;
+    let reqHtml = '';
+    if (t.payRecipient) reqHtml += reqRow('Gavėjas', t.payRecipient);
+    if (t.payIban) reqHtml += reqRow('Sąskaita (IBAN)', t.payIban);
+    if (t.payPhone) reqHtml += reqRow('Telefonas', t.payPhone);
+    if (!reqHtml && t.payInfo) reqHtml = `<div style="background:#f8f9fb; border:1px solid #e2e8f0; border-radius:8px; padding:10px; font-size:13px; white-space:pre-wrap; word-break:break-word;">${esc(t.payInfo)}</div>`;
+
     modalTitle.innerHTML = `<i class="fa-solid fa-euro-sign" style="color:#16a34a;"></i> Apmokėjimas`;
     modalBody.innerHTML = `
         <div style="text-align:left;">
@@ -916,23 +935,112 @@ function openPaymentInstructions(id) {
                 ${isPair ? '<div style="font-size:11px; color:var(--text-grey);">už porą (2 žaidėjai)</div>' : ''}
             </div>
             ${isCash ? `<div style="font-size:12px; color:var(--text-grey); margin-bottom:8px;">Vieta rezervuota — sumokėsite organizatoriui atvykę į turnyrą. Terminas jums negalioja.</div>` : ''}
-            ${!alreadyPaid && !isCash && t.payInfo ? `
+            ${isClaimed ? `<div style="font-size:12px; color:#1d4ed8; margin-bottom:8px;"><i class="fa-solid fa-circle-check"></i> Pažymėjote, kad apmokėjote — organizatorius patvirtins gavęs pinigus.</div>` : ''}
+            ${!alreadyPaid && !isCash && reqHtml ? `
                 <div style="font-size:11px; font-weight:800; color:var(--text-grey); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Mokėjimo rekvizitai</div>
-                <div style="background:#f8f9fb; border:1px solid #e2e8f0; border-radius:8px; padding:10px; font-size:13px; white-space:pre-wrap; word-break:break-word;">${esc(t.payInfo)}</div>` : ''}
-            ${!alreadyPaid && !isCash ? `<div style="font-size:12px; margin-top:10px; color:var(--text-grey);">Mokėjimo paskirtis: <b style="color:var(--text-dark);">${esc(t.format)} ${esc(t.date)} — ${esc(cleanName(String(entry).split('/')[0]))}</b></div>` : ''}
-            ${!alreadyPaid && !isCash && dlStr ? `<div style="font-size:12px; margin-top:8px; color:#b45309; font-weight:700;"><i class="fa-solid fa-hourglass-half"></i> Apmokėkite iki ${dlStr} — kitaip vieta atlaisvinama automatiškai.</div>` : ''}
-            ${!alreadyPaid && !isCash ? `<div style="font-size:11px; margin-top:8px; color:var(--text-grey);">Organizatoriui patvirtinus apmokėjimą, būsena pasikeis į „Dalyvaujate".</div>` : ''}
+                ${reqHtml}` : ''}
+            ${!alreadyPaid && !isCash ? `<div style="font-size:12px; margin-top:8px; color:var(--text-grey);">Mokėjimo paskirtis: <b style="color:var(--text-dark);">${esc(t.format)} ${esc(t.date)} — ${esc(cleanName(String(entry).split('/')[0]))}</b></div>` : ''}
+            ${!alreadyPaid && !isCash && !isClaimed && dlStr ? `<div style="font-size:12px; margin-top:8px; color:#b45309; font-weight:700;"><i class="fa-solid fa-hourglass-half"></i> Apmokėkite iki ${dlStr} — kitaip vieta atlaisvinama automatiškai.</div>` : ''}
         </div>`;
-    // Mokėjimo būdo perjungimas (jei organizatorius leidžia grynuosius)
+
+    // Veiksmai: Stripe kortelė / pažymėti apmokėjus / grynieji / pavedimas
     let methodBtns = '';
+    if (!alreadyPaid && !isCash && t.payStripeEnabled) {
+        methodBtns += `<button type="button" class="modal-btn primary" onclick="startStripeCheckout(${Number(t.id)})" style="width:100%; margin-bottom:8px; background:#635bff;"><i class="fa-solid fa-credit-card"></i> Apmokėti kortele dabar</button>`;
+    }
+    if (!alreadyPaid && !isCash && !isClaimed) {
+        methodBtns += `<button type="button" class="modal-btn primary" onclick="markPaymentClaimed(${Number(t.id)})" style="width:100%; margin-bottom:8px; background:#16a34a;"><i class="fa-solid fa-check"></i> Pažymėti: apmokėjau pavedimu</button>`;
+    }
     if (!alreadyPaid && t.payCashAllowed) {
-        methodBtns = isCash
+        methodBtns += isCash
             ? `<button type="button" class="modal-btn secondary" onclick="choosePaymentMethod(${Number(t.id)}, 'manual')" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-building-columns"></i> Vis dėlto mokėsiu pavedimu</button>`
             : `<button type="button" class="modal-btn secondary" onclick="choosePaymentMethod(${Number(t.id)}, 'cash')" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-money-bill-wave"></i> Mokėsiu grynais atvykęs</button>`;
     }
-    modalActions.innerHTML = `${methodBtns}<button type="button" class="modal-btn primary" onclick="closeModal()" style="width:100%;">Supratau</button>`;
+    modalActions.innerHTML = `${methodBtns}<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
     modal.classList.add('show');
 }
+
+// Rekvizito kopijavimas (IBAN, telefonas...) su vizualiu patvirtinimu
+function copyPayField(btn, value) {
+    const done = () => { if (btn) { btn.innerHTML = '<i class="fa-solid fa-check"></i>'; setTimeout(() => { btn.innerHTML = '<i class="fa-regular fa-copy"></i>'; }, 1500); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(done).catch(() => showToast(value));
+    } else { showToast(value); }
+}
+
+// Žaidėjas pažymi, kad pavedimą atliko: statusas lieka „pending", bet organizatorius
+// mato 🔔 žymą, o sistema tokio įrašo NEBEšalina pagal terminą (pinigai gali būti kelyje).
+function markPaymentClaimed(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t || !t.paid) return;
+    const entry = myPlayersEntry(t);
+    if (!entry || !t.payments) return;
+    const key = payKey(entry);
+    const pay = t.payments[key];
+    if (!pay || pay.status === 'paid') return;
+    pay.claimed = true;
+    pay.claimedTs = Date.now();
+    saveData();
+    showToast("✅ Pažymėta — organizatorius patvirtins gavęs pinigus.");
+    openPaymentInstructions(id);
+    renderTournaments();
+    if (typeof renderUserProfile === 'function') renderUserProfile();
+}
+
+// ==========================================
+// STRIPE — apmokėjimas kortele iš karto
+// ==========================================
+const STRIPE_FN_BASE = 'https://europe-west1-padelio-turnyrai.cloudfunctions.net';
+
+// Atidaro Stripe Checkout langą. Nepavykus (raktas nesukonfigūruotas, tinklo bėda) —
+// grįžtama prie įprastų pavedimo instrukcijų, registracija NEprarandama.
+async function startStripeCheckout(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t || !t.paid) return;
+    const entry = myPlayersEntry(t);
+    if (!entry) return;
+    showToast("Atidaroma saugi mokėjimo sistema...");
+    try {
+        const resp = await fetch(STRIPE_FN_BASE + '/createStripeCheckout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tid: t.id, key: payKey(entry), origin: location.origin })
+        });
+        const data = await resp.json();
+        if (data && data.url) { location.href = data.url; return; }
+        throw new Error((data && data.error) || 'no url');
+    } catch (e) {
+        console.warn('stripe checkout:', e);
+        showToast("Kortelių apmokėjimas šiuo metu nepasiekiamas — apmokėkite pavedimu.");
+        openPaymentInstructions(id);
+    }
+}
+
+// Grįžimas iš Stripe: ?paysession=ID — serveris patikrina ir pažymi apmokėjimą
+function handleStripeReturn() {
+    let params;
+    try { params = new URLSearchParams(location.search); } catch (e) { return; }
+    const session = params.get('paysession');
+    const cancelTid = params.get('paycancel');
+    if (!session && !cancelTid) return;
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    if (cancelTid) {
+        showToast("Apmokėjimas atšauktas — galite apmokėti pavedimu arba bandyti dar kartą.");
+        setTimeout(() => { try { openPaymentInstructions(Number(cancelTid)); } catch (e) {} }, 1200);
+        return;
+    }
+    showToast("Tikrinamas apmokėjimas...");
+    fetch(STRIPE_FN_BASE + '/verifyStripeSession', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: session })
+    }).then(r => r.json()).then(data => {
+        if (data && data.paid) showToast("✅ Apmokėjimas gautas — vieta patvirtinta!");
+        else showToast("Apmokėjimas dar apdorojamas — būsena atsinaujins netrukus.");
+    }).catch(() => showToast("Apmokėjimas apdorojamas — būsena atsinaujins netrukus."));
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', handleStripeReturn);
+else handleStripeReturn();
 
 // Perjungia mokėjimo būdą: grynais (terminas nebegalioja) <-> pavedimu (terminas atstatomas)
 function choosePaymentMethod(id, method) {
@@ -1142,7 +1250,9 @@ function confirmRegistration(id, withPartner) {
         closeModal();
         if (t.paid) {
             notifAdd('reg', id, 'Vieta rezervuota — laukia apmokėjimo', t.format + ' · ' + t.date + ' ' + t.time, false);
-            openPaymentInstructions(id);
+            // „Apmokėjimas iš karto": atidaromas Stripe langas; kitaip — pavedimo instrukcijos
+            if (t.payStripeEnabled) startStripeCheckout(id);
+            else openPaymentInstructions(id);
         } else {
             showToast("Jūs sėkmingai užregistruoti!");
             notifAdd('reg', id, 'Registracija patvirtinta', t.format + ' · ' + t.date + ' ' + t.time, false);
@@ -1303,7 +1413,8 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
     closeModal();
     if (tournament.paid) {
         notifAdd('reg', tournament.id, 'Poros vieta rezervuota — laukia apmokėjimo', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);
-        openPaymentInstructions(tournament.id);
+        if (tournament.payStripeEnabled) startStripeCheckout(tournament.id);
+        else openPaymentInstructions(tournament.id);
     } else {
         showToast(`Sėkmingai užregistruota pora: ${player1} ir ${player2}!`);
         notifAdd('reg', tournament.id, 'Registracija patvirtinta (pora)', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);

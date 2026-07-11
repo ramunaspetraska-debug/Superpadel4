@@ -23,15 +23,27 @@ canOfficial, legacyOwner), padelio_club_admins, padelio_email_links
 klubai), padelio_push_tokens/padelio_push_sent, padelio_notifications,
 padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
 
-## Sistemos būsena (2026-07-11, cache v280, APP_VERSION v211 / V230, registras.css?v=14)
+## Sistemos būsena (2026-07-11, cache v282, APP_VERSION v212 / V231, registras.css?v=14)
 - MOKAMI TURNYRAI: admin formose jungiklis „Mokamas turnyras" (t.paid, fee €/žaidėjui,
-  payDeadlineHours 12/24/48/0=iki reg. pabaigos, payInfo rekvizitai). Registracija
-  sukuria t.payments[payKey(entry)]={status:'pending',method:'manual',amount,deadline}
-  (pora — 2x fee, vienas įrašas). payKey keičia [.#$/[]] → ','. Žaidėjas mato
-  „Laukia apmokėjimo" + instrukcijų modalą (openPaymentInstructions). Adminas
-  tvirtina per 💶 modalą (openPaymentsModal/setPaymentStatus). Serveris kas 15 min
-  (enforcePaymentDeadlines) šalina pavėlavusius; closeRegistrations pirmiausiai
-  šalina neapmokėjusius. method laukas paruoštas Stripe ateičiai.
+  payDeadlineHours 12/24/48/0=iki reg. pabaigos; struktūrizuoti rekvizitai
+  payRecipient/payIban/payPhone, senas payInfo — tik fallback; payCashAllowed;
+  payStripeEnabled). Registracija sukuria t.payments[payKey(entry)]=
+  {entry,status:'pending',method:'manual',amount,deadline} (pora — 2x fee).
+  payKey keičia [.#$/[]] → ','. Terminas VISADA <= registracijos uždarymo
+  (paymentDeadlineMs min logika). Žaidėjo instrukcijos (openPaymentInstructions):
+  rekvizitai su copy mygtukais, „Pažymėti: apmokėjau" (pay.claimed — serveris
+  NEšalina, adminas mato 🔔), grynieji (method='cash', be termino, serveris
+  nešalina), Stripe mygtukas. Adminas tvirtina per 💶 modalą. Serveris kas 15 min:
+  enforcePaymentDeadlines (šalina pavėlavusius ne-claimed/ne-cash + priminimo push
+  likus ~2h), closeRegistrations pirmiausiai šalina neapmokėjusius (be cash/claimed).
+- STRIPE (apmokėjimas iš karto registruojantis): functions createStripeCheckout /
+  verifyStripeSession (?paysession= grįžimas) / stripeWebhook (checkout.session.
+  completed → markStripePaid + push). Sumą skaičiuoja SERVERIS iš DB. Raktai —
+  Cloud Functions secrets STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET (be jų —
+  503, klientas fallback'ina į pavedimą). Kliente STRIPE_FN_BASE +
+  startStripeCheckout/handleStripeReturn (registras_tournaments.js).
+- Kambarių prieiga generatoriuje laukia auth atstatymo (authEmailReady, storage.js) —
+  be jo klubo adminas gaudavo „TIK PERŽIŪRA". Turnyro dalinimasis: ?t=ID deep link.
 - Prisijungimai: TIK el. pašto nuorodos (Firebase Auth email-link, be slaptažodžių).
   Telefono/PIN 7030 sistemos PAŠALINTOS. emailKey() = el. paštas mažosiomis,
   [.#$[]/] → ','. Sesija bendra tarp index.html ir registras.html (ta pati kilmė).

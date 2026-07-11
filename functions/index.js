@@ -11,6 +11,8 @@
  */
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onValueWritten } = require('firebase-functions/v2/database');
+const { onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
 const { getDatabase } = require('firebase-admin/database');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -186,10 +188,11 @@ async function enforcePaymentDeadlines(now) {
     for (const t of arr) {
         if (!t || !t.paid || !t.payments || !Array.isArray(t.players)) continue;
 
-        // 1) Pavėlavę — šalinami
+        // 1) Pavėlavę — šalinami. IŠIMTIS: pažymėjusieji „apmokėjau" (claimed) —
+        // pinigai gali būti kelyje, sprendžia organizatorius rankiniu būdu.
         const overdue = Object.keys(t.payments).filter(k => {
             const p = t.payments[k];
-            return p && p.status === 'pending' && typeof p.deadline === 'number' && p.deadline < now;
+            return p && p.status === 'pending' && !p.claimed && typeof p.deadline === 'number' && p.deadline < now;
         });
         if (overdue.length) {
             await loadAll();
@@ -207,7 +210,7 @@ async function enforcePaymentDeadlines(now) {
         // 2) Priminimas likus ~2 val. iki termino (vienkartinis; grynaisiais mokančių neliečia)
         const soonKeys = Object.keys(t.payments).filter(k => {
             const p = t.payments[k];
-            return p && p.status === 'pending' && p.method !== 'cash' && typeof p.deadline === 'number'
+            return p && p.status === 'pending' && p.method !== 'cash' && !p.claimed && typeof p.deadline === 'number'
                 && p.deadline > now && p.deadline - now <= 2.5 * 3600000;
         });
         if (soonKeys.length) {
@@ -271,7 +274,7 @@ async function closeRegistrations(now) {
         if (t.paid) {
             const unpaid = players.filter(e => {
                 const p = (t.payments || {})[payKey(e)];
-                return !(p && (p.status === 'paid' || p.method === 'cash'));
+                return !(p && (p.status === 'paid' || p.method === 'cash' || p.claimed));
             });
             if (unpaid.length) {
                 players = players.filter(e => unpaid.indexOf(e) === -1);
@@ -449,5 +452,150 @@ exports.spotOpened = onValueWritten(
         }
         if (Object.keys(updates).length) await db.ref('padelio_push_sent').update(updates);
         return null;
+    }
+);
+
+
+// ===================== STRIPE — APMOKĖJIMAS IŠ KARTO REGISTRUOJANTIS =====================
+// Raktai laikomi Cloud Functions "secrets" saugykloje (ne kode):
+//   firebase functions:secrets:set STRIPE_SECRET_KEY      (sk_live_... arba sk_test_...)
+//   firebase functions:secrets:set STRIPE_WEBHOOK_SECRET  (whsec_..., webhook parašui)
+// Kol raktų nėra, funkcijos grąžina klaidą, o klientas gražiai grįžta prie pavedimo.
+const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
+const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
+
+// Pažymi apmokėjimą gautu (kviečia webhook IR grįžimo patikra — idempotentiška)
+// ir išsiunčia push visiems įrašo žaidėjams.
+async function markStripePaid(tid, key, sessionId) {
+    const ref = db.ref('padelio_global_tournaments');
+    const snap = await ref.get();
+    const raw = snap.val();
+    const arr = (Array.isArray(raw) ? raw : Object.values(raw || {})).filter(Boolean);
+    const t = arr.find(x => String(x.id) === String(tid));
+    if (!t || !t.payments || !t.payments[key]) return false;
+    if (t.payments[key].status === 'paid') return true; // jau pažymėta (webhook + return race)
+    t.payments[key].status = 'paid';
+    t.payments[key].method = 'stripe';
+    t.payments[key].paidTs = Date.now();
+    t.payments[key].stripeSession = String(sessionId || '');
+    t.payments[key].deadline = null;
+    await ref.set(arr);
+    const entry = t.payments[key].entry || '';
+    const names = String(entry).split('/').map(p2 => p2.trim().split('|')[0].trim().toLowerCase());
+    const utSnap = await db.ref('padelio_user_tournaments').get();
+    const all = utSnap.val() || {};
+    for (const userId of Object.keys(all)) {
+        const rec = all[userId] && all[userId][tid];
+        if (!rec || names.indexOf(String(rec.name || '').trim().toLowerCase()) === -1) continue;
+        await sendToUser(userId, '✅ Apmokėjimas gautas',
+            (t.format || 'Turnyras') + ' (' + (t.date || '') + ' ' + (t.time || '') + ') — vieta patvirtinta. Iki susitikimo korte!',
+            'paid_' + tid);
+    }
+    return true;
+}
+
+// Sukuria Stripe Checkout sesiją. SUMĄ skaičiuoja serveris iš DB (ne klientas) —
+// kainos suklastoti neįmanoma.
+exports.createStripeCheckout = onRequest(
+    { region: REGION, cors: true, secrets: [STRIPE_SECRET_KEY] },
+    async (req, res) => {
+        try {
+            const body = req.body || {};
+            const tid = body.tid, key = body.key;
+            if (!tid || !key) { res.status(400).json({ error: 'missing params' }); return; }
+            const sk = STRIPE_SECRET_KEY.value();
+            if (!sk || sk.indexOf('sk_') !== 0) { res.status(503).json({ error: 'stripe not configured' }); return; }
+            const stripe = require('stripe')(sk);
+            const snap = await db.ref('padelio_global_tournaments').get();
+            const raw = snap.val();
+            const arr = (Array.isArray(raw) ? raw : Object.values(raw || {})).filter(Boolean);
+            const t = arr.find(x => String(x.id) === String(tid));
+            if (!t || !t.paid || !t.payStripeEnabled) { res.status(400).json({ error: 'not payable' }); return; }
+            const pay = (t.payments || {})[key];
+            if (!pay) { res.status(400).json({ error: 'no payment record' }); return; }
+            if (pay.status === 'paid') { res.status(400).json({ error: 'already paid' }); return; }
+            const entry = pay.entry || '';
+            const seats = String(entry).indexOf('/') !== -1 ? 2 : 1;
+            const amountCents = Math.round((t.fee || 0) * seats * 100);
+            if (amountCents < 50) { res.status(400).json({ error: 'amount too small' }); return; }
+            const origin = (typeof body.origin === 'string' && /^https?:\/\//.test(body.origin)) ? body.origin : 'https://www.superpadel.lt';
+            const session = await stripe.checkout.sessions.create({
+                mode: 'payment',
+                line_items: [{
+                    quantity: 1,
+                    price_data: {
+                        currency: 'eur',
+                        unit_amount: amountCents,
+                        product_data: { name: (t.format || 'Turnyras') + ' ' + (t.date || '') + ' — dalyvio mokestis' + (seats === 2 ? ' (pora)' : '') }
+                    }
+                }],
+                success_url: origin + '/registras.html?paysession={CHECKOUT_SESSION_ID}',
+                cancel_url: origin + '/registras.html?paycancel=' + encodeURIComponent(String(tid)),
+                metadata: { tid: String(tid), key: String(key) }
+            });
+            res.json({ url: session.url });
+        } catch (e) {
+            console.error('createStripeCheckout:', e);
+            res.status(500).json({ error: 'stripe error' });
+        }
+    }
+);
+
+// Grįžus iš Checkout (?paysession=ID): patikrina sesiją per Stripe API ir pažymi
+// apmokėjimą — greitas kelias, kol webhook dar nesukonfigūruotas arba vėluoja.
+exports.verifyStripeSession = onRequest(
+    { region: REGION, cors: true, secrets: [STRIPE_SECRET_KEY] },
+    async (req, res) => {
+        try {
+            const sessionId = (req.body && req.body.session) || req.query.session;
+            if (!sessionId) { res.status(400).json({ error: 'missing session' }); return; }
+            const sk = STRIPE_SECRET_KEY.value();
+            if (!sk || sk.indexOf('sk_') !== 0) { res.status(503).json({ error: 'stripe not configured' }); return; }
+            const stripe = require('stripe')(sk);
+            const session = await stripe.checkout.sessions.retrieve(String(sessionId));
+            if (session && session.payment_status === 'paid' && session.metadata && session.metadata.tid && session.metadata.key) {
+                const ok = await markStripePaid(session.metadata.tid, session.metadata.key, session.id);
+                res.json({ paid: ok });
+                return;
+            }
+            res.json({ paid: false });
+        } catch (e) {
+            console.error('verifyStripeSession:', e);
+            res.status(500).json({ error: 'verify error' });
+        }
+    }
+);
+
+// Stripe webhook (checkout.session.completed) — patikimas automatinis žymėjimas,
+// veikia net žaidėjui negrįžus į portalą. Parašas tikrinamas su STRIPE_WEBHOOK_SECRET.
+exports.stripeWebhook = onRequest(
+    { region: REGION, secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] },
+    async (req, res) => {
+        try {
+            const sk = STRIPE_SECRET_KEY.value();
+            const whsec = STRIPE_WEBHOOK_SECRET.value();
+            if (!sk || sk.indexOf('sk_') !== 0 || !whsec || whsec.indexOf('whsec_') !== 0) {
+                res.status(503).send('stripe not configured');
+                return;
+            }
+            const stripe = require('stripe')(sk);
+            let event;
+            try {
+                event = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], whsec);
+            } catch (e) {
+                res.status(400).send('bad signature');
+                return;
+            }
+            if (event.type === 'checkout.session.completed') {
+                const s = event.data.object;
+                if (s && s.payment_status === 'paid' && s.metadata && s.metadata.tid && s.metadata.key) {
+                    await markStripePaid(s.metadata.tid, s.metadata.key, s.id);
+                }
+            }
+            res.json({ received: true });
+        } catch (e) {
+            console.error('stripeWebhook:', e);
+            res.status(500).send('err');
+        }
     }
 );

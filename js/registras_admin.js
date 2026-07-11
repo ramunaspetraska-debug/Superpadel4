@@ -369,8 +369,12 @@ async function createTournament(e) {
                 newT.paid = true;
                 newT.fee = Math.max(1, parseFloat(document.getElementById('newFee')?.value) || 10);
                 newT.payDeadlineHours = parseInt(document.getElementById('newPayDeadline')?.value || 24);
-                newT.payInfo = (document.getElementById('newPayInfo')?.value || '').trim();
+                // Struktūrizuoti rekvizitai (payInfo liko kaip senų turnyrų atsarginis laukas)
+                newT.payRecipient = (document.getElementById('newPayRecipient')?.value || '').trim();
+                newT.payIban = (document.getElementById('newPayIban')?.value || '').trim();
+                newT.payPhone = (document.getElementById('newPayPhone')?.value || '').trim();
                 newT.payCashAllowed = !!document.getElementById('newPayCash')?.checked;
+                newT.payStripeEnabled = !!document.getElementById('newPayStripe')?.checked;
                 newT.payments = {};
             }
             // Turnyras priklauso jį sukūrusiam klubui — kiti klubai jo nevaldys
@@ -480,7 +484,10 @@ function openPaymentsModal(id) {
             ? `<div style="font-size:10px; color:${pay.deadline < Date.now() ? '#dc2626' : '#b45309'};"><i class="fa-solid fa-hourglass-half"></i> iki ${new Date(pay.deadline).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}${pay.deadline < Date.now() ? ' — VĖLUOJA' : ''}</div>`
             : '';
         const safeKey = payKey(e).replace(/'/g, '');
-        const statusTxt = isPaid ? ' · apmokėta ✅' : (isCash ? ' · 💵 mokės grynais vietoje' : ' · laukia pavedimo');
+        const isClaimed = pay && pay.claimed && !isPaid && !isCash;
+        const claimedTxt = isClaimed ? ` · 🔔 žaidėjas pažymėjo apmokėjęs${pay.claimedTs ? ' (' + new Date(pay.claimedTs).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) + ')' : ''}` : '';
+        const stripeTxt = isPaid && pay && pay.method === 'stripe' ? ' 💳 kortele' : '';
+        const statusTxt = isPaid ? (' · apmokėta ✅' + stripeTxt) : (isCash ? ' · 💵 mokės grynais vietoje' : (isClaimed ? claimedTxt : ' · laukia pavedimo'));
         return `
         <div style="display:flex; align-items:center; gap:10px; border:1px solid ${isPaid ? '#bbf7d0' : (isCash ? '#bfdbfe' : '#e2e8f0')}; background:${isPaid ? '#f0fdf4' : (isCash ? '#eff6ff' : 'white')}; border-radius:10px; padding:10px 12px;">
             <div style="flex:1; min-width:0;">
@@ -589,10 +596,16 @@ function openAdminTournamentModal(id) {
         if (feeInp) feeInp.value = t.fee || 10;
         const dlSel = document.getElementById('editAdminTournamentPayDeadline');
         if (dlSel) dlSel.value = String(typeof t.payDeadlineHours === 'number' ? t.payDeadlineHours : 24);
-        const infoTa = document.getElementById('editAdminTournamentPayInfo');
-        if (infoTa) infoTa.value = t.payInfo || '';
+        const recInp = document.getElementById('editAdminTournamentPayRecipient');
+        if (recInp) recInp.value = t.payRecipient || '';
+        const ibanInp = document.getElementById('editAdminTournamentPayIban');
+        if (ibanInp) ibanInp.value = t.payIban || '';
+        const phoneInp = document.getElementById('editAdminTournamentPayPhone');
+        if (phoneInp) phoneInp.value = t.payPhone || '';
         const cashBox = document.getElementById('editAdminTournamentPayCash');
         if (cashBox) cashBox.checked = !!t.payCashAllowed;
+        const stripeBox = document.getElementById('editAdminTournamentPayStripe');
+        if (stripeBox) stripeBox.checked = !!t.payStripeEnabled;
     }
     document.getElementById('adminEditTournamentModal').classList.add('show');
 }
@@ -628,8 +641,11 @@ function saveAdminTournamentChanges() {
         if (isPaid) {
             tournaments[idx].fee = Math.max(1, parseFloat(document.getElementById('editAdminTournamentFee')?.value) || 10);
             tournaments[idx].payDeadlineHours = parseInt(document.getElementById('editAdminTournamentPayDeadline')?.value || 24);
-            tournaments[idx].payInfo = (document.getElementById('editAdminTournamentPayInfo')?.value || '').trim();
+            tournaments[idx].payRecipient = (document.getElementById('editAdminTournamentPayRecipient')?.value || '').trim();
+            tournaments[idx].payIban = (document.getElementById('editAdminTournamentPayIban')?.value || '').trim();
+            tournaments[idx].payPhone = (document.getElementById('editAdminTournamentPayPhone')?.value || '').trim();
             tournaments[idx].payCashAllowed = !!document.getElementById('editAdminTournamentPayCash')?.checked;
+            tournaments[idx].payStripeEnabled = !!document.getElementById('editAdminTournamentPayStripe')?.checked;
             if (!tournaments[idx].payments) tournaments[idx].payments = {};
         }
         tournaments[idx].eReferee = !!document.getElementById('editAdminTournamentERef')?.checked;
