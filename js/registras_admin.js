@@ -178,6 +178,16 @@ function openClubInfoModal() {
             </div>
             <input type="text" id="editClubCity" value="${esc(c.city || '')}" placeholder="Miestas (pvz. Kaunas)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box; margin-bottom: 8px;">
             <input type="text" id="editClubAddress" value="${esc(c.address || '')}" placeholder="Adresas (pvz. Sporto g. 5, Kaunas)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; box-sizing: border-box; margin-bottom: 8px; font-size: 13px;">
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <div style="flex:1; position:relative;">
+                    <i class="fa-brands fa-facebook" style="position:absolute; left:11px; top:14px; color:#1877F2;"></i>
+                    <input type="text" id="editClubFb" value="${esc(c.facebook || '')}" placeholder="Facebook nuoroda" style="width:100%; padding:12px 10px 12px 32px; border:1px solid #cbd5e0; border-radius:8px; outline:none; box-sizing:border-box; font-size:12px;">
+                </div>
+                <div style="flex:1; position:relative;">
+                    <i class="fa-brands fa-instagram" style="position:absolute; left:11px; top:14px; color:#E1306C;"></i>
+                    <input type="text" id="editClubIg" value="${esc(c.instagram || '')}" placeholder="Instagram nuoroda" style="width:100%; padding:12px 10px 12px 32px; border:1px solid #cbd5e0; border-radius:8px; outline:none; box-sizing:border-box; font-size:12px;">
+                </div>
+            </div>
             <textarea id="editClubDesc" placeholder="Trumpas aprašymas žaidėjams" rows="3" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; box-sizing: border-box; font-size: 13px; resize: none;">${esc(c.description || '')}</textarea>`;
         modalActions.innerHTML = `
             <button type="button" class="modal-btn primary" onclick="saveClubInfo()" style="width:100%; margin-bottom:8px;">Išsaugoti</button>
@@ -216,8 +226,15 @@ function saveClubInfo() {
     const city = (document.getElementById('editClubCity')?.value || '').trim();
     const address = (document.getElementById('editClubAddress')?.value || '').trim().slice(0, 120);
     const description = (document.getElementById('editClubDesc')?.value || '').trim().slice(0, 300);
+    // Soc. tinklų nuorodos — tik http(s), kad kortelėse nebūtų javascript: tipo nuorodų
+    const cleanUrl = (v) => {
+        v = String(v || '').trim().slice(0, 200);
+        if (!v) return '';
+        if (!/^https?:\/\//i.test(v)) v = 'https://' + v;
+        return /^https:\/\/[\w.-]/i.test(v) || /^http:\/\/[\w.-]/i.test(v) ? v : '';
+    };
     if (city.length < 2) { showToast("Įveskite miestą."); return; }
-    const upd = { city: city, address: address, description: description };
+    const upd = { city: city, address: address, description: description, facebook: cleanUrl(document.getElementById('editClubFb')?.value), instagram: cleanUrl(document.getElementById('editClubIg')?.value) };
     if (window._clubLogoDataUrl) upd.logo = window._clubLogoDataUrl;
     firebase.database().ref('padelio_clubs/' + currentClub.id).update(upd)
         .then(() => {
@@ -489,6 +506,7 @@ function renderAdminTournaments() {
             <td style="padding: 12px; text-align: center; white-space:nowrap;">
                 ${t.room ? `<button type="button" onclick="openGeneratorRoom('${safeRoom}')" title="Atidaryti generatorių (kambarys ${safeRoom})" style="background:#ecfdf5; color:#047857; border:none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">▶ ${esc(t.room)}</button>` : ''}
                 ${t.paid ? (function () { const c = paymentCounts(t); return `<button type="button" onclick="openPaymentsModal('${esc(String(t.id))}')" title="Apmokėjimų valdymas" style="background:${c.pending > 0 ? '#fffbeb' : '#f0fdf4'}; color:${c.pending > 0 ? '#92400e' : '#166534'}; border:1px solid ${c.pending > 0 ? '#fde68a' : '#bbf7d0'}; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">💶 ${c.paid}/${c.total}</button>`; })() : ''}
+                <button type="button" onclick="openShareTournamentModal('${esc(String(t.id))}')" title="Dalintis soc. tinkluose (baneris)" style="background: #faf5ff; color: #7c3aed; border: 1px solid #e9d5ff; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">📣</button>
                 <button type="button" onclick="openAdminTournamentModal('${esc(String(t.id))}')" style="background: #eff6ff; color: #1d4ed8; border: none; padding: 5px 8px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; margin-right: 4px;">✏️ Keisti</button>
                 <button type="button" onclick="deleteAdminTournamentLive('${esc(String(t.id))}')" style="background: white; border: 1px solid #cbd5e0; color: var(--status-red); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
             </td>
@@ -496,6 +514,210 @@ function renderAdminTournaments() {
     });
     html += '</table>';
     list.innerHTML = html;
+}
+
+// ==========================================
+// DALINIMASIS SOC. TINKLUOSE — banerio generatorius klubui.
+// Būsimam turnyrui — kvietimo baneris (registracijos reklama su QR),
+// praėjusiam — rezultatų baneris su TOP-3. 1080x1080 (Instagram/Facebook formatas).
+// ==========================================
+
+function openShareTournamentModal(id) {
+    const t = tournaments.find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (currentClub && !canManageTournament(t)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
+    const isPast = (typeof getTimeState === 'function') && getTimeState(t.date, t.time) === 'past';
+    showToast("Ruošiamas baneris...");
+    const done = (canvas, shareText) => showBannerModal(t, canvas, shareText);
+    if (isPast && t.room) {
+        // Rezultatų baneris — TOP-3 iš kambario
+        firebase.database().ref(DB_KEY + '/' + String(t.room).toUpperCase()).once('value').then(snap => {
+            const top3 = bannerTop3(snap.val());
+            drawTournamentBanner(t, { mode: 'results', top3: top3 }).then(c => done(c, bannerShareText(t, 'results', top3)));
+        }).catch(() => drawTournamentBanner(t, { mode: 'results', top3: [] }).then(c => done(c, bannerShareText(t, 'results', []))));
+    } else {
+        drawTournamentBanner(t, { mode: 'promo' }).then(c => done(c, bannerShareText(t, 'promo')));
+    }
+}
+
+// TOP-3 pagal taškų sumą iš kambario baigtų mačų
+function bannerTop3(roomData) {
+    const matches = (roomData && Array.isArray(roomData.matches)) ? roomData.matches.filter(m => m && m.finished) : [];
+    const pts = {};
+    matches.forEach(m => {
+        (m.team1 || []).forEach(p => { if (p && p.name) pts[p.name] = (pts[p.name] || 0) + (parseInt(m.score1) || 0); });
+        (m.team2 || []).forEach(p => { if (p && p.name) pts[p.name] = (pts[p.name] || 0) + (parseInt(m.score2) || 0); });
+    });
+    return Object.keys(pts).map(n => ({ name: n, pts: pts[n] }))
+        .sort((a, b) => b.pts - a.pts).slice(0, 3);
+}
+
+function bannerShareText(t, mode, top3) {
+    const link = location.origin + '/registras.html?t=' + encodeURIComponent(t.id);
+    if (mode === 'results') {
+        const medals = ['🥇', '🥈', '🥉'];
+        const lines = (top3 || []).map((p, i) => medals[i] + ' ' + p.name + ' (' + p.pts + ' tšk.)').join('\n');
+        return '🏆 ' + (t.format || 'Turnyras') + ' (' + (t.date || '') + ') — rezultatai!\n\n' + lines + '\n\nVisa statistika ir kiti turnyrai: ' + link;
+    }
+    return '🎾 Kviečiame į turnyrą!\n\n' + (t.format || 'Turnyras') + ' (' + (t.level || '') + ' lygis)\n📅 ' + (t.date || '') + ' · ' + (t.time || '')
+        + (t.clubName ? '\n📍 ' + t.clubName : '') + (t.paid ? '\n💶 Dalyvio mokestis: ' + (t.fee || 0) + ' €' : '')
+        + '\n\nRegistruokis: ' + link;
+}
+
+// Piešia 1080x1080 banerį canvas'e. Grąžina Promise<canvas>.
+function drawTournamentBanner(t, opts) {
+    return new Promise(resolve => {
+        const S = 1080;
+        const canvas = document.createElement('canvas');
+        canvas.width = S; canvas.height = S;
+        const x = canvas.getContext('2d');
+        const club = (typeof allClubsCache !== 'undefined' && allClubsCache[t.clubId]) || {};
+
+        // Fonas su švelniu gradientu
+        const g = x.createLinearGradient(0, 0, S, S);
+        g.addColorStop(0, '#0b1220'); g.addColorStop(1, '#101c33');
+        x.fillStyle = g; x.fillRect(0, 0, S, S);
+        // Dekoratyvinė linija viršuje
+        x.fillStyle = '#3b82f6'; x.fillRect(0, 0, S, 14);
+
+        const centerTxt = (txt, y, font, color) => { x.font = font; x.fillStyle = color; x.textAlign = 'center'; x.fillText(txt, S / 2, y); };
+
+        // Logotipas (klubo, jei yra) + pavadinimai — piešiama po async užkrovimų
+        const tasks = [];
+        let logoImg = null, qrImg = null;
+        if (club.logo) tasks.push(new Promise(r => { const im = new Image(); im.onload = () => { logoImg = im; r(); }; im.onerror = r; im.src = club.logo; }));
+        if (opts.mode === 'promo' && typeof qrcode !== 'undefined') {
+            try {
+                const qr = qrcode(0, 'M');
+                qr.addData(location.origin + '/registras.html?t=' + encodeURIComponent(t.id));
+                qr.make();
+                const qurl = qr.createDataURL(10, 4);
+                tasks.push(new Promise(r => { const im = new Image(); im.onload = () => { qrImg = im; r(); }; im.onerror = () => r(); im.src = qurl; }));
+            } catch (e) {}
+        }
+        Promise.all(tasks).then(() => {
+            let y = 120;
+            if (logoImg) {
+                const L = 120;
+                x.save();
+                x.beginPath(); x.arc(S / 2, y, L / 2, 0, Math.PI * 2); x.clip();
+                x.drawImage(logoImg, S / 2 - L / 2, y - L / 2, L, L);
+                x.restore();
+                y += 95;
+            }
+            if (t.clubName) { centerTxt(String(t.clubName).toUpperCase(), y, '800 34px Arial', '#94a3b8'); y += 60; }
+
+            if (opts.mode === 'results') {
+                centerTxt('🏆 TURNYRO REZULTATAI', y, '900 52px Arial', '#f59e0b'); y += 90;
+                centerTxt(String(t.format || 'Turnyras'), y, '900 64px Arial', '#ffffff'); y += 58;
+                centerTxt((t.date || '') + '  ·  ' + (t.time || ''), y, '700 36px Arial', '#94a3b8'); y += 90;
+                const medals = ['🥇', '🥈', '🥉'];
+                const colors = ['#f59e0b', '#94a3b8', '#d97706'];
+                (opts.top3 && opts.top3.length ? opts.top3 : [{ name: '—', pts: '' }]).forEach((p, i) => {
+                    x.fillStyle = 'rgba(255,255,255,0.06)';
+                    roundRectPath(x, 120, y - 52, S - 240, 78, 18); x.fill();
+                    x.textAlign = 'left'; x.font = '900 44px Arial'; x.fillStyle = colors[i] || '#fff';
+                    x.fillText(medals[i] || '', 150, y);
+                    x.fillStyle = '#ffffff';
+                    x.fillText(fitTxt(x, p.name, 560), 235, y);
+                    x.textAlign = 'right'; x.fillStyle = '#3b82f6';
+                    x.fillText(p.pts !== '' ? p.pts + ' tšk.' : '', S - 150, y);
+                    y += 105;
+                });
+                y += 30;
+            } else {
+                centerTxt('KVIEČIAME Į TURNYRĄ', y, '900 46px Arial', '#22c55e'); y += 95;
+                centerTxt(fitTxt(x, String(t.format || 'Turnyras'), S - 160, '900 76px Arial'), y, '900 76px Arial', '#ffffff'); y += 64;
+                centerTxt((t.level || 'Atviras') + ' lygis' + (t.category ? '  ·  ' + t.category : ''), y, '700 36px Arial', '#94a3b8'); y += 78;
+                centerTxt('📅 ' + (t.date || '') + '   🕐 ' + (t.time || ''), y, '800 44px Arial', '#ffffff'); y += 62;
+                const loc = club.address || club.city || '';
+                if (loc) { centerTxt('📍 ' + fitTxt(x, loc, S - 200, '700 34px Arial'), y, '700 34px Arial', '#94a3b8'); y += 56; }
+                if (t.paid) { centerTxt('💶 ' + (t.fee || 0) + ' € žaidėjui', y, '800 38px Arial', '#f59e0b'); y += 60; }
+                if (qrImg) {
+                    const Q = 230;
+                    x.fillStyle = '#ffffff';
+                    roundRectPath(x, S / 2 - Q / 2 - 14, y - 6, Q + 28, Q + 28, 20); x.fill();
+                    x.drawImage(qrImg, S / 2 - Q / 2, y + 8, Q, Q);
+                    y += Q + 70;
+                    centerTxt('Nuskenuok ir registruokis', y, '800 34px Arial', '#ffffff'); y += 40;
+                } else { y += 20; }
+            }
+            // Apačia — programos ženklas
+            x.textAlign = 'center';
+            x.font = '900 40px Arial';
+            x.fillStyle = '#3b82f6'; x.fillText('SUPER', S / 2 - 88, S - 60);
+            x.fillStyle = '#ffffff'; x.fillText('PADEL', S / 2 + 42, S - 60);
+            x.fillStyle = '#64748b'; x.font = '800 28px Arial'; x.fillText('.LT', S / 2 + 158, S - 60);
+            resolve(canvas);
+        });
+    });
+}
+
+function roundRectPath(x, px, py, w, h, r) {
+    x.beginPath();
+    x.moveTo(px + r, py);
+    x.arcTo(px + w, py, px + w, py + h, r);
+    x.arcTo(px + w, py + h, px, py + h, r);
+    x.arcTo(px, py + h, px, py, r);
+    x.arcTo(px, py, px + w, py, r);
+    x.closePath();
+}
+
+function fitTxt(x, txt, maxW, font) {
+    if (font) x.font = font;
+    txt = String(txt || '');
+    while (txt.length > 3 && x.measureText(txt).width > maxW) txt = txt.slice(0, -2);
+    return txt.length < String(txt || '').length ? txt + '…' : txt;
+}
+
+function showBannerModal(t, canvas, shareText) {
+    const dataUrl = canvas.toDataURL('image/png');
+    modalTitle.innerHTML = `<i class="fa-solid fa-bullhorn" style="color: var(--primary-blue);"></i> Dalintis soc. tinkluose`;
+    modalBody.innerHTML = `
+        <img src="${dataUrl}" style="width:100%; border-radius:12px; border:1px solid #e2e8f0;">
+        <div style="font-size:11px; color:var(--text-grey); margin-top:8px; text-align:left;">Baneris + tekstas su registracijos nuoroda. „Dalintis" atidaro telefono meniu (FB/IG/Messenger), kompiuteryje — atsisiųskite ir įkelkite.</div>`;
+    window._bannerCanvas = canvas;
+    window._bannerText = shareText;
+    window._bannerName = 'superpadel_' + String(t.date || 'turnyras').replace(/[^0-9-]/g, '') + '.png';
+    modalActions.innerHTML = `
+        <button type="button" class="modal-btn primary" onclick="shareBannerNow()" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-share-nodes"></i> Dalintis</button>
+        <button type="button" class="modal-btn primary" onclick="downloadBannerNow()" style="width:100%; margin-bottom:8px; background:#0f766e;"><i class="fa-solid fa-download"></i> Atsisiųsti PNG</button>
+        <button type="button" class="modal-btn secondary" onclick="copyBannerText()" style="width:100%; margin-bottom:8px;"><i class="fa-regular fa-copy"></i> Kopijuoti tekstą</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
+    modal.classList.add('show');
+}
+
+function shareBannerNow() {
+    const canvas = window._bannerCanvas;
+    if (!canvas) return;
+    canvas.toBlob(blob => {
+        const file = new File([blob], window._bannerName || 'superpadel.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], text: window._bannerText || '' }).catch(() => {});
+        } else if (navigator.share) {
+            navigator.share({ text: window._bannerText || '' }).catch(() => {});
+        } else {
+            downloadBannerNow();
+            copyBannerText();
+        }
+    }, 'image/png');
+}
+
+function downloadBannerNow() {
+    const canvas = window._bannerCanvas;
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = window._bannerName || 'superpadel.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast("Baneris atsisiųstas!");
+}
+
+function copyBannerText() {
+    const txt = window._bannerText || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(() => showToast("Tekstas nukopijuotas — įklijuokite prie įrašo."));
+    } else showToast(txt);
 }
 
 // ==========================================

@@ -860,6 +860,119 @@ function shareBtn(e, id) {
     }
 }
 
+// ==========================================
+// KALENDORIUS — turnyro įrašas su priminimais (24 val. ir 3 val. prieš)
+// ==========================================
+// Pilnam automatiniam sinchronizavimui reikėtų Google OAuth — vietoj to:
+// vieno paspaudimo Google Calendar nuoroda ARBA .ics failas (jame VALARM
+// priminimai veikia visuose kalendoriuose). Po registracijos pasiūloma
+// automatiškai (galima išjungti — localStorage sp_cal_prompt='off').
+
+function tournamentCalTimes(t) {
+    const start = new Date(tournamentStartMsClient(t));
+    let end = new Date(start.getTime() + 2 * 3600000);
+    try {
+        const endStr = String(t.time).split('-')[1].trim();
+        const ep = endStr.split(':').map(Number);
+        end = new Date(start);
+        end.setHours(ep[0], ep[1] || 0, 0, 0);
+        if (end <= start) end.setDate(end.getDate() + 1); // baigiasi po vidurnakčio
+    } catch (e) {}
+    return { start: start, end: end };
+}
+
+function calFmtLocal(d) {
+    const p = n => String(n).padStart(2, '0');
+    return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + 'T' + p(d.getHours()) + p(d.getMinutes()) + '00';
+}
+
+function tournamentLocation(t) {
+    const c = (typeof allClubsCache !== 'undefined' && allClubsCache[t.clubId]) || {};
+    if (c.address) return c.address;
+    return (t.clubName || 'Padelio klubas') + (c.city ? ', ' + c.city : '');
+}
+
+function tournamentMapsUrl(t) {
+    return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(tournamentLocation(t));
+}
+
+function openCalendarModal(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t) return;
+    const promptOn = localStorage.getItem('sp_cal_prompt') !== 'off';
+    modalTitle.innerHTML = `<i class="fa-regular fa-calendar-plus" style="color: var(--primary-blue);"></i> Įsidėti į kalendorių`;
+    modalBody.innerHTML = `
+        <div style="text-align:left;">
+            <div style="background:#f8f9fb; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:12px;">
+                <div style="font-weight:800; font-size:14px; color:var(--text-dark);">${esc(t.format)} (${esc(t.level)})</div>
+                <div style="font-size:12px; color:var(--text-grey); margin-top:3px;">📅 ${esc(t.date)} · ${esc(t.time)}<br>📍 ${esc(tournamentLocation(t))}</div>
+            </div>
+            <div style="font-size:11px; color:var(--text-grey); margin-bottom:10px;">Įrašas su vieta (žemėlapiu) ir priminimais <b>prieš 24 val. ir prieš 3 val.</b> (.ics faile; Google nuorodoje priminimai — pagal jūsų kalendoriaus nustatymus).</div>
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:11px; color:var(--text-grey);">
+                <input type="checkbox" id="calPromptToggle" ${promptOn ? 'checked' : ''} onchange="localStorage.setItem('sp_cal_prompt', this.checked ? 'on' : 'off')" style="width:15px; height:15px; accent-color:var(--primary-blue);">
+                Siūlyti kalendorių po kiekvienos registracijos
+            </label>
+        </div>`;
+    modalActions.innerHTML = `
+        <button type="button" class="modal-btn primary" onclick="addToGoogleCalendar(${Number(t.id)})" style="width:100%; margin-bottom:8px;"><i class="fa-brands fa-google"></i> Google kalendorius</button>
+        <button type="button" class="modal-btn primary" onclick="downloadTournamentIcs(${Number(t.id)})" style="width:100%; margin-bottom:8px; background:#0f766e;"><i class="fa-solid fa-download"></i> .ics failas (su priminimais)</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
+    modal.classList.add('show');
+}
+
+function addToGoogleCalendar(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t) return;
+    const c = tournamentCalTimes(t);
+    const details = 'Formatas: ' + (t.format || '') + ' (' + (t.level || '') + ')'
+        + (t.clubName ? '\nKlubas: ' + t.clubName : '')
+        + '\nŽemėlapis: ' + tournamentMapsUrl(t)
+        + '\nPortalas: ' + location.origin + '/registras.html?t=' + encodeURIComponent(t.id);
+    const url = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+        + '&text=' + encodeURIComponent('🎾 ' + (t.format || 'Padelio turnyras'))
+        + '&dates=' + calFmtLocal(c.start) + '/' + calFmtLocal(c.end)
+        + '&details=' + encodeURIComponent(details)
+        + '&location=' + encodeURIComponent(tournamentLocation(t));
+    window.open(url, '_blank');
+}
+
+function downloadTournamentIcs(id) {
+    const t = tournaments.find(x => x.id === id);
+    if (!t) return;
+    const c = tournamentCalTimes(t);
+    const escIcs = s => String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    const lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//SuperPadel.lt//LT',
+        'BEGIN:VEVENT',
+        'UID:sp-' + t.id + '@superpadel.lt',
+        'DTSTAMP:' + calFmtLocal(new Date()),
+        'DTSTART:' + calFmtLocal(c.start),
+        'DTEND:' + calFmtLocal(c.end),
+        'SUMMARY:' + escIcs('🎾 ' + (t.format || 'Padelio turnyras') + ' (' + (t.level || '') + ')'),
+        'LOCATION:' + escIcs(tournamentLocation(t)),
+        'DESCRIPTION:' + escIcs('Žemėlapis: ' + tournamentMapsUrl(t) + '\nPortalas: ' + location.origin + '/registras.html?t=' + t.id),
+        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Rytoj turnyras!', 'TRIGGER:-PT24H', 'END:VALARM',
+        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Turnyras po 3 valandų!', 'TRIGGER:-PT3H', 'END:VALARM',
+        'END:VEVENT', 'END:VCALENDAR'
+    ];
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'superpadel_' + String(t.date || 'turnyras').replace(/[^0-9-]/g, '') + '.ics';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 8000);
+    showToast("📅 Failas atsisiųstas — atidarykite jį, kad įrašytų į kalendorių.");
+}
+
+// Po sėkmingos registracijos pasiūlom kalendorių (jei vartotojas neišjungė)
+function maybeOfferCalendar(id) {
+    if (localStorage.getItem('sp_cal_prompt') === 'off') return;
+    setTimeout(() => { try { openCalendarModal(id); } catch (e) {} }, 600);
+}
+
 // Puslapio starte įsimenam ?t=ID iš dalinimosi nuorodos (apdorojama, kai užsikrauna turnyrai)
 try {
     const _shareParams = new URLSearchParams(location.search);
@@ -996,7 +1109,9 @@ function openPaymentInstructions(id) {
             ? `<button type="button" class="modal-btn secondary" onclick="choosePaymentMethod(${Number(t.id)}, 'manual')" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-building-columns"></i> Vis dėlto mokėsiu pavedimu</button>`
             : `<button type="button" class="modal-btn secondary" onclick="choosePaymentMethod(${Number(t.id)}, 'cash')" style="width:100%; margin-bottom:8px;"><i class="fa-solid fa-money-bill-wave"></i> Mokėsiu grynais atvykęs</button>`;
     }
-    modalActions.innerHTML = `${methodBtns}<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
+    modalActions.innerHTML = `${methodBtns}
+        <button type="button" class="modal-btn secondary" onclick="openCalendarModal(${Number(t.id)})" style="width:100%; margin-bottom:8px;"><i class="fa-regular fa-calendar-plus"></i> Įsidėti į kalendorių</button>
+        <button type="button" class="modal-btn secondary" onclick="closeModal()" style="width:100%;">Uždaryti</button>`;
     modal.classList.add('show');
 }
 
@@ -1296,6 +1411,7 @@ function confirmRegistration(id, withPartner) {
         } else {
             showToast("Jūs sėkmingai užregistruoti!");
             notifAdd('reg', id, 'Registracija patvirtinta', t.format + ' · ' + t.date + ' ' + t.time, false);
+            maybeOfferCalendar(id);
         }
         setUserTournament(t, 'registered');
         renderUserProfile();
@@ -1493,6 +1609,7 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
     } else {
         showToast(`Sėkmingai užregistruota pora: ${player1} ir ${player2}!`);
         notifAdd('reg', tournament.id, 'Registracija patvirtinta (pora)', tournament.format + ' · ' + tournament.date + ' ' + tournament.time, false);
+        maybeOfferCalendar(tournament.id);
     }
     setUserTournament(tournament, 'registered');
     renderUserProfile();
@@ -1793,7 +1910,10 @@ function renderClubsPage() {
                 <div style="display:flex; align-items:center; gap:10px; min-width:0;">
                     ${c.logo ? `<img src="${c.logo}" style="width:46px; height:46px; border-radius:10px; object-fit:cover; flex-shrink:0; border:1px solid #e2e8f0;">` : ''}
                     <div style="min-width:0;">
-                        <div style="font-weight:900; font-size:15px; color:var(--text-dark);">${esc(c.name)}</div>
+                        <div style="font-weight:900; font-size:15px; color:var(--text-dark);">${esc(c.name)}
+                            ${/^https?:\/\//.test(c.facebook || '') ? `<a href="${esc(c.facebook)}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="margin-left:6px; color:#1877F2; font-size:14px;"><i class="fa-brands fa-facebook"></i></a>` : ''}
+                            ${/^https?:\/\//.test(c.instagram || '') ? `<a href="${esc(c.instagram)}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="margin-left:4px; color:#E1306C; font-size:14px;"><i class="fa-brands fa-instagram"></i></a>` : ''}
+                        </div>
                         <div style="font-size:11px; color:var(--text-grey); font-weight:600; margin-top:2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city || 'Miestas nenurodytas')}${c.address ? ', ' + esc(c.address) : ''} ${official}</div>
                     </div>
                 </div>

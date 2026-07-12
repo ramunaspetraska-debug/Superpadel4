@@ -63,7 +63,13 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   su PRISIJUNGIMU: joined/{uid}={name,ts} (joinSeek/leaveSeek, child_changed
   perpiesia, SURINKTA kai full; rules joined/ write auth). Trinti gali tik
   klubo adminas (DB rules), limitToLast(100).
-- KLUBO INFO: logo (base64 160px, handleClubLogoUpload) + address laukai;
+- KALENDORIUS: openCalendarModal — Google Calendar URL + .ics su VALARM 24h/3h
+  (tournamentCalTimes/downloadTournamentIcs); po registracijos maybeOfferCalendar
+  (localStorage sp_cal_prompt=off isjungia); 📅 mygtukai profilyje ir mokejimo lange.
+- BANERIAI (admin 📣): openShareTournamentModal — canvas 1080x1080 promo (QR ?t=ID)
+  arba rezultatu (bannerTop3 is kambario matches) + Web Share/PNG/tekstas.
+- KLUBO INFO: logo (base64 160px, handleClubLogoUpload) + address + facebook/
+  instagram (cleanUrl tik http(s); ikonos klubu sarase);
   logo rodomas klubu sarase, profilyje, chato headeryje, turnyro korteliu badge;
   adresas — gmaps nuorodai registracijos laiske.
 - PLATFORMA (tik legacyOwner): admin sidebar 👑 punktas → renderPlatformView:

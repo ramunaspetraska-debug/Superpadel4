@@ -591,6 +591,12 @@ function renderUserProfile() {
                 `;
             }
 
+            // Į kalendorių (Google / .ics su priminimais)
+            actionButtons += `
+                <button type="button" onclick="event.stopPropagation(); openCalendarModal(${t.id});" title="Į kalendorių" style="background: #fff; color: var(--primary-blue); border: 1px solid #bfdbfe; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-left: 6px;">
+                    <i class="fa-regular fa-calendar-plus"></i>
+                </button>
+            `;
             actionButtons += `
                 <button type="button" onclick="event.stopPropagation(); openCancelModal(${t.id});" style="background: #fff; color: var(--status-red); border: 1px solid #fed7d7; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; margin-left: 6px;">
                     <i class="fa-solid fa-trash-can"></i>
