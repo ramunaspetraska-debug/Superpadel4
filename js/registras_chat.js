@@ -23,9 +23,12 @@ function openClubChat(clubId, clubName) {
     wrap.innerHTML = `
         <div style="background:#f8f9fb;border-radius:20px 20px 0 0;width:100%;max-width:480px;height:85vh;display:flex;flex-direction:column;overflow:hidden;">
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:white;border-bottom:1px solid #e2e8f0;flex-shrink:0;">
-                <div style="min-width:0;">
-                    <div style="font-weight:900;font-size:15px;color:var(--text-dark);"><i class="fa-solid fa-comments" style="color:var(--primary-blue);"></i> ${esc(clubName || 'Klubo pokalbiai')}</div>
-                    <div style="font-size:10px;color:var(--text-grey);">Bendraukite ir tarkitės dėl žaidimų</div>
+                <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                    ${(typeof allClubsCache !== 'undefined' && allClubsCache[chatClubId] && allClubsCache[chatClubId].logo) ? `<img src="${allClubsCache[chatClubId].logo}" style="width:38px;height:38px;border-radius:10px;object-fit:cover;flex-shrink:0;">` : ''}
+                    <div style="min-width:0;">
+                        <div style="font-weight:900;font-size:15px;color:var(--text-dark);"><i class="fa-solid fa-comments" style="color:var(--primary-blue);"></i> ${esc(clubName || 'Klubo pokalbiai')}</div>
+                        <div style="font-size:10px;color:var(--text-grey);">Bendraukite ir tarkitės dėl žaidimų</div>
+                    </div>
                 </div>
                 <button type="button" onclick="closeClubChat()" style="background:#f1f5f9;border:none;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;flex-shrink:0;">&times;</button>
             </div>
@@ -52,6 +55,13 @@ function openClubChat(clubId, clubName) {
     }
     chatRef = firebase.database().ref('padelio_chat/' + chatClubId).limitToLast(100);
     chatRef.on('child_added', snap => appendChatMessage(snap.key, snap.val()));
+    chatRef.on('child_changed', snap => {
+        // Skelbimo atnaujinimas (pvz. kažkas prisijungė prie „Ieškau žaidimo")
+        const old = document.getElementById('chatmsg-' + snap.key);
+        if (!old) return;
+        const fresh = buildChatMessageEl(snap.key, snap.val());
+        old.replaceWith(fresh);
+    });
     chatRef.on('child_removed', snap => {
         document.getElementById('chatmsg-' + snap.key)?.remove();
         chatMsgCount = Math.max(0, chatMsgCount - 1);
@@ -92,7 +102,11 @@ function appendChatMessage(key, m) {
     document.getElementById('chatLoadingPh')?.remove();
     document.getElementById('chatEmptyPh')?.remove();
     chatMsgCount++;
+    box.appendChild(buildChatMessageEl(key, m));
+    box.scrollTop = box.scrollHeight;
+}
 
+function buildChatMessageEl(key, m) {
     const mine = (typeof currentUser !== 'undefined' && currentUser && String(m.uid) === String(currentUser.id));
     // Trinti gali tik klubo adminas (prisijungęs prie SAVO klubo admin paskyros)
     const canDelete = (typeof currentClub !== 'undefined' && currentClub && String(currentClub.id) === String(chatClubId));
@@ -102,12 +116,32 @@ function appendChatMessage(key, m) {
     el.id = 'chatmsg-' + key;
 
     if (m.type === 'seek' && m.seek) {
-        // „Ieškau žaidimo" skelbimas — išskirtinė kortelė per visą plotį
+        // „Ieškau žaidimo" skelbimas: kiek trūksta, kas prisijungė, mygtukas „Prisijungiu"
+        const needed = Math.max(1, parseInt(m.seek.needed) || 1);
+        const joined = m.joined || {};
+        const joinedIds = Object.keys(joined);
+        const joinedNames = joinedIds.map(k => (joined[k] && joined[k].name) || '?');
+        const iAmAuthor = mine;
+        const myId = (typeof currentUser !== 'undefined' && currentUser) ? String(currentUser.id) : null;
+        const iJoined = myId ? joinedIds.indexOf(chatJsSafe(myId)) !== -1 : false;
+        const full = joinedIds.length >= needed;
+
+        let joinBtn = '';
+        if (myId && !iAmAuthor) {
+            joinBtn = iJoined
+                ? `<button type="button" onclick="leaveSeek('${chatJsSafe(key)}')" style="width:100%;margin-top:8px;padding:10px;background:white;border:1px solid #fca5a5;color:#dc2626;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">↩ Atšaukti prisijungimą</button>`
+                : (full
+                    ? `<div style="margin-top:8px;text-align:center;font-size:12px;font-weight:800;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px;">✅ SURINKTA — žaidėjų nebereikia</div>`
+                    : `<button type="button" onclick="joinSeek('${chatJsSafe(key)}')" style="width:100%;margin-top:8px;padding:10px;background:#16a34a;border:none;color:white;border-radius:8px;font-weight:800;font-size:13px;cursor:pointer;">🎾 Prisijungiu!</button>`);
+        } else if (iAmAuthor && full) {
+            joinBtn = `<div style="margin-top:8px;text-align:center;font-size:12px;font-weight:800;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px;">✅ SURINKTA — komanda pilna!</div>`;
+        }
+
         el.style.cssText = 'align-self:stretch;';
         el.innerHTML = `
             <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 12px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:11px;font-weight:900;color:#92400e;">🎾 IEŠKO ŽAIDIMO</div>
+                    <div style="font-size:11px;font-weight:900;color:#92400e;">🎾 IEŠKO ${needed > 1 ? needed + ' ŽAIDĖJŲ' : 'ŽAIDĖJO'}</div>
                     <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:10px;color:#b45309;">${chatTimeStr(m.ts)}</span>${delBtn}</div>
                 </div>
                 <div style="font-size:13px;font-weight:800;color:var(--text-dark);margin-top:4px;">${esc(m.name)}</div>
@@ -117,8 +151,15 @@ function appendChatMessage(key, m) {
                     ${m.seek.time ? `<span style="font-size:11px;background:white;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;font-weight:700;color:#92400e;">🕐 ${esc(m.seek.time)}</span>` : ''}
                 </div>
                 ${m.text ? `<div style="font-size:12px;color:var(--text-grey);margin-top:6px;">${esc(m.text)}</div>` : ''}
+                <div style="font-size:12px;font-weight:700;color:${full ? '#16a34a' : '#92400e'};margin-top:8px;">
+                    Prisijungė: ${joinedIds.length}/${needed}${joinedNames.length ? ' — ' + joinedNames.map(esc).join(', ') : ''}
+                </div>
+                ${joinBtn}
             </div>`;
-    } else if (mine) {
+        return el;
+    }
+
+    if (mine) {
         el.style.cssText = 'align-self:flex-end;max-width:82%;';
         el.innerHTML = `
             <div style="background:var(--primary-blue);color:white;border-radius:14px 14px 4px 14px;padding:9px 12px;">
@@ -137,8 +178,26 @@ function appendChatMessage(key, m) {
                 <div style="font-size:9px;color:#a0aec0;text-align:right;margin-top:3px;">${chatTimeStr(m.ts)}</div>
             </div>`;
     }
-    box.appendChild(el);
-    box.scrollTop = box.scrollHeight;
+    return el;
+}
+
+// ---------- PRISIJUNGIMAS PRIE „IEŠKAU ŽAIDIMO" SKELBIMO ----------
+function joinSeek(key) {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) { showToast("Prisijunkite prie paskyros."); openAuthModal(); return; }
+    if (!chatClubId || !key) return;
+    firebase.database().ref('padelio_chat/' + chatClubId + '/' + key + '/joined/' + chatJsSafe(String(currentUser.id)))
+        .set({ name: currentUser.name || 'Žaidėjas', ts: Date.now() })
+        .then(() => showToast("🎾 Prisijungėte! Skelbėjas matys jūsų vardą."))
+        .catch(e => showToast("Nepavyko: " + ((e && e.message) || 'klaida')));
+}
+
+function leaveSeek(key) {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
+    if (!chatClubId || !key) return;
+    firebase.database().ref('padelio_chat/' + chatClubId + '/' + key + '/joined/' + chatJsSafe(String(currentUser.id)))
+        .remove()
+        .then(() => showToast("Prisijungimas atšauktas."))
+        .catch(e => showToast("Nepavyko: " + ((e && e.message) || 'klaida')));
 }
 
 function sendChatMessage() {
@@ -181,6 +240,11 @@ function openSeekGameForm() {
             <button type="button" onclick="document.getElementById('seek-form').remove()" style="background:none;border:none;font-size:16px;cursor:pointer;color:#92400e;">&times;</button>
         </div>
         <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <select id="seekNeeded" style="flex:0.9;padding:9px;border:1px solid #fde68a;border-radius:8px;font-size:12px;font-weight:700;">
+                <option value="1">Trūksta 1</option>
+                <option value="2">Trūksta 2</option>
+                <option value="3" selected>Trūksta 3</option>
+            </select>
             <select id="seekLevel" style="flex:1;padding:9px;border:1px solid #fde68a;border-radius:8px;font-size:12px;font-weight:700;">
                 <option value="Bet koks">Bet koks lygis</option>
                 <option value="A">A</option>
@@ -211,7 +275,7 @@ function sendSeekMessage() {
         text: note,
         ts: Date.now(),
         type: 'seek',
-        seek: { level: level, date: dateMD, time: time }
+        seek: { level: level, date: dateMD, time: time, needed: parseInt(document.getElementById('seekNeeded')?.value || 3) }
     }).then(() => {
         document.getElementById('seek-form')?.remove();
         showToast("🎾 Skelbimas paskelbtas!");

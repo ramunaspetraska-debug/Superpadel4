@@ -420,6 +420,7 @@
                     <li onclick="adminNav(this, 'admin-view-apzvalga')"><i class="fa-solid fa-chart-pie"></i> Apžvalga</li>
                     <li class="active" onclick="adminNav(this, 'admin-view-turnyrai')"><i class="fa-solid fa-calendar-days"></i> Turnyrų valdymas</li>
                     <li onclick="adminNav(this, 'admin-view-zaidejai')"><i class="fa-solid fa-users"></i> Žaidėjų bazė</li>
+                    <li id="platformNavBtn" onclick="adminNav(this, 'admin-view-platforma'); renderPlatformView();" style="display: none; color: #c4b5fd;"><i class="fa-solid fa-crown"></i> Platforma</li>
                     <a href="index.html" target="_blank" style="display: flex; align-items: center; gap: 15px; padding: 15px 20px; color: #48bb78; text-decoration: none; font-weight: bold; margin-top: 20px; border-top: 1px solid #2d3748;"><i class="fa-solid fa-table-tennis-paddle-ball"></i> Turnyro skaičiuoklė</a>
                     <li onclick="toggleMode()" style="color: #e53e3e; margin-top: 5px; font-weight: bold;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Grįžti į Portalą</li>
                 </ul>
@@ -587,6 +588,14 @@
                             <div style="font-size: 18px; font-weight: bold; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">Visi Sistemos Turnyrai (Aktyvūs)</div>
                             <div id="admin-tournaments-list-db"></div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="admin-view-platforma" class="admin-tab" style="display: none;">
+                    <h1 style="margin-bottom: 6px;">👑 Platformos valdymas</h1>
+                    <p style="color: var(--text-grey); font-size: 12px; margin-bottom: 20px;">Matoma tik platformos savininkui: visų klubų apžvalga, oficialių turnyrų teisės ir sistemos būklė.</p>
+                    <div id="platform-content" style="max-width: 900px;">
+                        <div style="text-align:center; padding:30px; color:#718096;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunama...</div>
                     </div>
                 </div>
 

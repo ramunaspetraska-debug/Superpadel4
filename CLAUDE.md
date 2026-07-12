@@ -59,8 +59,16 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   juosta „Jusu macas — Kortas N“. Treniruotems: klipu palyginimas greta
   (toggleCompare/openComparePlayer, ⚖ mygtukai galerijose).
 - CHATAS: padelio_chat/{clubId} — klubu pokalbiai (registras_chat.js, 💬 mygtukai
-  klubu sarase ir profilyje), seek skelbimai (type=seek, {level,date,time}),
-  trinti gali tik klubo adminas (DB rules), limitToLast(100).
+  klubu sarase ir profilyje), seek skelbimai (type=seek, {level,date,time,needed})
+  su PRISIJUNGIMU: joined/{uid}={name,ts} (joinSeek/leaveSeek, child_changed
+  perpiesia, SURINKTA kai full; rules joined/ write auth). Trinti gali tik
+  klubo adminas (DB rules), limitToLast(100).
+- KLUBO INFO: logo (base64 160px, handleClubLogoUpload) + address laukai;
+  logo rodomas klubu sarase, profilyje, chato headeryje, turnyro korteliu badge;
+  adresas — gmaps nuorodai registracijos laiske.
+- PLATFORMA (tik legacyOwner): admin sidebar 👑 punktas → renderPlatformView:
+  klubu statistika + canOfficial toggle, zaideju paieska, sistemos bukle
+  (padelio_backups_meta + padelio_push_sent — read legacyOwner rules).
 - Admin dalyviu valdymas: openParticipantsModal (👥 mygtukas) — salinti dalyvius/
   rezerva. Partnerio pridejimas PO registracijos: completePairRegistration
   konvertuoja individualu irasa i pora (mokamame perskaiciuoja suma — jei uz save

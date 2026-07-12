@@ -140,6 +140,9 @@ function updateAdminHeader() {
     const sidebar = document.querySelector('.admin-sidebar .logo');
     if (!sidebar) return;
     document.getElementById('admin-club-bar')?.remove();
+    // „Platforma" skiltis — tik platformos savininkui (legacyOwner klubas)
+    const platformBtn = document.getElementById('platformNavBtn');
+    if (platformBtn) platformBtn.style.display = (currentClub && currentClub.legacyOwner) ? 'flex' : 'none';
     if (!currentClub) return;
     const bar = document.createElement('div');
     bar.id = 'admin-club-bar';
@@ -153,14 +156,28 @@ function updateAdminHeader() {
     sidebar.insertAdjacentElement('afterend', bar);
 }
 
-// Klubo miesto ir aprašymo redagavimas — pagal juos žaidėjai randa klubą „Klubai" puslapyje
+// Klubo informacijos redagavimas: logotipas, miestas, ADRESAS ir aprašymas.
+// Pagal juos žaidėjai randa klubą „Klubai" puslapyje; adresas naudojamas
+// registracijos laiškų žemėlapio nuorodai, logo — sąrašuose ir pokalbiuose.
 function openClubInfoModal() {
     if (!currentClub) return;
     firebase.database().ref('padelio_clubs/' + currentClub.id).once('value').then(snap => {
         const c = snap.val() || {};
+        window._clubLogoDataUrl = c.logo || null;
         modalTitle.innerHTML = '<i class="fa-solid fa-circle-info" style="color: var(--primary-blue);"></i> Klubo informacija';
         modalBody.innerHTML = `
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; text-align:left;">
+                <div id="clubLogoPreview" onclick="document.getElementById('clubLogoInput').click()" style="width:64px; height:64px; border-radius:14px; background:#f8f9fb; border:2px dashed #cbd5e0; display:flex; align-items:center; justify-content:center; cursor:pointer; overflow:hidden; flex-shrink:0;">
+                    ${c.logo ? `<img src="${c.logo}" style="width:100%;height:100%;object-fit:cover;">` : '<i class="fa-solid fa-image" style="color:#a0aec0; font-size:22px;"></i>'}
+                </div>
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:12px; font-weight:800; color:var(--text-dark);">Klubo logotipas</div>
+                    <div style="font-size:10px; color:var(--text-grey); line-height:1.4;">Bakstelėkite kvadratą ir įkelkite — logotipas matysis klubų sąraše, pokalbiuose ir prie turnyrų.</div>
+                </div>
+                <input type="file" id="clubLogoInput" accept="image/*" style="display:none;" onchange="handleClubLogoUpload(event)">
+            </div>
             <input type="text" id="editClubCity" value="${esc(c.city || '')}" placeholder="Miestas (pvz. Kaunas)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; font-weight: bold; box-sizing: border-box; margin-bottom: 8px;">
+            <input type="text" id="editClubAddress" value="${esc(c.address || '')}" placeholder="Adresas (pvz. Sporto g. 5, Kaunas)" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; box-sizing: border-box; margin-bottom: 8px; font-size: 13px;">
             <textarea id="editClubDesc" placeholder="Trumpas aprašymas žaidėjams" rows="3" style="width: 100%; padding: 13px; border: 1px solid #cbd5e0; border-radius: 8px; outline: none; box-sizing: border-box; font-size: 13px; resize: none;">${esc(c.description || '')}</textarea>`;
         modalActions.innerHTML = `
             <button type="button" class="modal-btn primary" onclick="saveClubInfo()" style="width:100%; margin-bottom:8px;">Išsaugoti</button>
@@ -168,13 +185,47 @@ function openClubInfoModal() {
         modal.classList.add('show');
     });
 }
+
+// Logotipas sumažinamas iki 160x160 kvadratо (kaip žaidėjų nuotraukos) — taupo DB vietą
+function handleClubLogoUpload(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const size = 160;
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+            window._clubLogoDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            const prev = document.getElementById('clubLogoPreview');
+            if (prev) prev.innerHTML = `<img src="${window._clubLogoDataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 function saveClubInfo() {
     if (!currentClub) return;
     const city = (document.getElementById('editClubCity')?.value || '').trim();
+    const address = (document.getElementById('editClubAddress')?.value || '').trim().slice(0, 120);
     const description = (document.getElementById('editClubDesc')?.value || '').trim().slice(0, 300);
     if (city.length < 2) { showToast("Įveskite miestą."); return; }
-    firebase.database().ref('padelio_clubs/' + currentClub.id).update({ city: city, description: description })
-        .then(() => { closeModal(); showToast("✅ Klubo informacija atnaujinta."); })
+    const upd = { city: city, address: address, description: description };
+    if (window._clubLogoDataUrl) upd.logo = window._clubLogoDataUrl;
+    firebase.database().ref('padelio_clubs/' + currentClub.id).update(upd)
+        .then(() => {
+            // atnaujinam lokalų kešą, kad logo iškart matytųsi sąrašuose
+            if (typeof allClubsCache !== 'undefined' && allClubsCache[currentClub.id]) Object.assign(allClubsCache[currentClub.id], upd);
+            closeModal();
+            showToast("✅ Klubo informacija atnaujinta.");
+        })
         .catch(() => showToast("Nepavyko išsaugoti."));
 }
 
@@ -445,6 +496,127 @@ function renderAdminTournaments() {
     });
     html += '</table>';
     list.innerHTML = html;
+}
+
+// ==========================================
+// PLATFORMOS VALDYMAS — tik savininkui (legacyOwner klubo adminui):
+// visų klubų statistika, oficialių turnyrų teisė, žaidėjų paieška, sistemos būklė.
+// ==========================================
+
+function renderPlatformView() {
+    const box = document.getElementById('platform-content');
+    if (!box || !currentClub || !currentClub.legacyOwner) return;
+    if (typeof firebase === 'undefined') { box.innerHTML = 'Firebase neprieinamas.'; return; }
+
+    Promise.all([
+        firebase.database().ref('padelio_clubs').once('value').then(s => s.val() || {}).catch(() => ({})),
+        firebase.database().ref('padelio_club_admins').once('value').then(s => s.val() || {}).catch(() => ({})),
+        firebase.database().ref('padelio_global_players').once('value').then(s => s.val() || {}).catch(() => ({})),
+        firebase.database().ref('padelio_backups_meta').once('value').then(s => s.val() || {}).catch(() => null),
+        firebase.database().ref('padelio_push_sent').once('value').then(s => s.val() || {}).catch(() => null)
+    ]).then(([clubs, admins, players, backups, pushSent]) => {
+        const tArr = (typeof tournaments !== 'undefined' && Array.isArray(tournaments)) ? tournaments : [];
+
+        // --- KLUBŲ KORTELĖS su statistika ---
+        const clubCards = Object.keys(clubs).map(id => {
+            const c = clubs[id] || {};
+            const clubT = tArr.filter(t => t && t.clubId === id);
+            const participants = clubT.reduce((s, t) => s + (t.registered || 0), 0);
+            let collected = 0;
+            clubT.forEach(t => {
+                if (t.paid && t.payments) Object.values(t.payments).forEach(p => { if (p && p.status === 'paid') collected += (p.amount || 0); });
+            });
+            const clubAdmins = Object.keys(admins).filter(ek => admins[ek] && admins[ek].clubId === id)
+                .map(ek => ek.replace(/,/g, '.')).join(', ');
+            return `
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:16px; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                        ${c.logo ? `<img src="${c.logo}" style="width:40px; height:40px; border-radius:8px; object-fit:cover;">` : ''}
+                        <div>
+                            <div style="font-weight:900; font-size:15px;">${esc(c.name || id)}${c.legacyOwner ? ' 👑' : ''}</div>
+                            <div style="font-size:11px; color:#718096;">${esc(c.city || '—')}${c.address ? ', ' + esc(c.address) : ''}</div>
+                            ${clubAdmins ? `<div style="font-size:10px; color:#a0aec0; margin-top:2px;">Adminai: ${esc(clubAdmins)}</div>` : ''}
+                        </div>
+                    </div>
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; background:${c.canOfficial ? '#f0fdf4' : '#f8f9fb'}; border:1px solid ${c.canOfficial ? '#bbf7d0' : '#e2e8f0'}; border-radius:8px; padding:8px 12px;">
+                        <input type="checkbox" ${c.canOfficial ? 'checked' : ''} onchange="platformToggleOfficial('${esc(id)}', this.checked)" style="width:16px; height:16px; accent-color:#16a34a; cursor:pointer;">
+                        <span style="font-size:11px; font-weight:800; color:${c.canOfficial ? '#166534' : '#718096'};">🏆 Oficialūs turnyrai</span>
+                    </label>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:12px; text-align:center;">
+                    <div style="flex:1; background:#f8f9fb; border-radius:8px; padding:8px;"><div style="font-size:9px; color:#718096; font-weight:bold; text-transform:uppercase;">Turnyrų</div><div style="font-size:17px; font-weight:900;">${clubT.length}</div></div>
+                    <div style="flex:1; background:#f8f9fb; border-radius:8px; padding:8px;"><div style="font-size:9px; color:#718096; font-weight:bold; text-transform:uppercase;">Dalyvių</div><div style="font-size:17px; font-weight:900;">${participants}</div></div>
+                    <div style="flex:1; background:#f0fdf4; border-radius:8px; padding:8px;"><div style="font-size:9px; color:#166534; font-weight:bold; text-transform:uppercase;">Surinkta</div><div style="font-size:17px; font-weight:900; color:#166534;">${collected} €</div></div>
+                </div>
+            </div>`;
+        }).join('') || '<div style="color:#718096; font-size:13px;">Klubų dar nėra.</div>';
+
+        // --- SISTEMOS BŪKLĖ ---
+        const backupKeys = backups ? Object.keys(backups).sort() : null;
+        const lastBackup = backupKeys && backupKeys.length ? backupKeys[backupKeys.length - 1] : null;
+        const sentVals = pushSent ? Object.values(pushSent).filter(v => typeof v === 'number') : null;
+        const lastPush = sentVals && sentVals.length ? new Date(Math.max.apply(null, sentVals)) : null;
+        const emailWorks = pushSent ? Object.keys(pushSent).some(k => k.indexOf('em_') === 0) : false;
+        const sysRow = (label, ok, detail) => `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid #f1f5f9; font-size:13px;">
+                <span style="color:#4a5568; font-weight:600;">${label}</span>
+                <span style="font-weight:800; color:${ok ? '#16a34a' : '#b45309'};">${detail}</span>
+            </div>`;
+
+        box.innerHTML = `
+            <div style="font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#4a5568; margin-bottom:10px;">Klubai (${Object.keys(clubs).length})</div>
+            ${clubCards}
+
+            <div style="font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#4a5568; margin:20px 0 10px;">Žaidėjų paieška (iš viso: ${Object.keys(players).length})</div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:14px; margin-bottom:10px;">
+                <input type="text" id="platformPlayerSearch" placeholder="Vardas arba telefono nr..." onkeyup="platformSearchPlayers()" style="width:100%; padding:10px; border:1px solid #cbd5e0; border-radius:8px; font-weight:bold; box-sizing:border-box;">
+                <div id="platformPlayerResults" style="margin-top:8px;"></div>
+            </div>
+
+            <div style="font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:1px; color:#4a5568; margin:20px 0 10px;">Sistemos būklė</div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:6px 16px; margin-bottom:20px;">
+                ${sysRow('Atsarginės kopijos', !!lastBackup, lastBackup ? ('paskutinė: ' + esc(lastBackup) + ' (' + (backupKeys ? backupKeys.length : 0) + ' vnt.)') : 'dar nebuvo (pirmoji — šiąnakt 03:40)')}
+                ${sysRow('Push pranešimai', !!lastPush, lastPush ? ('paskutinis išsiųstas: ' + lastPush.toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })) : 'dar nesiųsta')}
+                ${sysRow('El. laiškai', emailWorks, emailWorks ? 'veikia (žymos rastos)' : 'nesukonfigūruota — reikia Gmail App Password')}
+                ${sysRow('Turnyrų iš viso', true, String(tArr.length))}
+            </div>`;
+
+        window._platformPlayers = players;
+    });
+}
+
+function platformToggleOfficial(clubId, on) {
+    firebase.database().ref('padelio_clubs/' + clubId + '/canOfficial').set(!!on)
+        .then(() => showToast(on ? '🏆 Klubui suteikta oficialių turnyrų teisė.' : 'Teisė atimta.'))
+        .catch(() => { showToast("Nepavyko pakeisti."); renderPlatformView(); });
+}
+
+function platformSearchPlayers() {
+    const q = (document.getElementById('platformPlayerSearch')?.value || '').trim().toLowerCase();
+    const out = document.getElementById('platformPlayerResults');
+    if (!out) return;
+    if (q.length < 2) { out.innerHTML = ''; return; }
+    const players = window._platformPlayers || {};
+    const hits = Object.keys(players)
+        .filter(id => {
+            const p = players[id] || {};
+            return String(p.name || '').toLowerCase().includes(q) || String(id).includes(q);
+        })
+        .slice(0, 8);
+    out.innerHTML = hits.length ? hits.map(id => {
+        const p = players[id] || {};
+        return `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border:1px solid #edf2f7; border-radius:8px; margin-top:6px; font-size:12px;">
+            <div>
+                <b>${esc(p.name || '?')}</b> <span style="color:#a0aec0;">· ${esc(id)}</span>
+                ${p.email ? `<div style="font-size:10px; color:#718096;">${esc(p.email)}</div>` : ''}
+            </div>
+            <div style="text-align:right; color:#4a5568; font-weight:700;">
+                ELO ${p.rating || 300} (${esc(p.tier || 'D')})<br>
+                <span style="font-size:10px; color:#a0aec0;">${p.total_matches || 0} of. / ${p.casual_matches || 0} dr. mačų</span>
+            </div>
+        </div>`;
+    }).join('') : '<div style="color:#a0aec0; font-size:12px; margin-top:6px;">Nerasta.</div>';
 }
 
 // ==========================================

@@ -644,10 +644,14 @@ function renderUserProfile() {
         html += `<div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 25px;">`;
         clubIds.forEach(id => {
             const c = myClubs[id] || {};
+            const ccache = (typeof allClubsCache !== 'undefined' && allClubsCache[id]) || {};
             html += `<div style="background: white; border: 1px solid #ccfbf1; border-left: 4px solid #0f766e; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <div style="font-weight: 800; color: var(--text-dark); font-size: 13px;">${esc(c.clubName || id)}</div>
-                    ${c.city ? `<div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city)}</div>` : ''}
+                <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                    ${ccache.logo ? `<img src="${ccache.logo}" style="width: 34px; height: 34px; border-radius: 8px; object-fit: cover; flex-shrink: 0;">` : ''}
+                    <div style="min-width: 0;">
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 13px;">${esc(c.clubName || id)}</div>
+                        ${c.city ? `<div style="font-size: 11px; color: var(--text-grey); font-weight: 600; margin-top: 2px;"><i class="fa-solid fa-location-dot"></i> ${esc(c.city)}</div>` : ''}
+                    </div>
                 </div>
                 <div style="display:flex; gap:6px;">
                     <button type="button" onclick="openClubChat('${esc(id)}', '${String(c.clubName || id).replace(/['"\\<>&]/g, '')}')" title="Klubo pokalbiai" style="background: #fff; border: 1px solid #bfdbfe; color: var(--primary-blue); width: 32px; height: 30px; border-radius: 8px; font-size: 12px; cursor: pointer;"><i class="fa-solid fa-comments"></i></button>

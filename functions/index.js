@@ -646,13 +646,15 @@ exports.dailyBackup = onSchedule(
             backup[b] = snap.val() || null;
         }
         await db.ref('padelio_backups/' + stamp).set(backup);
+        // Mažas meta įrašas — jį (o ne pačias dideles kopijas) skaito Platformos langas
+        await db.ref('padelio_backups_meta/' + stamp).set({ createdAt: Date.now(), branches: BACKUP_BRANCHES.length });
         // Senesnių nei 14 d. kopijų valymas
         const allSnap = await db.ref('padelio_backups').get();
         const keys = Object.keys(allSnap.val() || {});
         const cutoff = Date.now() - 14 * 864e5;
         for (const k of keys) {
             const t = Date.parse(k + 'T00:00:00Z');
-            if (!isNaN(t) && t < cutoff) await db.ref('padelio_backups/' + k).remove().catch(() => {});
+            if (!isNaN(t) && t < cutoff) { await db.ref('padelio_backups/' + k).remove().catch(() => {}); await db.ref('padelio_backups_meta/' + k).remove().catch(() => {}); }
         }
         // NUOTRAUKOS (didziausia sala) — kopijuojamos karta per savaite (sekmadieni),
         // laikomos 3 savaitines kopijos: apsauga yra, o vieta nesvaistoma.
@@ -802,11 +804,12 @@ exports.registrationEmail = onValueWritten(
         // Klubas + Google Maps nuoroda pagal pavadinimą ir miestą
         let clubHtml = '';
         if (t.clubName) {
-            let city = '';
+            let city = '', address = '';
             if (t.clubId) {
-                try { const cSnap = await db.ref('padelio_clubs/' + t.clubId + '/city').get(); city = cSnap.val() || ''; } catch (e) {}
+                try { const cSnap = await db.ref('padelio_clubs/' + t.clubId).get(); const cRec = cSnap.val() || {}; city = cRec.city || ''; address = cRec.address || ''; } catch (e) {}
             }
-            const q = encodeURIComponent(String(t.clubName) + (city ? ' ' + city : '') + ' padel');
+            // Tikslus adresas (jei klubas nurodė) — geresnis žemėlapio taikinys nei pavadinimas
+            const q = encodeURIComponent(address ? address : (String(t.clubName) + (city ? ' ' + city : '') + ' padel'));
             clubHtml = '<tr><td style="padding:6px 0;color:#64748b;">Klubas</td><td style="font-weight:bold;">' + emailEsc(t.clubName) + (city ? ' (' + emailEsc(city) + ')' : '')
                 + ' &middot; <a href="https://www.google.com/maps/search/?api=1&query=' + q + '" style="color:#2563eb;">žemėlapis</a></td></tr>';
         }

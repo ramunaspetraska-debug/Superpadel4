@@ -66,7 +66,12 @@
     },
 
     "padelio_push_sent": {
-      ".read": false,
+      ".read": "auth != null && root.child('padelio_clubs').child(root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val()).child('legacyOwner').val() === true",
+      ".write": false
+    },
+
+    "padelio_backups_meta": {
+      ".read": "auth != null && root.child('padelio_clubs').child(root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val()).child('legacyOwner').val() === true",
       ".write": false
     },
 
@@ -145,7 +150,13 @@
         ".read": true,
         "$msgId": {
           ".write": "auth != null && (!data.exists() || root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === $clubId)",
-          ".validate": "newData.hasChildren(['name','text','ts']) && newData.child('name').isString() && newData.child('name').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length <= 500"
+          ".validate": "newData.hasChildren(['name','text','ts']) && newData.child('name').isString() && newData.child('name').val().length <= 60 && newData.child('text').isString() && newData.child('text').val().length <= 500",
+          "joined": {
+            "$uid": {
+              ".write": "auth != null",
+              ".validate": "newData.child('name').isString() && newData.child('name').val().length <= 60"
+            }
+          }
         }
       }
     }
