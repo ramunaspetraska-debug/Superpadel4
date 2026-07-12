@@ -463,6 +463,8 @@ exports.spotOpened = onValueWritten(
 // Kol raktų nėra, funkcijos grąžina klaidą, o klientas gražiai grįžta prie pavedimo.
 const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
+const EMAIL_USER = defineSecret('EMAIL_USER');
+const EMAIL_PASS = defineSecret('EMAIL_PASS');
 
 // Pažymi apmokėjimą gautu (kviečia webhook IR grįžimo patikra — idempotentiška)
 // ir išsiunčia push visiems įrašo žaidėjams.
@@ -490,6 +492,8 @@ async function markStripePaid(tid, key, sessionId) {
         await sendToUser(userId, '✅ Apmokėjimas gautas',
             (t.format || 'Turnyras') + ' (' + (t.date || '') + ' ' + (t.time || '') + ') — vieta patvirtinta. Iki susitikimo korte!',
             'paid_' + tid);
+        await sendEmailToUser(userId, '✅ Apmokėjimas gautas — ' + (t.format || 'Turnyras'),
+            '<b>' + emailEsc(t.format || 'Turnyras') + '</b> (' + emailEsc(t.date || '') + ' ' + emailEsc(t.time || '') + ')<br>Apmokėjimas kortele gautas — jūsų vieta patvirtinta. Iki susitikimo korte! 🎾');
     }
     return true;
 }
@@ -497,7 +501,7 @@ async function markStripePaid(tid, key, sessionId) {
 // Sukuria Stripe Checkout sesiją. SUMĄ skaičiuoja serveris iš DB (ne klientas) —
 // kainos suklastoti neįmanoma.
 exports.createStripeCheckout = onRequest(
-    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY] },
+    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY, EMAIL_USER, EMAIL_PASS] },
     async (req, res) => {
         try {
             const body = req.body || {};
@@ -544,7 +548,7 @@ exports.createStripeCheckout = onRequest(
 // Grįžus iš Checkout (?paysession=ID): patikrina sesiją per Stripe API ir pažymi
 // apmokėjimą — greitas kelias, kol webhook dar nesukonfigūruotas arba vėluoja.
 exports.verifyStripeSession = onRequest(
-    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY] },
+    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY, EMAIL_USER, EMAIL_PASS] },
     async (req, res) => {
         try {
             const sessionId = (req.body && req.body.session) || req.query.session;
@@ -571,7 +575,7 @@ exports.verifyStripeSession = onRequest(
 // tikrinamas Stripe parašas; jei ne — payload'u nepasitikima ir sesija PERSKAITOMA
 // tiesiai iš Stripe API (suklastoti neįmanoma, whsec nebūtinas).
 exports.stripeWebhook = onRequest(
-    { region: REGION, invoker: 'public', secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] },
+    { region: REGION, invoker: 'public', secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, EMAIL_USER, EMAIL_PASS] },
     async (req, res) => {
         try {
             const sk = String(STRIPE_SECRET_KEY.value() || '').trim();
@@ -670,11 +674,10 @@ exports.dailyBackup = onSchedule(
 //   firebase functions:secrets:set EMAIL_USER   (pvz. superpadel.lt@gmail.com)
 //   firebase functions:secrets:set EMAIL_PASS   (16 ženklų Gmail App Password)
 // Kol raktų nėra — laiškai tyliai praleidžiami (push veikia kaip pagrindinis kanalas).
-const EMAIL_USER = defineSecret('EMAIL_USER');
-const EMAIL_PASS = defineSecret('EMAIL_PASS');
 
 let _mailer = null;
 function getMailer() {
+    try {
     const user = String(EMAIL_USER.value() || '').trim();
     const pass = String(EMAIL_PASS.value() || '').trim();
     if (!user || user.indexOf('@') === -1 || !pass || pass.length < 8) return null;
@@ -683,6 +686,7 @@ function getMailer() {
         _mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: user, pass: pass } });
     }
     return _mailer;
+    } catch (e) { return null; } // secrets nepririšti šiai funkcijai arba neįrašyti
 }
 
 // Žaidėjo el. paštas: padelio_global_players/{id}/email (įrašomas apsaugant paskyrą)
@@ -752,6 +756,93 @@ exports.emailReminders = onSchedule(
             }
         }
         if (Object.keys(updates).length) await db.ref('padelio_push_sent').update(updates);
+        return null;
+    }
+);
+
+
+// Paprastas HTML escape laiškams (DB reikšmės — adminų/žaidėjų įvestis)
+function emailEsc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+// REGISTRACIJOS PATVIRTINIMAS EL. PAŠTU — suveikia atsiradus padelio_user_tournaments
+// įrašui su status='registered'. Laiške visa turnyro informacija: klubas su žemėlapio
+// nuoroda, data/laikas, formatas, partneris, apmokėjimo statusas ir rekvizitai.
+exports.registrationEmail = onValueWritten(
+    { ref: '/padelio_user_tournaments/{uid}/{tid}', region: REGION, instance: DB_INSTANCE, secrets: [EMAIL_USER, EMAIL_PASS] },
+    async (event) => {
+        const before = event.data.before.val();
+        const after = event.data.after.val();
+        if (!after || after.status !== 'registered') return null;
+        if (before && before.status === 'registered') return null; // ne nauja registracija
+        if (!getMailer()) return null; // el. paštas dar nesukonfigūruotas
+        const uid = event.params.uid, tid = event.params.tid;
+
+        const tSnap = await db.ref('padelio_global_tournaments').get();
+        const raw = tSnap.val();
+        const arr = (Array.isArray(raw) ? raw : Object.values(raw || {})).filter(Boolean);
+        const t = arr.find(x => String(x.id) === String(tid));
+        if (!t) return null;
+
+        // Mano players įrašas — partneriui ir apmokėjimo būsenai
+        const myName = String(after.name || '').trim().toLowerCase();
+        const entry = (Array.isArray(t.players) ? t.players : []).find(e =>
+            String(e).split('/').some(part => part.trim().split('|')[0].trim().toLowerCase() === myName)) || null;
+
+        let partnerHtml = '';
+        if (entry && String(entry).indexOf('/') !== -1) {
+            const parts = String(entry).split('/').map(x => x.trim().split('|')[0].trim());
+            const partner = parts.find(x => x.toLowerCase() !== myName) || '';
+            if (partner) partnerHtml = '<tr><td style="padding:6px 0;color:#64748b;">Partneris</td><td style="font-weight:bold;">' + emailEsc(partner) + '</td></tr>';
+        }
+
+        // Klubas + Google Maps nuoroda pagal pavadinimą ir miestą
+        let clubHtml = '';
+        if (t.clubName) {
+            let city = '';
+            if (t.clubId) {
+                try { const cSnap = await db.ref('padelio_clubs/' + t.clubId + '/city').get(); city = cSnap.val() || ''; } catch (e) {}
+            }
+            const q = encodeURIComponent(String(t.clubName) + (city ? ' ' + city : '') + ' padel');
+            clubHtml = '<tr><td style="padding:6px 0;color:#64748b;">Klubas</td><td style="font-weight:bold;">' + emailEsc(t.clubName) + (city ? ' (' + emailEsc(city) + ')' : '')
+                + ' &middot; <a href="https://www.google.com/maps/search/?api=1&query=' + q + '" style="color:#2563eb;">žemėlapis</a></td></tr>';
+        }
+
+        // Apmokėjimo statusas ir rekvizitai
+        let payHtml = '';
+        if (t.paid && entry) {
+            const pay = (t.payments || {})[payKey(entry)];
+            const seats = String(entry).indexOf('/') !== -1 ? 2 : 1;
+            const amount = (pay && pay.amount) || (t.fee || 0) * seats;
+            if (pay && pay.status === 'paid') {
+                payHtml = '<tr><td style="padding:6px 0;color:#64748b;">Apmokėjimas</td><td style="font-weight:bold;color:#16a34a;">Apmokėta (' + amount + ' €)</td></tr>';
+            } else if (pay && pay.method === 'cash') {
+                payHtml = '<tr><td style="padding:6px 0;color:#64748b;">Apmokėjimas</td><td style="font-weight:bold;color:#1d4ed8;">Grynais atvykus — ' + amount + ' €</td></tr>';
+            } else {
+                const dl = (pay && pay.deadline)
+                    ? new Date(pay.deadline).toLocaleString('lt-LT', { timeZone: 'Europe/Vilnius', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                    : '';
+                const req = [];
+                if (t.payRecipient) req.push('Gavėjas: <b>' + emailEsc(t.payRecipient) + '</b>');
+                if (t.payIban) req.push('IBAN: <b>' + emailEsc(t.payIban) + '</b>');
+                if (t.payPhone) req.push('Tel.: <b>' + emailEsc(t.payPhone) + '</b>');
+                payHtml = '<tr><td style="padding:6px 0;color:#64748b;">Apmokėjimas</td><td style="font-weight:bold;color:#b45309;">Laukiama — ' + amount + ' €' + (dl ? ' (iki ' + dl + ')' : '') + '</td></tr>'
+                    + (req.length ? '<tr><td style="padding:6px 0;color:#64748b;">Rekvizitai</td><td>' + req.join('<br>') + '</td></tr>' : '');
+            }
+        }
+
+        const bodyHtml = '<div style="font-size:16px;font-weight:bold;margin-bottom:10px;">Registracija patvirtinta! ✅</div>'
+            + '<table style="width:100%;font-size:14px;border-collapse:collapse;">'
+            + '<tr><td style="padding:6px 0;color:#64748b;width:130px;">Turnyras</td><td style="font-weight:bold;">' + emailEsc(t.format || '') + (t.level ? ' (' + emailEsc(t.level) + ')' : '') + '</td></tr>'
+            + '<tr><td style="padding:6px 0;color:#64748b;">Data ir laikas</td><td style="font-weight:bold;">' + emailEsc(t.date || '') + ' &middot; ' + emailEsc(t.time || '') + '</td></tr>'
+            + clubHtml + partnerHtml + payHtml
+            + '</table>'
+            + '<div style="font-size:12px;color:#64748b;margin-top:12px;">Priminsime prieš dieną ir prieš 3 val. Jei planai pasikeis — atšaukite vietą portale, ją iškart gaus rezervo eilė.</div>';
+
+        await sendEmailToUser(uid, '🎾 Registracija patvirtinta — ' + (t.format || 'Turnyras') + ' ' + (t.date || ''), bodyHtml);
         return null;
     }
 );

@@ -761,6 +761,11 @@ function userTournamentsInit() {
         userTournamentStatus = {};
         Object.keys(v).forEach(tid => { if (v[tid] && v[tid].status) userTournamentStatus[tid] = v[tid].status; });
         renderTournaments();
+    }, () => {
+        // Ta pati auth atstatymo lenktynė kaip userClubsInit — bandome iš naujo po auth
+        _utUid = null;
+        if (typeof pushAuthReady === 'function') pushAuthReady().then(() => userTournamentsInit());
+        else setTimeout(userTournamentsInit, 3000);
     });
 }
 // Mano vieta rezervo eilėje: 1, 2, ... arba 0 jei eilėje nesu.
@@ -1730,6 +1735,13 @@ function userClubsInit() {
             if (window._clubsProfileTimer) clearTimeout(window._clubsProfileTimer);
             window._clubsProfileTimer = setTimeout(() => renderUserProfile(), 400);
         }
+    }, () => {
+        // Skaitymas atmestas: puslapio starte (pvz. po „patraukti žemyn" atnaujinimo)
+        // auth sesija dar neatsistačiusi, o nutrūkęs klausytojas pats neatsigauna —
+        // todėl sekimai „dingdavo". Palaukiam auth ir prisijungiam iš naujo.
+        _ucUid = null;
+        if (typeof pushAuthReady === 'function') pushAuthReady().then(() => userClubsInit());
+        else setTimeout(userClubsInit, 3000);
     });
 }
 

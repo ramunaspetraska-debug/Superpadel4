@@ -48,6 +48,10 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   apzvalgoje TV nuoroda + adminDownloadBackup (JSON i kompiuteri). Serveris:
   dailyBackup (03:40, padelio_backups/{data}, 14d; nuotraukos — sekmadieniais i padelio_backups_photos, 3 kopijos) ir emailReminders (24h/3h
   laiskai per Gmail SMTP; secrets EMAIL_USER/EMAIL_PASS — be ju tyliai skip).
+  registrationEmail — DB trigeris ant padelio_user_tournaments: registracijos
+  laiskas su turnyro info, gmaps nuoroda, partneriu ir apmokejimo busena;
+  markStripePaid siuncia ir laiska. userClubsInit/userTournamentsInit turi
+  klaidos callback su auth-retry (sekimu dingimo po refresh fix).
 - PUSH FIX: requestPushPermission/pushSilentRefresh laukia pushAuthReady()
   (auth atstatymo) ir rodo DB iraso klaidas — anksciau tokenas tyliai
   neisirasydavo ir vartotojas matydavo „ijungta“ be raktu serveryje.
