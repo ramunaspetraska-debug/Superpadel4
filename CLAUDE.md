@@ -43,9 +43,10 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
   503, klientas fallback'ina į pavedimą). Kliente STRIPE_FN_BASE +
   startStripeCheckout/handleStripeReturn (registras_tournaments.js).
 - TV REZIMAS: registras.html?tv=1[&club=ID][&room=X] (registras_tv.js) — gyvi
-  kortu rezultatai vykstant turnyrui arba reitingu karusele (12s). Admin
+  kortu rezultatai vykstant turnyrui arba karusele: 6 reitingu lygiai + programos
+  REKLAMOS skaidre su QR (renderTvAd) po kiekvieno rato (~kas 1,5 min). Admin
   apzvalgoje TV nuoroda + adminDownloadBackup (JSON i kompiuteri). Serveris:
-  dailyBackup (03:40, padelio_backups/{data}, 14d) ir emailReminders (24h/3h
+  dailyBackup (03:40, padelio_backups/{data}, 14d; nuotraukos — sekmadieniais i padelio_backups_photos, 3 kopijos) ir emailReminders (24h/3h
   laiskai per Gmail SMTP; secrets EMAIL_USER/EMAIL_PASS — be ju tyliai skip).
 - PUSH FIX: requestPushPermission/pushSilentRefresh laukia pushAuthReady()
   (auth atstatymo) ir rodo DB iraso klaidas — anksciau tokenas tyliai
@@ -116,6 +117,8 @@ padelio_rooms (mėgėjų ELO), padelio_room_seq, padelio_archive_turnyrai.
 - VISADA paleisk `node --check <failas.js>` KIEKVIENAM pakeistam JS failui
   prieš commit. Jei klaida — sustok ir pranešk lietuviškai, ne commit'ink.
 - VISADA prieš `git push` trumpai lietuviškai paaiškink, ką pakeitei.
+- VISADA sukūręs NAUJĄ DB šaką pridėk ją į functions/index.js BACKUP_BRANCHES
+  sąrašą (kitaip naktinė atsarginė kopija jos neapims).
 
 ## KRITINĖS TAISYKLĖS — NIEKADA (be aiškaus Ramūno nurodymo)
 - NIEKADA nekeisk šių funkcijų js/logic.js (matematiškai patikrintos matricos,

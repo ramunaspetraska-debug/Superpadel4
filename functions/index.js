@@ -628,7 +628,8 @@ exports.stripeWebhook = onRequest(
 const BACKUP_BRANCHES = [
     'padelio_global_tournaments', 'padelio_global_players', 'padelio_clubs',
     'padelio_club_admins', 'padelio_email_links', 'padelio_rooms',
-    'padelio_archive_turnyrai', 'padelio_user_tournaments'
+    'padelio_archive_turnyrai', 'padelio_user_tournaments',
+    'padelio_chat', 'padelio_user_clubs'
 ];
 
 exports.dailyBackup = onSchedule(
@@ -648,6 +649,16 @@ exports.dailyBackup = onSchedule(
         for (const k of keys) {
             const t = Date.parse(k + 'T00:00:00Z');
             if (!isNaN(t) && t < cutoff) await db.ref('padelio_backups/' + k).remove().catch(() => {});
+        }
+        // NUOTRAUKOS (didziausia sala) — kopijuojamos karta per savaite (sekmadieni),
+        // laikomos 3 savaitines kopijos: apsauga yra, o vieta nesvaistoma.
+        const weekday = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Vilnius', weekday: 'short' }).format(new Date());
+        if (weekday === 'Sun') {
+            const phSnap = await db.ref('padelio_global_players_photos').get();
+            await db.ref('padelio_backups_photos/' + stamp).set(phSnap.val() || null);
+            const phAll = await db.ref('padelio_backups_photos').get();
+            const phKeys = Object.keys(phAll.val() || {}).sort();
+            while (phKeys.length > 3) { const old = phKeys.shift(); await db.ref('padelio_backups_photos/' + old).remove().catch(() => {}); }
         }
         console.log('dailyBackup: issaugota ' + stamp + ' (' + BACKUP_BRANCHES.length + ' sakos)');
         return null;
