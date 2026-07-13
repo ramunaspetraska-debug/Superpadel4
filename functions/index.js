@@ -465,6 +465,9 @@ const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 const EMAIL_USER = defineSecret('EMAIL_USER');
 const EMAIL_PASS = defineSecret('EMAIL_PASS');
+// Resend (rekomenduojama produkcijai): siuntimas iš info@superpadel.lt.
+// Kai įrašomas tikras raktas (re_...) — jis naudojamas vietoj Gmail automatiškai.
+const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
 
 // Pažymi apmokėjimą gautu (kviečia webhook IR grįžimo patikra — idempotentiška)
 // ir išsiunčia push visiems įrašo žaidėjams.
@@ -501,7 +504,7 @@ async function markStripePaid(tid, key, sessionId) {
 // Sukuria Stripe Checkout sesiją. SUMĄ skaičiuoja serveris iš DB (ne klientas) —
 // kainos suklastoti neįmanoma.
 exports.createStripeCheckout = onRequest(
-    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY, EMAIL_USER, EMAIL_PASS] },
+    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY, EMAIL_USER, EMAIL_PASS, RESEND_API_KEY] },
     async (req, res) => {
         try {
             const body = req.body || {};
@@ -548,7 +551,7 @@ exports.createStripeCheckout = onRequest(
 // Grįžus iš Checkout (?paysession=ID): patikrina sesiją per Stripe API ir pažymi
 // apmokėjimą — greitas kelias, kol webhook dar nesukonfigūruotas arba vėluoja.
 exports.verifyStripeSession = onRequest(
-    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY, EMAIL_USER, EMAIL_PASS] },
+    { region: REGION, cors: true, invoker: 'public', secrets: [STRIPE_SECRET_KEY, EMAIL_USER, EMAIL_PASS, RESEND_API_KEY] },
     async (req, res) => {
         try {
             const sessionId = (req.body && req.body.session) || req.query.session;
@@ -575,7 +578,7 @@ exports.verifyStripeSession = onRequest(
 // tikrinamas Stripe parašas; jei ne — payload'u nepasitikima ir sesija PERSKAITOMA
 // tiesiai iš Stripe API (suklastoti neįmanoma, whsec nebūtinas).
 exports.stripeWebhook = onRequest(
-    { region: REGION, invoker: 'public', secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, EMAIL_USER, EMAIL_PASS] },
+    { region: REGION, invoker: 'public', secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, EMAIL_USER, EMAIL_PASS, RESEND_API_KEY] },
     async (req, res) => {
         try {
             const sk = String(STRIPE_SECRET_KEY.value() || '').trim();
@@ -672,22 +675,39 @@ exports.dailyBackup = onSchedule(
 );
 
 // ===================== EL. PAŠTO PRANEŠIMAI =====================
-// Siunčiama per Gmail SMTP su App Password (secrets):
-//   firebase functions:secrets:set EMAIL_USER   (pvz. superpadel.lt@gmail.com)
-//   firebase functions:secrets:set EMAIL_PASS   (16 ženklų Gmail App Password)
-// Kol raktų nėra — laiškai tyliai praleidžiami (push veikia kaip pagrindinis kanalas).
+// Du kanalai (getMailer pasirenka automatiškai):
+//  1) RESEND (rekomenduojama produkcijai) — siunčia iš info@superpadel.lt per
+//     smtp.resend.com. Aktyvuojasi, kai įrašomas RESEND_API_KEY (re_...):
+//       firebase functions:secrets:set RESEND_API_KEY   (Resend API raktas)
+//     Reikia patvirtinto domeno superpadel.lt Resend sistemoje (SPF/DKIM DNS).
+//  2) GMAIL (atsarginis) — SMTP su App Password, siunčia iš EMAIL_USER adreso:
+//       firebase functions:secrets:set EMAIL_USER / EMAIL_PASS
+// Kol nė vieno rakto nėra — laiškai tyliai praleidžiami (push lieka pagrindinis kanalas).
+// getMailer() grąžina { t: transportas, from: siuntėjo adresas } arba null.
 
 let _mailer = null;
 function getMailer() {
     try {
-    const user = String(EMAIL_USER.value() || '').trim();
-    const pass = String(EMAIL_PASS.value() || '').trim();
-    if (!user || user.indexOf('@') === -1 || !pass || pass.length < 8) return null;
-    if (!_mailer) {
+        if (_mailer) return _mailer;
         const nodemailer = require('nodemailer');
-        _mailer = nodemailer.createTransport({ service: 'gmail', auth: { user: user, pass: pass } });
-    }
-    return _mailer;
+        // 1) Resend — profesionalus info@superpadel.lt (jei raktas įrašytas)
+        const resendKey = String(RESEND_API_KEY.value() || '').trim();
+        if (resendKey && resendKey.indexOf('re_') === 0) {
+            _mailer = {
+                t: nodemailer.createTransport({ host: 'smtp.resend.com', port: 465, secure: true, auth: { user: 'resend', pass: resendKey } }),
+                from: '"SuperPadel.lt" <info@superpadel.lt>'
+            };
+            return _mailer;
+        }
+        // 2) Gmail atsarginis kelias
+        const user = String(EMAIL_USER.value() || '').trim();
+        const pass = String(EMAIL_PASS.value() || '').trim();
+        if (!user || user.indexOf('@') === -1 || !pass || pass.length < 8) return null;
+        _mailer = {
+            t: nodemailer.createTransport({ service: 'gmail', auth: { user: user, pass: pass } }),
+            from: '"SuperPadel.lt" <' + user + '>'
+        };
+        return _mailer;
     } catch (e) { return null; } // secrets nepririšti šiai funkcijai arba neįrašyti
 }
 
@@ -706,8 +726,8 @@ async function sendEmailToUser(userId, subject, bodyHtml) {
         if (!mailer) return false;
         const email = await getUserEmail(userId);
         if (!email) return false;
-        await mailer.sendMail({
-            from: '"SuperPadel.lt" <' + String(EMAIL_USER.value()).trim() + '>',
+        await mailer.t.sendMail({
+            from: mailer.from,
             to: email,
             subject: subject,
             html: '<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;">'
@@ -726,7 +746,7 @@ async function sendEmailToUser(userId, subject, bodyHtml) {
 
 // PRIMINIMAI EL. PAŠTU — kartu su push (kas 15 min, tie patys langai, atskiros žymos)
 exports.emailReminders = onSchedule(
-    { schedule: 'every 15 minutes', timeZone: 'Europe/Vilnius', region: REGION, secrets: [EMAIL_USER, EMAIL_PASS] },
+    { schedule: 'every 15 minutes', timeZone: 'Europe/Vilnius', region: REGION, secrets: [EMAIL_USER, EMAIL_PASS, RESEND_API_KEY] },
     async () => {
         if (!getMailer()) return null; // el. paštas dar nesukonfigūruotas
         const utSnap = await db.ref('padelio_user_tournaments').get();
@@ -774,7 +794,7 @@ function emailEsc(v) {
 // įrašui su status='registered'. Laiške visa turnyro informacija: klubas su žemėlapio
 // nuoroda, data/laikas, formatas, partneris, apmokėjimo statusas ir rekvizitai.
 exports.registrationEmail = onValueWritten(
-    { ref: '/padelio_user_tournaments/{uid}/{tid}', region: REGION, instance: DB_INSTANCE, secrets: [EMAIL_USER, EMAIL_PASS] },
+    { ref: '/padelio_user_tournaments/{uid}/{tid}', region: REGION, instance: DB_INSTANCE, secrets: [EMAIL_USER, EMAIL_PASS, RESEND_API_KEY] },
     async (event) => {
         const before = event.data.before.val();
         const after = event.data.after.val();
