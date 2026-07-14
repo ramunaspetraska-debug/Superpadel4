@@ -426,6 +426,85 @@ function profileToolsHtml() {
         </div>`;
 }
 
+// ==========================================
+// PROFILIO STATISTIKA — bendri pagalbiniai (naudoja ir renderUserProfile,
+// ir openPlayerCard registras_tournaments.js — bendras naršyklės scope).
+// Duomenys JAU saugomi padelio_global_players (recent_matches, *_wins) — čia
+// tik atvaizdavimas, jokio naujo kaupimo.
+// ==========================================
+
+// Lietuviška daiktavardžio forma pagal skaičių (1 pergalė / 2 pergalės / 10 pergalių)
+function pluralLt(n, one, few, many) {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return one;
+    if (m10 >= 2 && m10 <= 9 && (m100 < 11 || m100 > 19)) return few;
+    return many;
+}
+
+// Dabartinė serija iš recent_matches (naujausias PIRMAS, unshift logic.js).
+// Lygiosios (s1===s2) nutraukia seriją. Grąžina {type:'win'|'loss'|'none', count}.
+function computeCurrentStreak(recentMatches) {
+    if (!Array.isArray(recentMatches) || !recentMatches.length) return { type: 'none', count: 0 };
+    const first = recentMatches[0];
+    if (first.s1 === first.s2) return { type: 'none', count: 0 };
+    const firstWin = !!first.win;
+    let count = 0;
+    for (const m of recentMatches) {
+        if (m.s1 === m.s2) break;          // lygiosios nutraukia
+        if (!!m.win !== firstWin) break;   // pasikeitė rezultatas
+        count++;
+    }
+    return { type: firstWin ? 'win' : 'loss', count };
+}
+
+// Serijos ženkliukas (tik jei serija >= 2). Motyvuoja žaidėjus.
+function streakBadgeHtml(recentMatches) {
+    const s = computeCurrentStreak(recentMatches);
+    if (s.count < 2) return '';
+    if (s.type === 'win') {
+        const word = pluralLt(s.count, 'pergalė', 'pergalės', 'pergalių');
+        return `<span style="display:inline-flex; align-items:center; gap:5px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; padding:4px 10px; border-radius:14px; font-size:11px; font-weight:800;">🔥 ${s.count} ${word} iš eilės</span>`;
+    }
+    const word = pluralLt(s.count, 'pralaimėjimas', 'pralaimėjimai', 'pralaimėjimų');
+    return `<span style="display:inline-flex; align-items:center; gap:5px; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:4px 10px; border-radius:14px; font-size:11px; font-weight:800;">❄️ ${s.count} ${word} iš eilės</span>`;
+}
+
+// P/Pr rekordas iš agreguotų laukų (pralaimėjimai = mačai − pergalės; lygiosios
+// šiuo metu neatskiriamos aggregate lygyje — įskaičiuojamos į „Pr", kaip laimėta %).
+// Grąžina trumpą „18 P / 7 Pr" arba '' jei mačų nėra.
+function winLossRecord(wins, matches) {
+    const w = wins || 0, m = matches || 0;
+    if (m <= 0) return '';
+    const l = Math.max(0, m - w);
+    return `${w} P / ${l} Pr`;
+}
+
+// Mačų sąrašo elementai iš recent_matches — vienas atvaizdavimas savo profiliui
+// ir viešai kortelei. Grąžina vidinį HTML (be <details> apvalkalo).
+function recentMatchesItemsHtml(recentMatches) {
+    if (!Array.isArray(recentMatches) || recentMatches.length === 0) {
+        return '<div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 11px;">Mačų istorija tuščia.</div>';
+    }
+    return recentMatches.map(m => {
+        const badge = m.win
+            ? '<span style="font-size: 9px; background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LAIMĖTA</span>'
+            : (m.s1 === m.s2
+                ? '<span style="font-size: 9px; background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LYGIOSIOS</span>'
+                : '<span style="font-size: 9px; background: #fed7d7; color: #742a2a; padding: 2px 8px; border-radius: 4px; font-weight: bold;">PRALAIMĖTA</span>');
+        const typeBadge = m.official
+            ? '<i class="fa-solid fa-trophy" style="color: #d69e2e; font-size: 10px;" title="Oficialus"></i>'
+            : '<i class="fa-solid fa-user-group" style="color: #a0aec0; font-size: 10px;" title="Draugiškas"></i>';
+        const dateStr = new Date(m.d).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' });
+        return `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 800; color: var(--text-dark); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${typeBadge} ${esc(m.t1)} <span style="font-weight: normal; color: #a0aec0;">vs</span> ${esc(m.t2)}</div>
+                        <div style="font-size: 10px; color: var(--text-grey); margin-top: 2px;">${dateStr} • <strong style="color: var(--text-dark);">${m.s1}:${m.s2}</strong></div>
+                    </div>
+                    <div style="margin-left: 8px;">${badge}</div>
+                </div>`;
+    }).join('');
+}
+
 function renderUserProfile() {
     if (typeof notifInit === 'function') notifInit();
     const container = document.getElementById('page-profile');
@@ -496,6 +575,8 @@ function renderUserProfile() {
             </div>
         </div>
 
+        ${streakBadgeHtml(currentUser.recent_matches) ? `<div style="text-align:center; margin: -6px 0 15px;">${streakBadgeHtml(currentUser.recent_matches)}</div>` : ''}
+
         ${currentUser.emailLocked
             ? ''
             : `<button type="button" onclick="protectAccountWithEmail()" style="width: 100%; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; font-size: 12px; font-weight: bold; cursor: pointer; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 6px;"><i class="fa-solid fa-lock"></i> Apsaugoti paskyrą el. paštu (rekomenduojama)</button>`}
@@ -513,6 +594,7 @@ function renderUserProfile() {
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
                 <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
                 <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${officialWinRate}%</div>
+                ${winLossRecord(currentUser.official_wins, currentUser.total_matches) ? `<div style="font-size: 9px; color: var(--text-grey); font-weight: 700; margin-top: 2px;">${winLossRecord(currentUser.official_wins, currentUser.total_matches)}</div>` : ''}
             </div>
         </div>
 
@@ -529,6 +611,7 @@ function renderUserProfile() {
             <div style="background: white; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; text-align: center;">
                 <div style="font-size: 9px; font-weight: bold; color: var(--text-grey);">Laimėta</div>
                 <div style="font-size: 18px; font-weight: 900; color: var(--status-green);">${casualWinRate}%</div>
+                ${winLossRecord(currentUser.casual_wins, currentUser.casual_matches) ? `<div style="font-size: 9px; color: var(--text-grey); font-weight: 700; margin-top: 2px;">${winLossRecord(currentUser.casual_wins, currentUser.casual_matches)}</div>` : ''}
             </div>
         </div>
 
@@ -683,24 +766,7 @@ function renderUserProfile() {
                 <i class="fa-solid fa-chevron-down" style="color: #cbd5e0; font-size: 12px;"></i>
             </summary>
             <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
-            ${(currentUser.recent_matches && currentUser.recent_matches.length > 0) ? currentUser.recent_matches.map(m => {
-                const badge = m.win
-                    ? '<span style="font-size: 9px; background: #c6f6d5; color: #22543d; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LAIMĖTA</span>'
-                    : (m.s1 === m.s2
-                        ? '<span style="font-size: 9px; background: #e2e8f0; color: #4a5568; padding: 2px 8px; border-radius: 4px; font-weight: bold;">LYGIOSIOS</span>'
-                        : '<span style="font-size: 9px; background: #fed7d7; color: #742a2a; padding: 2px 8px; border-radius: 4px; font-weight: bold;">PRALAIMĖTA</span>');
-                const typeBadge = m.official
-                    ? '<i class="fa-solid fa-trophy" style="color: #d69e2e; font-size: 10px;" title="Oficialus"></i>'
-                    : '<i class="fa-solid fa-user-group" style="color: #a0aec0; font-size: 10px;" title="Draugiškas"></i>';
-                const dateStr = new Date(m.d).toLocaleDateString('lt-LT', { month: '2-digit', day: '2-digit' });
-                return `<div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-weight: 800; color: var(--text-dark); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${typeBadge} ${esc(m.t1)} <span style="font-weight: normal; color: #a0aec0;">vs</span> ${esc(m.t2)}</div>
-                        <div style="font-size: 10px; color: var(--text-grey); margin-top: 2px;">${dateStr} • <strong style="color: var(--text-dark);">${m.s1}:${m.s2}</strong></div>
-                    </div>
-                    <div style="margin-left: 8px;">${badge}</div>
-                </div>`;
-            }).join('') : '<div style="background: #f8f9fb; border: 1px dashed #e2e8f0; border-radius: 8px; padding: 12px; text-align: center; color: var(--text-grey); font-size: 11px;">Mačų istorija tuščia.</div>'}
+            ${recentMatchesItemsHtml(currentUser.recent_matches)}
             </div>
         </details>
     `;

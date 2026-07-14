@@ -1277,10 +1277,11 @@ function openPlayerCard(playerId) {
     else if (ct === 'D/C-' || ct === 'D-C') casualColor = 'var(--lvl-d-c)';
     const lastPlayed = p.last_played ? new Date(p.last_played).toLocaleDateString('lt-LT') : '—';
     const initials = esc(p.name.substring(0, 2).toUpperCase());
-    const statBox = (label, value, color) => `
+    const statBox = (label, value, color, sub) => `
                 <div style="background: #f8f9fb; border-radius: 10px; padding: 10px 6px; border: 1px solid #e2e8f0;">
                     <div style="font-size: 9px; font-weight: bold; color: var(--text-grey); text-transform: uppercase;">${label}</div>
                     <div style="font-size: 19px; font-weight: 900; color: ${color};">${value}</div>
+                    ${sub ? `<div style="font-size: 9px; color: var(--text-grey); font-weight: 700; margin-top: 1px;">${sub}</div>` : ''}
                 </div>`;
 
     modalTitle.innerHTML = `<i class="fa-solid fa-user" style="color: var(--primary-blue);"></i> Žaidėjo kortelė`;
@@ -1289,21 +1290,32 @@ function openPlayerCard(playerId) {
             <div id="playerCardAvatar" style="width: 72px; height: 72px; border-radius: 50%; background: #eff6ff; color: var(--primary-blue); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 900; border: 3px solid ${tierColor}; margin: 0 auto 12px auto; overflow: hidden;">${initials}</div>
             <div style="font-size: 18px; font-weight: 900; color: var(--text-dark);">${esc(p.name)}</div>
             <span style="background: ${tierColor}; color: white; padding: 4px 12px; border-radius: 14px; font-weight: 900; font-size: 11px; text-transform: uppercase; display: inline-block; margin-top: 6px;">${esc(p.tier || 'D')} Lyga</span>
+            ${streakBadgeHtml(p.recent_matches) ? `<div style="margin-top: 10px;">${streakBadgeHtml(p.recent_matches)}</div>` : ''}
 
             <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 6px; text-align: left;">Oficiali lyga</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; text-align: center;">
                 ${statBox('ELO Reitingas', p.rating || 300, tierColor)}
                 ${statBox('Mačai', officialM, 'var(--text-dark)')}
-                ${statBox('Laimėta', officialWinRate + '%', 'var(--status-green)')}
+                ${statBox('Laimėta', officialWinRate + '%', 'var(--status-green)', winLossRecord(p.official_wins, officialM))}
             </div>
 
             <div style="font-size: 10px; font-weight: 800; color: var(--text-grey); text-transform: uppercase; letter-spacing: 0.5px; margin: 14px 0 6px; text-align: left;">Mėgėjų lyga (draugiški)</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; text-align: center;">
                 ${statBox('ELO Reitingas', p.casual_rating || 300, casualColor)}
                 ${statBox('Mačai', casualM, 'var(--text-dark)')}
-                ${statBox('Laimėta', casualWinRate + '%', 'var(--status-green)')}
+                ${statBox('Laimėta', casualWinRate + '%', 'var(--status-green)', winLossRecord(p.casual_wins, casualM))}
             </div>
             <div style="font-size: 11px; color: var(--text-grey); margin-top: 12px;"><i class="fa-regular fa-clock"></i> Paskutinį kartą žaidė: ${lastPlayed}</div>
+
+            <details style="margin: 16px 0 0; text-align: left;">
+                <summary style="list-style: none; cursor: pointer; -webkit-tap-highlight-color: transparent; display: flex; align-items: center; justify-content: space-between; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px;">
+                    <span style="font-size: 12px; font-weight: 800; color: var(--text-dark);"><i class="fa-solid fa-clock-rotate-left" style="color: var(--primary-blue); margin-right: 8px;"></i>Paskutiniai mačai${(p.recent_matches && p.recent_matches.length) ? ` <span style="color: var(--text-grey); font-weight: 600;">(${p.recent_matches.length})</span>` : ''}</span>
+                    <i class="fa-solid fa-chevron-down" style="color: #cbd5e0; font-size: 12px;"></i>
+                </summary>
+                <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">
+                    ${recentMatchesItemsHtml(p.recent_matches)}
+                </div>
+            </details>
         </div>
     `;
     modalActions.innerHTML = `<button type="button" class="modal-btn secondary" onclick="closeModal()" style="width: 100%;">Uždaryti</button>`;
