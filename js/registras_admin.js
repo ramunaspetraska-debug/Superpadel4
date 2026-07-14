@@ -1330,6 +1330,14 @@ function saveAdminPlayerChanges() {
     };
 
     if (String(originalId) !== String(newId)) {
+        // El. paštu apsaugoto profilio telefono ID (tapatybės) keisti negalima — DB taisyklė atmestų
+        // seno įrašo trynimą ir liktų dublikatas. Blokuojam iš anksto (vardą/reitingą galima keisti
+        // paliekant tą patį numerį).
+        const origP = globalAdminPlayers.find(x => String(x.id) === String(originalId));
+        if (origP && origP.emailLocked) {
+            alert("🔒 Šis žaidėjas apsaugojo paskyrą el. paštu — jo telefono ID (tapatybės) keisti per admin panelę negalima. Vardą ir reitingą galite keisti palikdami tą patį numerį.");
+            return;
+        }
         // SVARBU: perkeliam VISĄ seną įrašą (statistiką ir kt.), tik ant viršaus uždedam pakeitimus
         firebase.database().ref(GLOBAL_PLAYERS_KEY + '/' + originalId).once('value').then(oldSnap => {
             const merged = Object.assign({}, oldSnap.val() || {}, updateData);
@@ -1354,6 +1362,12 @@ function saveAdminPlayerChanges() {
 function deleteAdminPlayer(id) {
     let p = globalAdminPlayers.find(x => String(x.id) === String(id));
     if(!p) return;
+    // El. paštu apsaugoto (registruoto) žaidėjo profilio adminas ištrinti negali — DB taisyklė tokį
+    // trynimą atmeta, todėl blokuojam iš anksto su aiškia žinute (kad neliktų nebylios klaidos).
+    if (p.emailLocked) {
+        alert("🔒 Šis žaidėjas apsaugojo paskyrą savo el. paštu — jo profilio ištrinti per admin panelę negalima. Tapatybę ir statistiką valdo pats žaidėjas.");
+        return;
+    }
     if(confirm(`Ar tikrai norite visam laikui IŠTRINTI žaidėją "${p.name}" iš sistemos?`)) {
         firebase.database().ref(GLOBAL_PLAYERS_KEY).child(p.id).remove().then(() => {
             showToast("Žaidėjas sėkmingai pašalintas!");
