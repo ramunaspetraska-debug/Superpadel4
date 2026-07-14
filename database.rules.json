@@ -107,12 +107,22 @@
 
     "padelio_pro_master_rooms": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$room": {
+        ".validate": "newData.isNumber()"
+      }
     },
 
     "padelio_pro_master_global_stats": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "visits": { ".validate": "newData.isNumber()" },
+      "devices": {
+        "$did": {
+          ".validate": "newData.hasChildren(['type','lastSeen']) && newData.child('type').isString() && newData.child('type').val().length <= 16 && newData.child('lastSeen').isNumber()"
+        }
+      },
+      "$other": { ".validate": false }
     },
 
     "padelio_rooms": {
@@ -122,12 +132,46 @@
 
     "padelio_webrtc_broadcasts": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$bid": {
+        "room": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "broadcaster": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "isPrivate": { ".validate": "newData.isBoolean()" },
+        "startedAt": { ".validate": "newData.isNumber()" },
+        "viewers": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
     },
 
     "padelio_webrtc_signals": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      "$bid": {
+        "viewers": {
+          "$vid": {
+            "offer": {
+              "type": { ".validate": "newData.isString() && newData.val().length <= 12" },
+              "sdp": { ".validate": "newData.isString() && newData.val().length <= 65536" },
+              "$o": { ".validate": false }
+            },
+            "answer": {
+              "type": { ".validate": "newData.isString() && newData.val().length <= 12" },
+              "sdp": { ".validate": "newData.isString() && newData.val().length <= 65536" },
+              "$o": { ".validate": false }
+            },
+            "pin": { ".validate": "newData.isString() && newData.val().length <= 8" },
+            "rejected": { ".validate": "newData.isBoolean()" },
+            "viewerCandidates": {
+              "$c": { ".validate": "newData.hasChildren()" }
+            },
+            "broadcasterCandidates": {
+              "$c": { ".validate": "newData.hasChildren()" }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
     },
 
     "padelio_highlights": {
