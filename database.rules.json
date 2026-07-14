@@ -15,7 +15,11 @@
 
     "padelio_global_players": {
       ".read": true,
-      ".write": "auth != null"
+      "$pid": {
+        ".write": "auth != null && (data.child('emailLocked').val() !== true || (newData.child('emailLocked').val() === true && newData.child('email').val() === data.child('email').val()) || data.child('email').val() === auth.token.email.toLowerCase())",
+        "email": { ".validate": "newData.isString() && newData.val().length <= 254" },
+        "emailLocked": { ".validate": "newData.isBoolean()" }
+      }
     },
 
     "padelio_global_players_photos": {
