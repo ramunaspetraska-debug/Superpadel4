@@ -10,7 +10,7 @@
  *   - Atsilaisvinusi vieta (rezerve esantiems)
  */
 const { onSchedule } = require('firebase-functions/v2/scheduler');
-const { onValueWritten } = require('firebase-functions/v2/database');
+const { onValueWritten, onValueCreated } = require('firebase-functions/v2/database');
 const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { initializeApp } = require('firebase-admin/app');
@@ -469,6 +469,47 @@ exports.spotOpened = onValueWritten(
             }
         }
         if (Object.keys(updates).length) await db.ref('padelio_push_sent').update(updates);
+        return null;
+    }
+);
+
+// 3b) SEEK PRISIJUNGIMAS — push skelbėjui, kai kas nors prisijungia prie jo „Ieškau žaidimo" skelbimo.
+// Trigeris ant naujo joined/{joinerId} įrašo (onValueCreated → tik prisijungus, ne atšaukiant).
+// Skelbimas: padelio_chat/{clubId}/{msgId} = { uid: skelbėjas, seek:{date,time,needed}, joined:{...} }.
+exports.seekJoined = onValueCreated(
+    { ref: '/padelio_chat/{clubId}/{msgId}/joined/{joinerId}', instance: DB_INSTANCE, region: REGION },
+    async (event) => {
+        const clubId = event.params.clubId;
+        const msgId = event.params.msgId;
+        const joinerId = String(event.params.joinerId);
+        const joiner = event.data.val() || {};
+        const joinerName = String(joiner.name || 'Žaidėjas').slice(0, 40);
+
+        // Skelbimo įrašas — iš jo skelbėjas (uid) ir seek info + dabartinis joined skaičius.
+        const msgSnap = await db.ref('padelio_chat/' + clubId + '/' + msgId).get();
+        const msg = msgSnap.val();
+        if (!msg || msg.type !== 'seek') return null;
+
+        const advId = msg.uid != null ? String(msg.uid) : '';
+        if (!advId) return null;
+        if (advId === joinerId) return null; // neinformuoti savęs
+
+        // Dedupas: to paties žmogaus prisijungimas per 10 min nekartojamas (leave/rejoin + retry apsauga).
+        const sKey = 'seekjoin_' + clubId + '_' + msgId + '_' + joinerId;
+        const now = Date.now();
+        const last = (await db.ref('padelio_push_sent/' + sKey).get()).val();
+        if (last && (now - last) < 10 * 60 * 1000) return null;
+
+        const seek = msg.seek || {};
+        const joinedCount = msg.joined ? Object.keys(msg.joined).length : 1;
+        const needed = parseInt(seek.needed, 10) || 3;
+        const when = [seek.date, seek.time].filter(Boolean).join(' ');
+        const full = joinedCount >= needed;
+        const title = full ? '🎾 Žaidimas surinktas!' : '🎾 Prisijungė prie tavo žaidimo';
+        const body = joinerName + (when ? ' (' + when + ')' : '') + ' — prisijungė ' + joinedCount + '/' + needed + (full ? '. Galite žaisti!' : '.');
+
+        await sendToUser(advId, title, body, 'seekjoin_' + msgId);
+        await db.ref('padelio_push_sent/' + sKey).set(now);
         return null;
     }
 );
