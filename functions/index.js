@@ -743,6 +743,75 @@ exports.backfillPaidLedger = onRequest(
     }
 );
 
+// E-teisėjo taškų rašymas OFICIALIUOSE (lygos ELO) kambariuose — per serverį, kad būtų
+// patikrinta kviečiančiojo tapatybė (idToken) ir kad jis TIKRAI to turnyro dalyvis su
+// įjungtu eReferee. Klientas oficialaus kambario score tiesiogiai rašyti negali (DB taisyklė).
+exports.submitScore = onRequest(
+    { region: REGION, cors: true, invoker: 'public' },
+    async (req, res) => {
+        try {
+            const b = req.body || {};
+            const idToken = b.idToken, room = b.room, matchId = b.matchId, teamNum = Number(b.teamNum), score = Number(b.score);
+            if (!idToken || !room || matchId === undefined || matchId === null || (teamNum !== 1 && teamNum !== 2) || !(score >= 0 && score <= 200)) {
+                res.status(400).json({ error: 'bad params' }); return;
+            }
+            let decoded;
+            try { decoded = await getAuth().verifyIdToken(String(idToken)); }
+            catch (e) { res.status(401).json({ error: 'auth' }); return; }
+            const email = String(decoded.email || '').toLowerCase();
+            if (!email) { res.status(401).json({ error: 'no email' }); return; }
+            const ek = email.replace(/[.#$\[\]\/]/g, ',');
+            const playerId = (await db.ref('padelio_email_links/' + ek).get()).val();
+            if (!playerId) { res.status(403).json({ error: 'no profile' }); return; }
+            const prof = (await db.ref('padelio_global_players/' + playerId).get()).val() || {};
+            // PATIKIMA tapatybė: profilio el. paštas TURI sutapti su verifikuoto token'o el. paštu.
+            // padelio_email_links REIKŠMĖ kliento rašoma — vien ja pasitikėti negalima; step-2 apsauga
+            // neleidžia keisti užrakinto profilio email, tad šis kryžminis patikrinimas patikimas.
+            // Tapatybė patikima TIK užrakintiems (reali apsaugota paskyra): neužrakinto profilio email
+            // yra pasauliniu būdu rašomas (step-2 residual), tad be emailLocked užpuolikas galėtų perrašyti
+            // svetimo dalyvio email į savo ir „tapti" juo. Reikalaujam emailLocked — tai ir atitinka „privalo
+            // turėti anketą" (registruotasi el. paštu). Neapsaugoti (importo/telefono) profiliai e-teisėjauti negali.
+            if (String(prof.email || '').toLowerCase() !== email || prof.emailLocked !== true) { res.status(403).json({ error: 'identity' }); return; }
+            const roomKey = String(room).toUpperCase();
+            const roomData = (await db.ref('padelio_pro_master/' + roomKey).get()).val() || {};
+            // TIK oficialiam kambariui (casual eina tiesiogiai per DB taisyklę)
+            if (!(roomData.owner && roomData.owner.official === true)) { res.status(400).json({ error: 'not official' }); return; }
+            // Turnyras šiam kambariui (tid + eReferee įjungtas)
+            const tRaw = (await db.ref('padelio_global_tournaments').get()).val();
+            const tarr = (Array.isArray(tRaw) ? tRaw : Object.values(tRaw || {})).filter(Boolean);
+            const t = tarr.find(x => x && x.room && String(x.room).toUpperCase() === roomKey);
+            if (!t || !t.eReferee) { res.status(403).json({ error: 'eref off' }); return; }
+            // Randam mačą pagal id (masyvas arba objektas)
+            const matchesRaw = roomData.matches || {};
+            const mkeys = Array.isArray(matchesRaw) ? matchesRaw.map((_, i) => i) : Object.keys(matchesRaw);
+            let idx = -1, theMatch = null;
+            for (const k of mkeys) { const m = matchesRaw[k]; if (m && String(m.id) === String(matchId)) { idx = k; theMatch = m; break; } }
+            if (idx === -1 || !theMatch) { res.status(404).json({ error: 'no match' }); return; }
+            // ADMINAS gali VISUS kortus — per PATIKIMĄ kambario owner.clubId (jį rašo tik klubo adminas,
+            // priešingai nei turnyro clubId) + sugriežtintą clubs/admins (4 žingsnis).
+            const clubId = roomData.owner && roomData.owner.clubId;
+            let isAdmin = false;
+            if (clubId) isAdmin = (await db.ref('padelio_clubs/' + clubId + '/admins/' + ek).get()).exists();
+            if (!isAdmin) {
+                // DALYVIS gali vesti TIK SAVO KORTO taškus — privalo būti ŠIO mačo komandoje pagal PATIKIMĄ ID.
+                // Kambario mačų komandų žaidėjų id generatorius priskiria IMPORTUOJANT (app.js: name→globalMatch.id),
+                // t.y. iš tikrų globalių profilių — admino valdomas kambarys. Kviečiančiojo playerId gaunamas iš
+                // verifikuotos tapatybės (prof.email===token). Vardo atsargos NĖRA — vardai vieši ir klastojami;
+                // tik ID sutapimas įrodo, kad tai TIKRAS to mačo žaidėjas (ne bendravardis).
+                const inThisMatch = ['team1', 'team2'].some(tk => Array.isArray(theMatch[tk]) && theMatch[tk].some(p =>
+                    p && p.id && String(p.id) === String(playerId)));
+                if (!inThisMatch) { res.status(403).json({ error: 'not your court' }); return; }
+            }
+            await db.ref('padelio_pro_master/' + roomKey + '/matches/' + idx + '/score' + teamNum).set(score);
+            await db.ref('padelio_pro_master/' + roomKey + '/lastUpdate').set(Date.now());
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('submitScore:', e);
+            res.status(500).json({ error: 'server error' });
+        }
+    }
+);
+
 const BACKUP_BRANCHES = [
     'padelio_global_tournaments', 'padelio_global_players', 'padelio_clubs',
     'padelio_club_admins', 'padelio_email_links', 'padelio_rooms',

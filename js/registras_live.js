@@ -361,18 +361,47 @@ function changeLiveScore(matchId, teamNum, change) {
     }
     const matchIndex = currentFirebaseData.matches.findIndex(m => m.id === matchId);
     if (matchIndex === -1) return;
-    
-    let match = currentFirebaseData.matches[matchIndex]; 
-    let currentScore = teamNum === 1 ? (match.score1 || 0) : (match.score2 || 0); 
+
+    let match = currentFirebaseData.matches[matchIndex];
+    let currentScore = teamNum === 1 ? (match.score1 || 0) : (match.score2 || 0);
     let newScore = Math.max(0, currentScore + change);
-    
-    let updates = {}; 
-    updates[`matches/${matchIndex}/score${teamNum}`] = newScore; 
+
+    // Oficialumą sprendžiam pagal KAMBARIO owner.official — ta pati tiesa, kaip DB taisyklėje ir
+    // serveryje (submitScore), kad nebūtų nesutapimo su turnyro isOfficial lauku.
+    const isOfficialRoom = !!(currentFirebaseData.owner && currentFirebaseData.owner.official === true);
+    if (isOfficialRoom) {
+        // OFICIALUS (lygos ELO) — score per serverį: serveris pats patikrina, ar kviečiantysis
+        // tikras dalyvis (klientas oficialaus kambario score tiesiogiai rašyti negali).
+        const u = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+        if (!u) { showToast("Prisijunkite iš naujo, kad galėtumėte vesti taškus."); return; }
+        // Optimistinis atnaujinimas (kad UI nevėluotų); serveris patvirtins per live listener'į,
+        // o nepavykus — grąžinam seną reikšmę.
+        match[`score${teamNum}`] = newScore;
+        renderLiveScoreboard();
+        u.getIdToken().then(idToken => fetch(STRIPE_FN_BASE + '/submitScore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken: idToken, room: currentLiveRoomName, matchId: matchId, teamNum: teamNum, score: newScore })
+        })).then(r => r.json()).then(data => {
+            if (!(data && data.ok)) {
+                match[`score${teamNum}`] = currentScore; renderLiveScoreboard();
+                const err = data && data.error;
+                showToast(err === 'not your court' ? "Galite vesti tik savo korto taškus."
+                    : (err === 'not participant' ? "Taškus vesti gali tik šio turnyro dalyviai (registruoti su paskyra)."
+                    : "Nepavyko išsaugoti taško."));
+            }
+        }).catch(() => { match[`score${teamNum}`] = currentScore; renderLiveScoreboard(); showToast("Klaida išsaugant tašką!"); });
+        return;
+    }
+
+    // CASUAL — tiesioginis rašymas (DB taisyklė leidžia ne-oficialiems kambariams; greita)
+    let updates = {};
+    updates[`matches/${matchIndex}/score${teamNum}`] = newScore;
     updates[`lastUpdate`] = Date.now();
-    
-    liveDbRef.update(updates).catch(err => { 
-        console.error("Score update error:", err); 
-        showToast("Klaida išsaugant tašką!"); 
+
+    liveDbRef.update(updates).catch(err => {
+        console.error("Score update error:", err);
+        showToast("Klaida išsaugant tašką!");
     });
 }
 

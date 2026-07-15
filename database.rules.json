@@ -112,8 +112,8 @@
         "lastUpdate": { ".write": "auth != null" },
         "matches": {
           "$idx": {
-            "score1": { ".write": "auth != null" },
-            "score2": { ".write": "auth != null" }
+            "score1": { ".write": "auth != null && root.child('padelio_pro_master').child($room).child('owner').child('official').val() !== true" },
+            "score2": { ".write": "auth != null && root.child('padelio_pro_master').child($room).child('owner').child('official').val() !== true" }
           }
         }
       }
