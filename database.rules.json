@@ -27,6 +27,16 @@
       ".write": "auth != null"
     },
 
+    "padelio_paid": {
+      ".read": "auth != null",
+      ".write": false
+    },
+
+    "padelio_paid_meta": {
+      ".read": "auth != null",
+      ".write": false
+    },
+
     "padelio_email_links": {
       ".read": "auth != null",
       "$ek": {

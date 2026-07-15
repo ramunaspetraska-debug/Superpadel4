@@ -17,6 +17,7 @@ const { initializeApp } = require('firebase-admin/app');
 const { getDatabase } = require('firebase-admin/database');
 const { getMessaging } = require('firebase-admin/messaging');
 const { getStorage } = require('firebase-admin/storage');
+const { getAuth } = require('firebase-admin/auth');
 
 initializeApp({
     databaseURL: 'https://padelio-turnyrai-default-rtdb.europe-west1.firebasedatabase.app',
@@ -149,6 +150,15 @@ exports.tournamentReminders = onSchedule(
 // (IDENTIŠKA kliento payKey funkcijai registras_tournaments.js)
 function payKey(entry) { return String(entry).replace(/[.#$/\[\]]/g, ','); }
 
+// AUTORITETINGAS „apmokėta" registras (padelio_paid/{tid}/{key}=true). Rašo TIK serveris
+// (Admin SDK; taisyklė .write:false), todėl klientas negali suklastoti apmokėjimo. VISOS
+// serverio „ar apmokėta" patikros (enforce/close) remiasi šiuo, o NE kliento t.payments.status.
+async function loadPaidChecker() {
+    const s = await db.ref('padelio_paid').get();
+    const ledger = s.val() || {};
+    return (tid, k) => !!(ledger[String(tid)] && ledger[String(tid)][String(k)]);
+}
+
 // Pašalina players įrašą, atlaisvina vietas, išvalo payment ir praneša įrašo žaidėjams.
 // all — padelio_user_tournaments turinys (perduodamas, kad neskaitytume kaskart).
 async function removeEntryAndNotify(t, entry, all, title, body, tag) {
@@ -178,6 +188,10 @@ async function enforcePaymentDeadlines(now) {
     const raw = tSnap.val();
     if (!raw) return;
     const arr = (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
+    // Kol registro migracija (backfillPaidLedger) neužbaigta — NEšalinam nieko pagal apmokėjimą
+    // (kitaip seni apmokėję, kurių dar nėra registre, būtų klaidingai pašalinti).
+    if ((await db.ref('padelio_paid_meta/ready').get()).val() !== true) return;
+    const isPaid = await loadPaidChecker();
     let changed = false;
     let all = null;
     let sent = null;
@@ -192,7 +206,7 @@ async function enforcePaymentDeadlines(now) {
         // pinigai gali būti kelyje, sprendžia organizatorius rankiniu būdu.
         const overdue = Object.keys(t.payments).filter(k => {
             const p = t.payments[k];
-            return p && p.status === 'pending' && !p.claimed && typeof p.deadline === 'number' && p.deadline < now;
+            return p && !isPaid(t.id, k) && p.method !== 'cash' && !p.claimed && typeof p.deadline === 'number' && p.deadline < now;
         });
         if (overdue.length) {
             await loadAll();
@@ -210,7 +224,7 @@ async function enforcePaymentDeadlines(now) {
         // 2) Priminimas likus ~2 val. iki termino (vienkartinis; grynaisiais mokančių neliečia)
         const soonKeys = Object.keys(t.payments).filter(k => {
             const p = t.payments[k];
-            return p && p.status === 'pending' && p.method !== 'cash' && !p.claimed && typeof p.deadline === 'number'
+            return p && !isPaid(t.id, k) && p.method !== 'cash' && !p.claimed && typeof p.deadline === 'number'
                 && p.deadline > now && p.deadline - now <= 2.5 * 3600000;
         });
         if (soonKeys.length) {
@@ -252,6 +266,9 @@ async function closeRegistrations(now) {
     const raw = tSnap.val();
     if (!raw) return;
     const arr = (Array.isArray(raw) ? raw : Object.values(raw)).filter(Boolean);
+    const isPaid = await loadPaidChecker();
+    // Kol registro migracija neužbaigta — neapmokėjusiųjų NEšalinam (žr. enforcePaymentDeadlines).
+    const paidReady = (await db.ref('padelio_paid_meta/ready').get()).val() === true;
     let changed = false;
     const rejectedByT = [];
     const removedUnpaidByT = []; // mokamų turnyrų neapmokėjusieji — pranešimams
@@ -271,10 +288,11 @@ async function closeRegistrations(now) {
         // tik tada sąrašas karpomas iki pilnų kortų pagal eilės tvarką.
         // Pasirinkusieji mokėti GRYNAIS vietoje (method='cash') NEšalinami —
         // jie atsiskaito organizatoriui atvykę į turnyrą.
-        if (t.paid) {
+        if (t.paid && paidReady) {
             const unpaid = players.filter(e => {
-                const p = (t.payments || {})[payKey(e)];
-                return !(p && (p.status === 'paid' || p.method === 'cash' || p.claimed));
+                const k = payKey(e);
+                const p = (t.payments || {})[k];
+                return !(isPaid(t.id, k) || (p && (p.method === 'cash' || p.claimed)));
             });
             if (unpaid.length) {
                 players = players.filter(e => unpaid.indexOf(e) === -1);
@@ -477,15 +495,24 @@ async function markStripePaid(tid, key, sessionId) {
     const raw = snap.val();
     const arr = (Array.isArray(raw) ? raw : Object.values(raw || {})).filter(Boolean);
     const t = arr.find(x => String(x.id) === String(tid));
-    if (!t || !t.payments || !t.payments[key]) return false;
-    if (t.payments[key].status === 'paid') return true; // jau pažymėta (webhook + return race)
-    t.payments[key].status = 'paid';
-    t.payments[key].method = 'stripe';
-    t.payments[key].paidTs = Date.now();
-    t.payments[key].stripeSession = String(sessionId || '');
-    t.payments[key].deadline = null;
-    await ref.set(arr);
-    const entry = t.payments[key].entry || '';
+    if (!t) return false;
+    // Idempotencija per REGISTRĄ (ne kliento t.payments.status). AUTORITETINGAS „apmokėta" registras —
+    // TIK serveris (Admin SDK) čia rašo; klientas negali (padelio_paid .write:false).
+    const paidRef = db.ref('padelio_paid/' + String(tid) + '/' + String(key));
+    const alreadyPaid = (await paidRef.get()).val() === true;
+    // Charge patvirtinta Stripe — VISADA įrašom į registrą, net jei t.payments įrašas buvo perrakintas
+    // tarp checkout ir webhook (kad apmokėjimas neprapultų).
+    await paidRef.set(true);
+    if (t.payments && t.payments[key]) {
+        t.payments[key].status = 'paid';
+        t.payments[key].method = 'stripe';
+        t.payments[key].paidTs = Date.now();
+        t.payments[key].stripeSession = String(sessionId || '');
+        t.payments[key].deadline = null;
+        await ref.set(arr);
+    }
+    if (alreadyPaid) return true; // pranešimą jau siuntėme (webhook + return lenktynė)
+    const entry = (t.payments && t.payments[key] && t.payments[key].entry) || '';
     const names = String(entry).split('/').map(p2 => p2.trim().split('|')[0].trim().toLowerCase());
     const utSnap = await db.ref('padelio_user_tournaments').get();
     const all = utSnap.val() || {};
@@ -520,7 +547,9 @@ exports.createStripeCheckout = onRequest(
             if (!t || !t.paid || !t.payStripeEnabled) { res.status(400).json({ error: 'not payable' }); return; }
             const pay = (t.payments || {})[key];
             if (!pay) { res.status(400).json({ error: 'no payment record' }); return; }
-            if (pay.status === 'paid') { res.status(400).json({ error: 'already paid' }); return; }
+            // „Jau apmokėta" — iš autoritetingo registro (ne kliento t.payments.status)
+            const alreadyPaid = (await db.ref('padelio_paid/' + String(tid) + '/' + String(key)).get()).val();
+            if (alreadyPaid === true) { res.status(400).json({ error: 'already paid' }); return; }
             const entry = pay.entry || '';
             const seats = String(entry).indexOf('/') !== -1 ? 2 : 1;
             const amountCents = Math.round((t.fee || 0) * seats * 100);
@@ -632,11 +661,93 @@ exports.stripeWebhook = onRequest(
 // Laikomos 14 dienų kopijos. Šaka klientams neprieinama (tik admin SDK) —
 // atkūrimo atveju duomenys pasiekiami per Firebase konsolę arba CLI:
 //   firebase database:get /padelio_backups/2026-07-12 --project padelio-turnyrai > kopija.json
+// Admino RANKINIS apmokėjimo patvirtinimas (pavedimas/grynieji). Autoritetą turi SERVERIS:
+// patikrina kviečiančiojo Firebase ID token'ą ir ar jis TIKRAI to klubo administratorius per
+// NESUKLASTOJAMĄ padelio_clubs/{clubId}/admins/{ek} (padelio_clubs .write griežtas; NE
+// self-writable padelio_club_admins). Tik tada rašo padelio_paid registrą.
+exports.confirmManualPayment = onRequest(
+    { region: REGION, cors: true, invoker: 'public' },
+    async (req, res) => {
+        try {
+            const body = req.body || {};
+            const idToken = body.idToken, tid = body.tid, key = body.key;
+            const makePaid = body.paid !== false; // numatytai true; false = atšaukti
+            if (!idToken || !tid || !key) { res.status(400).json({ error: 'missing params' }); return; }
+            let decoded;
+            try { decoded = await getAuth().verifyIdToken(String(idToken)); }
+            catch (e) { res.status(401).json({ error: 'auth' }); return; }
+            const email = String(decoded.email || '').toLowerCase();
+            if (!email) { res.status(401).json({ error: 'no email' }); return; }
+            const ek = email.replace(/[.#$\[\]\/]/g, ','); // IDENTIŠKA kliento emailKey
+            const snap = await db.ref('padelio_global_tournaments').get();
+            const raw = snap.val();
+            const arr = (Array.isArray(raw) ? raw : Object.values(raw || {})).filter(Boolean);
+            const t = arr.find(x => String(x.id) === String(tid));
+            if (!t || !t.paid) { res.status(400).json({ error: 'not payable' }); return; }
+            let ok = false;
+            if (t.clubId) ok = (await db.ref('padelio_clubs/' + t.clubId + '/admins/' + ek).get()).exists();
+            if (!ok) { // platformos savininkas (legacyOwner klubo adminas) — visada gali
+                const clubs = (await db.ref('padelio_clubs').get()).val() || {};
+                ok = Object.keys(clubs).some(cid => clubs[cid] && clubs[cid].legacyOwner === true && clubs[cid].admins && clubs[cid].admins[ek]);
+            }
+            if (!ok) { res.status(403).json({ error: 'not club admin' }); return; }
+            const pref = db.ref('padelio_paid/' + String(tid) + '/' + String(key));
+            if (makePaid) await pref.set(true); else await pref.remove();
+            res.json({ ok: true, paid: makePaid });
+        } catch (e) {
+            console.error('confirmManualPayment:', e);
+            res.status(500).json({ error: 'server error' });
+        }
+    }
+);
+
+// VIENKARTINĖ migracija: esamus t.payments[...].status==='paid' perkelia į padelio_paid registrą.
+// Tik platformos savininkas (legacyOwner). Paleisti VIENĄ kartą po funkcijų diegimo, PRIEŠ frontend cutover.
+exports.backfillPaidLedger = onRequest(
+    { region: REGION, cors: true, invoker: 'public' },
+    async (req, res) => {
+        try {
+            const idToken = (req.body || {}).idToken;
+            if (!idToken) { res.status(400).json({ error: 'missing token' }); return; }
+            let decoded;
+            try { decoded = await getAuth().verifyIdToken(String(idToken)); }
+            catch (e) { res.status(401).json({ error: 'auth' }); return; }
+            const ek = String(decoded.email || '').toLowerCase().replace(/[.#$\[\]\/]/g, ',');
+            const clubs = (await db.ref('padelio_clubs').get()).val() || {};
+            const isOwner = Object.keys(clubs).some(cid => clubs[cid] && clubs[cid].legacyOwner === true && clubs[cid].admins && clubs[cid].admins[ek]);
+            if (!isOwner) { res.status(403).json({ error: 'owner only' }); return; }
+            // VIENKARTINĖ: jei jau migruota (ready=true), NEBEperkeliam — kad pakartotinis paleidimas
+            // nepaverstų kliento suklastoto t.payments.status='paid' į autoritetingą registrą.
+            if ((await db.ref('padelio_paid_meta/ready').get()).val() === true) {
+                res.json({ ok: true, migrated: 0, note: 'already migrated' }); return;
+            }
+            const snap = await db.ref('padelio_global_tournaments').get();
+            const raw = snap.val();
+            const arr = (Array.isArray(raw) ? raw : Object.values(raw || {})).filter(Boolean);
+            const updates = {};
+            let count = 0;
+            for (const t of arr) {
+                if (!t || !t.payments) continue;
+                for (const k of Object.keys(t.payments)) {
+                    if (t.payments[k] && t.payments[k].status === 'paid') { updates[String(t.id) + '/' + k] = true; count++; }
+                }
+            }
+            if (count) await db.ref('padelio_paid').update(updates);
+            // Nuo dabar registras užpildytas — enforce/close gali remtis juo ir šalinti neapmokėjusius.
+            await db.ref('padelio_paid_meta/ready').set(true);
+            res.json({ ok: true, migrated: count });
+        } catch (e) {
+            console.error('backfillPaidLedger:', e);
+            res.status(500).json({ error: 'server error' });
+        }
+    }
+);
+
 const BACKUP_BRANCHES = [
     'padelio_global_tournaments', 'padelio_global_players', 'padelio_clubs',
     'padelio_club_admins', 'padelio_email_links', 'padelio_rooms',
     'padelio_archive_turnyrai', 'padelio_user_tournaments',
-    'padelio_chat', 'padelio_user_clubs'
+    'padelio_chat', 'padelio_user_clubs', 'padelio_paid', 'padelio_paid_meta'
 ];
 
 exports.dailyBackup = onSchedule(
