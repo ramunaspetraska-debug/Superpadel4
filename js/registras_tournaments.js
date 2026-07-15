@@ -1981,7 +1981,7 @@ function renderClubsPage() {
                     </div>
                 </div>
                 <div style="display:flex; gap:6px; flex-shrink:0;">
-                    <button type="button" onclick="openClubChat('${esc(id)}', '${String(c.name || '').replace(/['"\\<>&]/g, '')}')" title="Klubo pokalbiai" style="padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; background:#fff; color:var(--primary-blue); font-size:13px; font-weight:800; cursor:pointer;"><i class="fa-solid fa-comments"></i></button>
+                    <button type="button" onclick="openClubChat('${esc(id)}', '${String(c.name || '').replace(/['"\\<>&]/g, '')}')" title="Klubo pokalbiai" style="padding:8px 12px; border-radius:8px; border:1px solid #e2e8f0; background:#fff; color:var(--primary-blue); font-size:13px; font-weight:800; cursor:pointer; position:relative;"><i class="fa-solid fa-comments"></i>${(typeof chatUnreadBadgeHtml === 'function') ? chatUnreadBadgeHtml(id) : ''}</button>
                     <button type="button" onclick="toggleFollowClub('${esc(id)}')" style="padding:8px 14px; border-radius:8px; border:none; background:${followed ? 'var(--status-green)' : 'var(--primary-blue)'}; color:#fff; font-size:11px; font-weight:800; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${followed ? '✓ Sekamas' : '⭐ Sekti'}</button>
                 </div>
             </div>
@@ -1990,6 +1990,9 @@ function renderClubsPage() {
             ${tourRows}
         </div>`;
     }).join('');
+
+    // Neperskaitytų žinučių žymė ant 💬 (užklausa naujausio ts kiekvienam rodomam klubui)
+    if (typeof refreshChatUnreadBadges === 'function') refreshChatUnreadBadges(ids);
 }
 
 function toggleFollowClub(clubId) {

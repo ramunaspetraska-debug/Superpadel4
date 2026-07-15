@@ -744,7 +744,7 @@ function renderUserProfile() {
                     </div>
                 </div>
                 <div style="display:flex; gap:6px;">
-                    <button type="button" onclick="openClubChat('${esc(id)}', '${String(c.clubName || id).replace(/['"\\<>&]/g, '')}')" title="Klubo pokalbiai" style="background: #fff; border: 1px solid #bfdbfe; color: var(--primary-blue); width: 32px; height: 30px; border-radius: 8px; font-size: 12px; cursor: pointer;"><i class="fa-solid fa-comments"></i></button>
+                    <button type="button" onclick="openClubChat('${esc(id)}', '${String(c.clubName || id).replace(/['"\\<>&]/g, '')}')" title="Klubo pokalbiai" style="background: #fff; border: 1px solid #bfdbfe; color: var(--primary-blue); width: 32px; height: 30px; border-radius: 8px; font-size: 12px; cursor: pointer; position: relative;"><i class="fa-solid fa-comments"></i>${(typeof chatUnreadBadgeHtml === 'function') ? chatUnreadBadgeHtml(id) : ''}</button>
                     <button type="button" onclick="toggleFollowClub('${esc(id)}'); setTimeout(renderUserProfile, 400);" style="background: #fff; border: 1px solid #fed7d7; color: var(--status-red); padding: 6px 12px; border-radius: 8px; font-size: 10px; font-weight: bold; cursor: pointer;">Nebesekti</button>
                 </div>
             </div>`;
@@ -773,6 +773,9 @@ function renderUserProfile() {
     `;
 
     container.innerHTML = html;
+
+    // Neperskaitytų žinučių žymė ant 💬 „Mano klubai" sąraše
+    if (typeof refreshChatUnreadBadges === 'function') refreshChatUnreadBadges(clubIds);
 
     // Užkrauname aktyvius kambarius dinamiškai
     loadActiveRooms();

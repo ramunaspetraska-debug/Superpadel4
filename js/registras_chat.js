@@ -82,7 +82,12 @@ function openClubChat(clubId, clubName) {
         return;
     }
     chatRef = firebase.database().ref('padelio_chat/' + chatClubId).limitToLast(100);
-    chatRef.on('child_added', snap => appendChatMessage(snap.key, snap.val()));
+    chatRef.on('child_added', snap => {
+        const v = snap.val();
+        appendChatMessage(snap.key, v);
+        // Atidarius pokalbį — žymim matytu iki naujausios žinutės ts (badge išnyksta).
+        if (v && v.ts) markChatSeen(clubId, v.ts);
+    });
     chatRef.on('child_changed', snap => {
         // Skelbimo atnaujinimas (pvz. kažkas prisijungė prie „Ieškau žaidimo")
         const old = document.getElementById('chatmsg-' + snap.key);
@@ -104,6 +109,50 @@ function closeClubChat() {
     if (chatRef) { try { chatRef.off(); } catch (e) {} chatRef = null; }
     chatClubId = null;
     document.getElementById('club-chat-modal')?.remove();
+}
+
+// ==================== NEPERSKAITYTŲ ŽINUČIŲ ŽYMĖ ant 💬 ====================
+// „Matyta" laikas kiekvienam klubui saugomas localStorage (per įrenginį). Badge (raudonas
+// taškelis) rodomas ant 💬 mygtuko, kai naujausios žinutės ts > matyta. Klubo id sanitizuojamas
+// elemento id'ui (klubų id gali turėti simbolių). Užklausa: limitToLast(1) po sąrašo render'io.
+function chatBadgeId(clubId) { return 'chatunread_' + String(clubId || '').replace(/[^A-Za-z0-9]/g, '_'); }
+
+function chatSeenMap() {
+    try { return JSON.parse(localStorage.getItem('sp_chat_seen') || '{}') || {}; } catch (e) { return {}; }
+}
+
+// Pažymi klubo pokalbį matytu iki nurodyto ts (arba dabar) ir iškart paslepia badge.
+function markChatSeen(clubId, ts) {
+    if (!clubId) return;
+    const m = chatSeenMap();
+    const t = Number(ts) || Date.now();
+    if (!(Number(m[clubId]) >= t)) {
+        m[clubId] = t;
+        try { localStorage.setItem('sp_chat_seen', JSON.stringify(m)); } catch (e) {}
+    }
+    const b = document.getElementById(chatBadgeId(clubId));
+    if (b) b.style.display = 'none';
+}
+
+// Badge HTML — dedamas VIDUJE 💬 mygtuko (mygtukui reikia position:relative).
+function chatUnreadBadgeHtml(clubId) {
+    return `<span id="${chatBadgeId(clubId)}" style="display:none;position:absolute;top:-4px;right:-4px;width:11px;height:11px;background:#ef4444;border:2px solid #fff;border-radius:50%;"></span>`;
+}
+
+// Užklausia naujausią žinutės ts kiekvienam klubui ir parodo badge, jei > matyta.
+function refreshChatUnreadBadges(clubIds) {
+    if (typeof firebase === 'undefined' || !Array.isArray(clubIds) || !clubIds.length) return;
+    const seen = chatSeenMap();
+    clubIds.slice(0, 60).forEach(clubId => {
+        if (!clubId) return;
+        firebase.database().ref('padelio_chat/' + clubId).limitToLast(1).once('value').then(snap => {
+            let latest = 0;
+            snap.forEach(ch => { const v = ch.val(); if (v && Number(v.ts) > latest) latest = Number(v.ts); });
+            const b = document.getElementById(chatBadgeId(clubId));
+            if (!b) return;
+            b.style.display = (latest && latest > (Number(seen[clubId]) || 0)) ? 'block' : 'none';
+        }).catch(() => {});
+    });
 }
 
 function showChatEmptyPlaceholder() {
