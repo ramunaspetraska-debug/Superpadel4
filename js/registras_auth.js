@@ -306,6 +306,7 @@ function updateAuthUI() {
     // kitaip prisijungus VĖLIAU nei užsikrovė turnyrai, profilio „Mano klubai" likdavo tuščias.
     if (typeof userTournamentsInit === 'function') { try { userTournamentsInit(); } catch (e) {} }
     if (typeof userClubsInit === 'function') { try { userClubsInit(); } catch (e) {} }
+    if (typeof paidLedgerInit === 'function') { try { paidLedgerInit(); } catch (e) {} }
     let btn = document.getElementById('authBtn');
     if(!btn) return;
     if(currentUser) {

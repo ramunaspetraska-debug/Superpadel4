@@ -185,6 +185,9 @@ function initTournamentsDB() {
             renderAdminTournaments();
         }
     });
+
+    // Autoritetingas „apmokėta" registras (serverio rašomas) — su auth-atstatymo apsauga.
+    paidLedgerInit();
 }
 
 function saveData() {
@@ -1021,13 +1024,46 @@ function paymentDeadlineMs(t, regTs) {
     return Math.min(regTs + hours * 3600000, closeMs);
 }
 
+// AUTORITETINGA „ar apmokėta" tiesa — iš serverio registro padelio_paid (klientas jo rašyti
+// NEGALI; taisyklė .write:false). Naudoti VISUR vietoj t.payments.status==='paid', kad
+// suklastotas kliento statusas neapgautų. Užpildoma per listener'į initTournamentsDB.
+window.paidData = window.paidData || {};
+function isPaidEntry(tid, key) {
+    const b = window.paidData[String(tid)];
+    return !!(b && b[String(key)]);
+}
+
+// padelio_paid klausytojas su AUTH-atstatymo apsauga (kaip userTournamentsInit): be auth sesijos
+// skaitymas atmetamas ir listener'is tyliai numirtų — todėl laukiam pushAuthReady() ir bandom iš naujo.
+// Neprisijungusiam (pushAuthReady grąžina null) NEcikliname — jam apmokėjimų būsenos nereikia.
+let _paidRef = null;
+function paidLedgerInit() {
+    if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') return;
+    if (!firebase.auth().currentUser) {
+        if (typeof pushAuthReady === 'function') pushAuthReady().then(u => { if (u) paidLedgerInit(); });
+        return;
+    }
+    if (_paidRef) { try { _paidRef.off(); } catch (e) {} }
+    _paidRef = firebase.database().ref('padelio_paid');
+    _paidRef.on('value', s => {
+        window.paidData = s.val() || {};
+        try { renderTournaments(); } catch (e) {}
+        const adminTab = document.getElementById('admin-view-turnyrai');
+        if (adminTab && adminTab.style.display === 'block') { try { renderAdminTournaments(); } catch (e) {} }
+    }, () => {
+        _paidRef = null;
+        if (typeof pushAuthReady === 'function') pushAuthReady().then(u => { if (u) paidLedgerInit(); });
+    });
+}
+
 // Mano laukiantis apmokėjimas šiame turnyre (arba null)
 function paymentPendingFor(t) {
     if (!t || !t.paid || !t.payments) return null;
     const entry = myPlayersEntry(t);
     if (!entry) return null;
-    const pay = t.payments[payKey(entry)];
-    return (pay && pay.status === 'pending') ? pay : null;
+    const key = payKey(entry);
+    const pay = t.payments[key];
+    return (pay && !isPaidEntry(t.id, key)) ? pay : null;
 }
 
 // Sukuria laukiančio apmokėjimo įrašą ką tik įregistruotam players įrašui
@@ -1053,7 +1089,7 @@ function openPaymentInstructions(id) {
     const isPair = String(entry).includes('/');
     const pay = (t.payments || {})[payKey(entry)];
     const amount = (pay && pay.amount) || (t.fee || 0) * (isPair ? 2 : 1);
-    const alreadyPaid = pay && pay.status === 'paid';
+    const alreadyPaid = isPaidEntry(t.id, payKey(entry));
     const isCash = pay && pay.method === 'cash' && !alreadyPaid;
     const dlStr = (pay && pay.deadline)
         ? new Date(pay.deadline).toLocaleString('lt-LT', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -1132,7 +1168,7 @@ function markPaymentClaimed(id) {
     if (!entry || !t.payments) return;
     const key = payKey(entry);
     const pay = t.payments[key];
-    if (!pay || pay.status === 'paid') return;
+    if (!pay || isPaidEntry(t.id, key)) return;
     pay.claimed = true;
     pay.claimedTs = Date.now();
     saveData();
@@ -1206,7 +1242,7 @@ function choosePaymentMethod(id, method) {
     if (!t.payments) t.payments = {};
     const key = payKey(entry);
     const existing = t.payments[key] || {};
-    if (existing.status === 'paid') { openPaymentInstructions(id); return; }
+    if (isPaidEntry(t.id, key)) { openPaymentInstructions(id); return; }
     const seats = String(entry).includes('/') ? 2 : 1;
     if (method === 'cash') {
         if (!t.payCashAllowed) return;
@@ -1574,6 +1610,14 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
         if ((tournament.max || 0) > 0 && (tournament.registered || 0) + 1 > tournament.max) { closeModal(); showToast("Deja, partneriui vietos nebėra."); renderTournaments(); return; }
         const idx = tournament.players.indexOf(myEntry);
         if (idx === -1) return;
+        // Jei už save JAU apmokėta (registre) — partnerio pridėjimą tvarko organizatorius: klientas
+        // negali perkelti „apmokėta" žymos į naują poros raktą (registrą valdo tik serveris), o
+        // palikus seną raktą apmokėjęs narys galėtų būti pašalintas kaip „neapmokėjęs".
+        if (tournament.paid && isPaidEntry(tournament.id, payKey(myEntry))) {
+            closeModal();
+            showToast("Ši registracija apmokėta — partnerio pridėjimą tvarko organizatorius. Susisiekite su juo.");
+            return;
+        }
         const pairEntry = `${myEntry} / ${player2}|${gender2 || 'M'}`;
         tournament.players[idx] = pairEntry;
         tournament.registered = (tournament.registered || 0) + 1;
@@ -1582,8 +1626,8 @@ function completePairRegistration(tournament, player1, player2, gender1, gender2
             // partnerio dalis (1x fee); jei dar ne — visa poros suma (2x fee).
             if (!tournament.payments) tournament.payments = {};
             const old = tournament.payments[payKey(myEntry)] || {};
+            const wasPaid = isPaidEntry(tournament.id, payKey(myEntry));
             delete tournament.payments[payKey(myEntry)];
-            const wasPaid = old.status === 'paid';
             tournament.payments[payKey(pairEntry)] = {
                 entry: pairEntry,
                 status: 'pending',
@@ -1690,6 +1734,13 @@ function confirmRemovePartner(id) {
     const myPart = parts.find(p => p.split('|')[0].trim().toLowerCase() === currentUser.name.toLowerCase()) || parts[0];
     const idx = t.players.indexOf(entry);
     if (idx === -1) { closeModal(); return; }
+    // Apmokėtos poros partnerio pašalinimą tvarko organizatorius (klientas negali perkelti
+    // „apmokėta" žymos — ją valdo tik serverio registras), kad apmokėjęs žaidėjas netaptų „neapmokėjęs".
+    if (t.paid && isPaidEntry(t.id, payKey(entry))) {
+        closeModal();
+        showToast("Ši registracija apmokėta — partnerio pašalinimą tvarko organizatorius. Susisiekite su juo.");
+        return;
+    }
     t.players[idx] = myPart;
     t.registered = Math.max(0, (t.registered || 0) - 1);
     if (t.paid && t.payments) {
@@ -1697,13 +1748,12 @@ function confirmRemovePartner(id) {
         delete t.payments[payKey(entry)];
         t.payments[payKey(myPart)] = {
             entry: myPart,
-            status: old.status === 'paid' ? 'paid' : 'pending',
+            status: 'pending',
             method: old.method || 'manual',
             amount: (t.fee || 0),
             claimed: old.claimed || null,
             ts: old.ts || Date.now(),
-            paidTs: old.paidTs || null,
-            deadline: old.status === 'paid' || old.method === 'cash' ? null : (old.deadline || paymentDeadlineMs(t, Date.now()))
+            deadline: old.method === 'cash' ? null : (old.deadline || paymentDeadlineMs(t, Date.now()))
         };
     }
     saveData();

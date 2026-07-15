@@ -746,7 +746,7 @@ function renderPlatformView() {
             const participants = clubT.reduce((s, t) => s + (t.registered || 0), 0);
             let collected = 0;
             clubT.forEach(t => {
-                if (t.paid && t.payments) Object.values(t.payments).forEach(p => { if (p && p.status === 'paid') collected += (p.amount || 0); });
+                if (t.paid && t.payments) Object.keys(t.payments).forEach(k => { if (isPaidEntry(t.id, k)) collected += ((t.payments[k] && t.payments[k].amount) || 0); });
             });
             const clubAdmins = Object.keys(admins).filter(ek => admins[ek] && admins[ek].clubId === id)
                 .map(ek => ek.replace(/,/g, '.')).join(', ');
@@ -970,7 +970,7 @@ function paymentCounts(t) {
         const amount = (t.fee || 0) * seats;
         expected += amount;
         const pay = (t.payments || {})[payKey(e)];
-        if (pay && pay.status === 'paid') { paid++; collected += (pay.amount || amount); }
+        if (isPaidEntry(t.id, payKey(e))) { paid++; collected += ((pay && pay.amount) || amount); }
         else if (pay && pay.method === 'cash') { cash++; }
         else pending++;
     });
@@ -986,7 +986,7 @@ function openPaymentsModal(id) {
     const rows = entries.length ? entries.map(e => {
         const seats = String(e).includes('/') ? 2 : 1;
         const pay = (t.payments || {})[payKey(e)];
-        const isPaid = pay && pay.status === 'paid';
+        const isPaid = isPaidEntry(t.id, payKey(e));
         const amount = (pay && pay.amount) || (t.fee || 0) * seats;
         const names = String(e).split('/').map(part => esc(part.trim().split('|')[0].trim())).join(' / ');
         const isCash = pay && pay.method === 'cash' && !isPaid;
@@ -1038,30 +1038,35 @@ function openPaymentsModal(id) {
 
 // Pažymi įrašą apmokėtu / grąžina į laukiančius. Struktūra suderinta su ateities
 // Stripe integracija: method liks 'manual' tik rankiniams patvirtinimams.
+// Admino apmokėjimo patvirtinimas — dabar per SERVERĮ (confirmManualPayment): serveris pats
+// patikrina, ar tikrai to klubo adminas, ir rašo padelio_paid registrą (klientas jo rašyti negali).
+// Taip užkertamas kelias suklastoti „apmokėta" tiesiogiai per DB.
 function setPaymentStatus(tournamentId, key, isPaid) {
     const t = tournaments.find(x => String(x.id) === String(tournamentId));
     if (!t) return;
     if (currentClub && !canManageTournament(t)) { showToast("🔒 Šis turnyras priklauso kitam klubui."); return; }
-    if (!t.payments) t.payments = {};
+    // Atkuriam TIKRĄ payKey iš įrašo (mygtukas perduoda be kabučių saugumui) — kad registro
+    // raktas sutaptų su isPaidEntry paieška.
     const entry = (t.players || []).find(e => payKey(e).replace(/'/g, '') === key) || null;
-    const seats = entry && String(entry).includes('/') ? 2 : 1;
-    const existing = t.payments[key] || {};
-    if (isPaid) {
-        t.payments[key] = Object.assign({}, existing, {
-            entry: entry || existing.entry || '',
-            status: 'paid',
-            method: existing.method || 'manual',
-            amount: existing.amount || (t.fee || 0) * seats,
-            paidTs: Date.now(),
-            confirmedBy: (currentClub && currentClub.id) || 'admin'
-        });
-    } else {
-        t.payments[key] = Object.assign({}, existing, { status: 'pending', paidTs: null, confirmedBy: null });
-    }
-    saveData();
-    openPaymentsModal(tournamentId); // atnaujintas sąrašas
-    renderAdminTournaments();        // atnaujintas 💶 skaitliukas
-    showToast(isPaid ? "Apmokėjimas patvirtintas ✅" : "Grąžinta į laukiančius.");
+    if (!entry) { showToast("Įrašas nerastas."); return; }
+    const realKey = payKey(entry);
+    const u = (typeof firebase !== 'undefined' && firebase.auth) ? firebase.auth().currentUser : null;
+    if (!u) { showToast("🔒 Prisijunkite iš naujo ir bandykite vėl."); return; }
+    showToast(isPaid ? "Tvirtinama…" : "Atšaukiama…");
+    u.getIdToken().then(idToken => fetch(STRIPE_FN_BASE + '/confirmManualPayment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: idToken, tid: t.id, key: realKey, paid: !!isPaid })
+    })).then(r => r.json()).then(data => {
+        if (data && data.ok) {
+            showToast(isPaid ? "Apmokėjimas patvirtintas ✅" : "Grąžinta į laukiančius.");
+            openPaymentsModal(tournamentId);   // padelio_paid listener jau atnaujino paidData
+            renderAdminTournaments();
+        } else {
+            const err = data && data.error;
+            showToast("❌ Nepavyko: " + (err === 'not club admin' ? 'neturite teisės šiam klubui' : (err || 'klaida')));
+        }
+    }).catch(() => showToast("❌ Tinklo klaida — bandykite dar kartą."));
 }
 
 function openAdminTournamentModal(id) {
