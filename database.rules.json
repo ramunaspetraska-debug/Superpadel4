@@ -54,7 +54,7 @@
     "padelio_club_admins": {
       ".read": true,
       "$ek": {
-        ".write": "auth != null && ($ek === auth.token.email.toLowerCase().replace('.', ',') || root.child('padelio_club_admins').child(auth.token.email.toLowerCase().replace('.', ',')).child('clubId').val() === newData.child('clubId').val())"
+        ".write": "auth != null && ( (newData.exists() && root.child('padelio_clubs').child(newData.child('clubId').val()).child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists() && (!data.exists() || data.child('clubId').val() === newData.child('clubId').val())) || (!newData.exists() && data.exists() && root.child('padelio_clubs').child(data.child('clubId').val()).child('admins').child(auth.token.email.toLowerCase().replace('.', ',')).exists()) )"
       }
     },
 
