@@ -1947,14 +1947,15 @@ function renderClubsPage() {
         const c = allClubsCache[id];
         return c && (cityF === 'all' || String(c.city || '').trim() === cityF);
     });
-    if (!ids.length) { list.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-grey); font-size:13px;">Klubų pagal šį filtrą nėra.</div>'; return; }
+    const seeksBtn = (typeof allSeeksButtonHtml === 'function') ? allSeeksButtonHtml() : '';
+    if (!ids.length) { list.innerHTML = seeksBtn + '<div style="text-align:center; padding:30px; color:var(--text-grey); font-size:13px;">Klubų pagal šį filtrą nėra.</div>'; return; }
 
     // Klubai su artimiausiais turnyrais viršuje
     const upcomingOf = (clubId) => (typeof tournaments !== 'undefined' ? tournaments : [])
         .filter(t => t && t.clubId === clubId && getTimeState(t.date, t.time) === 'future')
         .sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.time).localeCompare(String(b.time)));
 
-    list.innerHTML = ids.map(id => {
+    list.innerHTML = seeksBtn + ids.map(id => {
         const c = allClubsCache[id];
         const up = upcomingOf(id);
         const followed = !!myClubs[id];

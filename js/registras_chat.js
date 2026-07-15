@@ -356,3 +356,169 @@ function sendSeekMessage() {
         showToast("🎾 Skelbimas paskelbtas!");
     }).catch(e => showToast("Nepavyko paskelbti: " + ((e && e.message) || 'klaida')));
 }
+
+// ==========================================
+// BENDRAS „IEŠKAU ŽAIDIMO" SRAUTAS — visų klubų skelbimai vienoje vietoje
+// ==========================================
+// Kad nebūtų perkrauta: filtras pagal MIESTĄ (numatytai — sekamo klubo miestas), lygį; rodomi tik
+// AKTYVŪS (nepasibaigę) skelbimai; skaitomi tik atrinkti klubai (iki 30). Skaitymas viešas (be login).
+
+let _allSeeksData = [];
+let _allSeeksCapped = false;
+
+// Mygtukas klubų puslapiui (kviečiamas renderClubsPage per typeof guard)
+function allSeeksButtonHtml() {
+    return `<button type="button" onclick="openAllSeeksModal()" style="width:100%;padding:12px;margin-bottom:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">🎾 Rasti žaidimą — visų klubų skelbimai</button>`;
+}
+
+function openAllSeeksModal() {
+    if (typeof firebase === 'undefined') { showToast('Ryšio nėra — pabandykite vėliau.'); return; }
+    document.getElementById('all-seeks-modal')?.remove();
+    const clubsCache = (typeof allClubsCache !== 'undefined') ? allClubsCache : {};
+    const followed = (typeof myClubs !== 'undefined') ? myClubs : {};
+    const cities = [...new Set(Object.values(clubsCache).map(c => (c && c.city ? String(c.city).trim() : '')).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'lt'));
+    // Numatytas miestas: sekamo klubo miestas (srautas siauresnis, ne visas pasaulis)
+    let defCity = 'all';
+    for (const id of Object.keys(followed)) { if (clubsCache[id] && clubsCache[id].city) { defCity = String(clubsCache[id].city).trim(); break; } }
+    const wrap = document.createElement('div');
+    wrap.id = 'all-seeks-modal';
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.7);z-index:10000;display:flex;align-items:flex-end;justify-content:center;';
+    wrap.innerHTML = `
+        <div style="background:#f8f9fb;border-radius:20px 20px 0 0;width:100%;max-width:480px;height:85vh;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:white;border-bottom:1px solid #e2e8f0;flex-shrink:0;">
+                <div style="font-weight:900;font-size:15px;color:var(--text-dark);">🎾 Ieškau žaidimo — visi klubai</div>
+                <button type="button" onclick="document.getElementById('all-seeks-modal').remove()" style="background:#f1f5f9;border:none;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;">&times;</button>
+            </div>
+            <div style="display:flex;gap:6px;padding:8px 12px;background:white;border-bottom:1px solid #e2e8f0;flex-shrink:0;">
+                <select id="allSeekCity" onchange="loadAllSeeks()" style="flex:1;min-width:0;padding:8px;border:1px solid #cbd5e0;border-radius:8px;font-size:12px;font-weight:700;">
+                    <option value="all">Visi miestai</option>
+                    ${cities.map(c => `<option value="${esc(c)}"${c === defCity ? ' selected' : ''}>${esc(c)}</option>`).join('')}
+                </select>
+                <select id="allSeekLevel" onchange="renderAllSeeks()" style="flex:1;min-width:0;padding:8px;border:1px solid #cbd5e0;border-radius:8px;font-size:12px;font-weight:700;">
+                    <option value="">Visi lygiai</option>
+                    <option value="A">A</option><option value="B-/B">B-/B</option><option value="C/C+">C/C+</option>
+                    <option value="C-/C">C-/C</option><option value="D/C-">D/C-</option><option value="D">D</option>
+                </select>
+            </div>
+            <div id="allSeeksList" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Ieškoma skelbimų...</div>
+            </div>
+        </div>`;
+    document.body.appendChild(wrap);
+    wrap.addEventListener('click', e => { if (e.target === wrap) wrap.remove(); });
+    loadAllSeeks();
+}
+
+function loadAllSeeks() {
+    const list = document.getElementById('allSeeksList');
+    if (!list) return;
+    list.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Ieškoma skelbimų...</div>';
+    const clubsCache = (typeof allClubsCache !== 'undefined') ? allClubsCache : {};
+    const followed = (typeof myClubs !== 'undefined') ? myClubs : {};
+    const city = document.getElementById('allSeekCity')?.value || 'all';
+    let clubIds = Object.keys(clubsCache).filter(id => {
+        const c = clubsCache[id]; if (!c) return false;
+        return city === 'all' || String(c.city || '').trim() === city;
+    });
+    // Sekamus klubus visada įtraukiam (net jei kito miesto)
+    Object.keys(followed).forEach(id => { if (clubsCache[id] && clubIds.indexOf(id) === -1) clubIds.push(id); });
+    _allSeeksCapped = clubIds.length > 30;
+    clubIds = clubIds.slice(0, 30);
+    if (!clubIds.length) { list.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:24px;">Klubų pagal šį filtrą nėra.</div>'; _allSeeksData = []; return; }
+    Promise.all(clubIds.map(id =>
+        firebase.database().ref('padelio_chat/' + id).limitToLast(80).once('value')
+            .then(snap => ({ id: id, val: snap.val() || {} })).catch(() => ({ id: id, val: {} }))
+    )).then(results => {
+        const seeks = [];
+        results.forEach(r => {
+            const c = clubsCache[r.id] || {};
+            Object.keys(r.val).forEach(key => {
+                const m = r.val[key];
+                if (m && m.type === 'seek' && m.seek) {
+                    seeks.push({ clubId: r.id, clubName: c.name || 'Klubas', city: c.city || '', key: key, uid: m.uid, seek: m.seek, name: m.name, text: m.text, ts: m.ts, joined: m.joined || {} });
+                }
+            });
+        });
+        seeks.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+        _allSeeksData = seeks;
+        renderAllSeeks();
+    }).catch(() => { if (list) list.innerHTML = '<div style="text-align:center;color:var(--status-red);font-size:12px;padding:20px;">Nepavyko įkelti skelbimų.</div>'; });
+}
+
+function renderAllSeeks() {
+    const list = document.getElementById('allSeeksList');
+    if (!list) return;
+    const levelF = (document.getElementById('allSeekLevel') && document.getElementById('allSeekLevel').value) || '';
+    const shown = _allSeeksData.filter(s => !seekIsPast(s.seek) && (!levelF || (s.seek.level || '') === levelF));
+    if (!shown.length) {
+        list.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:24px;">Aktyvių „Ieškau žaidimo" skelbimų pagal šį filtrą nėra.</div>';
+        return;
+    }
+    const myId = (typeof currentUser !== 'undefined' && currentUser) ? String(currentUser.id) : null;
+    list.innerHTML = shown.map(s => buildAggSeekCard(s, myId)).join('')
+        + (_allSeeksCapped ? '<div style="text-align:center;color:#94a3b8;font-size:11px;padding:8px;">Rodomi ne visi klubai — patikslinkite miestą, kad matytumėte visus.</div>' : '');
+}
+
+function buildAggSeekCard(s, myId) {
+    const needed = Math.max(1, parseInt(s.seek.needed) || 1);
+    const joinedIds = Object.keys(s.joined || {});
+    const joinedNames = joinedIds.map(k => (s.joined[k] && s.joined[k].name) || '?');
+    const iAmAuthor = myId && String(s.uid) === myId;
+    const iJoined = myId ? joinedIds.indexOf(chatJsSafe(myId)) !== -1 : false;
+    const full = joinedIds.length >= needed;
+    const chip = 'font-size:11px;background:white;border:1px solid #fde68a;border-radius:6px;padding:3px 8px;font-weight:700;color:#92400e;';
+    let btn = '';
+    if (!myId) {
+        btn = `<button type="button" onclick="document.getElementById('all-seeks-modal').remove(); openAuthModal();" style="width:100%;margin-top:8px;padding:9px;background:var(--primary-blue);border:none;color:white;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">Prisijunkite, kad prisijungtumėte prie žaidimo</button>`;
+    } else if (!iAmAuthor) {
+        btn = iJoined
+            ? `<button type="button" onclick="leaveSeekAgg('${chatJsSafe(s.clubId)}','${chatJsSafe(s.key)}')" style="width:100%;margin-top:8px;padding:10px;background:white;border:1px solid #fca5a5;color:#dc2626;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">↩ Atšaukti prisijungimą</button>`
+            : (full
+                ? `<div style="margin-top:8px;text-align:center;font-size:12px;font-weight:800;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:8px;">✅ SURINKTA</div>`
+                : `<button type="button" onclick="joinSeekAgg('${chatJsSafe(s.clubId)}','${chatJsSafe(s.key)}')" style="width:100%;margin-top:8px;padding:10px;background:#16a34a;border:none;color:white;border-radius:8px;font-weight:800;font-size:13px;cursor:pointer;">🎾 Prisijungiu!</button>`);
+    } else {
+        btn = `<div style="margin-top:8px;text-align:center;font-size:11px;font-weight:700;color:#92400e;">Jūsų skelbimas${full ? ' · ✅ komanda pilna!' : ''}</div>`;
+    }
+    return `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:11px;font-weight:900;color:#92400e;">🎾 IEŠKO ${needed > 1 ? needed + ' ŽAIDĖJŲ' : 'ŽAIDĖJO'}</div>
+            <span style="font-size:10px;color:#b45309;">${chatTimeStr(s.ts)}</span>
+        </div>
+        <div style="font-size:12px;font-weight:800;color:var(--primary-blue);margin-top:3px;"><i class="fa-solid fa-location-dot" style="font-size:10px;"></i> ${esc(s.clubName)}${s.city ? ' · ' + esc(s.city) : ''}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text-dark);margin-top:2px;">${esc(s.name)}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+            <span style="${chip}">Lygis: ${esc(s.seek.level || 'Bet koks')}</span>
+            ${s.seek.date ? `<span style="${chip}">📅 ${esc(s.seek.date)}</span>` : ''}
+            ${s.seek.time ? `<span style="${chip}">🕐 ${esc(s.seek.time)}</span>` : ''}
+        </div>
+        ${s.text ? `<div style="font-size:12px;color:var(--text-grey);margin-top:6px;">${esc(s.text)}</div>` : ''}
+        <div style="font-size:12px;font-weight:700;color:${full ? '#16a34a' : '#92400e'};margin-top:8px;">Prisijungė: ${joinedIds.length}/${needed}${joinedNames.length ? ' — ' + joinedNames.map(esc).join(', ') : ''}</div>
+        ${btn}
+    </div>`;
+}
+
+function joinSeekAgg(clubId, key) {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) { showToast("Prisijunkite prie paskyros."); return; }
+    firebase.database().ref('padelio_chat/' + clubId + '/' + key + '/joined/' + chatJsSafe(String(currentUser.id)))
+        .set({ name: currentUser.name || 'Žaidėjas', ts: Date.now() })
+        .then(() => {
+            showToast("🎾 Prisijungėte! Skelbėjas matys jūsų vardą.");
+            const s = _allSeeksData.find(x => x.clubId === clubId && x.key === key);
+            if (s) { s.joined = s.joined || {}; s.joined[String(currentUser.id)] = { name: currentUser.name || 'Žaidėjas', ts: Date.now() }; }
+            renderAllSeeks();
+        })
+        .catch(e => showToast("Nepavyko: " + ((e && e.message) || 'klaida')));
+}
+
+function leaveSeekAgg(clubId, key) {
+    if (typeof currentUser === 'undefined' || !currentUser || !currentUser.id) return;
+    firebase.database().ref('padelio_chat/' + clubId + '/' + key + '/joined/' + chatJsSafe(String(currentUser.id)))
+        .remove()
+        .then(() => {
+            showToast("Prisijungimas atšauktas.");
+            const s = _allSeeksData.find(x => x.clubId === clubId && x.key === key);
+            if (s && s.joined) { delete s.joined[String(currentUser.id)]; }
+            renderAllSeeks();
+        })
+        .catch(e => showToast("Nepavyko: " + ((e && e.message) || 'klaida')));
+}
