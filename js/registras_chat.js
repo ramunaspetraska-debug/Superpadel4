@@ -9,13 +9,29 @@
 let chatRef = null;
 let chatClubId = null;
 let chatMsgCount = 0;
+let chatFilter = 'all'; // 'all' | 'seek' — srauto filtras (žinutės / „Ieškau žaidimo")
 
 function chatJsSafe(s) { return String(s || '').replace(/['"\\<>&]/g, ''); }
+
+// Ar „Ieškau žaidimo" skelbimo laikas jau praėjo (pasibaigęs). Nauji skelbimai turi pilną dateIso;
+// seniems (tik MM-DD) — geriausios pastangos su einamaisiais metais.
+function seekIsPast(seek) {
+    if (!seek) return false;
+    let iso = seek.dateIso;
+    if (!iso && seek.date && /^\d{2}-\d{2}$/.test(seek.date)) iso = new Date().getFullYear() + '-' + seek.date;
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+    let time = (seek.time && /^\d{1,2}:\d{2}/.test(seek.time)) ? seek.time : '23:59';
+    if (time.length === 4) time = '0' + time; // H:MM -> HH:MM
+    const dt = new Date(iso + 'T' + time);
+    if (isNaN(dt.getTime())) return false;
+    return dt.getTime() < Date.now();
+}
 
 function openClubChat(clubId, clubName) {
     closeClubChat();
     chatClubId = String(clubId);
     chatMsgCount = 0;
+    chatFilter = 'all';
     const isLogged = (typeof currentUser !== 'undefined' && currentUser && currentUser.id);
     const wrap = document.createElement('div');
     wrap.id = 'club-chat-modal';
@@ -31,6 +47,18 @@ function openClubChat(clubId, clubName) {
                     </div>
                 </div>
                 <button type="button" onclick="closeClubChat()" style="background:#f1f5f9;border:none;width:34px;height:34px;border-radius:50%;font-size:18px;cursor:pointer;flex-shrink:0;">&times;</button>
+            </div>
+            <div style="display:flex;gap:6px;padding:8px 12px;background:white;border-bottom:1px solid #e2e8f0;flex-shrink:0;">
+                <button type="button" id="chatTabAll" onclick="setChatFilter('all')" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;border:1px solid var(--primary-blue);background:var(--primary-blue);color:white;">Visos žinutės</button>
+                <button type="button" id="chatTabSeek" onclick="setChatFilter('seek')" style="flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;border:1px solid #fde68a;background:#fffbeb;color:#92400e;">🎾 Ieškau žaidimo</button>
+            </div>
+            <div id="chatSeekFilters" style="display:none;gap:8px;padding:6px 12px;background:#fffbeb;border-bottom:1px solid #fde68a;flex-shrink:0;align-items:center;">
+                <select id="chatSeekLevelFilter" onchange="applyChatFilter()" style="flex:1;padding:7px;border:1px solid #fde68a;border-radius:8px;font-size:11px;font-weight:700;">
+                    <option value="">Visi lygiai</option>
+                    <option value="A">A</option><option value="B-/B">B-/B</option><option value="C/C+">C/C+</option>
+                    <option value="C-/C">C-/C</option><option value="D/C-">D/C-</option><option value="D">D</option>
+                </select>
+                <label style="font-size:11px;color:#92400e;font-weight:700;display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;"><input type="checkbox" id="chatHideExpired" checked onchange="applyChatFilter()"> Slėpti pasibaigusius</label>
             </div>
             <div id="chatMessages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;">
                 <div id="chatLoadingPh" style="text-align:center;color:#94a3b8;font-size:12px;padding:20px;"><i class="fa-solid fa-spinner fa-spin"></i> Kraunamos žinutės...</div>
@@ -61,6 +89,7 @@ function openClubChat(clubId, clubName) {
         if (!old) return;
         const fresh = buildChatMessageEl(snap.key, snap.val());
         old.replaceWith(fresh);
+        if (chatFilter !== 'all') applyChatFilter();
     });
     chatRef.on('child_removed', snap => {
         document.getElementById('chatmsg-' + snap.key)?.remove();
@@ -86,6 +115,44 @@ function showChatEmptyPlaceholder() {
     }
 }
 
+// Perjungia srauto filtrą (visos žinutės / tik „Ieškau žaidimo")
+function setChatFilter(f) {
+    chatFilter = f;
+    const all = document.getElementById('chatTabAll'), seek = document.getElementById('chatTabSeek'), sf = document.getElementById('chatSeekFilters');
+    const base = 'flex:1;padding:8px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;';
+    if (all) all.style.cssText = base + (f === 'all' ? 'border:1px solid var(--primary-blue);background:var(--primary-blue);color:white;' : 'border:1px solid #cbd5e0;background:white;color:var(--text-grey);');
+    if (seek) seek.style.cssText = base + (f === 'seek' ? 'border:1px solid #d97706;background:#d97706;color:white;' : 'border:1px solid #fde68a;background:#fffbeb;color:#92400e;');
+    if (sf) sf.style.display = (f === 'seek') ? 'flex' : 'none';
+    applyChatFilter();
+}
+
+// Pritaiko dabartinį filtrą (rodo/slepia elementus). „Ieškau žaidimo" tabe — tik seek skelbimai,
+// papildomai filtruoja pagal lygį ir slepia pasibaigusius (jei pažymėta).
+function applyChatFilter() {
+    const box = document.getElementById('chatMessages');
+    if (!box) return;
+    const levelF = (document.getElementById('chatSeekLevelFilter') && document.getElementById('chatSeekLevelFilter').value) || '';
+    const hideExp = !!(document.getElementById('chatHideExpired') && document.getElementById('chatHideExpired').checked);
+    let visible = 0;
+    Array.from(box.children).forEach(el => {
+        if (!el.id || el.id.indexOf('chatmsg-') !== 0) return; // praleidžiam placeholder'ius
+        let show = true;
+        if (chatFilter === 'seek') {
+            show = el.getAttribute('data-msgtype') === 'seek';
+            if (show && levelF) show = (el.getAttribute('data-seeklevel') === levelF);
+            if (show && hideExp && el.getAttribute('data-seekpast') === '1') show = false;
+        }
+        el.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    let ph = document.getElementById('chatFilterEmpty');
+    if (chatFilter === 'seek' && visible === 0) {
+        if (!ph) { ph = document.createElement('div'); ph.id = 'chatFilterEmpty'; ph.style.cssText = 'text-align:center;color:#94a3b8;font-size:12px;padding:24px;'; box.appendChild(ph); }
+        ph.textContent = 'Aktyvių „Ieškau žaidimo" skelbimų nėra. Paskelbkite savo! 🎾';
+        ph.style.display = '';
+    } else if (ph) { ph.style.display = 'none'; }
+}
+
 function chatTimeStr(ts) {
     try {
         const d = new Date(ts || 0);
@@ -103,6 +170,7 @@ function appendChatMessage(key, m) {
     document.getElementById('chatEmptyPh')?.remove();
     chatMsgCount++;
     box.appendChild(buildChatMessageEl(key, m));
+    if (chatFilter !== 'all') applyChatFilter();
     box.scrollTop = box.scrollHeight;
 }
 
@@ -125,9 +193,15 @@ function buildChatMessageEl(key, m) {
         const myId = (typeof currentUser !== 'undefined' && currentUser) ? String(currentUser.id) : null;
         const iJoined = myId ? joinedIds.indexOf(chatJsSafe(myId)) !== -1 : false;
         const full = joinedIds.length >= needed;
+        const past = seekIsPast(m.seek);
+        el.setAttribute('data-msgtype', 'seek');
+        el.setAttribute('data-seeklevel', m.seek.level || '');
+        el.setAttribute('data-seekpast', past ? '1' : '0');
 
         let joinBtn = '';
-        if (myId && !iAmAuthor) {
+        if (past) {
+            joinBtn = `<div style="margin-top:8px;text-align:center;font-size:12px;font-weight:800;color:#94a3b8;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px;">⏳ Skelbimas pasibaigęs</div>`;
+        } else if (myId && !iAmAuthor) {
             joinBtn = iJoined
                 ? `<button type="button" onclick="leaveSeek('${chatJsSafe(key)}')" style="width:100%;margin-top:8px;padding:10px;background:white;border:1px solid #fca5a5;color:#dc2626;border-radius:8px;font-weight:800;font-size:12px;cursor:pointer;">↩ Atšaukti prisijungimą</button>`
                 : (full
@@ -139,9 +213,9 @@ function buildChatMessageEl(key, m) {
 
         el.style.cssText = 'align-self:stretch;';
         el.innerHTML = `
-            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 12px;">
+            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px 12px;${past ? 'opacity:0.55;' : ''}">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div style="font-size:11px;font-weight:900;color:#92400e;">🎾 IEŠKO ${needed > 1 ? needed + ' ŽAIDĖJŲ' : 'ŽAIDĖJO'}</div>
+                    <div style="font-size:11px;font-weight:900;color:#92400e;">🎾 IEŠKO ${needed > 1 ? needed + ' ŽAIDĖJŲ' : 'ŽAIDĖJO'}${past ? ' · PASIBAIGĘS' : ''}</div>
                     <div style="display:flex;align-items:center;gap:4px;"><span style="font-size:10px;color:#b45309;">${chatTimeStr(m.ts)}</span>${delBtn}</div>
                 </div>
                 <div style="font-size:13px;font-weight:800;color:var(--text-dark);margin-top:4px;">${esc(m.name)}</div>
@@ -159,6 +233,7 @@ function buildChatMessageEl(key, m) {
         return el;
     }
 
+    el.setAttribute('data-msgtype', 'msg');
     if (mine) {
         el.style.cssText = 'align-self:flex-end;max-width:82%;';
         el.innerHTML = `
@@ -275,7 +350,7 @@ function sendSeekMessage() {
         text: note,
         ts: Date.now(),
         type: 'seek',
-        seek: { level: level, date: dateMD, time: time, needed: parseInt(document.getElementById('seekNeeded')?.value || 3) }
+        seek: { level: level, date: dateMD, dateIso: dateIso, time: time, needed: parseInt(document.getElementById('seekNeeded')?.value || 3) }
     }).then(() => {
         document.getElementById('seek-form')?.remove();
         showToast("🎾 Skelbimas paskelbtas!");
