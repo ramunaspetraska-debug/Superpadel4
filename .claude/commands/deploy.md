@@ -10,5 +10,9 @@ Atlik pilną SuperPadel deploy procedūrą griežtai šia tvarka:
    ir index.html versijos žymę (VNNN) sinchroniškai.
 6. Trumpai lietuviškai paaiškink, ką keiti ir kodėl.
 7. `git add -A`, commit su aiškia žinute, `git push`.
-8. Pabaigoje primink: patikrinti www.superpadel.lt po ~1 min ir telefone
+8. Jei keitėsi functions/ turinys — deploy'ink Cloud Functions:
+   `firebase deploy --only functions --project padelio-turnyrai --non-interactive`
+   (Windows Git Bash: MSYS_NO_PATHCONV=1, kitaip „Path must begin with /";
+   STDIN neveikia — naudok --data).
+9. Pabaigoje primink: patikrinti www.superpadel.lt po ~1 min ir telefone
    visiškai uždaryti/atidaryti PWA.
