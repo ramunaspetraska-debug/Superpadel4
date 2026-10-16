@@ -596,81 +596,25 @@ function releaseWakeLock() {
     try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
 }
 function getAudioCtx() {
-    if (!globalAudioCtx) { globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    if (!globalAudioCtx) {
+        // iPhone: kad garsai skambėtų ir įjungus tylųjį („Silent") jungiklį (Safari 16.4+; kitur — ignoruojama)
+        try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+        globalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (globalAudioCtx.state === 'suspended') { try { globalAudioCtx.resume(); } catch (e) {} }
     return globalAudioCtx;
 }
 
-function play5MinWarning() {
-    if(isMuted) return;
-    try {
-        const ctx = getAudioCtx();
-        const playBeep = (freq, time, dur) => {
-            const osc = ctx.createOscillator(); const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.type = 'square'; osc.frequency.value = freq;
-            gain.gain.setValueAtTime(0.05, ctx.currentTime + time);
-            osc.start(ctx.currentTime + time); osc.stop(ctx.currentTime + time + dur);
-        };
-        playBeep(600, 0, 0.15); playBeep(800, 0.25, 0.2);
-    } catch(e) { console.error("Audio Error:", e); }
+// Kada skamba VIENINTELIS tarpinis įspėjimas: likus 2 min (mačui trumpesniam nei 10 min — likus 1 min).
+let warnFired = false;
+function warnAtSec() {
+    const mins = (typeof settings !== 'undefined' && settings.matchDuration) ? settings.matchDuration : 12;
+    return mins >= 10 ? 120 : 60;
 }
 
-function play1MinWarning() {
-    if(isMuted) return;
-    try {
-        const ctx = getAudioCtx();
-        const playTick = (time) => {
-            const osc = ctx.createOscillator(); const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.type = 'sine'; osc.frequency.value = 1000;
-            gain.gain.setValueAtTime(0.1, ctx.currentTime + time);
-            osc.start(ctx.currentTime + time); osc.stop(ctx.currentTime + time + 0.05);
-        };
-        for(let i=0; i<5; i++) playTick(i * 0.15);
-    } catch(e) { console.error("Audio Error:", e); }
-}
-
-function playBuzzer() {
-    if(isMuted) return;
-    try {
-        const ctx = getAudioCtx();
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 1.5); 
-        gain.gain.setValueAtTime(0.2, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
-        osc.start(); osc.stop(ctx.currentTime + 1.5);
-    } catch(e) { console.error("Audio Error:", e); }
-}
-
-// ŠVILPUKAS (teisėjo) — pakeičia seną sireną. Aukšto dažnio tonas su trileliu.
-function playWhistle() {
-    if(isMuted) return;
-    try {
-        const ctx = getAudioCtx();
-        const dur = 1.2;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        const lfo = ctx.createOscillator();   // vibrato (švilpuko "burbuliukas")
-        const lfoGain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = 3200;
-        lfo.type = 'sine';
-        lfo.frequency.value = 22;             // greitas trilelis
-        lfoGain.gain.value = 160;             // vibrato gylis
-        lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
-        osc.connect(gain); gain.connect(ctx.destination);
-        gain.gain.setValueAtTime(0, ctx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.03);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime + dur - 0.06);
-        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
-        osc.start(); osc.stop(ctx.currentTime + dur);
-        lfo.start(); lfo.stop(ctx.currentTime + dur);
-    } catch(e) { console.error("Audio Error:", e); }
-}
-
-// 3 MIN įspėjimas — kelių sekundžių "skambutis" (kylantys dvigarsiai)
-function play3MinWarning() {
+// TARPINIS ĮSPĖJIMAS — „ding-dong" du kartus. Tonai 1320/1760 Hz: ausis jautriausia 1–4 kHz, todėl
+// girdisi per kamuoliukų triukšmą ir aidą; garsumas artimas švilpukui, kad nepraslystų.
+function playWarning() {
     if(isMuted) return;
     try {
         const ctx = getAudioCtx();
@@ -679,21 +623,59 @@ function play3MinWarning() {
             osc.connect(gain); gain.connect(ctx.destination);
             osc.type = 'triangle'; osc.frequency.value = freq;
             gain.gain.setValueAtTime(0, ctx.currentTime + time);
-            gain.gain.linearRampToValueAtTime(0.13, ctx.currentTime + time + 0.02);
-            gain.gain.setValueAtTime(0.13, ctx.currentTime + time + dur - 0.03);
+            gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + time + 0.02);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime + time + dur - 0.03);
             gain.gain.linearRampToValueAtTime(0, ctx.currentTime + time + dur);
             osc.start(ctx.currentTime + time); osc.stop(ctx.currentTime + time + dur);
         };
-        beep(660, 0.0, 0.25); beep(880, 0.3, 0.35);
-        beep(660, 0.8, 0.25); beep(880, 1.1, 0.35);
-        beep(660, 1.6, 0.25); beep(880, 1.9, 0.55);
+        beep(1320, 0.0, 0.25); beep(1760, 0.3, 0.45);
+        beep(1320, 1.0, 0.25); beep(1760, 1.3, 0.6);
     } catch(e) { console.error("Audio Error:", e); }
 }
 
-function triggerAlarm() { 
-    if(alarmInterval) return; 
-    playWhistle(); alarmInterval = setInterval(playWhistle, 1600); updateTimerUI(); 
-    alarmTimeout = setTimeout(() => { if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; updateTimerUI(); } }, 5000); 
+// Vienas teisėjo švilpuko pūstelėjimas: aukšto dažnio tonas su trileliu, prasideda po t0 s, trunka dur s.
+function whistleBlast(ctx, t0, dur) {
+    const s = ctx.currentTime + t0;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const lfo = ctx.createOscillator();   // vibrato (švilpuko "burbuliukas")
+    const lfoGain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 3200;
+    lfo.type = 'sine';
+    lfo.frequency.value = 22;             // greitas trilelis
+    lfoGain.gain.value = 160;             // vibrato gylis
+    lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+    osc.connect(gain); gain.connect(ctx.destination);
+    gain.gain.setValueAtTime(0, s);
+    gain.gain.linearRampToValueAtTime(0.2, s + 0.03);
+    gain.gain.setValueAtTime(0.2, s + dur - 0.06);
+    gain.gain.linearRampToValueAtTime(0, s + dur);
+    osc.start(s); osc.stop(s + dur);
+    lfo.start(s); lfo.stop(s + dur);
+}
+
+// PABAIGA — švilpukas ritmu „trumpas–trumpas–ilgas" (kaip rungtynių pabaigoje), ~2 s.
+function playFinalWhistle() {
+    if(isMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        whistleBlast(ctx, 0, 0.22); whistleBlast(ctx, 0.38, 0.22); whistleBlast(ctx, 0.76, 1.3);
+    } catch(e) { console.error("Audio Error:", e); }
+}
+
+// „Išbandyti garsą" (nustatymuose): prieš turnyrą patikrinti garsumą ir ar iPhone tylusis režimas netrukdo.
+// Paspaudimas — vartotojo gestas, todėl kartu „atrakina" garsą naršyklėje.
+function testTimerSounds() {
+    if (isMuted) { alert("Garsas išjungtas. Įjunkite jį garsiakalbio mygtuku viršuje šalia laikmačio."); return; }
+    playWarning();
+    setTimeout(playFinalWhistle, 2600);
+}
+
+function triggerAlarm() {
+    if(alarmInterval) return;
+    playFinalWhistle(); alarmInterval = setInterval(playFinalWhistle, 3000); updateTimerUI();
+    alarmTimeout = setTimeout(() => { if(alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; updateTimerUI(); } }, 5000);
 }
 
 function toggleTimer() { 
@@ -702,16 +684,17 @@ function toggleTimer() {
     if(isRunning) { clearInterval(timerInterval); isRunning=false; } 
     else {
         if(timeLeft <= 0) return; 
-        isRunning = true; endTime = Date.now() + (timeLeft * 1000); 
-        requestWakeLock(); 
-        if (!isMuted) { const ctx = getAudioCtx(); if (ctx.state === 'suspended') ctx.resume(); }
-        timerInterval = setInterval(() => { 
-            const d = Math.ceil((endTime - Date.now())/1000); 
-            if(d > 0) { 
-                if (d === 300 && timeLeft !== 300) play5MinWarning();
-                if (d === 180 && timeLeft !== 180) play3MinWarning();
-                if (d === 60 && timeLeft !== 60) play1MinWarning();
-                timeLeft = d; updateTimerUI(); 
+        isRunning = true; endTime = Date.now() + (timeLeft * 1000);
+        // Paleidus jau po įspėjimo ribos (pvz. po pauzės) — įspėjimo nekartojam
+        warnFired = timeLeft <= warnAtSec();
+        requestWakeLock();
+        if (!isMuted) getAudioCtx();
+        timerInterval = setInterval(() => {
+            const d = Math.ceil((endTime - Date.now())/1000);
+            if(d > 0) {
+                // Riba „<=", ne tiksli sekundė: jei telefonas akimirkai užstrigo ir peršoko sekundę, įspėjimas nepraleidžiamas
+                if (!warnFired && d <= warnAtSec()) { warnFired = true; playWarning(); }
+                timeLeft = d; updateTimerUI();
             } else { timeLeft = 0; clearInterval(timerInterval); isRunning = false; triggerAlarm(); } 
         }, 1000); 
     } 
@@ -720,8 +703,11 @@ function toggleTimer() {
 
 function updateTimerUI() { 
     const m = Math.floor(timeLeft/60).toString().padStart(2,'0'), s = (timeLeft%60).toString().padStart(2,'0'); 
-    safeText('timer-display', `${m}:${s}`); 
-    const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop'); 
+    safeText('timer-display', `${m}:${s}`);
+    // Spalva: oranžinė — likęs laikas po įspėjimo ribos, raudona — laikas baigėsi
+    const td = el('timer-display');
+    if (td) td.style.color = (alarmInterval || timeLeft <= 0) ? '#dc2626' : (timeLeft <= warnAtSec() ? '#ea580c' : '');
+    const b = el('btn-play'), i1=el('icon-play'), i2=el('icon-pause'), i3=el('icon-stop');
     if(i1 && i2 && i3 && b) { 
         i1.classList.add('hidden'); i2.classList.add('hidden'); i3.classList.add('hidden'); 
         if(alarmInterval) { b.className="w-10 h-10 rounded-full flex items-center justify-center bg-red-500 text-white shadow-lg"; i3.classList.remove('hidden'); } 
